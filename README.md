@@ -3,19 +3,24 @@
 </div>
 
 # Stratexa Dashboard v5.9.8
-Business Intelligence System for IPS
+Business Intelligence System for IPS • **SHIELD CORE Architecture**
 
-This contains everything you need to run your app locally.
+[![Despliegue a Firebase Hosting](https://github.com/leonprio/stratexa-dashboard/actions/workflows/firebase-hosting-merge.yml/badge.svg)](https://github.com/leonprio/stratexa-dashboard/actions)
 
-View your app in AI Studio: https://ai.studio/apps/drive/1PtmCvTl6g80du67duldqKQxfdJXm69Cm
+## Características Principales
+- **Blindaje Multinivel**: Aislamiento total de entornos de despliegue (`prior-01`).
+- **Jerarquía de Navegación**: Sistema refinado de grupos y sucursales.
+- **CI/CD Automatizado**: Despliegue continuo vía GitHub Actions.
+- **Auditoría de Integridad**: Control de calidad preventivo antes de cada versión.
 
-## Run Locally
+## Guía de Inicio Rápido
+1.  **Instalación**: `npm install --legacy-peer-deps`
+2.  **Entorno**: Configurar claves en `.env.local`.
+3.  **Ejecución**: `npm run dev`
+4.  **Integridad**: `npm run integrity`
 
-**Prerequisites:**  Node.js
+## Despliegue
+Cualquier cambio enviado a la rama `main` se despliega automáticamente en [tablero.leonprior.com](https://tablero.leonprior.com).
 
-
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+---
+*Stratexa Dashboard Team • v5.9.8-PRO+*

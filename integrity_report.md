@@ -156,70 +156,60 @@ C:\Users\LeonPrior\OneDrive - Prior Consultoría\Documentos\CONSULTORÍAS 2025\I
   280:35   error    'item.paiRows' is missing in props validation                                                                                                                                              react/prop-types
 
 C:\Users\LeonPrior\OneDrive - Prior Consultoría\Documentos\CONSULTORÍAS 2025\IPS\IA\APP TABLERO\components\DashboardTabs.tsx
-   77:37   warning  Unexpected any. Specify a different type                                                                                 @typescript-eslint/no-explicit-any
-   97:25   error    'setSelectedGroup' is assigned a value but never used. Allowed unused vars must match /^_/u                              @typescript-eslint/no-unused-vars
-  103:70   warning  Unexpected any. Specify a different type                                                                                 @typescript-eslint/no-explicit-any
-  104:60   warning  Unexpected any. Specify a different type                                                                                 @typescript-eslint/no-explicit-any
-  128:27   warning  Unexpected any. Specify a different type                                                                                 @typescript-eslint/no-explicit-any
-  134:19   warning  Unexpected any. Specify a different type                                                                                 @typescript-eslint/no-explicit-any
-  146:35   warning  Unexpected any. Specify a different type                                                                                 @typescript-eslint/no-explicit-any
-  150:21   warning  Unexpected any. Specify a different type                                                                                 @typescript-eslint/no-explicit-any
-  159:56   warning  Unexpected any. Specify a different type                                                                                 @typescript-eslint/no-explicit-any
-  172:27   warning  Unexpected any. Specify a different type                                                                                 @typescript-eslint/no-explicit-any
-  172:59   warning  Unexpected any. Specify a different type                                                                                 @typescript-eslint/no-explicit-any
-  188:37   warning  Unexpected any. Specify a different type                                                                                 @typescript-eslint/no-explicit-any
-  189:35   warning  Unexpected any. Specify a different type                                                                                 @typescript-eslint/no-explicit-any
-  189:53   warning  Unexpected any. Specify a different type                                                                                 @typescript-eslint/no-explicit-any
-  202:17   warning  Unexpected any. Specify a different type                                                                                 @typescript-eslint/no-explicit-any
-  208:33   warning  Unexpected any. Specify a different type                                                                                 @typescript-eslint/no-explicit-any
-  209:33   warning  Unexpected any. Specify a different type                                                                                 @typescript-eslint/no-explicit-any
-  216:25   warning  Unexpected any. Specify a different type                                                                                 @typescript-eslint/no-explicit-any
-  216:57   warning  Unexpected any. Specify a different type                                                                                 @typescript-eslint/no-explicit-any
-  220:53   warning  Unexpected any. Specify a different type                                                                                 @typescript-eslint/no-explicit-any
-  233:6    warning  React Hook useMemo has a missing dependency: 'isMeSuperDirector'. Either include it or remove the dependency array       react-hooks/exhaustive-deps
-  246:33   warning  Unexpected any. Specify a different type                                                                                 @typescript-eslint/no-explicit-any
-  246:51   warning  Unexpected any. Specify a different type                                                                                 @typescript-eslint/no-explicit-any
-  265:6    warning  React Hook useMemo has an unnecessary dependency: 'isMeSuperDirector'. Either exclude it or remove the dependency array  react-hooks/exhaustive-deps
-  270:23   warning  Unexpected any. Specify a different type                                                                                 @typescript-eslint/no-explicit-any
-  288:45   warning  Unexpected any. Specify a different type                                                                                 @typescript-eslint/no-explicit-any
-  326:98   warning  Unexpected any. Specify a different type                                                                                 @typescript-eslint/no-explicit-any
-  332:36   warning  Unexpected any. Specify a different type                                                                                 @typescript-eslint/no-explicit-any
-  336:93   warning  Unexpected any. Specify a different type                                                                                 @typescript-eslint/no-explicit-any
-  336:191  warning  Unexpected any. Specify a different type                                                                                 @typescript-eslint/no-explicit-any
-  337:62   warning  Unexpected any. Specify a different type                                                                                 @typescript-eslint/no-explicit-any
-  340:98   warning  Unexpected any. Specify a different type                                                                                 @typescript-eslint/no-explicit-any
-  340:159  warning  Unexpected any. Specify a different type                                                                                 @typescript-eslint/no-explicit-any
-  341:53   warning  Unexpected any. Specify a different type                                                                                 @typescript-eslint/no-explicit-any
-  345:36   warning  Unexpected any. Specify a different type                                                                                 @typescript-eslint/no-explicit-any
-  347:40   warning  Unexpected any. Specify a different type                                                                                 @typescript-eslint/no-explicit-any
-  359:59   warning  Unexpected any. Specify a different type                                                                                 @typescript-eslint/no-explicit-any
-  391:57   warning  Unexpected any. Specify a different type                                                                                 @typescript-eslint/no-explicit-any
-  411:108  warning  Unexpected any. Specify a different type                                                                                 @typescript-eslint/no-explicit-any
-  413:33   warning  Unexpected any. Specify a different type                                                                                 @typescript-eslint/no-explicit-any
-  418:50   warning  Unexpected any. Specify a different type                                                                                 @typescript-eslint/no-explicit-any
+   77:37   warning  Unexpected any. Specify a different type                                                     @typescript-eslint/no-explicit-any
+   97:25   error    'setSelectedGroup' is assigned a value but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+  103:70   warning  Unexpected any. Specify a different type                                                     @typescript-eslint/no-explicit-any
+  104:60   warning  Unexpected any. Specify a different type                                                     @typescript-eslint/no-explicit-any
+  127:27   warning  Unexpected any. Specify a different type                                                     @typescript-eslint/no-explicit-any
+  132:19   warning  Unexpected any. Specify a different type                                                     @typescript-eslint/no-explicit-any
+  141:19   warning  Unexpected any. Specify a different type                                                     @typescript-eslint/no-explicit-any
+  149:56   warning  Unexpected any. Specify a different type                                                     @typescript-eslint/no-explicit-any
+  162:27   warning  Unexpected any. Specify a different type                                                     @typescript-eslint/no-explicit-any
+  162:59   warning  Unexpected any. Specify a different type                                                     @typescript-eslint/no-explicit-any
+  189:33   warning  Unexpected any. Specify a different type                                                     @typescript-eslint/no-explicit-any
+  189:51   warning  Unexpected any. Specify a different type                                                     @typescript-eslint/no-explicit-any
+  191:35   warning  Unexpected any. Specify a different type                                                     @typescript-eslint/no-explicit-any
+  204:23   warning  Unexpected any. Specify a different type                                                     @typescript-eslint/no-explicit-any
+  222:45   warning  Unexpected any. Specify a different type                                                     @typescript-eslint/no-explicit-any
+  260:98   warning  Unexpected any. Specify a different type                                                     @typescript-eslint/no-explicit-any
+  266:36   warning  Unexpected any. Specify a different type                                                     @typescript-eslint/no-explicit-any
+  270:93   warning  Unexpected any. Specify a different type                                                     @typescript-eslint/no-explicit-any
+  270:191  warning  Unexpected any. Specify a different type                                                     @typescript-eslint/no-explicit-any
+  271:62   warning  Unexpected any. Specify a different type                                                     @typescript-eslint/no-explicit-any
+  274:98   warning  Unexpected any. Specify a different type                                                     @typescript-eslint/no-explicit-any
+  274:159  warning  Unexpected any. Specify a different type                                                     @typescript-eslint/no-explicit-any
+  275:53   warning  Unexpected any. Specify a different type                                                     @typescript-eslint/no-explicit-any
+  279:36   warning  Unexpected any. Specify a different type                                                     @typescript-eslint/no-explicit-any
+  281:40   warning  Unexpected any. Specify a different type                                                     @typescript-eslint/no-explicit-any
+  293:59   warning  Unexpected any. Specify a different type                                                     @typescript-eslint/no-explicit-any
+  325:57   warning  Unexpected any. Specify a different type                                                     @typescript-eslint/no-explicit-any
+  345:108  warning  Unexpected any. Specify a different type                                                     @typescript-eslint/no-explicit-any
+  347:33   warning  Unexpected any. Specify a different type                                                     @typescript-eslint/no-explicit-any
+  352:50   warning  Unexpected any. Specify a different type                                                     @typescript-eslint/no-explicit-any
 
 C:\Users\LeonPrior\OneDrive - Prior Consultoría\Documentos\CONSULTORÍAS 2025\IPS\IA\APP TABLERO\components\DashboardView.test.tsx
   22:6  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
   30:6  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
 
 C:\Users\LeonPrior\OneDrive - Prior Consultoría\Documentos\CONSULTORÍAS 2025\IPS\IA\APP TABLERO\components\DashboardView.tsx
-  143:12  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
-  155:29  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
-  162:66  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
-  164:32  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
-  190:30  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
-  195:44  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
-  365:41  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
-  376:43  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
-  410:30  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
-  417:39  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
-  418:42  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
-  419:39  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
-  420:38  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
-  421:54  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
-  424:40  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
-  424:59  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
-  438:30  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   19:10  error    'exportDashboardToExcel' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+  143:12  warning  Unexpected any. Specify a different type                                                  @typescript-eslint/no-explicit-any
+  155:29  warning  Unexpected any. Specify a different type                                                  @typescript-eslint/no-explicit-any
+  162:66  warning  Unexpected any. Specify a different type                                                  @typescript-eslint/no-explicit-any
+  164:32  warning  Unexpected any. Specify a different type                                                  @typescript-eslint/no-explicit-any
+  190:30  warning  Unexpected any. Specify a different type                                                  @typescript-eslint/no-explicit-any
+  195:44  warning  Unexpected any. Specify a different type                                                  @typescript-eslint/no-explicit-any
+  365:41  warning  Unexpected any. Specify a different type                                                  @typescript-eslint/no-explicit-any
+  376:43  warning  Unexpected any. Specify a different type                                                  @typescript-eslint/no-explicit-any
+  410:30  warning  Unexpected any. Specify a different type                                                  @typescript-eslint/no-explicit-any
+  417:39  warning  Unexpected any. Specify a different type                                                  @typescript-eslint/no-explicit-any
+  418:42  warning  Unexpected any. Specify a different type                                                  @typescript-eslint/no-explicit-any
+  419:39  warning  Unexpected any. Specify a different type                                                  @typescript-eslint/no-explicit-any
+  420:38  warning  Unexpected any. Specify a different type                                                  @typescript-eslint/no-explicit-any
+  421:54  warning  Unexpected any. Specify a different type                                                  @typescript-eslint/no-explicit-any
+  424:40  warning  Unexpected any. Specify a different type                                                  @typescript-eslint/no-explicit-any
+  424:59  warning  Unexpected any. Specify a different type                                                  @typescript-eslint/no-explicit-any
+  438:30  warning  Unexpected any. Specify a different type                                                  @typescript-eslint/no-explicit-any
 
 C:\Users\LeonPrior\OneDrive - Prior Consultoría\Documentos\CONSULTORÍAS 2025\IPS\IA\APP TABLERO\components\DataEditor.tsx
   113:33  warning  Unexpected any. Specify a different type                                                   @typescript-eslint/no-explicit-any
@@ -323,7 +313,7 @@ C:\Users\LeonPrior\OneDrive - Prior Consultoría\Documentos\CONSULTORÍAS 2025\I
   516:26  warning  Unexpected any. Specify a different type                                         @typescript-eslint/no-explicit-any
   678:39  warning  Unexpected any. Specify a different type                                         @typescript-eslint/no-explicit-any
 
-✖ 263 problems (62 errors, 201 warnings)
+✖ 253 problems (63 errors, 190 warnings)
 ```
 
 ## TypeScript Check
@@ -333,82 +323,345 @@ No type errors found
 
 ## Pruebas Unitarias
 ```
-> stratexa-iapriori@5.9.7 test
+> stratexa-iapriori@5.9.8 test
 > jest --coverage
 
-----------------------|---------|----------|---------|---------|-------------------------------
-File                  | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s             
-----------------------|---------|----------|---------|---------|-------------------------------
-All files             |   81.68 |    69.32 |   69.44 |   83.96 |                               
- components           |   67.85 |    70.37 |   58.06 |   69.23 |                               
-  ActivityManager.tsx |   67.85 |    70.37 |   58.06 |   69.23 | 60-61,119,162,198-214,223-255 
- utils                |   83.53 |    69.16 |   78.04 |   85.59 |                               
-  aggregationUtils.ts |   90.51 |    86.48 |   80.95 |   94.21 | 32-49                         
-  compliance.ts       |   75.11 |    57.67 |   66.66 |   76.43 | 245,325-364,410-438           
-  dateUtils.ts        |      75 |       40 |      50 |      70 | 34-39                         
-  weeklyUtils.ts      |   98.36 |    82.75 |     100 |     100 | 10,38,72                      
-----------------------|---------|----------|---------|---------|-------------------------------
+-----------------------------|---------|----------|---------|---------|---------------------------------
+File                         | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s               
+-----------------------------|---------|----------|---------|---------|---------------------------------
+All files                    |   36.33 |    30.85 |   21.52 |   35.64 |                                 
+ APP TABLERO                 |     100 |      100 |     100 |     100 |                                 
+  types.ts                   |     100 |      100 |     100 |     100 |                                 
+ APP TABLERO/components      |   18.63 |    15.59 |      14 |   17.41 |                                 
+  AIAnalysisModal.tsx        |      50 |     6.66 |      20 |    37.5 | 15-132                          
+  ActionPlan.tsx             |    6.66 |        0 |       0 |       5 | 20-224                          
+  ActivityManager.tsx        |   67.85 |    70.37 |   58.06 |   69.23 | 60-61,119,162,198-214,223-255   
+  CurrentPeriodFocus.tsx     |    7.85 |        0 |       0 |    7.93 | 30-357                          
+  DashboardMetadataModal.tsx |    7.69 |        0 |       0 |     5.4 | 32-162                          
+  DashboardView.tsx          |   59.45 |    53.33 |      36 |    59.7 | 101,123,136-150,169-303,345-434 
+  DataEditor.tsx             |     2.9 |        0 |       0 |    2.68 | 15-431                          
+  LineChart.tsx              |    3.75 |        0 |       0 |    3.12 | 15-168                          
+  PowerPointExportModal.tsx  |      20 |     3.44 |    5.55 |   19.51 | 28-182,267-302                  
+  ProgressBar.tsx            |   42.85 |        0 |       0 |   33.33 | 11-29                           
+  SummaryDetails.tsx         |      20 |        0 |       0 |   19.23 | 30-86                           
+ APP TABLERO/services        |    2.04 |        0 |       0 |    2.38 |                                 
+  aiService.ts               |    2.04 |        0 |       0 |    2.38 | 15-81                           
+ APP TABLERO/utils           |   58.18 |    57.59 |   39.75 |    57.4 |                                 
+  aggregationUtils.ts        |   90.51 |    86.48 |   80.95 |   94.21 | 32-49                           
+  compliance.ts              |   77.03 |    59.78 |      75 |   77.58 | 245,328-364,410-438             
+  dateUtils.ts               |      75 |       40 |      50 |      70 | 34-39                           
+  powerPointExport.ts        |    2.52 |        0 |       0 |    2.68 | 88-190,210-735                  
+  weeklyUtils.ts             |   98.36 |    82.75 |     100 |     100 | 10,38,72                        
+-----------------------------|---------|----------|---------|---------|---------------------------------
 
-PASS utils/weeklyUtils.test.ts
 PASS utils/dateUtils.test.ts
+PASS utils/weeklyUtils.test.ts
 PASS utils/aggregationUtils.test.ts
 PASS utils/compliance.test.ts
 PASS components/ActivityManager.test.tsx
 FAIL components/DashboardView.test.tsx
-  ● Test suite failed to run
+  ● DashboardView Component › debe alternar entre vista de tablero y reporte
 
-    Jest encountered an unexpected token
+    TestingLibraryElementError: Found multiple elements with the text: /Tablero/i
 
-    Jest failed to parse a file. This happens e.g. when your code or its dependencies use non-standard JavaScript syntax, or when Jest is not configured to support such syntax.
+    Here are the matching elements:
 
-    Out of the box Jest supports Babel, which will be used to transform your files into valid JS based on your Babel configuration.
+    Ignored nodes: comments, script, style
+    [36m<h2[39m
+      [33mclass[39m=[32m"text-3xl font-black text-white uppercase tracking-tight leading-none cursor-help"[39m
+      [33mtitle[39m=[32m"Tablero #N/A"[39m
+    [36m>[39m
+      [0mTablero de Prueba[0m
+    [36m</h2>[39m
 
-    By default "node_modules" folder is ignored by transformers.
+    Ignored nodes: comments, script, style
+    [36m<button[39m
+      [33mclass[39m=[32m"px-6 py-2.5 rounded-xl text-[10px] font-extrabold uppercase tracking-widest transition-all duration-500 flex items-center gap-2 text-slate-500 hover:text-slate-300 hover:bg-white/5"[39m
+    [36m>[39m
+      [36m<span>[39m
+        [0m📊[0m
+      [36m</span>[39m
+      [0m Tablero[0m
+    [36m</button>[39m
 
-    Here's what you can do:
-     • If you are trying to use ECMAScript Modules, see https://jestjs.io/docs/ecmascript-modules for how to enable it.
-     • If you are trying to use TypeScript, see https://jestjs.io/docs/getting-started#using-typescript
-     • To have some of your "node_modules" files transformed, you can specify a custom "transformIgnorePatterns" in your config.
-     • If you need a custom transformation specify a "transform" option in your config.
-     • If you simply want to mock your non-JS modules (e.g. binary assets) you can stub them out with the "moduleNameMapper" config option.
+    Ignored nodes: comments, script, style
+    [36m<h3[39m
+      [33mclass[39m=[32m"text-xl font-bold text-white"[39m
+    [36m>[39m
+      [0mTablero Nuevo[0m
+    [36m</h3>[39m
 
-    You'll find more details and examples of these config options in the docs:
-    https://jestjs.io/docs/configuration
-    For information about custom transformations, see:
-    https://jestjs.io/docs/code-transformation
+    Ignored nodes: comments, script, style
+    [36m<p[39m
+      [33mclass[39m=[32m"text-slate-400 max-w-md mt-2 mb-6 text-sm"[39m
+    [36m>[39m
+      [0mEste tablero está listo pero aún no tiene indicadores asignados. Usa el botón "KPIs" (Gestión de Indicadores) en el menú superior para agregar métricas.[0m
+    [36m</p>[39m
 
-    Details:
+    (If this is intentional, then use the `*AllBy*` variant of the query (like `queryAllByText`, `getAllByText`, or `findAllByText`)).
 
-    C:\Users\LeonPrior\OneDrive - Prior Consultoría\Documentos\CONSULTORÍAS 2025\IPS\IA\APP TABLERO\node_modules\uuid\dist\esm-browser\index.js:1
-    ({"Object.<anonymous>":function(module,exports,require,__dirname,__filename,jest){export { default as v1 } from './v1.js';
-                                                                                      ^^^^^^
+    Ignored nodes: comments, script, style
+    [36m<body>[39m
+      [36m<div>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"space-y-6 animate-in fade-in duration-700 fill-mode-both"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"DashboardView_Header flex justify-between items-center border-b border-white/5 pb-4 gap-4"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"flex items-center gap-6"[39m
+            [36m>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"flex flex-col"[39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"flex items-center gap-3"[39m
+                [36m>[39m
+                  [36m<h2[39m
+                    [33mclass[39m=[32m"text-3xl font-black text-white uppercase tracking-tight leading-none cursor-help"[39m
+                    [33mtitle[39m=[32m"Tablero #N/A"[39m
+                  [36m>[39m
+                    [0mTablero de Prueba[0m
+                  [36m</h2>[39m
+                  [36m<button[39m
+                    [33maria-label[39m=[32m"Abrir configuración de área y metadatos del tablero"[39m
+                    [33mclass[39m=[32m"p-2 bg-cyan-500/10 hover:bg-cyan-500 border border-cyan-500/30 rounded-xl text-cyan-400 hover:text-white transition-all hover:scale-110 flex items-center gap-2"[39m
+                    [33mtitle[39m=[32m"Configurar Título, Grupo y Área Funcional"[39m
+                  [36m>[39m
+                    [36m<svg[39m
+                      [33maria-hidden[39m=[32m"true"[39m
+                      [33mclass[39m=[32m"h-4 w-4"[39m
+                      [33mfill[39m=[32m"currentColor"[39m
+                      [33mviewBox[39m=[32m"0 0 20 20"[39m
+                      [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+                    [36m>[39m
+                      [36m<path[39m
+                        [33md[39m=[32m"M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z"[39m
+                      [36m/>[39m
+                    [36m</svg>[39m
+                    [36m<span[39m
+                      [33mclass[39m=[32m"text-[9px] font-black uppercase"[39m
+                    [36m>[39m
+                      [0mConfigurar Área[0m
+                    [36m</span>[39m
+                  [36m</button>[39m
+                [36m</div>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"flex items-center gap-3"[39m
+                [36m>[39m
+                  [36m<div[39m
+                    [33mclass[39m=[32m"flex items-center gap-2"[39m
+                  [36m>[39m
+                    [36m<span[39m
+                      [33mclass[39m=[32m"w-2 h-2 rounded-full bg-cyan-500 shadow-[0_0_8px_#22d3ee]"[39m
+                    [36m/>[39m
+                    [36m<span[39m
+                      [33mclass[39m=[32m"text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em]"[39m
+                    [36m>[39m
+                      [0mDashboard Operativo[0m
+                    [36m</span>[39m
+                  [36m</div>[39m
+                [36m</div>[39m
+              [36m</div>[39m
+            [36m</div>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"flex items-center gap-4"[39m
+            [36m>[39m
+              [36m<div[39m
+                [33maria-label[39m=[32m"Resumen de cumplimiento global"[39m
+                [33mclass[39m=[32m"flex items-center gap-4 glass-panel px-6 py-3 rounded-2xl shadow-2xl"[39m
+                [33mrole[39m=[32m"group"[39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"flex flex-col items-end"[39m
+                [36m>[39m
+                  [36m<span[39m
+                    [33mclass[39m=[32m"text-[9px] font-black text-slate-500 uppercase tracking-widest leading-none mb-1"[39m
+                  [36m>[39m
+                    [0mCumplimiento Global[0m
+                  [36m</span>[39m
+                  [36m<span[39m
+                    [33maria-label[39m=[32m"Valor: 0 por ciento. Estado: Critico"[39m
+                    [33mclass[39m=[32m"text-4xl font-black tabular-nums leading-none text-rose-400 drop-shadow-[0_0_12px_rgba(244,63,94,0.4)]"[39m
+                  [36m>[39m
+                    [0m0[0m
+                    [0m%[0m
+                  [36m</span>[39m
+                [36m</div>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"relative"[39m
+                [36m>[39m
+                  [36m<div[39m
+                    [33maria-hidden[39m=[32m"true"[39m
+                    [33mclass[39m=[32m"absolute inset-0 rounded-full blur-[10px] opacity-40 animate-pulse bg-rose-500"[39m
+                  [36m/>[39m
+                  [36m<div[39m
+                    [33maria-hidden[39m=[32m"true"[39m
+                    [33mclass[39m=[32m"relative w-6 h-6 rounded-full border-2 border-slate-950/50 bg-rose-500"[39m
+                  [36m/>[39m
+                [36m</div>[39m
+              [36m</div>[39m
+              [36m<div[39m
+                [33maria-label[39m=[32m"Estado de captura de indicadores"[39m
+                [33mclass[39m=[32m"flex items-center gap-4 border border-white/5 bg-slate-900/50 px-5 py-3 rounded-2xl shadow-xl"[39m
+                [33mrole[39m=[32m"group"[39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"flex flex-col items-end"[39m
+                [36m>[39m
+                  [36m<span[39m
+                    [33mclass[39m=[32m"text-[9px] font-black text-slate-500 uppercase tracking-widest leading-none mb-1"[39m
+                  [36m>[39m
+                    [0mCaptura de KPIs[0m
+                  [36m</span>[39m
+                  [36m<div[39m
+                    [33mclass[39m=[32m"flex items-center gap-2"[39m
+                  [36m>[39m
+                    [36m<span[39m
+                      [33mclass[39m=[32m"text-xl font-black tracking-tight text-emerald-400"[39m
+                    [36m>[39m
+                      [0m100[0m
+                      [0m%[0m
+                    [36m</span>[39m
+                    [36m<div[39m
+                      [33maria-label[39m=[32m"Porcentaje de captura: 100%"[39m
+                      [33maria-valuemax[39m=[32m"100"[39m
+                      [33maria-valuemin[39m=[32m"0"[39m
+                      [33maria-valuenow[39m=[32m"100"[39m
+                      [33mclass[39m=[32m"h-1.5 w-12 bg-slate-800 rounded-full overflow-hidden"[39m
+                      [33mrole[39m=[32m"progressbar"[39m
+                    [36m>[39m
+                      [36m<div[39m
+                        [33mclass[39m=[32m"h-full transition-all duration-1000 bg-emerald-500"[39m
+                        [33mstyle[39m=[32m"width: 100%;"[39m
+                      [36m/>[39m
+                    [36m</div>[39m
+                  [36m</div>[39m
+                [36m</div>[39m
+                [36m<div[39m
+                  [33maria-hidden[39m=[32m"true"[39m
+                  [33mclass[39m=[32m"w-8 h-8 rounded-xl flex items-center justify-center text-sm bg-emerald-500/10 text-emerald-500"[39m
+                [36m>[39m
+                  [0m✅[0m
+                [36m</div>[39m
+              [36m</div>[39m
+              [36m<button[39m
+                [33maria-label[39m=[32m"Ejecutar análisis inteligente con IA del tablero"[39m
+                [33mclass[39m=[32m"group flex items-center gap-3 bg-gradient-to-br from-indigo-500 via-purple-600 to-fuchsia-600 hover:from-indigo-400 hover:to-fuchsia-500 text-white px-6 py-3.5 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] transition-all border border-white/20 shadow-xl shadow-purple-900/40 active:scale-95 whitespace-nowrap"[39m
+              [36m>[39m
+                [36m<span[39m
+                  [33maria-hidden[39m=[32m"true"[39m
+                  [33mclass[39m=[32m"text-lg group-hover:rotate-12 transition-transform drop-shadow-lg"[39m
+                [36m>[39m
+                  [0m✨[0m
+                [36m</span>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"drop-shadow-md"[39m
+                [36m>[39m
+                  [0mAudit IA[0m
+                [36m</span>[39m
+              [36m</button>[39m
+              [36m<button[39m
+                [33mclass[39m=[32m"flex items-center gap-2.5 bg-gradient-to-r from-orange-600 to-orange-500 hover:from-orange-500 hover:to-orange-400 text-white px-5 py-3.5 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] transition-all border border-white/10 shadow-lg shadow-orange-900/40 active:scale-95"[39m
+                [33mtitle[39m=[32m"Exportar presentación ejecutiva a PowerPoint"[39m
+              [36m>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"text-base"[39m
+                [36m>[39m
+                  [0m📊[0m
+                [36m</span>[39m
+                [36m<span>[39m
+                  [0mExportar PowerPoint[0m
+                [36m</span>[39m
+              [36m</button>[39m
+              [36m<button[39m
+                [33maria-label[39m=[32m"Mostrar un decimales"[39m
+                [33mclass[39m=[32m"flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white px-4 py-3.5 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all border border-white/5"[39m
+                [33mtitle[39m=[32m"Alternar decimales visibles (1 o 2)"[39m
+              [36m>[39m
+                [36m<span[39m
+                  [33maria-hidden[39m=[32m"true"[39m
+                  [33mclass[39m=[32m"text-base"[39m
+                [36m>[39m
+                  [0m.[0m
+                  [0m00[0m
+                [36m</span>[39m
+              [36m</button>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"flex bg-slate-900/95 p-2 rounded-2xl border border-white/10 shadow-2xl backdrop-blur-xl"[39m
+              [36m>[39m
+                [36m<button[39m
+                  [33mclass[39m=[32m"px-6 py-2.5 rounded-xl text-[10px] font-extrabold uppercase tracking-widest transition-all duration-500 flex items-center gap-2 text-slate-500 hover:text-slate-300 hover:bg-white/5"[39m
+                [36m>[39m
+                  [36m<span>[39m
+                    [0m📊[0m
+                  [36m</span>[39m
+                  [0m Tablero[0m
+                [36m</button>[39m
+                [36m<button[39m
+                  [33mclass[39m=[32m"px-6 py-2.5 rounded-xl text-[10px] font-extrabold uppercase tracking-widest transition-all duration-500 flex items-center gap-2 bg-indigo-600 text-white shadow-[0_0_20px_rgba(79,70,229,0.5)]"[39m
+                [36m>[39m
+                  [36m<span>[39m
+                    [0m📑[0m
+                  [36m</span>[39m
+                  [0m Reporte Ejecutivo[0m
+                [36m</button>[39m
+              [36m</div>[39m
+            [36m</div>[39m
+          [36m</div>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"py-12 px-6 rounded-3xl bg-slate-900/30 border-2 border-dashed border-slate-800 text-center flex flex-col items-center"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"w-16 h-16 bg-slate-800 rounded-full flex items-center justify-center mb-4 text-3xl"[39m
+            [36m>[39m
+              [0m📊[0m
+            [36m</div>[39m
+            [36m<h3[39m
+              [33mclass[39m=[32m"text-xl font-bold text-white"[39m
+            [36m>[39m
+              [0mTablero Nuevo[0m
+            [36m</h3>[39m
+            [36m<p[39m
+              [33mclass[39m=[32m"text-slate-400 max-w-md mt-2 mb-6 text-sm"[39m
+            [36m>[39m
+              [0mEste tablero está listo pero aún no tiene indicadores asignados. Usa el botón "KPIs" (Gestión de Indicadores) en el menú superior para agregar métricas.[0m
+            [36m</p>[39m
+            [36m<button[39m
+              [33mclass[39m=[32m"px-6 py-2 bg-cyan-600 hover:bg-cyan-500 text-white font-bold rounded-lg text-xs uppercase tracking-widest transition-all shadow-lg shadow-cyan-900/20"[39m
+            [36m>[39m
+              [0m+ Agregar Indicadores[0m
+            [36m</button>[39m
+          [36m</div>[39m
+          [36m<div[39m
+            [33mdata-testid[39m=[32m"report-center"[39m
+          [36m>[39m
+            [0mMock Report Center[0m
+          [36m</div>[39m
+        [36m</div>[39m
+      [36m</div>[39m
+    [36m</body>[39m
 
-    SyntaxError: Unexpected token 'export'
+    [0m [90m 62 |[39m         expect(screen[33m.[39mgetByTestId([32m'report-center'[39m))[33m.[39mtoBeInTheDocument()[33m;[39m
+     [90m 63 |[39m
+    [31m[1m>[22m[39m[90m 64 |[39m         [36mconst[39m dashboardTab [33m=[39m screen[33m.[39mgetByText([35m/Tablero/i[39m)[33m;[39m
+     [90m    |[39m                                     [31m[1m^[22m[39m
+     [90m 65 |[39m         fireEvent[33m.[39mclick(dashboardTab)[33m;[39m
+     [90m 66 |[39m         expect(screen[33m.[39mgetByTestId([32m'dashboard-component'[39m))[33m.[39mtoBeInTheDocument()[33m;[39m
+     [90m 67 |[39m     })[33m;[39m[0m
 
-    [0m [90m 1 |[39m [36mimport[39m { [33mDashboard[39m[33m,[39m [33mDashboardItem[39m } [36mfrom[39m [32m"../types"[39m[33m;[39m
-    [31m[1m>[22m[39m[90m 2 |[39m [36mimport[39m [33mExcelJS[39m [36mfrom[39m [32m'exceljs'[39m[33m;[39m
-     [90m   |[39m [31m[1m^[22m[39m
-     [90m 3 |[39m [36mimport[39m { saveAs } [36mfrom[39m [32m'file-saver'[39m[33m;[39m
-     [90m 4 |[39m
-     [90m 5 |[39m [90m/**[39m[0m
-
-      at Runtime.createScriptFromCode (node_modules/jest-runtime/build/index.js:1505:14)
-      at Object.<anonymous> (node_modules/exceljs/lib/xlsx/xform/sheet/cf-ext/cf-rule-ext-xform.js:1:124)
-      at Object.<anonymous> (node_modules/exceljs/lib/xlsx/xform/sheet/cf-ext/conditional-formattings-ext-xform.js:3:24)
-      at Object.<anonymous> (node_modules/exceljs/lib/xlsx/xform/sheet/ext-lst-xform.js:4:35)
-      at Object.<anonymous> (node_modules/exceljs/lib/xlsx/xform/sheet/worksheet-xform.js:32:22)
-      at Object.<anonymous> (node_modules/exceljs/lib/xlsx/xlsx.js:19:24)
-      at Object.<anonymous> (node_modules/exceljs/lib/doc/workbook.js:5:14)
-      at Object.<anonymous> (node_modules/exceljs/lib/exceljs.nodejs.js:2:13)
-      at Object.<anonymous> (node_modules/exceljs/excel.js:13:18)
-      at Object.require (utils/exportUtils.ts:2:1)
-      at Object.require (components/DashboardView.tsx:19:1)
-      at Object.<anonymous> (components/DashboardView.test.tsx:3:1)
+      at Object.getElementError (node_modules/@testing-library/dom/dist/config.js:37:19)
+      at getElementError (node_modules/@testing-library/dom/dist/query-helpers.js:20:35)
+      at getMultipleElementsFoundError (node_modules/@testing-library/dom/dist/query-helpers.js:23:10)
+      at node_modules/@testing-library/dom/dist/query-helpers.js:55:13
+      at node_modules/@testing-library/dom/dist/query-helpers.js:95:19
+      at Object.<anonymous> (components/DashboardView.test.tsx:64:37)
 
 Test Suites: 1 failed, 5 passed, 6 total
-Tests:       42 passed, 42 total
+Tests:       1 failed, 44 passed, 45 total
 Snapshots:   0 total
-Time:        5.547 s
+Time:        5.975 s
 Ran all test suites.
 ```
 
