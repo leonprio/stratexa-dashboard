@@ -162,6 +162,9 @@ export const DashboardRow: React.FC<DashboardRowProps> = React.memo(({ item, onU
           <div className="flex flex-col gap-1.5 flex-1">
             <div className="flex items-center gap-3 mb-1">
               <span className="text-[10px] font-black text-cyan-500 uppercase tracking-widest leading-none bg-cyan-500/10 px-2 py-1 rounded-md border border-cyan-500/20">KPI</span>
+              {isAggregate && (
+                <span className="text-[10px] font-black text-amber-500 uppercase tracking-widest leading-none bg-amber-500/10 px-2 py-1 rounded-md border border-amber-500/20">Master</span>
+              )}
               {item.indicatorType && item.indicatorType !== 'simple' && (
                 <div className="flex items-center gap-1.5 bg-indigo-400/10 px-2 py-1 rounded-md border border-indigo-400/20">
                   <span className="text-[8px] font-black text-indigo-400 uppercase tracking-tighter">

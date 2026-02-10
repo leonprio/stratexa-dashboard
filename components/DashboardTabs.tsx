@@ -113,7 +113,7 @@ export const DashboardTabs: React.FC<DashboardTabsProps> = ({
 
     // 1. Agregar siempre la SÍNTESIS GLOBAL al inicio si hay agregados o es admin
     if (isMeSuperDirector || isGlobalAdmin) {
-      map.set("SINTESIS", { officialName: "SÍNTESIS GLOBAL", items: [] });
+      map.set("SINTESIS", { officialName: mainLabel, items: [] });
     }
 
     // 2. Inicializar con grupos permitidos
@@ -247,8 +247,12 @@ export const DashboardTabs: React.FC<DashboardTabsProps> = ({
                   className={`
                     flex-shrink-0 px-6 py-3 rounded-2xl transition-all duration-500 border relative group overflow-hidden
                     ${isSelected
-                      ? 'bg-cyan-500/10 border-cyan-500/50 text-cyan-400 shadow-[0_0_20px_rgba(6,182,212,0.15)] ring-1 ring-cyan-500/20'
-                      : 'bg-slate-900/40 border-white/5 text-slate-500 hover:text-slate-300 hover:border-white/10 hover:bg-slate-800/60'}
+                      ? (isHierarchy
+                        ? 'bg-amber-500/10 border-amber-500/50 text-amber-400 shadow-[0_0_25px_rgba(245,158,11,0.2)] ring-1 ring-amber-500/30'
+                        : 'bg-cyan-500/10 border-cyan-500/50 text-cyan-400 shadow-[0_0_20px_rgba(6,182,212,0.15)] ring-1 ring-cyan-500/20')
+                      : (isHierarchy
+                        ? 'bg-slate-900/60 border-amber-500/20 text-slate-400 hover:border-amber-500/40'
+                        : 'bg-slate-900/40 border-white/5 text-slate-500 hover:text-slate-300 hover:border-white/10 hover:bg-slate-800/60')}
                   `}
                 >
                   {isSelected && <div className="absolute inset-0 bg-cyan-500/5 animate-pulse" />}

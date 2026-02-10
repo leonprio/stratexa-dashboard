@@ -214,19 +214,23 @@ export const calculateCompliance = (
   globalThresholds: ComplianceThresholds,
   year: number = new Date().getFullYear(),
   mode: 'realTime' | 'definitive' = 'realTime',
-  allDashboardItems: DashboardItem[] = []
+  allDashboardItems: DashboardItem[] = [],
+  contextItems: DashboardItem[] = []
 ) => {
+  // 🛡️ REGLA v6.0.1: El contexto de búsqueda prioriza contextItems (que puede ser global)
+  const lookupContext = contextItems.length > 0 ? contextItems : allDashboardItems;
+
   let monthlyProgress = [...((item as any).monthlyProgress || [])];
   let monthlyGoals = [...((item as any).monthlyGoals || [])];
 
   // 🛡️ REGLA v6.0.0 (INTELLIGENT INDICATORS)
   // Si el indicador es compuesto o fórmula, sobreescribimos los valores locales con cálculos dinámicos
-  if (item.indicatorType === 'compound' && item.componentIds && allDashboardItems.length > 0) {
+  if (item.indicatorType === 'compound' && item.componentIds && lookupContext.length > 0) {
     monthlyProgress = Array(12).fill(0);
     monthlyGoals = Array(12).fill(0);
 
     item.componentIds.forEach(compId => {
-      const child = allDashboardItems.find(it => String(it.id) === String(compId));
+      const child = lookupContext.find(it => String(it.id) === String(compId));
       if (child) {
         for (let i = 0; i < 12; i++) {
           monthlyProgress[i] += Number(child.monthlyProgress?.[i] || 0);
@@ -234,9 +238,9 @@ export const calculateCompliance = (
         }
       }
     });
-  } else if (item.indicatorType === 'formula' && item.formula && allDashboardItems.length > 0) {
-    monthlyProgress = Array(12).fill(0).map((_, i) => evaluateFormula(item.formula!, allDashboardItems, i, 'monthlyProgress'));
-    monthlyGoals = Array(12).fill(0).map((_, i) => evaluateFormula(item.formula!, allDashboardItems, i, 'monthlyGoals'));
+  } else if (item.indicatorType === 'formula' && item.formula && lookupContext.length > 0) {
+    monthlyProgress = Array(12).fill(0).map((_, i) => evaluateFormula(item.formula!, lookupContext, i, 'monthlyProgress'));
+    monthlyGoals = Array(12).fill(0).map((_, i) => evaluateFormula(item.formula!, lookupContext, i, 'monthlyGoals'));
   }
 
   // 🔄 AGREGACIÓN SEMANAL: Si el indicador es semanal, transformamos a mensual para el semáforo
@@ -435,7 +439,8 @@ export const calculateDashboardWeightedScore = (
   items: DashboardItem[],
   globalThresholds: ComplianceThresholds,
   year: number = new Date().getFullYear(),
-  mode: 'realTime' | 'definitive' = 'realTime'
+  mode: 'realTime' | 'definitive' = 'realTime',
+  contextItems: DashboardItem[] = []
 ) => {
   if (!items || items.length === 0) return 0;
 
@@ -443,8 +448,8 @@ export const calculateDashboardWeightedScore = (
   let totalWeightFound = 0;
 
   items.forEach(item => {
-    // 🛡️ REGLA v6.0.0: Pasamos 'items' como contexto para indicadores inteligentes
-    const { overallPercentage, isActive } = calculateCompliance(item, globalThresholds, year, mode, items);
+    // 🛡️ REGLA v6.0.1: Pasamos 'items' como contexto local y 'contextItems' como contexto extendido
+    const { overallPercentage, isActive } = calculateCompliance(item, globalThresholds, year, mode, items, contextItems);
 
     if (!isActive) return;
 
@@ -462,9 +467,11 @@ export const calculateDashboardMonthlyScores = (
   items: DashboardItem[],
   globalThresholds: ComplianceThresholds,
   year: number = new Date().getFullYear(),
-  limitMonthIdx: number = 11
+  limitMonthIdx: number = 11,
+  contextItems: DashboardItem[] = []
 ) => {
   const scores: (number | null)[] = Array(12).fill(null);
+  const lookupContext = contextItems.length > 0 ? contextItems : items;
 
   for (let m = 0; m <= limitMonthIdx; m++) {
     let monthlyWeightedSum = 0;
@@ -472,22 +479,22 @@ export const calculateDashboardMonthlyScores = (
     let hasAnyData = false;
 
     items.forEach(item => {
-      // 🛡️ REGLA v6.0.0 (SIMPLIFIED CONTEXT): Para gráficas mensuales, evaluamos según tipo
+      // 🛡️ REGLA v6.0.1: Usamos lookupContext para agregados
       let p = Number(item.monthlyProgress?.[m] ?? 0);
       let g = Number(item.monthlyGoals?.[m] ?? 0);
 
       if (item.indicatorType === 'compound' && item.componentIds) {
         p = 0; g = 0;
         item.componentIds.forEach(compId => {
-          const child = items.find(it => String(it.id) === String(compId));
+          const child = lookupContext.find(it => String(it.id) === String(compId));
           if (child) {
             p += Number(child.monthlyProgress?.[m] || 0);
             g += Number(child.monthlyGoals?.[m] || 0);
           }
         });
       } else if (item.indicatorType === 'formula' && item.formula) {
-        p = evaluateFormula(item.formula, items, m, 'monthlyProgress');
-        g = evaluateFormula(item.formula, items, m, 'monthlyGoals');
+        p = evaluateFormula(item.formula, lookupContext, m, 'monthlyProgress');
+        g = evaluateFormula(item.formula, lookupContext, m, 'monthlyGoals');
       }
 
       if (p === 0 && g === 0) return;

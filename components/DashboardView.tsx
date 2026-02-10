@@ -66,6 +66,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   // ✅ items siempre array (evita fallos y deja evidencia clara si viene vacío)
   const safeItems: DashboardItem[] = useMemo(() => dashboard.items ?? [], [dashboard]);
 
+  // 🛡️ REGLA v6.0.1 (GLOBAL CONTEXT): Extraer indicadores de todos los tableros para permitir agregaciones cruzadas
+  const allContextItems: DashboardItem[] = useMemo(() => {
+    if (!allDashboards || allDashboards.length === 0) return safeItems;
+    return allDashboards.flatMap(d => d.items || []);
+  }, [allDashboards, safeItems]);
+
   const [selectedItemId, setSelectedItemId] = useState<number | null>(null);
   const [activeView, setActiveView] = useState<"dashboard" | "reports">("dashboard");
 
@@ -80,8 +86,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   }, [dashboard, settings]);
 
   const totalScore = useMemo(() => {
-    return calculateDashboardWeightedScore(safeItems, activeThresholds, year);
-  }, [safeItems, activeThresholds, year]);
+    return calculateDashboardWeightedScore(safeItems, activeThresholds, year, 'realTime', allContextItems);
+  }, [safeItems, activeThresholds, year, allContextItems]);
 
   const totalStatus = getStatusForPercentage(totalScore, activeThresholds);
 

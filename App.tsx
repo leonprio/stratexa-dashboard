@@ -1336,7 +1336,7 @@ export default function App() {
           {isGlobalAdmin && (
             <div className="mt-4">
               <span className="text-[10px] font-black text-emerald-400 bg-emerald-500/10 px-4 py-2 rounded-xl border border-emerald-500/30 shadow-[0_0_20px_rgba(16,185,129,0.2)] block w-fit animate-pulse tracking-[0.2em] uppercase">
-                v6.0.0-AUDIT • SHIELD CORE (SYNC 2026-02-10)
+                v6.0.1-AUDIT • SHIELD CORE (SYNC 2026-02-10)
               </span>
             </div>
           )}
@@ -2318,7 +2318,7 @@ Esta acción es DEFINITIVA y borrará absolutamente todos sus tableros e histori
                 {userProfile.globalRole === 'Admin' ? 'Super Administrador' : (userProfile.directorTitle || userProfile.globalRole)}
                 {userProfile.canManageKPIs && <span className="text-cyan-400 ml-2">🛠️ Gestión KPI Habilitada</span>}
                 <span className="text-slate-600 ml-4 border-l border-white/5 pl-4 inline-flex items-center gap-1">
-                  v6.0.0-AUDIT • SHIELD CORE {isGlobalAdmin && <span className="text-[8px] bg-emerald-500/10 text-emerald-400 px-1.5 py-0.5 rounded ml-1 animate-pulse tracking-widest">CLEAN CACHE ACTIVE</span>}
+                  v6.0.1-AUDIT • SHIELD CORE {isGlobalAdmin && <span className="text-[8px] bg-emerald-500/10 text-emerald-400 px-1.5 py-0.5 rounded ml-1 animate-pulse tracking-widest">CLEAN CACHE ACTIVE</span>}
                 </span>
               </p>
             </div>
