@@ -1,6 +1,6 @@
 {
   "hosting": {
-    "target": "vacips",
+    "target": "tablero",
     "public": "build_output",
     "ignore": [
       "firebase.json",

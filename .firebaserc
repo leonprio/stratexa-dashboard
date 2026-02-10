@@ -5,6 +5,9 @@
   "targets": {
     "prior-01": {
       "hosting": {
+        "tablero": [
+          "prior-01"
+        ],
         "vacips": [
           "vacips"
         ],
