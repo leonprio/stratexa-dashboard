@@ -1,0 +1,393 @@
+﻿
+> stratexa-iapriori@4.1.4 test
+> jest --coverage --watchAll=false
+
+npm : PASS utils/weeklyUtils.test.ts
+En línea: 1 Carácter: 1
++ npm test -- --coverage --watchAll=false > coverage_output.txt 
+2>&1
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~
+    + CategoryInfo          : NotSpecified: (PASS utils/weeklyUt 
+   ils.test.ts:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+PASS utils/compliance.test.ts
+PASS utils/aggregationUtils.test.ts
+  ÔùÅ Console
+
+    console.group
+        ­ƒº« Aggregation Weights Debug
+
+      at group (utils/aggregationUtils.ts:90:17)
+
+    console.log
+        Strategy: manual
+
+      at log (utils/aggregationUtils.ts:91:17)
+
+    console.log
+        Driver: undefined
+
+      at log (utils/aggregationUtils.ts:92:17)
+
+    console.log
+        [DB1] Final Weight: 1
+
+      at log (utils/aggregationUtils.ts:117:21)
+          at Array.forEach (<anonymous>)
+
+    console.log
+        [DB2] Final Weight: 1
+
+      at log (utils/aggregationUtils.ts:117:21)
+          at Array.forEach (<anonymous>)
+
+    console.log
+        Total Weight Divisor: 2
+
+      at log (utils/aggregationUtils.ts:119:17)
+
+    console.warn
+      Aggregation strategy "equal" will produce identical 
+weighted averages across multiple dashboards. Consider using 
+"manual" or "indicator" for distinct results.
+
+    [0m [90m 82 |[39m         [36mconst[39m strategy 
+[33m=[39m settings[33m?[39m[33m.[39maggregationStrategy 
+[33m||[39m [32m'manual'[39m[33m;[39m
+     [90m 83 |[39m         [36mif[39m (strategy 
+[33m===[39m [32m'equal'[39m [33m&&[39m 
+dashboards[33m.[39mlength [33m>[39m [35m1[39m) {
+    [31m[1m>[22m[39m[90m 84 |[39m             
+console[33m.[39mwarn([32m'Aggregation strategy "equal" will 
+produce identical weighted averages across multiple dashboards. 
+Consider using "manual" or "indicator" for distinct 
+results.'[39m)[33m;[39m
+     [90m    |[39m                     [31m[1m^[22m[39m
+     [90m 85 |[39m         }
+     [90m 86 |[39m         [36mconst[39m dashboardWeights 
+[33m=[39m [36mnew[39m 
+[33mMap[39m[33m<[39m[33mnumber[39m [33m|[39m 
+string[33m,[39m number[33m>[39m()[33m;[39m
+     [90m 87 |[39m         [36mlet[39m totalWeightDivisor 
+[33m=[39m [35m0[39m[33m;[39m[0m
+
+      at warn (utils/aggregationUtils.ts:84:21)
+      at Object.<anonymous> 
+(utils/aggregationUtils.test.ts:48:51)
+
+    console.group
+        ­ƒº« Aggregation Weights Debug
+
+      at group (utils/aggregationUtils.ts:90:17)
+
+    console.log
+        Strategy: equal
+
+      at log (utils/aggregationUtils.ts:91:17)
+
+    console.log
+        Driver: undefined
+
+      at log (utils/aggregationUtils.ts:92:17)
+
+    console.log
+        [DB1] Final Weight: 1
+
+      at log (utils/aggregationUtils.ts:117:21)
+          at Array.forEach (<anonymous>)
+
+    console.log
+        [DB2] Final Weight: 1
+
+      at log (utils/aggregationUtils.ts:117:21)
+          at Array.forEach (<anonymous>)
+
+    console.log
+        Total Weight Divisor: 2
+
+      at log (utils/aggregationUtils.ts:119:17)
+
+    console.group
+        ­ƒº« Aggregation Weights Debug
+
+      at group (utils/aggregationUtils.ts:90:17)
+
+    console.log
+        Strategy: manual
+
+      at log (utils/aggregationUtils.ts:91:17)
+
+    console.log
+        Driver: undefined
+
+      at log (utils/aggregationUtils.ts:92:17)
+
+    console.log
+        [DB1] Final Weight: 1
+
+      at log (utils/aggregationUtils.ts:117:21)
+          at Array.forEach (<anonymous>)
+
+    console.log
+        [DB2] Final Weight: 3
+
+      at log (utils/aggregationUtils.ts:117:21)
+          at Array.forEach (<anonymous>)
+
+    console.log
+        Total Weight Divisor: 4
+
+      at log (utils/aggregationUtils.ts:119:17)
+
+    console.group
+        ­ƒº« Aggregation Weights Debug
+
+      at group (utils/aggregationUtils.ts:90:17)
+
+    console.log
+        Strategy: indicator
+
+      at log (utils/aggregationUtils.ts:91:17)
+
+    console.log
+        Driver: Driver
+
+      at log (utils/aggregationUtils.ts:92:17)
+
+    console.log
+        [DB1] Driver Value (Driver): 100
+
+      at log (utils/aggregationUtils.ts:108:25)
+          at Array.forEach (<anonymous>)
+
+    console.log
+        [DB1] Final Weight: 100
+
+      at log (utils/aggregationUtils.ts:117:21)
+          at Array.forEach (<anonymous>)
+
+    console.log
+        [DB2] Driver Value (Driver): 300
+
+      at log (utils/aggregationUtils.ts:108:25)
+          at Array.forEach (<anonymous>)
+
+    console.log
+        [DB2] Final Weight: 300
+
+      at log (utils/aggregationUtils.ts:117:21)
+          at Array.forEach (<anonymous>)
+
+    console.log
+        Total Weight Divisor: 400
+
+      at log (utils/aggregationUtils.ts:119:17)
+
+    console.group
+        ­ƒº« Aggregation Weights Debug
+
+      at group (utils/aggregationUtils.ts:90:17)
+
+    console.log
+        Strategy: manual
+
+      at log (utils/aggregationUtils.ts:91:17)
+
+    console.log
+        Driver: undefined
+
+      at log (utils/aggregationUtils.ts:92:17)
+
+    console.log
+        [D1] Final Weight: 1
+
+      at log (utils/aggregationUtils.ts:117:21)
+          at Array.forEach (<anonymous>)
+
+    console.log
+        [D2] Final Weight: 1
+
+      at log (utils/aggregationUtils.ts:117:21)
+          at Array.forEach (<anonymous>)
+
+    console.log
+        Total Weight Divisor: 2
+
+      at log (utils/aggregationUtils.ts:119:17)
+
+    console.group
+        ­ƒº« Aggregation Weights Debug
+
+      at group (utils/aggregationUtils.ts:90:17)
+
+    console.log
+        Strategy: manual
+
+      at log (utils/aggregationUtils.ts:91:17)
+
+    console.log
+        Driver: undefined
+
+      at log (utils/aggregationUtils.ts:92:17)
+
+    console.log
+        [D1] Final Weight: 1
+
+      at log (utils/aggregationUtils.ts:117:21)
+          at Array.forEach (<anonymous>)
+
+    console.log
+        [D2] Final Weight: 1
+
+      at log (utils/aggregationUtils.ts:117:21)
+          at Array.forEach (<anonymous>)
+
+    console.log
+        Total Weight Divisor: 2
+
+      at log (utils/aggregationUtils.ts:119:17)
+
+    console.group
+        ­ƒº« Aggregation Weights Debug
+
+      at group (utils/aggregationUtils.ts:90:17)
+
+    console.log
+        Strategy: manual
+
+      at log (utils/aggregationUtils.ts:91:17)
+
+    console.log
+        Driver: undefined
+
+      at log (utils/aggregationUtils.ts:92:17)
+
+    console.log
+        [D1] Final Weight: 1
+
+      at log (utils/aggregationUtils.ts:117:21)
+          at Array.forEach (<anonymous>)
+
+    console.log
+        [D2] Final Weight: 1
+
+      at log (utils/aggregationUtils.ts:117:21)
+          at Array.forEach (<anonymous>)
+
+    console.log
+        Total Weight Divisor: 2
+
+      at log (utils/aggregationUtils.ts:119:17)
+
+    console.group
+        ­ƒº« Aggregation Weights Debug
+
+      at group (utils/aggregationUtils.ts:90:17)
+
+    console.log
+        Strategy: manual
+
+      at log (utils/aggregationUtils.ts:91:17)
+
+    console.log
+        Driver: undefined
+
+      at log (utils/aggregationUtils.ts:92:17)
+
+    console.log
+        [D1] Final Weight: 1
+
+      at log (utils/aggregationUtils.ts:117:21)
+          at Array.forEach (<anonymous>)
+
+    console.log
+        [D2] Final Weight: 1
+
+      at log (utils/aggregationUtils.ts:117:21)
+          at Array.forEach (<anonymous>)
+
+    console.log
+        Total Weight Divisor: 2
+
+      at log (utils/aggregationUtils.ts:119:17)
+
+    console.group
+        ­ƒº« Aggregation Weights Debug
+
+      at group (utils/aggregationUtils.ts:90:17)
+
+    console.log
+        Strategy: indicator
+
+      at log (utils/aggregationUtils.ts:91:17)
+
+    console.log
+        Driver: Driver
+
+      at log (utils/aggregationUtils.ts:92:17)
+
+    console.log
+        [DB1] Driver Value (Driver): 500
+
+      at log (utils/aggregationUtils.ts:108:25)
+          at Array.forEach (<anonymous>)
+
+    console.log
+        [DB1] Final Weight: 500
+
+      at log (utils/aggregationUtils.ts:117:21)
+          at Array.forEach (<anonymous>)
+
+    console.log
+        Total Weight Divisor: 500
+
+      at log (utils/aggregationUtils.ts:119:17)
+
+    console.group
+        ­ƒº« Aggregation Weights Debug
+
+      at group (utils/aggregationUtils.ts:90:17)
+
+    console.log
+        Strategy: indicator
+
+      at log (utils/aggregationUtils.ts:91:17)
+
+    console.log
+        Driver: Driver
+
+      at log (utils/aggregationUtils.ts:92:17)
+
+    console.log
+        [DB1] Driver Value (Driver): 99
+
+      at log (utils/aggregationUtils.ts:108:25)
+          at Array.forEach (<anonymous>)
+
+    console.log
+        [DB1] Final Weight: 99
+
+      at log (utils/aggregationUtils.ts:117:21)
+          at Array.forEach (<anonymous>)
+
+    console.log
+        Total Weight Divisor: 99
+
+      at log (utils/aggregationUtils.ts:119:17)
+
+---------------------|---------|----------|---------|---------|--------------------------------------------------------------------------------------
+File                 | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s                                                                    
+---------------------|---------|----------|---------|---------|--------------------------------------------------------------------------------------
+All files            |   98.13 |    78.53 |     100 |     100 |                                                                                      
+ aggregationUtils.ts |    98.3 |    83.56 |     100 |     100 | 5,18,112-123,139,142,145,158,168,176,196,202                                         
+ compliance.ts       |   97.88 |    74.35 |     100 |     100 | 24-27,45-46,54-56,80,108-109,116,145-146,154-176,181,191-194,238-254,302-304,317-318 
+ weeklyUtils.ts      |   98.36 |    82.75 |     100 |     100 | 10,38,72                                                                             
+---------------------|---------|----------|---------|---------|--------------------------------------------------------------------------------------
+
+Test Suites: 3 passed, 3 total
+Tests:       35 passed, 35 total
+Snapshots:   0 total
+Time:        3.77 s
+Ran all test suites.

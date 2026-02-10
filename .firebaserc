@@ -1,0 +1,18 @@
+{
+  "projects": {
+    "default": "prior-01"
+  },
+  "targets": {
+    "prior-01": {
+      "hosting": {
+        "vacips": [
+          "vacips"
+        ],
+        "activador": [
+          "activador"
+        ]
+      }
+    }
+  },
+  "etags": {}
+}

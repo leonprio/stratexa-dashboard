@@ -1,0 +1,168 @@
+﻿
+C:\Users\LeonPrior\OneDrive - Prior Consultor├¡a\Documentos\CONSULTOR├ìAS 2025\IPS\IA\APP TABLERO\App.tsx
+   167:75   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   238:36   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   267:37   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   278:21   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   289:16   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   290:16   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   292:25   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   293:25   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   302:19   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   314:29   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   330:19   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   374:28   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   375:28   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   594:96   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   601:57   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   630:57   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   652:21   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   764:19   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   781:17   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   782:17   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   784:39   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   784:79   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   791:19   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   831:74   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   855:19   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   905:19   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   985:19   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1375:83   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1437:140  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1437:180  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1443:79   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1457:89   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1517:45   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1547:60   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1547:92   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1550:47   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1609:41   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1643:43   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1687:43   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1732:39   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1764:39   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1795:41   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1822:41   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1903:57   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1907:96   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  1917:57   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  2032:59   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\LeonPrior\OneDrive - Prior Consultor├¡a\Documentos\CONSULTOR├ìAS 2025\IPS\IA\APP TABLERO\components\AdvancedDataImporter.tsx
+  258:23  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  285:23  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  356:23  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\LeonPrior\OneDrive - Prior Consultor├¡a\Documentos\CONSULTOR├ìAS 2025\IPS\IA\APP TABLERO\components\DashboardRow.tsx
+  133:33  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\LeonPrior\OneDrive - Prior Consultor├¡a\Documentos\CONSULTOR├ìAS 2025\IPS\IA\APP TABLERO\components\DashboardTabs.tsx
+   79:37   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  118:27   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  139:25   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  139:57   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  157:27   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  157:59   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  189:23   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  189:55   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  199:35   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  199:84   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  220:21   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  220:53   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  254:81   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  261:53   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  261:87   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  261:128  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  282:57   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  325:188  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\LeonPrior\OneDrive - Prior Consultor├¡a\Documentos\CONSULTOR├ìAS 2025\IPS\IA\APP TABLERO\components\DashboardView.tsx
+   60:66   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   64:133  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   71:26   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   91:36   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  129:12   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  141:29   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  148:66   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  150:32   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  261:41   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  271:41   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  290:30   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  297:39   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  298:42   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  299:39   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  301:50   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\LeonPrior\OneDrive - Prior Consultor├¡a\Documentos\CONSULTOR├ìAS 2025\IPS\IA\APP TABLERO\components\DataEditor.tsx
+  114:42  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  114:79  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  131:38  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  149:37  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  415:30  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\LeonPrior\OneDrive - Prior Consultor├¡a\Documentos\CONSULTOR├ìAS 2025\IPS\IA\APP TABLERO\components\HelpCenter.tsx
+  67:47  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\LeonPrior\OneDrive - Prior Consultor├¡a\Documentos\CONSULTOR├ìAS 2025\IPS\IA\APP TABLERO\components\LoginScreen.tsx
+  26:19  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\LeonPrior\OneDrive - Prior Consultor├¡a\Documentos\CONSULTOR├ìAS 2025\IPS\IA\APP TABLERO\components\MasterTrafficLight.tsx
+  54:46  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\LeonPrior\OneDrive - Prior Consultor├¡a\Documentos\CONSULTOR├ìAS 2025\IPS\IA\APP TABLERO\components\UserManager.tsx
+   80:47   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   80:89   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   87:67   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   89:78   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   96:103  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  112:39   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  113:102  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  127:86   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  329:25   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  348:23   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\LeonPrior\OneDrive - Prior Consultor├¡a\Documentos\CONSULTOR├ìAS 2025\IPS\IA\APP TABLERO\components\WeightControlCenter.tsx
+  178:60  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  242:65  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\LeonPrior\OneDrive - Prior Consultor├¡a\Documentos\CONSULTOR├ìAS 2025\IPS\IA\APP TABLERO\services\firebaseService.ts
+   42:38  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   42:53  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   74:66  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   81:50  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  137:31  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  137:42  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  208:60  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  208:79  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  209:38  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  211:27  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  211:35  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  314:56  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  314:75  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  315:34  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  317:23  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  317:31  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  492:32  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  574:23  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  813:30  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\LeonPrior\OneDrive - Prior Consultor├¡a\Documentos\CONSULTOR├ìAS 2025\IPS\IA\APP TABLERO\utils\compliance.test.ts
+  44:22  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\LeonPrior\OneDrive - Prior Consultor├¡a\Documentos\CONSULTOR├ìAS 2025\IPS\IA\APP TABLERO\utils\compliance.ts
+  175:34   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  176:31   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  201:66   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  201:103  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  201:137  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  205:14   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\LeonPrior\OneDrive - Prior Consultor├¡a\Documentos\CONSULTOR├ìAS 2025\IPS\IA\APP TABLERO\utils\exportUtils.ts
+   36:36  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   51:24  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  169:30  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  170:30  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  177:30  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+Ô£û 135 problems (0 errors, 135 warnings)
+

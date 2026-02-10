@@ -1,0 +1,228 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800;900&display=swap');
+
+:root {
+    --bg-deep: #020617;
+    --glass-bg: rgba(15, 23, 42, 0.6);
+    --glass-border: rgba(255, 255, 255, 0.08);
+    --neon-cyan: #22d3ee;
+    --neon-green: #22c55e;
+    --neon-yellow: #eab308;
+    --neon-red: #ef4444;
+}
+
+body {
+    font-family: 'Outfit', sans-serif;
+    background-color: var(--bg-deep);
+    background-image:
+        radial-gradient(circle at 0% 0%, rgba(34, 211, 238, 0.05) 0%, transparent 40%),
+        radial-gradient(circle at 100% 100%, rgba(139, 92, 246, 0.05) 0%, transparent 40%);
+    background-attachment: fixed;
+}
+
+/* Glassmorphism Classes */
+.glass-panel {
+    background: var(--glass-bg);
+    backdrop-filter: blur(12px) saturate(180%);
+    -webkit-backdrop-filter: blur(12px) saturate(180%);
+    border: 1px solid var(--glass-border);
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+}
+
+.glass-card {
+    background: rgba(30, 41, 59, 0.4);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.glass-card:hover {
+    background: rgba(30, 41, 59, 0.6);
+    border-color: rgba(34, 211, 238, 0.3);
+    transform: translateY(-4px);
+    box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.5);
+}
+
+/* Animations */
+@keyframes glow {
+
+    0%,
+    100% {
+        opacity: 0.6;
+        filter: blur(8px);
+    }
+
+    50% {
+        opacity: 1;
+        filter: blur(12px);
+    }
+}
+
+.glow-point {
+    animation: glow 3s infinite ease-in-out;
+}
+
+@keyframes shimmer {
+    0% {
+        transform: translateX(-100%);
+    }
+
+    100% {
+        transform: translateX(100%);
+    }
+}
+
+.animate-shimmer {
+    animation: shimmer 2s infinite linear;
+}
+
+/* Scrollbar Modernization */
+::-webkit-scrollbar {
+    width: 12px;
+    height: 6px;
+}
+
+::-webkit-scrollbar-track {
+    background: rgba(15, 23, 42, 0.1);
+}
+
+::-webkit-scrollbar-thumb {
+    background: rgba(51, 65, 85, 0.5);
+    border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: rgba(71, 85, 105, 0.8);
+}
+
+/* Typography Enhancements */
+.text-neon {
+    text-shadow: 0 0 10px rgba(34, 211, 238, 0.5);
+}
+
+.font-black {
+    font-weight: 900;
+}
+
+/* 📱 SISTEMA DE DISEÑO MÓVIL PREMIUM (v2.5.0) */
+@media (max-width: 768px) {
+    :root {
+        font-size: 13px;
+    }
+
+    body {
+        padding: 0.5rem;
+    }
+
+    /* Contenedores Principales */
+    .max-w-\[1600px\] {
+        padding: 0 !important;
+    }
+
+    /* Header Compacto */
+    header {
+        padding: 1.25rem !important;
+        margin-bottom: 1.5rem !important;
+        border-radius: 1.5rem !important;
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        gap: 1.25rem !important;
+    }
+
+    header h1 {
+        font-size: 2.25rem !important;
+        letter-spacing: -0.05em !important;
+    }
+
+    /* Grillas Responsivas */
+    .grid-cols-2 {
+        grid-template-columns: 1fr !important;
+    }
+
+    .grid-cols-3,
+    .grid-cols-4 {
+        grid-template-columns: repeat(2, 1fr) !important;
+    }
+
+    /* Cards de Indicadores */
+    .glass-card {
+        padding: 1.5rem !important;
+        border-radius: 2rem !important;
+    }
+
+    .glass-card h3 {
+        font-size: 1.5rem !important;
+        line-height: 1.1 !important;
+    }
+
+    .glass-card h4 {
+        font-size: 0.9rem !important;
+    }
+
+    .glass-card .text-5xl {
+        font-size: 3rem !important;
+    }
+
+    .glass-card .text-2xl {
+        font-size: 1.5rem !important;
+    }
+
+    /* Tabs y Ribbons */
+    .flex.flex-col.gap-6.mb-8 {
+        gap: 1rem !important;
+        margin-bottom: 2rem !important;
+    }
+
+    /* Scrollers Horizontales */
+    .overflow-x-auto {
+        padding-bottom: 0.5rem !important;
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+    }
+
+    .overflow-x-auto::-webkit-scrollbar {
+        display: none;
+    }
+
+    /* Botones y Selectores */
+    button,
+    select {
+        padding: 0.75rem 1rem !important;
+        border-radius: 1rem !important;
+        font-size: 10px !important;
+    }
+
+    /* Dashboard View Layout */
+    .DashboardView_Header {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        gap: 1.5rem !important;
+    }
+
+    /* Score Global Ribbon */
+    .glass-panel.px-6.py-3 {
+        padding: 1rem !important;
+        width: 100% !important;
+        justify-content: space-between !important;
+    }
+}
+
+@media (max-width: 480px) {
+    :root {
+        font-size: 12px;
+    }
+
+    header h1 {
+        font-size: 1.8rem !important;
+    }
+
+    .glass-card .text-5xl {
+        font-size: 2.5rem !important;
+    }
+
+    /* En móviles muy pequeños, forzamos lista única */
+    .grid-cols-2,
+    .grid-cols-3,
+    .grid-cols-4 {
+        grid-template-columns: 1fr !important;
+    }
+}
