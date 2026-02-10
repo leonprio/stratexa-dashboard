@@ -16,6 +16,7 @@ interface CurrentPeriodFocusProps {
     onUpdateItem: (updatedItem: DashboardItem) => void;
     canEdit: boolean;
     onClose: () => void;
+    allDashboardItems?: DashboardItem[];
 }
 
 export const CurrentPeriodFocus: React.FC<CurrentPeriodFocusProps> = ({
@@ -24,7 +25,8 @@ export const CurrentPeriodFocus: React.FC<CurrentPeriodFocusProps> = ({
     year,
     onUpdateItem,
     canEdit,
-    onClose
+    onClose,
+    allDashboardItems = []
 }) => {
     // 🛡️ ACTIVE SHIELD: Blindaje contra ítems malformados
     if (!item) return null;
@@ -84,7 +86,7 @@ export const CurrentPeriodFocus: React.FC<CurrentPeriodFocusProps> = ({
         return v;
     }, [item, localGoal, localActual, isWeekly, periodIdx]);
 
-    const compliance = useMemo(() => calculateCompliance(virtualItem, globalThresholds, year), [virtualItem, globalThresholds, year]);
+    const compliance = useMemo(() => calculateCompliance(virtualItem, globalThresholds, year, 'realTime', allDashboardItems), [virtualItem, globalThresholds, year, allDashboardItems]);
 
     // 🛡️ REGLA v5.3.5: SINCRONIZACIÓN ESTABLE
     // Solo actualizamos el estado local si el indicador o el periodo cambian.
@@ -312,6 +314,7 @@ export const CurrentPeriodFocus: React.FC<CurrentPeriodFocusProps> = ({
                                 overallCompliance={compliance.overallPercentage}
                                 globalThresholds={globalThresholds}
                                 year={year}
+                                allDashboardItems={allDashboardItems}
                             />
                         </div>
                     </div>

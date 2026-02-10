@@ -113,7 +113,7 @@ export const DashboardTabs: React.FC<DashboardTabsProps> = ({
 
     // 1. Agregar siempre la SÍNTESIS GLOBAL al inicio si hay agregados o es admin
     if (isMeSuperDirector || isGlobalAdmin) {
-      map.set("SINTESIS", { officialName: "DIRECCIÓN DE OPERACIONES", items: [] });
+      map.set("SINTESIS", { officialName: "SÍNTESIS GLOBAL", items: [] });
     }
 
     // 2. Inicializar con grupos permitidos
@@ -339,7 +339,12 @@ export const DashboardTabs: React.FC<DashboardTabsProps> = ({
                 >
                   {isGlobalMaster ? <span>👑</span> : isSuper ? <span>🏢</span> : null}
                   <div className="flex flex-col items-start leading-none">
-                    <span className="text-[10px] font-black uppercase tracking-[0.15em]">{g.label}</span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] font-black uppercase tracking-[0.15em]">{g.label}</span>
+                      <span className="text-[8px] bg-white/10 px-1.5 py-0.5 rounded text-slate-400 font-bold">
+                        {g.items.length}
+                      </span>
+                    </div>
                     <span
                       className={`text-[8px] font-black mt-1 px-1.5 py-0.5 rounded-md leading-none ${(g as any).capturePct >= 100
                         ? 'bg-emerald-500/20 text-emerald-400'

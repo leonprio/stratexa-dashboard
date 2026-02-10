@@ -1,7 +1,7 @@
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import { DashboardItem, ComplianceStatus, ComplianceThresholds } from '../types';
-import { getStatusForPercentage, calculateMonthlyCompliancePercentage } from '../utils/compliance';
+import { getStatusForPercentage, calculateMonthlyCompliancePercentage, evaluateFormula } from '../utils/compliance';
 
 interface SummaryDetailsProps {
     item: DashboardItem;
@@ -11,6 +11,7 @@ interface SummaryDetailsProps {
     globalThresholds: ComplianceThresholds;
     year?: number;
     decimalPrecision?: 1 | 2;
+    allDashboardItems?: DashboardItem[];
 }
 
 const months = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
@@ -26,9 +27,40 @@ const colorClasses: Record<ComplianceStatus, string> = {
 // Helper movido adentro o recibido como prop, pero aquí lo redefinimos localmente si no se pasa formatter.
 // Mejor es usar el prop decimalPrecision.
 
-export const SummaryDetails = ({ item, currentProgress, currentTarget, overallCompliance, globalThresholds, year, decimalPrecision = 2 }: SummaryDetailsProps) => {
-    const { unit, type, monthlyProgress, monthlyGoals, goalType } = item;
+export const SummaryDetails = ({ item, currentProgress, currentTarget, overallCompliance, globalThresholds, year, decimalPrecision = 2, allDashboardItems = [] }: SummaryDetailsProps) => {
+    const { unit, type, goalType } = item;
     const lowerIsBetter = goalType === 'minimize';
+
+    // 🛡️ REGLA v6.0.0: Derivar valores mensuales dinámicos si es necesario
+    const monthlyProgress = useMemo(() => {
+        if (item.indicatorType === 'compound' && item.componentIds && allDashboardItems.length > 0) {
+            const vals = Array(12).fill(0);
+            item.componentIds.forEach(id => {
+                const child = allDashboardItems.find(it => String(it.id) === String(id));
+                if (child) child.monthlyProgress?.forEach((v, i) => vals[i] += Number(v || 0));
+            });
+            return vals;
+        }
+        if (item.indicatorType === 'formula' && item.formula && allDashboardItems.length > 0) {
+            return Array(12).fill(0).map((_, i) => evaluateFormula(item.formula!, allDashboardItems, i, 'monthlyProgress'));
+        }
+        return item.monthlyProgress || [];
+    }, [item, allDashboardItems]);
+
+    const monthlyGoals = useMemo(() => {
+        if (item.indicatorType === 'compound' && item.componentIds && allDashboardItems.length > 0) {
+            const vals = Array(12).fill(0);
+            item.componentIds.forEach(id => {
+                const child = allDashboardItems.find(it => String(it.id) === String(id));
+                if (child) child.monthlyGoals?.forEach((v, i) => vals[i] += Number(v || 0));
+            });
+            return vals;
+        }
+        if (item.indicatorType === 'formula' && item.formula && allDashboardItems.length > 0) {
+            return Array(12).fill(0).map((_, i) => evaluateFormula(item.formula!, allDashboardItems, i, 'monthlyGoals'));
+        }
+        return item.monthlyGoals || [];
+    }, [item, allDashboardItems]);
 
     const formatNumber = (num: number) => {
         return new Intl.NumberFormat('es-MX', {

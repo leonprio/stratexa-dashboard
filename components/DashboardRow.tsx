@@ -19,9 +19,10 @@ interface DashboardRowProps {
   isSelected?: boolean;
   onSelect?: () => void;
   decimalPrecision?: 1 | 2;
+  allDashboardItems?: DashboardItem[];
 }
 
-export const DashboardRow: React.FC<DashboardRowProps> = React.memo(({ item, onUpdateItem, globalThresholds, userRoleForDashboard, layout = 'grid', year, isAggregate = false, isSelected = false, onSelect, decimalPrecision = 2 as 1 | 2 }) => {
+export const DashboardRow: React.FC<DashboardRowProps> = React.memo(({ item, onUpdateItem, globalThresholds, userRoleForDashboard, layout = 'grid', year, isAggregate = false, isSelected = false, onSelect, decimalPrecision = 2 as 1 | 2, allDashboardItems = [] }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
 
@@ -36,7 +37,9 @@ export const DashboardRow: React.FC<DashboardRowProps> = React.memo(({ item, onU
 
   const { indicator, unit, weight, monthlyProgress, monthlyGoals, type } = item;
 
-  const { currentProgress, currentTarget, overallPercentage, complianceStatus } = useMemo(() => calculateCompliance(item, globalThresholds, year), [item, globalThresholds, year]);
+  const { currentProgress, currentTarget, overallPercentage, complianceStatus } = useMemo(() =>
+    calculateCompliance(item, globalThresholds, year, 'realTime', allDashboardItems),
+    [item, globalThresholds, year, allDashboardItems]);
 
   const missingDataWarning = useMemo(() => getMissingMonthsWarning(monthlyProgress, monthlyGoals), [monthlyProgress, monthlyGoals]);
 
@@ -158,16 +161,16 @@ export const DashboardRow: React.FC<DashboardRowProps> = React.memo(({ item, onU
         <div className="flex justify-between items-start gap-3">
           <div className="flex flex-col gap-1.5 flex-1">
             <div className="flex items-center gap-3 mb-1">
-              <span className="text-[9px] font-black text-cyan-500 uppercase tracking-[0.25em] leading-none">Indicador Clave</span>
-              <div className="flex items-center gap-1.5 bg-cyan-400/10 px-2 py-0.5 rounded-full border border-cyan-400/20">
-                <span className="relative flex h-1.5 w-1.5">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-cyan-500"></span>
-                </span>
-                <span className="text-[7px] font-black text-cyan-400 uppercase tracking-tighter">En Vivo</span>
-              </div>
+              <span className="text-[10px] font-black text-cyan-500 uppercase tracking-widest leading-none bg-cyan-500/10 px-2 py-1 rounded-md border border-cyan-500/20">KPI</span>
+              {item.indicatorType && item.indicatorType !== 'simple' && (
+                <div className="flex items-center gap-1.5 bg-indigo-400/10 px-2 py-1 rounded-md border border-indigo-400/20">
+                  <span className="text-[8px] font-black text-indigo-400 uppercase tracking-tighter">
+                    {item.indicatorType === 'formula' ? 'Fórmula' : 'Agregado'}
+                  </span>
+                </div>
+              )}
             </div>
-            <h3 className="font-black text-white text-2xl uppercase tracking-tight leading-[1.05] hover:text-cyan-400 transition-colors line-clamp-2">
+            <h3 className="font-black text-white text-xl sm:text-2xl uppercase tracking-tight leading-[1.05] hover:text-cyan-400 transition-colors line-clamp-2">
               {indicator}
             </h3>
           </div>
@@ -191,7 +194,7 @@ export const DashboardRow: React.FC<DashboardRowProps> = React.memo(({ item, onU
             <div className="flex flex-col">
               <span className="text-[10px] text-slate-500 uppercase font-black tracking-[0.2em] mb-2 opacity-80">Rendimiento Real</span>
               <div className="flex items-baseline gap-2">
-                <span className="text-5xl font-black text-white tabular-nums tracking-tighter drop-shadow-2xl">
+                <span className="text-4xl sm:text-5xl font-black text-white tabular-nums tracking-tighter drop-shadow-2xl">
                   {formatNumber(currentProgress)}
                 </span>
                 <span className="text-xs font-bold text-slate-500 uppercase tracking-widest italic">{unit}</span>
@@ -272,6 +275,7 @@ export const DashboardRow: React.FC<DashboardRowProps> = React.memo(({ item, onU
                   globalThresholds={globalThresholds}
                   year={year}
                   decimalPrecision={decimalPrecision}
+                  allDashboardItems={allDashboardItems}
                 />
               </div>
 

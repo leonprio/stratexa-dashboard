@@ -201,47 +201,46 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </div>
         </div>
 
-        <div className="flex items-center gap-4">
+        <div className="flex flex-wrap items-center justify-center sm:justify-end gap-2 sm:gap-4 w-full lg:w-auto">
           <div
-            className="flex items-center gap-4 glass-panel px-6 py-3 rounded-2xl shadow-2xl"
+            className="flex items-center gap-3 sm:gap-4 glass-panel px-4 sm:px-6 py-2 sm:py-3 rounded-2xl shadow-2xl"
             role="group"
             aria-label="Resumen de cumplimiento global"
           >
             <div className="flex flex-col items-end">
-              <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest leading-none mb-1">Cumplimiento Global</span>
+              <span className="text-[8px] sm:text-[9px] font-black text-slate-500 uppercase tracking-widest leading-none mb-1">Cumplimiento Global</span>
               <span
-                className={`text-4xl font-black tabular-nums leading-none ${totalStatus === 'OnTrack' ? 'text-emerald-400 drop-shadow-[0_0_12px_rgba(16,185,129,0.4)]' : totalStatus === 'AtRisk' ? 'text-amber-400 drop-shadow-[0_0_12px_rgba(245,158,11,0.4)]' : 'text-rose-400 drop-shadow-[0_0_12px_rgba(244,63,94,0.4)]'}`}
+                className={`text-3xl sm:text-4xl font-black tabular-nums leading-none ${totalStatus === 'OnTrack' ? 'text-emerald-400 drop-shadow-[0_0_12px_rgba(16,185,129,0.4)]' : totalStatus === 'AtRisk' ? 'text-amber-400 drop-shadow-[0_0_12px_rgba(245,158,11,0.4)]' : 'text-rose-400 drop-shadow-[0_0_12px_rgba(244,63,94,0.4)]'}`}
                 aria-label={`Valor: ${Math.round(totalScore)} por ciento. Estado: ${totalStatus === 'OnTrack' ? 'En Tiempo' : totalStatus === 'AtRisk' ? 'En Riesgo' : 'Critico'}`}
               >
                 {Math.round(totalScore)}%
               </span>
             </div>
             <div className="relative">
-              <div className={`absolute inset-0 rounded-full blur-[10px] opacity-40 animate-pulse ${totalStatus === 'OnTrack' ? 'bg-emerald-500' : totalStatus === 'AtRisk' ? 'bg-amber-500' : 'bg-rose-500'}`} aria-hidden="true" />
-              <div className={`relative w-6 h-6 rounded-full border-2 border-slate-950/50 ${totalStatus === 'OnTrack' ? 'bg-emerald-500' : totalStatus === 'AtRisk' ? 'bg-amber-500' : 'bg-rose-500'}`} aria-hidden="true" />
+              <div className={`absolute inset-0 rounded-full blur-[8px] opacity-40 animate-pulse ${totalStatus === 'OnTrack' ? 'bg-emerald-500' : totalStatus === 'AtRisk' ? 'bg-amber-500' : 'bg-rose-500'}`} aria-hidden="true" />
+              <div className={`relative w-5 h-5 sm:w-6 sm:h-6 rounded-full border-2 border-slate-950/50 ${totalStatus === 'OnTrack' ? 'bg-emerald-500' : totalStatus === 'AtRisk' ? 'bg-amber-500' : 'bg-rose-500'}`} aria-hidden="true" />
             </div>
           </div>
 
           {/* 🎯 BADGE DE CAPTURA (v5.5.3) */}
           {!isAggregate && capturePct !== null && (
             <div
-              className="flex items-center gap-4 border border-white/5 bg-slate-900/50 px-5 py-3 rounded-2xl shadow-xl"
+              className="flex items-center gap-3 sm:gap-4 border border-white/5 bg-slate-900/50 px-4 sm:px-5 py-2 sm:py-3 rounded-2xl shadow-xl"
               role="group"
               aria-label="Estado de captura de indicadores"
             >
               <div className="flex flex-col items-end">
-                <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest leading-none mb-1">Captura de KPIs</span>
+                <span className="text-[8px] sm:text-[9px] font-black text-slate-500 uppercase tracking-widest leading-none mb-1">Captura</span>
                 <div className="flex items-center gap-2">
-                  <span className={`text-xl font-black tracking-tight ${capturePct === 100 ? 'text-emerald-400' : capturePct > 0 ? 'text-amber-400' : 'text-slate-500'}`}>
+                  <span className={`text-lg sm:text-xl font-black tracking-tight ${capturePct === 100 ? 'text-emerald-400' : capturePct > 0 ? 'text-amber-400' : 'text-slate-500'}`}>
                     {capturePct}%
                   </span>
                   <div
-                    className="h-1.5 w-12 bg-slate-800 rounded-full overflow-hidden"
+                    className="h-1 w-8 sm:h-1.5 sm:w-12 bg-slate-800 rounded-full overflow-hidden"
                     role="progressbar"
                     aria-valuenow={capturePct}
                     aria-valuemin={0}
                     aria-valuemax={100}
-                    aria-label={`Porcentaje de captura: ${capturePct}%`}
                   >
                     <div
                       className={`h-full transition-all duration-1000 ${capturePct === 100 ? 'bg-emerald-500' : capturePct > 0 ? 'bg-amber-500' : 'bg-slate-700'}`}
@@ -250,79 +249,65 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   </div>
                 </div>
               </div>
-              <div
-                className={`w-8 h-8 rounded-xl flex items-center justify-center text-sm ${capturePct === 100 ? 'bg-emerald-500/10 text-emerald-500' : capturePct > 0 ? 'bg-amber-500/10 text-amber-500' : 'bg-slate-500/10 text-slate-500'}`}
-                aria-hidden="true"
-              >
-                {capturePct === 100 ? '✅' : '🕒'}
-              </div>
             </div>
           )}
 
-          <button
-            onClick={handleAnalyze}
-            className="group flex items-center gap-3 bg-gradient-to-br from-indigo-500 via-purple-600 to-fuchsia-600 hover:from-indigo-400 hover:to-fuchsia-500 text-white px-6 py-3.5 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] transition-all border border-white/20 shadow-xl shadow-purple-900/40 active:scale-95 whitespace-nowrap"
-            aria-label="Ejecutar análisis inteligente con IA del tablero"
-          >
-            <span className="text-lg group-hover:rotate-12 transition-transform drop-shadow-lg" aria-hidden="true">✨</span>
-            <span className="drop-shadow-md">Audit IA</span>
-          </button>
-
-          {(isGlobalAdmin || currentUser.canExportPPT) && (
+          <div className="flex flex-wrap items-center justify-center gap-2">
             <button
-              onClick={() => setIsExportingPPTX(true)}
-              className="flex items-center gap-2.5 bg-gradient-to-r from-orange-600 to-orange-500 hover:from-orange-500 hover:to-orange-400 text-white px-5 py-3.5 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] transition-all border border-white/10 shadow-lg shadow-orange-900/40 active:scale-95"
-              title="Exportar presentación ejecutiva a PowerPoint"
+              onClick={handleAnalyze}
+              className="group flex items-center gap-2 bg-gradient-to-br from-indigo-500 via-purple-600 to-fuchsia-600 hover:from-indigo-400 hover:to-fuchsia-500 text-white px-4 py-3 rounded-2xl text-[9px] font-black uppercase tracking-widest transition-all border border-white/20 shadow-xl shadow-purple-900/40 active:scale-95 whitespace-nowrap"
+              aria-label="Ejecutar análisis inteligente con IA del tablero"
             >
-              <span className="text-base">📊</span>
-              <span>Exportar PowerPoint</span>
+              <span className="text-base group-hover:rotate-12 transition-transform drop-shadow-lg" aria-hidden="true">✨</span>
+              <span className="drop-shadow-md">Audit IA</span>
             </button>
-          )}
 
-          {/* <button
-            onClick={() => exportDashboardToExcel(dashboard)}
-            className="flex items-center gap-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white px-5 py-3.5 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] transition-all border border-white/5 active:scale-95"
-            title="Exportar todos los indicadores a Excel (.xlsx)"
-          >
-            <span className="text-base opacity-70">📥</span>
-            <span>Exportar Excel</span>
-          </button> */}
+            {(isGlobalAdmin || currentUser.canExportPPT) && (
+              <button
+                onClick={() => setIsExportingPPTX(true)}
+                className="flex items-center gap-2 bg-gradient-to-r from-orange-600 to-orange-500 hover:from-orange-500 hover:to-orange-400 text-white px-4 py-3 rounded-2xl text-[9px] font-black uppercase tracking-widest transition-all border border-white/10 shadow-lg shadow-orange-900/40 active:scale-95"
+                title="Exportar presentación ejecutiva a PowerPoint"
+              >
+                <span className="text-base">📊</span>
+                <span className="hidden sm:inline">Exportar </span>PPTX
+              </button>
+            )}
 
-          <button
-            onClick={() => setLocalDecimalPrecision(prev => prev === 1 ? 2 : 1)}
-            className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white px-4 py-3.5 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all border border-white/5"
-            title="Alternar decimales visibles (1 o 2)"
-            aria-label={`Mostrar ${localDecimalPrecision === 1 ? 'dos' : 'un'} decimales`}
-          >
-            <span className="text-base" aria-hidden="true">.{localDecimalPrecision === 1 ? '0' : '00'}</span>
-          </button>
-
-          {/* Selector de Vista (v4.2.0 - UX Mejorada) */}
-          <div className="flex bg-slate-900/95 p-2 rounded-2xl border border-white/10 shadow-2xl backdrop-blur-xl">
             <button
-              onClick={() => setActiveView("dashboard")}
-              className={`px-6 py-2.5 rounded-xl text-[10px] font-extrabold uppercase tracking-widest transition-all duration-500 flex items-center gap-2 ${activeView === 'dashboard' ? 'bg-cyan-600 text-white shadow-[0_0_20px_rgba(8,145,178,0.5)]' : 'text-slate-500 hover:text-slate-300 hover:bg-white/5'}`}
+              onClick={() => setLocalDecimalPrecision(prev => prev === 1 ? 2 : 1)}
+              className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white px-3 py-3 rounded-2xl text-[9px] font-black uppercase tracking-widest transition-all border border-white/5"
+              title="Alternar decimales visibles (1 o 2)"
+              aria-label={`Mostrar ${localDecimalPrecision === 1 ? 'dos' : 'un'} decimales`}
             >
-              <span>📊</span> Tablero
+              <span className="text-base" aria-hidden="true">.{localDecimalPrecision === 1 ? '0' : '00'}</span>
             </button>
-            <button
-              onClick={() => setActiveView("reports")}
-              className={`px-6 py-2.5 rounded-xl text-[10px] font-extrabold uppercase tracking-widest transition-all duration-500 flex items-center gap-2 ${activeView === 'reports' ? 'bg-indigo-600 text-white shadow-[0_0_20px_rgba(79,70,229,0.5)]' : 'text-slate-500 hover:text-slate-300 hover:bg-white/5'}`}
-            >
-              <span>📑</span> Reporte Ejecutivo
-            </button>
+
+            <div className="flex bg-slate-900/95 p-1 rounded-2xl border border-white/10 shadow-2xl backdrop-blur-xl">
+              <button
+                onClick={() => setActiveView("dashboard")}
+                className={`px-4 sm:px-6 py-2 rounded-xl text-[9px] font-extrabold uppercase tracking-widest transition-all duration-500 flex items-center gap-2 ${activeView === 'dashboard' ? 'bg-cyan-600 text-white shadow-[0_0_20px_rgba(8,145,178,0.5)]' : 'text-slate-500 hover:text-slate-300 hover:bg-white/5'}`}
+              >
+                <span>📊</span> <span className="hidden sm:inline">Tablero</span>
+              </button>
+              <button
+                onClick={() => setActiveView("reports")}
+                className={`px-4 sm:px-6 py-2 rounded-xl text-[9px] font-extrabold uppercase tracking-widest transition-all duration-500 flex items-center gap-2 ${activeView === 'reports' ? 'bg-indigo-600 text-white shadow-[0_0_20px_rgba(79,70,229,0.5)]' : 'text-slate-500 hover:text-slate-300 hover:bg-white/5'}`}
+              >
+                <span>📑</span> <span className="hidden sm:inline">Reporte</span>
+              </button>
+            </div>
+
+            {isAggregate && isGlobalAdmin && onOpenWeights && (
+              <button
+                onClick={onOpenWeights}
+                className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-3 rounded-2xl text-[9px] font-black uppercase tracking-widest transition-all border border-white/10 shadow-lg shadow-indigo-900/40 active:scale-95"
+                title="Configurar pesos de los tableros que alimentan este consolidado"
+              >
+                <span className="text-base">⚖️</span>
+                <span>Pesos</span>
+              </button>
+            )}
           </div>
-
-          {isAggregate && isGlobalAdmin && onOpenWeights && (
-            <button
-              onClick={onOpenWeights}
-              className="flex items-center gap-2.5 bg-indigo-600 hover:bg-indigo-500 text-white px-6 py-3.5 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] transition-all border border-white/10 shadow-lg shadow-indigo-900/40 active:scale-95"
-              title="Configurar pesos de los tableros que alimentan este consolidado"
-            >
-              <span className="text-base">⚖️</span>
-              <span>Modificar Pesos</span>
-            </button>
-          )}
         </div>
       </div>
 
@@ -347,6 +332,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             }}
             canEdit={userRole === DashboardRole.Editor && !isAggregate}
             onClose={() => setSelectedItemId(null)}
+            allDashboardItems={safeItems}
           />
         </div>
       )}

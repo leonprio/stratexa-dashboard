@@ -66,6 +66,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
             isSelected={item.id === selectedItemId}
             onSelect={() => onSelectItem?.(item.id === selectedItemId ? null : item.id)}
             decimalPrecision={decimalPrecision}
+            allDashboardItems={data || []}
           />
         ))
       ) : (

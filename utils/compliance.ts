@@ -9,6 +9,48 @@ export type ComplianceStatus = "OnTrack" | "AtRisk" | "OffTrack" | "Neutral" | "
 export const CURRENT_MONTH_INDEX = new Date().getMonth();
 
 /**
+ * 🚀 MOTOR DE FÓRMULAS v6.0.0
+ * Evalúa expresiones aritméticas dinámicas basadas en otros indicadores.
+ * Soporta variables por ID: {id:101} o por nombre (slugified).
+ */
+export const evaluateFormula = (
+  formula: string,
+  allDashboardItems: DashboardItem[],
+  monthIdx: number,
+  field: 'monthlyProgress' | 'monthlyGoals' = 'monthlyProgress'
+): number => {
+  if (!formula) return 0;
+
+  try {
+    let expression = formula;
+
+    // 1. Reemplazar {id:XXX} con el valor real
+    const idRegex = /\{id:([^}]+)\}/g;
+    expression = expression.replace(idRegex, (_, id) => {
+      const depItem = allDashboardItems.find(it => String(it.id) === String(id));
+      if (!depItem) return "0";
+      const val = (depItem as any)[field]?.[monthIdx];
+      return String(Number(val) || 0);
+    });
+
+    // 2. Limpieza básica por seguridad (solo permitir números y operadores)
+    // eslint-disable-next-line no-useless-escape
+    if (/[^0-9\.\+\-\*\/\(\)\s]/.test(expression)) {
+      console.warn(`[FORMULA] Expresión insegura omitida: ${expression}`);
+      return 0;
+    }
+
+    // 3. Evaluación aritmética segura
+    // eslint-disable-next-line no-eval
+    const result = eval(expression);
+    return isFinite(result) ? result : 0;
+  } catch (e) {
+    console.error(`[FORMULA] Error evaluando "${formula}":`, e);
+    return 0;
+  }
+};
+
+/**
  * Devuelve el estatus (semaforo) a partir de un porcentaje (0-100+)
  */
 export const getStatusForPercentage = (
@@ -171,10 +213,31 @@ export const calculateCompliance = (
   item: DashboardItem,
   globalThresholds: ComplianceThresholds,
   year: number = new Date().getFullYear(),
-  mode: 'realTime' | 'definitive' = 'realTime'
+  mode: 'realTime' | 'definitive' = 'realTime',
+  allDashboardItems: DashboardItem[] = []
 ) => {
-  let monthlyProgress = (item as any).monthlyProgress ?? [];
-  let monthlyGoals = (item as any).monthlyGoals ?? [];
+  let monthlyProgress = [...((item as any).monthlyProgress || [])];
+  let monthlyGoals = [...((item as any).monthlyGoals || [])];
+
+  // 🛡️ REGLA v6.0.0 (INTELLIGENT INDICATORS)
+  // Si el indicador es compuesto o fórmula, sobreescribimos los valores locales con cálculos dinámicos
+  if (item.indicatorType === 'compound' && item.componentIds && allDashboardItems.length > 0) {
+    monthlyProgress = Array(12).fill(0);
+    monthlyGoals = Array(12).fill(0);
+
+    item.componentIds.forEach(compId => {
+      const child = allDashboardItems.find(it => String(it.id) === String(compId));
+      if (child) {
+        for (let i = 0; i < 12; i++) {
+          monthlyProgress[i] += Number(child.monthlyProgress?.[i] || 0);
+          monthlyGoals[i] += Number(child.monthlyGoals?.[i] || 0);
+        }
+      }
+    });
+  } else if (item.indicatorType === 'formula' && item.formula && allDashboardItems.length > 0) {
+    monthlyProgress = Array(12).fill(0).map((_, i) => evaluateFormula(item.formula!, allDashboardItems, i, 'monthlyProgress'));
+    monthlyGoals = Array(12).fill(0).map((_, i) => evaluateFormula(item.formula!, allDashboardItems, i, 'monthlyGoals'));
+  }
 
   // 🔄 AGREGACIÓN SEMANAL: Si el indicador es semanal, transformamos a mensual para el semáforo
   // 🔄 AGREGACIÓN SEMANAL: Si el indicador es semanal, transformamos a mensual para el semáforo
@@ -380,10 +443,9 @@ export const calculateDashboardWeightedScore = (
   let totalWeightFound = 0;
 
   items.forEach(item => {
-    const { overallPercentage, isActive } = calculateCompliance(item, globalThresholds, year, mode);
+    // 🛡️ REGLA v6.0.0: Pasamos 'items' como contexto para indicadores inteligentes
+    const { overallPercentage, isActive } = calculateCompliance(item, globalThresholds, year, mode, items);
 
-    // 🛡️ PRORRATEO DINÁMICO: Si el indicador no tiene meta/datos para el periodo, 
-    // su peso se redistribuye entre los demás al no sumarlo al denominador.
     if (!isActive) return;
 
     const cappedPercentage = Math.min(overallPercentage, 200);
@@ -393,14 +455,9 @@ export const calculateDashboardWeightedScore = (
 
   if (totalWeightFound === 0) return 0;
 
-  // Normalizamos el score final basado EN LOS PESOS ACTIVOS
   return Number((totalWeightedScore / totalWeightFound).toFixed(1));
 };
 
-/**
- * Calcula los puntajes mensuales ponderados de un tablero (v4.1.4).
- * Útil para gráficas de tendencia que respeten la redistribución de pesos por periodo.
- */
 export const calculateDashboardMonthlyScores = (
   items: DashboardItem[],
   globalThresholds: ComplianceThresholds,
@@ -415,10 +472,24 @@ export const calculateDashboardMonthlyScores = (
     let hasAnyData = false;
 
     items.forEach(item => {
-      const p = Number(item.monthlyProgress?.[m] ?? 0);
-      const g = Number(item.monthlyGoals?.[m] ?? 0);
+      // 🛡️ REGLA v6.0.0 (SIMPLIFIED CONTEXT): Para gráficas mensuales, evaluamos según tipo
+      let p = Number(item.monthlyProgress?.[m] ?? 0);
+      let g = Number(item.monthlyGoals?.[m] ?? 0);
 
-      // Si no hay meta ni avance este mes, este item NO cuenta para este mes
+      if (item.indicatorType === 'compound' && item.componentIds) {
+        p = 0; g = 0;
+        item.componentIds.forEach(compId => {
+          const child = items.find(it => String(it.id) === String(compId));
+          if (child) {
+            p += Number(child.monthlyProgress?.[m] || 0);
+            g += Number(child.monthlyGoals?.[m] || 0);
+          }
+        });
+      } else if (item.indicatorType === 'formula' && item.formula) {
+        p = evaluateFormula(item.formula, items, m, 'monthlyProgress');
+        g = evaluateFormula(item.formula, items, m, 'monthlyGoals');
+      }
+
       if (p === 0 && g === 0) return;
 
       const lowerIsBetter = item.goalType === 'minimize';

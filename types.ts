@@ -58,6 +58,11 @@ export interface DashboardItem {
     result: string;
     impact?: 'positive' | 'low' | 'none';
   }[];
+  // 🚀 INDICADORES INTELIGENTES (v6.0.0)
+  indicatorType?: 'simple' | 'compound' | 'formula';
+  componentIds?: (number | string)[]; // IDs de otros indicadores que alimentan este (para compound/formula)
+  formula?: string; // Ecuación aritmética: e.g. "({id:101} + {id:102}) / 2"
+
   // 🚀 MODO ACTIVIDADES (v3.5.0)
   isActivityMode?: boolean;
   activityConfig?: {

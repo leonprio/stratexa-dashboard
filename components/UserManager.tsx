@@ -413,7 +413,7 @@ export const UserManager = ({ users, dashboards, currentUser, activeClientId, on
                 <div className="p-8 pb-4 flex flex-col md:flex-row justify-between items-start md:items-center gap-6 border-b border-white/5 bg-slate-900/50">
                     <div>
                         <h3 className="text-4xl font-black text-white italic uppercase tracking-tighter flex items-center gap-3">
-                            <span className="text-cyan-500">🛡️</span> Access Control v5.5.9.1
+                            <span className="text-cyan-500">🛡️</span> Access Control v6.0.0 (AUDIT)
                         </h3>
                         <p className="text-slate-500 text-xs font-bold uppercase tracking-[0.3em] mt-1">Gestión Unificada de Usuarios y Permisos Estratégicos</p>
                     </div>
