@@ -1336,7 +1336,7 @@ export default function App() {
           {isGlobalAdmin && (
             <div className="mt-4">
               <span className="text-[10px] font-black text-emerald-400 bg-emerald-500/10 px-4 py-2 rounded-xl border border-emerald-500/30 shadow-[0_0_20px_rgba(16,185,129,0.2)] block w-fit animate-pulse tracking-[0.2em] uppercase">
-                v5.9.8-PRO+ • SHIELD CORE
+                v5.9.8-PRO+ • SHIELD CORE (SYNC 2026-02-09)
               </span>
             </div>
           )}
