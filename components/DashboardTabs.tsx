@@ -99,32 +99,38 @@ export const DashboardTabs: React.FC<DashboardTabsProps> = ({
     onGroupChange || (() => { })
   ];
 
-  // 🛡️ REGLA v5.5.7 (SCOPE FIX): Cálculo de etiqueta principal fuera de los memos
+  // 🛡️ REGLA v5.9.9 (GLOBAL FIX): Asegurar que siempre exista una vía a la síntesis global
   const isMeSuperDirector = useMemo(() => dashboards.some(d => (d as any).isHierarchyRoot), [dashboards]);
   const rootAgg = useMemo(() => dashboards.find(d => (d as any).isHierarchyRoot), [dashboards]);
-  // 🛡️ REGLA v5.5.9.1: Los Directores Generales ven SÍNTESIS GLOBAL.
+
   const mainLabel = useMemo(() => {
-    if (rootAgg && rootAgg.group) return rootAgg.group.trim().toUpperCase();
-    if (isMeSuperDirector) return "DIRECCIÓN DE OPERACIONES";
-    return "TODOS";
-  }, [rootAgg, isMeSuperDirector]);
+    if (rootAgg && rootAgg.group) return normalizeGroupName(rootAgg.group);
+    return "SINTESIS";
+  }, [rootAgg]);
 
   const groups = useMemo(() => {
     const map = new Map<string, { officialName: string, items: DashboardType[] }>();
 
-    // 1. Inicializar con grupos permitidos (officialGroups de App.tsx)
+    // 1. Agregar siempre la SÍNTESIS GLOBAL al inicio si hay agregados o es admin
+    if (isMeSuperDirector || isGlobalAdmin) {
+      map.set("SINTESIS", { officialName: "DIRECCIÓN DE OPERACIONES", items: [] });
+    }
+
+    // 2. Inicializar con grupos permitidos
     if (allowedGroups && allowedGroups.length > 0) {
       allowedGroups.forEach(g => {
         const norm = normalizeGroupName(g);
-        if (!map.has(norm)) {
+        if (norm === "SINTESIS") return; // Ya lo manejamos arriba
+        if (!map.get(norm)) {
           map.set(norm, { officialName: g.trim().toUpperCase(), items: [] });
         }
       });
     }
 
-    // 2. Distribuir tableros en sus grupos correspondientes
+    // 3. Distribuir tableros
     dashboards.forEach((d) => {
-      const gRaw = ((d as any).group || "GENERAL").toString().trim().toUpperCase();
+      const isGlobalRoot = (d as any).isHierarchyRoot;
+      const gRaw = isGlobalRoot ? "SINTESIS" : ((d as any).group || "GENERAL").toString();
       const normG = normalizeGroupName(gRaw);
 
       if (map.has(normG)) {
@@ -132,18 +138,15 @@ export const DashboardTabs: React.FC<DashboardTabsProps> = ({
         (dCopy as any)._capturePct = calculateCapture(dCopy);
         map.get(normG)!.items.push(dCopy);
       } else {
-        // Fallback para grupos que no están en allowedGroups pero tienen tableros
         const normGen = normalizeGroupName("GENERAL");
-        if (!map.has(normGen)) {
-          map.set(normGen, { officialName: "GENERAL", items: [] });
-        }
+        if (!map.has(normGen)) map.set(normGen, { officialName: "GENERAL", items: [] });
         const dCopy = { ...d };
         (dCopy as any)._capturePct = calculateCapture(dCopy);
         map.get(normGen)!.items.push(dCopy);
       }
     });
 
-    const items = Array.from(map.entries())
+    return Array.from(map.entries())
       .map(([normG, data]) => {
         const avgCapture = data.items.length > 0
           ? data.items.reduce((acc, d) => acc + ((d as any)._capturePct || 0), 0) / data.items.length
@@ -163,17 +166,13 @@ export const DashboardTabs: React.FC<DashboardTabsProps> = ({
           })
         };
       })
-      .filter(g => g.items.length > 0 || (allowedGroups && allowedGroups.includes(g.originalLabel)))
+      .filter(g => g.items.length > 0 || g.normalizedLabel === "SINTESIS")
       .sort((a, b) => {
-        const aIsMain = normalizeGroupName(a.label) === normalizeGroupName(mainLabel);
-        const bIsMain = normalizeGroupName(b.label) === normalizeGroupName(mainLabel);
-        if (aIsMain && !bIsMain) return -1;
-        if (!aIsMain && bIsMain) return 1;
+        if (a.normalizedLabel === "SINTESIS") return -1;
+        if (b.normalizedLabel === "SINTESIS") return 1;
         return a.label.localeCompare(b.label);
       });
-
-    return items;
-  }, [dashboards, allowedGroups, mainLabel]);
+  }, [dashboards, allowedGroups, isMeSuperDirector, isGlobalAdmin]);
 
   const activeGroupItems = useMemo(() => {
     const normSelected = normalizeGroupName(selectedGroup);

@@ -229,11 +229,11 @@ export default function App() {
   // REGLA: Sincronizar selectedGroupTab con el dashboard seleccionado para que sea "pegajoso"
   // Solo lo hacemos si el dashboard cambia y no coincide con el grupo actual, para mantener coherencia.
   useEffect(() => {
-    // 🛡️ REGLA v2.4.8 (FIX): Si estamos en "TODOS", respetamos la voluntad del usuario de ver todo.
+    // 🛡️ REGLA v2.4.8 (FIX): Si estamos en "SINTESIS", respetamos la voluntad del usuario de ver todo.
     // No saltamos automáticamente a un grupo solo porque el tablero seleccionado pertenezca a uno.
-    if (selectedDashboard?.group && selectedGroupTab !== "TODOS") {
-      const g = selectedDashboard.group.trim().toUpperCase();
-      if (officialGroups.includes(g) && g !== selectedGroupTab) {
+    if (selectedDashboard?.group && selectedGroupTab !== "SINTESIS") {
+      const g = normalizeGroupName(selectedDashboard.group);
+      if (officialGroups.map(og => normalizeGroupName(og)).includes(g) && g !== normalizeGroupName(selectedGroupTab)) {
         setSelectedGroupTab(g);
       }
     }
@@ -2318,7 +2318,7 @@ Esta acción es DEFINITIVA y borrará absolutamente todos sus tableros e histori
                 {userProfile.globalRole === 'Admin' ? 'Super Administrador' : (userProfile.directorTitle || userProfile.globalRole)}
                 {userProfile.canManageKPIs && <span className="text-cyan-400 ml-2">🛠️ Gestión KPI Habilitada</span>}
                 <span className="text-slate-600 ml-4 border-l border-white/5 pl-4 inline-flex items-center gap-1">
-                  v5.9.8-PRO+ • SHIELD CORE {isGlobalAdmin && <span className="text-[8px] bg-emerald-500/10 text-emerald-400 px-1.5 py-0.5 rounded ml-1 animate-pulse tracking-widest">CLEAN CACHE ACTIVE</span>}
+                  v5.9.9-PRO+ • SHIELD CORE {isGlobalAdmin && <span className="text-[8px] bg-emerald-500/10 text-emerald-400 px-1.5 py-0.5 rounded ml-1 animate-pulse tracking-widest">CLEAN CACHE ACTIVE</span>}
                 </span>
               </p>
             </div>
