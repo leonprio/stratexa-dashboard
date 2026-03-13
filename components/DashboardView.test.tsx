@@ -56,12 +56,12 @@ describe('DashboardView Component', () => {
             />
         );
 
-        const reportTab = screen.getByText(/Reporte Ejecutivo/i);
+        const reportTab = screen.getByLabelText(/Ver Centro de Reportes/i);
         fireEvent.click(reportTab);
 
         expect(screen.getByTestId('report-center')).toBeInTheDocument();
 
-        const dashboardTab = screen.getByText(/Tablero/i);
+        const dashboardTab = screen.getByLabelText(/Ver Tablero de Indicadores/i);
         fireEvent.click(dashboardTab);
         expect(screen.getByTestId('dashboard-component')).toBeInTheDocument();
     });
@@ -77,7 +77,7 @@ describe('DashboardView Component', () => {
             />
         );
 
-        expect(screen.queryByText(/Configurar Área/i)).not.toBeInTheDocument();
+        expect(screen.queryByText(/Ficha/i)).not.toBeInTheDocument();
 
         rerender(
             <DashboardView
@@ -89,6 +89,6 @@ describe('DashboardView Component', () => {
             />
         );
 
-        expect(screen.getByText(/Configurar Área/i)).toBeInTheDocument();
+        expect(screen.getByText(/Ficha/i)).toBeInTheDocument();
     });
 });

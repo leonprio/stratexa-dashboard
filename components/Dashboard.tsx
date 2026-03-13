@@ -16,9 +16,10 @@ interface DashboardProps {
   year?: number;
   allDashboards?: DashboardType[];
   isAggregate?: boolean;
-  selectedItemId?: number | null;
-  onSelectItem?: (id: number | null) => void;
+  selectedItemId?: number | string | null;
+  onSelectItem?: (id: number | string | null) => void;
   decimalPrecision?: 1 | 2;
+  allContextItems?: DashboardItem[];
 }
 
 export const Dashboard: React.FC<DashboardProps> = ({
@@ -31,7 +32,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
   isAggregate = false,
   selectedItemId,
   onSelectItem,
-  decimalPrecision = 2 // Default to 2
+  decimalPrecision = 2,
+  allContextItems = []
 }) => {
   const safeData: DashboardItem[] = useMemo(() => {
     const list = Array.isArray(data) ? data : [];
@@ -66,7 +68,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
             isSelected={item.id === selectedItemId}
             onSelect={() => onSelectItem?.(item.id === selectedItemId ? null : item.id)}
             decimalPrecision={decimalPrecision}
-            allDashboardItems={data || []}
+            allDashboardItems={allContextItems.length > 0 ? allContextItems : (data || [])}
           />
         ))
       ) : (

@@ -15,6 +15,8 @@ initializeApp();
 // Global options for cost control
 setGlobalOptions({ maxInstances: 10, region: "us-central1" });
 
+const USERS_COLLECTION = "tbl_users";
+
 /**
  * Cloud Function to update a user's password
  * Only callable by authenticated admins
@@ -38,7 +40,7 @@ exports.updateUserPassword = onCall(async (request) => {
 
     // Verify caller is an admin in Firestore
     const db = getFirestore();
-    const callerDoc = await db.collection("users").doc(request.auth.uid).get();
+    const callerDoc = await db.collection(USERS_COLLECTION).doc(request.auth.uid).get();
 
     if (!callerDoc.exists) {
         throw new HttpsError("permission-denied", "Perfil de usuario no encontrado.");
@@ -98,7 +100,7 @@ exports.createUser = onCall(async (request) => {
 
     // Verify caller is an admin
     const db = getFirestore();
-    const callerDoc = await db.collection("users").doc(request.auth.uid).get();
+    const callerDoc = await db.collection(USERS_COLLECTION).doc(request.auth.uid).get();
 
     if (!callerDoc.exists || callerDoc.data().globalRole !== "Admin") {
         throw new HttpsError("permission-denied", "Solo los administradores pueden crear usuarios.");
@@ -147,7 +149,7 @@ exports.deleteUserCompletely = onCall(async (request) => {
 
     // Verify caller is an admin
     const db = getFirestore();
-    const callerDoc = await db.collection("users").doc(request.auth.uid).get();
+    const callerDoc = await db.collection(USERS_COLLECTION).doc(request.auth.uid).get();
 
     if (!callerDoc.exists || callerDoc.data().globalRole !== "Admin") {
         throw new HttpsError("permission-denied", "Solo los administradores pueden eliminar usuarios.");
@@ -163,7 +165,7 @@ exports.deleteUserCompletely = onCall(async (request) => {
         await getAuth().deleteUser(targetUserId);
 
         // Delete from Firestore
-        await db.collection("users").doc(targetUserId).delete();
+        await db.collection(USERS_COLLECTION).doc(targetUserId).delete();
 
         return { success: true, message: "Usuario eliminado completamente." };
     } catch (error) {
@@ -171,7 +173,7 @@ exports.deleteUserCompletely = onCall(async (request) => {
 
         if (error.code === "auth/user-not-found") {
             // User not in Auth, just delete from Firestore
-            await db.collection("users").doc(targetUserId).delete();
+            await db.collection(USERS_COLLECTION).doc(targetUserId).delete();
             return { success: true, message: "Usuario eliminado de la base de datos." };
         }
 

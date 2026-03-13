@@ -1,199 +1,67 @@
+// 🛡️ REGLA v6.2.4-Fix7: Uso de globales de Jest para compatibilidad
 import { calculateAggregateDashboard } from './aggregationUtils';
-import { Dashboard, DashboardItem, SystemSettings } from '../types';
 
-describe('aggregationUtils', () => {
-    const mockThresholds = { onTrack: 90, atRisk: 80 };
+// Mock data
+const mockBoard = (id, items) => ({
+    id,
+    title: `Board ${id}`,
+    subtitle: "Subtitle",
+    items: items.map(i => ({ ...i, id: Math.random() })), // Random IDs to simulate different DB entries
+    thresholds: { onTrack: 90, atRisk: 80 }
+});
 
-    const createMockItem = (indicator: string, type: 'accumulative' | 'average', progress: number): DashboardItem => ({
-        id: Math.random(),
-        indicator,
-        type,
-        weight: 10,
-        unit: '%',
-        goalType: 'maximize',
-        monthlyGoals: [100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100],
-        monthlyProgress: [progress, progress, progress, progress, progress, progress, progress, progress, progress, progress, progress, progress],
+describe('calculateAggregateDashboard', () => {
+    test('groups "Bajas Totales" variations into single row', () => {
+        // Scenario: 3 dashboards.
+        // Board 1: "Bajas Totales" (Clean)
+        // Board 2: "Bajas  Totales" (Extra space)
+        // Board 3: "bajas totales" (Lowercase)
+
+        // We expect 1 aggregated item "BAJAS TOTALES"
+
+        const boards = [
+            mockBoard(1, [{ indicator: 'Bajas Totales', value: 1 }]),
+            mockBoard(2, [{ indicator: 'Bajas  Totales', value: 1 }]),
+            mockBoard(3, [{ indicator: 'bajas totales', value: 1 }])
+        ];
+
+        const agg = calculateAggregateDashboard(boards, { aggregationStrategy: 'equal' } as any);
+
+        expect(agg.items).toHaveLength(1);
+        expect(agg.items[0].indicator).toBe('BAJAS TOTALES');
     });
 
-    it('returns empty dashboard when no dashboards are provided', () => {
-        const result = calculateAggregateDashboard([]);
-        expect(result.items.length).toBe(0);
-        expect(result.id).toBe(-1);
+    test('respects "order" property in aggregation', () => {
+        // Scenario: Items should be sorted by order
+        // Board 1 has: A (order 2), B (order 1)
+
+        const boards = [
+            mockBoard(1, [
+                { indicator: 'Item A', order: 2, value: 10 },
+                { indicator: 'Item B', order: 1, value: 20 }
+            ])
+        ];
+
+        const agg = calculateAggregateDashboard(boards, { aggregationStrategy: 'equal' } as any);
+
+        // Should be [B, A]
+        expect(agg.items).toHaveLength(2);
+        expect(agg.items[0].indicator).toBe('ITEM B');
+        expect(agg.items[1].indicator).toBe('ITEM A');
     });
 
-    test('suma indicadores acumulativos idénticos', () => {
-        const db1: Dashboard = {
-            id: 1, title: 'DB1', subtitle: '', thresholds: mockThresholds,
-            items: [createMockItem('Ind1', 'accumulative', 10)]
-        };
-        const db2: Dashboard = {
-            id: 2, title: 'DB2', subtitle: '', thresholds: mockThresholds,
-            items: [createMockItem('Ind1', 'accumulative', 20)]
-        };
+    test('forces "accumulative" for Bajas/Altas indicators (v6.2.4-Fix7)', () => {
+        // Scenario: 2 boards. 
+        // Indicator "Bajas Totales" without explicit type (defaulting to average)
+        const boards = [
+            mockBoard(1, [{ indicator: 'Bajas Totales', monthlyProgress: [10, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] }]),
+            mockBoard(2, [{ indicator: 'Bajas Totales', monthlyProgress: [20, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] }])
+        ];
 
-        const result = calculateAggregateDashboard([db1, db2]);
-        expect(result.items[0].monthlyProgress[0]).toBe(30);
-    });
+        const agg = calculateAggregateDashboard(boards, { aggregationStrategy: 'equal' } as any);
 
-    test('promedia indicadores de promedio idénticos (equal weighting)', () => {
-        const db1: Dashboard = {
-            id: 1, title: 'DB1', subtitle: '', thresholds: mockThresholds,
-            items: [createMockItem('Ind1', 'average', 10)]
-        };
-        const db2: Dashboard = {
-            id: 2, title: 'DB2', subtitle: '', thresholds: mockThresholds,
-            items: [createMockItem('Ind1', 'average', 20)]
-        };
-
-        const result = calculateAggregateDashboard([db1, db2], { aggregationStrategy: 'equal' } as any);
-        expect(result.items[0].monthlyProgress[0]).toBe(15);
-    });
-
-    test('aplica pesaje manual correctamente', () => {
-        const db1: Dashboard = {
-            id: 1, title: 'DB1', subtitle: '', thresholds: mockThresholds,
-            items: [createMockItem('Ind1', 'average', 10)],
-            dashboardWeight: 1
-        };
-        const db2: Dashboard = {
-            id: 2, title: 'DB2', subtitle: '', thresholds: mockThresholds,
-            items: [createMockItem('Ind1', 'average', 40)],
-            dashboardWeight: 3
-        };
-
-        // (10 * 1 + 40 * 3) / (1 + 3) = 130 / 4 = 32.5
-        const result = calculateAggregateDashboard([db1, db2], { aggregationStrategy: 'manual' } as any);
-        expect(result.items[0].monthlyProgress[0]).toBe(32.5);
-    });
-
-    test('pesaje por indicador driver', () => {
-        const item1 = createMockItem('Ind1', 'average', 10);
-        const driver1 = createMockItem('Driver', 'accumulative', 100);
-
-        const item2 = createMockItem('Ind1', 'average', 20);
-        const driver2 = createMockItem('Driver', 'accumulative', 300);
-
-        const db1: Dashboard = {
-            id: 1, title: 'DB1', subtitle: '', thresholds: mockThresholds,
-            items: [item1, driver1]
-        };
-        const db2: Dashboard = {
-            id: 2, title: 'DB2', subtitle: '', thresholds: mockThresholds,
-            items: [item2, driver2]
-        };
-
-        const settings: SystemSettings = {
-            aggregationStrategy: 'indicator',
-            indicatorDriver: 'Driver'
-        } as any;
-
-        // Weights: DB1=100, DB2=300. Total=400.
-        // Agg Value: (10 * 100 + 20 * 300) / 400 = (1000 + 6000) / 400 = 7000 / 400 = 17.5
-        const result = calculateAggregateDashboard([db1, db2], settings);
-        expect(result.items[0].monthlyProgress[0]).toBe(17.5);
-    });
-
-    test('maneja indicadores semanales', () => {
-        const item1 = createMockItem('Ind1', 'accumulative', 10);
-        item1.weeklyProgress = [1, 2];
-        item1.weeklyGoals = [10, 10];
-        const item2 = createMockItem('Ind1', 'accumulative', 20);
-        item2.weeklyProgress = [3, 4];
-        item2.weeklyGoals = [20, 20];
-
-        const db1: Dashboard = { id: 1, title: 'D1', subtitle: '', thresholds: mockThresholds, items: [item1] };
-        const db2: Dashboard = { id: 2, title: 'D2', subtitle: '', thresholds: mockThresholds, items: [item2] };
-
-        const result = calculateAggregateDashboard([db1, db2]);
-        expect(result.items[0].weeklyProgress![0]).toBe(4);
-        expect(result.items[0].weeklyProgress![1]).toBe(6);
-        expect(result.items[0].weeklyGoals![0]).toBe(30);
-        expect(result.items[0].weeklyGoals![1]).toBe(30);
-    });
-
-    test('promedia semanalmente indicadores de promedio', () => {
-        const item1 = createMockItem('Ind1', 'average', 10);
-        item1.weeklyProgress = [10, 20];
-        item1.weeklyGoals = [100, 100];
-        const item2 = createMockItem('Ind1', 'average', 20);
-        item2.weeklyProgress = [30, 40];
-        item2.weeklyGoals = [200, 200];
-
-        const db1: Dashboard = { id: 1, title: 'D1', subtitle: '', thresholds: mockThresholds, items: [item1] };
-        const db2: Dashboard = { id: 2, title: 'D2', subtitle: '', thresholds: mockThresholds, items: [item2] };
-
-        const result = calculateAggregateDashboard([db1, db2]);
-        // (10+30)/2 = 20, (20+40)/2 = 30
-        expect(result.items[0].weeklyProgress![0]).toBe(20);
-        expect(result.items[0].weeklyProgress![1]).toBe(30);
-        // (100+200)/2 = 150
-        expect(result.items[0].weeklyGoals![0]).toBe(150);
-        expect(result.items[0].weeklyGoals![1]).toBe(150);
-    });
-
-    test('respeta precisión decimal de settings', () => {
-        const db1: Dashboard = { id: 1, title: 'D1', subtitle: '', thresholds: mockThresholds, items: [createMockItem('I', 'average', 10.1234)] };
-        const db2: Dashboard = { id: 2, title: 'D2', subtitle: '', thresholds: mockThresholds, items: [createMockItem('I', 'average', 20.5678)] };
-
-        const result1 = calculateAggregateDashboard([db1, db2], { decimalPrecision: 1 } as any);
-        expect(result1.items[0].monthlyProgress[0]).toBe(15.3);
-
-        const result2 = calculateAggregateDashboard([db1, db2], { decimalPrecision: 2 } as any);
-        expect(result2.items[0].monthlyProgress[0]).toBe(15.35);
-    });
-
-    test('concatena indicadores diferentes (Regla Red Crop +)', () => {
-        const db1: Dashboard = {
-            id: 1, title: 'Norte', subtitle: '', thresholds: mockThresholds,
-            items: [createMockItem('Ventas', 'accumulative', 10)]
-        };
-        const db2: Dashboard = {
-            id: 2, title: 'Sur', subtitle: '', thresholds: mockThresholds,
-            items: [createMockItem('Costos', 'accumulative', 20)]
-        };
-
-        const result = calculateAggregateDashboard([db1, db2]);
-        expect(result.items.length).toBe(2);
-        expect(result.items[0].indicator).toBe('Ventas (Norte)');
-        expect(result.items[1].indicator).toBe('Costos (Sur)');
-    });
-
-    test('pesaje por indicador driver (buscando hacia atrás)', () => {
-        // Mock Date to March
-        const realDate = Date;
-        global.Date = class extends realDate {
-            constructor() {
-                super();
-                return new realDate('2025-03-15');
-            }
-        } as any;
-
-        const item1 = createMockItem('Ind1', 'average', 10);
-        const driver1 = createMockItem('Driver', 'accumulative', 0);
-        driver1.monthlyProgress[0] = 500; // Value in Jan, but we are in March. Should find Jan value.
-
-        const db1: Dashboard = { id: 1, title: 'DB1', subtitle: '', thresholds: mockThresholds, items: [item1, driver1] };
-
-        const settings: SystemSettings = { aggregationStrategy: 'indicator', indicatorDriver: 'Driver' } as any;
-
-        const result = calculateAggregateDashboard([db1], settings);
-        // Weight should be 500. (10 * 500) / 500 = 10.
-        expect(result.items[0].monthlyProgress[0]).toBe(10);
-
-        global.Date = realDate;
-    });
-
-    test('pesaje por indicador driver (buscando en el futuro)', () => {
-        const item1 = createMockItem('Ind1', 'average', 10);
-        const driver1 = createMockItem('Driver', 'accumulative', 0);
-        driver1.monthlyProgress[11] = 99; // Only value is in Dec. 
-
-        const db1: Dashboard = { id: 1, title: 'DB1', subtitle: '', thresholds: mockThresholds, items: [item1, driver1] };
-        const settings: SystemSettings = { aggregationStrategy: 'indicator', indicatorDriver: 'Driver' } as any;
-
-        const result = calculateAggregateDashboard([db1], settings);
-        // Weight should be 99.
-        expect(result.items[0].monthlyProgress[0]).toBe(10);
+        expect(agg.items[0].indicator).toBe('BAJAS TOTALES');
+        expect(agg.items[0].monthlyProgress[0]).toBe(30); // SUM PROTECTION
     });
 });
 

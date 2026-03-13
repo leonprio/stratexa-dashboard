@@ -18,13 +18,52 @@ interface DashboardRowProps {
   isAggregate?: boolean;
   isSelected?: boolean;
   onSelect?: () => void;
-  decimalPrecision?: 1 | 2;
+  decimalPrecision?: 0 | 1 | 2;
   allDashboardItems?: DashboardItem[];
 }
 
-export const DashboardRow: React.FC<DashboardRowProps> = React.memo(({ item, onUpdateItem, globalThresholds, userRoleForDashboard, layout = 'grid', year, isAggregate = false, isSelected = false, onSelect, decimalPrecision = 2 as 1 | 2, allDashboardItems = [] }) => {
+export const DashboardRow: React.FC<DashboardRowProps> = React.memo(({ item, onUpdateItem, globalThresholds, userRoleForDashboard, layout = 'grid', year, isAggregate = false, isSelected = false, onSelect, decimalPrecision = 2 as 0 | 1 | 2, allDashboardItems = [] }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+
+  const { currentProgress, currentTarget, overallPercentage, complianceStatus } = useMemo(() => {
+    if (!item || !item.indicator) return { currentProgress: 0, currentTarget: 0, overallPercentage: 0, complianceStatus: 'Neutral' };
+    return calculateCompliance(item, globalThresholds, year, 'realTime', allDashboardItems);
+  }, [item, globalThresholds, year, allDashboardItems]);
+
+  const missingDataWarning = useMemo(() => {
+    if (!item || !item.indicator) return null;
+    return getMissingMonthsWarning(item.monthlyProgress, item.monthlyGoals);
+  }, [item]);
+
+  // Solo mostrar warning de vencido si estamos en el año actual
+  const overdueWarning = useMemo(() => {
+    if (!item || !item.indicator) return null;
+    const currentYear = new Date().getFullYear();
+    if (year && year !== currentYear) return null;
+    return getOverdueWarning(item.monthlyProgress, item.monthlyGoals);
+  }, [item, year]);
+
+  const chartData = useMemo(() => {
+    if (!item || !item.indicator) return { progress: [], goals: [] };
+    const { monthlyProgress, monthlyGoals } = item;
+    const lastDataIndex = findLastIndexWithData(monthlyProgress, monthlyGoals);
+    if (lastDataIndex === -1) {
+      return { progress: [], goals: [] };
+    }
+    const sliceIndex = lastDataIndex + 1;
+    return {
+      progress: monthlyProgress.slice(0, sliceIndex),
+      goals: monthlyGoals.slice(0, sliceIndex)
+    };
+  }, [item]);
+
+  const formatNumber = useMemo(() => (num: number) => {
+    return new Intl.NumberFormat('en-US', {
+      minimumFractionDigits: decimalPrecision === 0 ? 0 : decimalPrecision === 1 ? 0 : 0,
+      maximumFractionDigits: decimalPrecision
+    }).format(num).replace(/,/g, "'");
+  }, [decimalPrecision]);
 
   // 🛡️ ACTIVE SHIELD: Blindaje contra ítems malformados
   if (!item || !item.indicator) {
@@ -36,38 +75,6 @@ export const DashboardRow: React.FC<DashboardRowProps> = React.memo(({ item, onU
   }
 
   const { indicator, unit, weight, monthlyProgress, monthlyGoals, type } = item;
-
-  const { currentProgress, currentTarget, overallPercentage, complianceStatus } = useMemo(() =>
-    calculateCompliance(item, globalThresholds, year, 'realTime', allDashboardItems),
-    [item, globalThresholds, year, allDashboardItems]);
-
-  const missingDataWarning = useMemo(() => getMissingMonthsWarning(monthlyProgress, monthlyGoals), [monthlyProgress, monthlyGoals]);
-
-  // Solo mostrar warning de vencido si estamos en el año actual
-  const overdueWarning = useMemo(() => {
-    const currentYear = new Date().getFullYear();
-    if (year && year !== currentYear) return null;
-    return getOverdueWarning(monthlyProgress, monthlyGoals);
-  }, [monthlyProgress, monthlyGoals, year]);
-
-  const chartData = useMemo(() => {
-    const lastDataIndex = findLastIndexWithData(monthlyProgress, monthlyGoals);
-    if (lastDataIndex === -1) {
-      return { progress: [], goals: [] };
-    }
-    const sliceIndex = lastDataIndex + 1;
-    return {
-      progress: monthlyProgress.slice(0, sliceIndex),
-      goals: monthlyGoals.slice(0, sliceIndex)
-    };
-  }, [monthlyProgress, monthlyGoals]);
-
-  const formatNumber = useMemo(() => (num: number) => {
-    return new Intl.NumberFormat('es-MX', {
-      minimumFractionDigits: 0,
-      maximumFractionDigits: decimalPrecision
-    }).format(num);
-  }, [decimalPrecision]);
 
   // Handle Compact Layout Rendering
   if (layout === 'compact' && !isExpanded) {
@@ -143,6 +150,7 @@ export const DashboardRow: React.FC<DashboardRowProps> = React.memo(({ item, onU
     setIsEditing(false);
   };
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const handleSavePlan = (rows: any[]) => {
     onUpdateItem({ ...item, paiRows: rows });
   };
@@ -214,13 +222,13 @@ export const DashboardRow: React.FC<DashboardRowProps> = React.memo(({ item, onU
           </div>
 
           <div className="mt-8 space-y-4">
-            <ProgressBar percentage={overallPercentage} status={complianceStatus} />
+            <ProgressBar percentage={overallPercentage} status={complianceStatus as any} />
           </div>
         </div>
       </div>
 
       {isExpanded && (
-        <div className="p-4 sm:p-5 border-t border-slate-700/50 bg-slate-900/30 rounded-b-xl">
+        <div className="p-3 sm:p-4 border-t border-slate-700/50 bg-slate-900/30 rounded-b-xl">
           {isEditing ? (
             <DataEditor
               item={item}
@@ -261,13 +269,13 @@ export const DashboardRow: React.FC<DashboardRowProps> = React.memo(({ item, onU
                 </div>
               )}
 
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 lg:gap-6">
                 <LineChart
                   progressData={chartData.progress}
                   goalData={chartData.goals}
                   unit={unit}
                   type={type}
-                  status={complianceStatus}
+                  status={complianceStatus as any}
                   indicator={indicator}
                 />
                 <SummaryDetails

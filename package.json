@@ -1,7 +1,7 @@
 {
   "name": "stratexa-iapriori",
   "private": true,
-  "version": "6.0.1-AUDIT",
+  "version": "7.8.31",
   "type": "module",
   "scripts": {
     "dev": "vite",

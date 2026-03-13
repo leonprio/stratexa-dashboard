@@ -242,7 +242,7 @@ export const ActivityManager: React.FC<ActivityManagerProps> = ({
                                 className="px-12 py-5 bg-emerald-600 hover:bg-emerald-500 text-white font-black rounded-2xl shadow-2xl shadow-emerald-900/40 transition-all uppercase tracking-[0.2em] text-sm active:scale-95 flex items-center gap-3"
                                 aria-label="Confirmar y guardar cambios definitivos de todas las actividades"
                             >
-                                <span aira-hidden="true">💾</span>
+                                <span aria-hidden="true">💾</span>
                                 GUARDAR CAMBIOS DEFINITIVOS
                             </button>
                         </div>

@@ -12,7 +12,7 @@ interface ReportCenterProps {
     year?: number;
     allDashboards?: any[];
     currentDashboardId?: number | string;
-    onEditItem?: (id: number) => void;
+    onEditItem?: (id: number | string) => void;
     onClose?: () => void;
     user: User;
 }

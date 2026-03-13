@@ -1,3 +1,10 @@
+/**
+ * Definiciones de tipos y enumeraciones para el ecosistema Stratexa.
+ * Incluye interfaces para KPIs, Tableros, Usuarios y Configuraciones de Sistema.
+ * 
+ * @module Types
+ * @version v7.8.29-UX-ELITE
+ */
 
 export interface ComplianceThresholds {
   onTrack: number;
@@ -31,9 +38,15 @@ export interface Client {
   settings: SystemSettings;
 }
 
+/**
+ * Represents a single KPI / Indicator within a Dashboard.
+ * Includes data arrays for goals and progress, metadata for calculations,
+ * and support for complex nested structures (compound, formulas).
+ */
 export interface DashboardItem {
-  id: number;
+  id: number | string;
   indicator: string;
+  order?: number; // 🚀 V6.2.1: Persist visual order
   weight: number; // Ponderación del indicador en porcentaje
   frequency?: 'monthly' | 'weekly';
   weeklyGoals?: (number | null)[]; // Up to 53 weeks
@@ -62,6 +75,8 @@ export interface DashboardItem {
   indicatorType?: 'simple' | 'compound' | 'formula';
   componentIds?: (number | string)[]; // IDs de otros indicadores que alimentan este (para compound/formula)
   formula?: string; // Ecuación aritmética: e.g. "({id:101} + {id:102}) / 2"
+  alertThreshold?: number; // 🔔 FIX v6.1.9
+  alertUnit?: string; // 🔔 FIX v6.1.9
 
   // 🚀 MODO ACTIVIDADES (v3.5.0)
   isActivityMode?: boolean;
@@ -75,6 +90,10 @@ export interface DashboardItem {
   };
 }
 
+/**
+ * Represents a logical group of indicators, typically mapped to a person, area, or global synthesis.
+ * Can be physical (stored in DB) or virtual (calculated dynamically on the fly).
+ */
 export interface Dashboard {
   periodicity?: 'weekly' | 'monthly';
   id: number | string;
@@ -92,6 +111,7 @@ export interface Dashboard {
   isAggregate?: boolean; // Indica si es un tablero consolidado
   // 🏢 SISTEMA DE ÁREAS (v5.0.0)
   area?: string; // Área de negocio (ej: 'OPERACIONES', 'TALENTO Y CULTURA')
+  superGroup?: string; // 🏢 NIVEL 4: Grupo de Grupos (v7.2.1)
   isHierarchyRoot?: boolean; // Indica si es un grupo de nivel superior (v5.1.0)
   targetIndicatorCount?: number; // Meta manual de cuántos indicadores deben estar capturados (v5.5.3)
 }
@@ -110,6 +130,10 @@ export enum DashboardRole {
   Viewer = 'Viewer',
 }
 
+/**
+ * Represents an authenticated user in the Stratexa system.
+ * Contains both global authorization levels and fine-grained dashboard access.
+ */
 export interface User {
   id: string;
   name: string;
@@ -123,5 +147,6 @@ export interface User {
   };
   directorTitle?: string; // Título personalizado para el Director (ej: "Dirección Centro")
   subGroups?: string[]; // Para "Grupos de Grupos" (v2.3.0) (ej: ["Dir Norte", "Dir Sur"])
+  superGroups?: string[]; // 🏢 NIVEL 4: Grupos de Grupos permitidos (v7.2.1)
   group?: string; // Legacy fallback
 }

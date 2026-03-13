@@ -25,7 +25,8 @@ const UserRow = ({ user, dashboards, isCurrentUser, isGlobalAdmin, onAccessChang
     const safeUser = {
         ...user,
         dashboardAccess: user.dashboardAccess || {},
-        subGroups: user.subGroups || []
+        subGroups: user.subGroups || [],
+        superGroups: user.superGroups || []
     };
 
     // De-duplicación visual de sub-grupos para el renderizado
@@ -38,6 +39,26 @@ const UserRow = ({ user, dashboards, isCurrentUser, isGlobalAdmin, onAccessChang
             return true;
         });
     }, [safeUser.subGroups]);
+
+    const displaySuperGroups = useMemo(() => {
+        const seen = new Set<string>();
+        return (safeUser.superGroups || []).filter(g => {
+            const norm = normalizeGroupName(g);
+            if (seen.has(norm)) return false;
+            seen.add(norm);
+            return true;
+        });
+    }, [safeUser.superGroups]);
+
+    // Descubrir supergrupos disponibles de la lista de tableros
+    const availableSuperGroups = useMemo(() => {
+        const set = new Set<string>();
+        dashboards.forEach(d => {
+            const sg = (d as any).superGroup;
+            if (sg && sg.trim()) set.add(sg.trim().toUpperCase());
+        });
+        return Array.from(set).sort();
+    }, [dashboards]);
 
     return (
         <tr className="group hover:bg-slate-900/50 transition-colors">
@@ -106,13 +127,13 @@ const UserRow = ({ user, dashboards, isCurrentUser, isGlobalAdmin, onAccessChang
 
                             <div className="relative group/subgroups">
                                 <div className="flex justify-between items-center mb-1">
-                                    <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest block">Supervisa Grupos</span>
+                                    <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest block">Supervisa Grupos (Nivel 3)</span>
                                     {!isCurrentUser && (
                                         <button
                                             onClick={() => onUpdateUser({ ...safeUser, subGroups: [] })}
                                             className="text-[8px] font-black text-rose-500 uppercase hover:text-rose-400 transition-colors"
                                         >
-                                            Limpiar Todo
+                                            Limpiar
                                         </button>
                                     )}
                                 </div>
@@ -124,12 +145,12 @@ const UserRow = ({ user, dashboards, isCurrentUser, isGlobalAdmin, onAccessChang
                                         displaySubGroups.map(g => (
                                             <span key={g} className="inline-block bg-cyan-500/15 text-cyan-400 px-2 py-0.5 rounded text-[8px] font-black border border-cyan-500/30 mr-1 mb-1">{g}</span>
                                         ))
-                                    ) : <span className="text-slate-600 italic">Ninguno seleccionado</span>}
+                                    ) : <span className="text-slate-600 italic text-[8px]">Nivel 3 Vacío</span>}
                                 </button>
 
                                 {!isCurrentUser && (
                                     <div className="hidden group-hover/subgroups:block absolute left-0 bottom-full mb-2 z-[100] w-72 bg-slate-900 border border-slate-600 rounded-xl shadow-3xl p-3 max-h-64 overflow-y-auto ring-1 ring-cyan-500/30">
-                                        <p className="text-[10px] font-black text-cyan-500 uppercase mb-3 pb-2 border-b border-white/5">Seleccionar Grupos de Supervisión</p>
+                                        <p className="text-[10px] font-black text-cyan-500 uppercase mb-3 pb-2 border-b border-white/5">Seleccionar Grupos (Nivel 3)</p>
                                         <div className="space-y-1">
                                             {availableGroups.length > 0 ? availableGroups.map(g => {
                                                 const normG = normalizeGroupName(g);
@@ -143,13 +164,11 @@ const UserRow = ({ user, dashboards, isCurrentUser, isGlobalAdmin, onAccessChang
                                                                 const current = safeUser.subGroups || [];
                                                                 let newGroups;
                                                                 if (e.target.checked) {
-                                                                    // 🔥 PREVENT DUPLICATES: Filter out any existing version of the same normalized group before adding
                                                                     const filtered = current.filter(x => normalizeGroupName(x) !== normG);
                                                                     newGroups = [...filtered, g];
                                                                 } else {
                                                                     newGroups = current.filter(x => normalizeGroupName(x) !== normG);
                                                                 }
-                                                                // Final safeguard de-duplication
                                                                 const deduplicated = Array.from(new Map<string, string>(newGroups.map(x => [normalizeGroupName(x), x] as [string, string])).values());
                                                                 onUpdateUser({ ...safeUser, subGroups: deduplicated });
                                                             }}
@@ -158,7 +177,56 @@ const UserRow = ({ user, dashboards, isCurrentUser, isGlobalAdmin, onAccessChang
                                                         <span className={`text-xs font-bold ${isSelected ? 'text-white' : 'text-slate-400'}`}>{g}</span>
                                                     </label>
                                                 );
-                                            }) : <p className="text-xs text-slate-600 text-center py-4 italic">No hay grupos definidos</p>}
+                                            }) : <p className="text-xs text-slate-600 text-center py-4 italic">No hay grupos</p>}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* 🏢 NUEVO GESTOR DE SUPERGRUPOS (NIVEL 4) */}
+                            <div className="relative group/supergroups">
+                                <div className="flex justify-between items-center mb-1">
+                                    <span className="text-[8px] font-black text-rose-500 uppercase tracking-widest block">Supervisa Grupo de Grupos (Nivel 4)</span>
+                                </div>
+                                <button
+                                    disabled={isCurrentUser}
+                                    className="w-full text-left bg-slate-950 border border-slate-700 rounded-lg px-2 py-1.5 text-[9px] text-slate-300 min-h-[30px] flex items-center gap-1.5 flex-wrap overflow-hidden hover:border-rose-500/50 transition-all font-bold"
+                                >
+                                    {displaySuperGroups.length > 0 ? (
+                                        displaySuperGroups.map(g => (
+                                            <span key={g} className="inline-block bg-rose-500/15 text-rose-400 px-2 py-0.5 rounded text-[8px] font-black border border-rose-500/30 mr-1 mb-1">{g}</span>
+                                        ))
+                                    ) : <span className="text-slate-600 italic text-[8px]">Nivel 4 Vacío</span>}
+                                </button>
+
+                                {!isCurrentUser && availableSuperGroups.length > 0 && (
+                                    <div className="hidden group-hover/supergroups:block absolute left-0 bottom-full mb-2 z-[100] w-72 bg-slate-900 border border-slate-600 rounded-xl shadow-3xl p-3 max-h-64 overflow-y-auto ring-1 ring-rose-500/30">
+                                        <p className="text-[10px] font-black text-rose-500 uppercase mb-3 pb-2 border-b border-white/5">Seleccionar Grupo de Grupos (Nivel 4)</p>
+                                        <div className="space-y-1">
+                                            {availableSuperGroups.map(sg => {
+                                                const normSG = normalizeGroupName(sg);
+                                                const isSelected = (safeUser.superGroups || []).some(x => normalizeGroupName(x) === normSG);
+                                                return (
+                                                    <label key={sg} className={`flex items-center gap-3 p-2 rounded-lg cursor-pointer transition-all ${isSelected ? 'bg-rose-500/10' : 'hover:bg-white/5'}`}>
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={isSelected}
+                                                            onChange={(e) => {
+                                                                const current = safeUser.superGroups || [];
+                                                                let next;
+                                                                if (e.target.checked) {
+                                                                    next = [...current.filter(x => normalizeGroupName(x) !== normSG), sg];
+                                                                } else {
+                                                                    next = current.filter(x => normalizeGroupName(x) !== normSG);
+                                                                }
+                                                                onUpdateUser({ ...safeUser, superGroups: next });
+                                                            }}
+                                                            className="w-4 h-4 rounded bg-slate-950 border-slate-600 text-rose-500 focus:ring-0"
+                                                        />
+                                                        <span className={`text-xs font-bold ${isSelected ? 'text-white' : 'text-slate-400'}`}>{sg}</span>
+                                                    </label>
+                                                );
+                                            })}
                                         </div>
                                     </div>
                                 )}
@@ -373,7 +441,8 @@ export const UserManager = ({ users, dashboards, currentUser, activeClientId, on
                 clientId: activeClientId,
                 dashboardAccess: {},
                 directorTitle: (newUserRole === GlobalUserRole.Director ? "DIRECTOR" : ""),
-                subGroups: []
+                subGroups: [],
+                superGroups: []
             };
 
             await firebaseService.saveUser(userToSave);
@@ -394,7 +463,11 @@ export const UserManager = ({ users, dashboards, currentUser, activeClientId, on
             for (const u of localUsers) {
                 const rawSubGroups = u.subGroups || [];
                 const cleanedSubGroups = Array.from(new Map<string, string>(rawSubGroups.map(x => [normalizeGroupName(x), x] as [string, string])).values());
-                await firebaseService.updateUser({ ...u, subGroups: cleanedSubGroups });
+
+                const rawSuperGroups = u.superGroups || [];
+                const cleanedSuperGroups = Array.from(new Map<string, string>(rawSuperGroups.map(x => [normalizeGroupName(x), x] as [string, string])).values());
+
+                await firebaseService.updateUser({ ...u, subGroups: cleanedSubGroups, superGroups: cleanedSuperGroups });
             }
             onSave(localUsers);
             setTimeout(() => onCancel(), 1000);

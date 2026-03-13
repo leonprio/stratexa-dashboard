@@ -7,9 +7,10 @@ interface DashboardMetadataModalProps {
     currentSubtitle: string;
     currentGroup?: string;
     currentArea?: string;
+    currentSuperGroup?: string;
     currentTargetIndicatorCount?: number;
     totalIndicatorsCount?: number;
-    onSave: (newTitle: string, newSubtitle: string, newGroup: string, newArea: string, targetIndicatorCount?: number) => Promise<void>;
+    onSave: (newTitle: string, newSubtitle: string, newGroup: string, newArea: string, superGroup?: string, targetIndicatorCount?: number) => Promise<void>;
     existingGroups: string[];
     groupLabel: string;
     dashboardLabel: string;
@@ -22,6 +23,7 @@ export const DashboardMetadataModal: React.FC<DashboardMetadataModalProps> = ({
     currentSubtitle,
     currentGroup,
     currentArea,
+    currentSuperGroup,
     currentTargetIndicatorCount,
     totalIndicatorsCount,
     onSave,
@@ -33,6 +35,7 @@ export const DashboardMetadataModal: React.FC<DashboardMetadataModalProps> = ({
     const [subtitle, setSubtitle] = useState(currentSubtitle);
     const [group, setGroup] = useState(currentGroup || '');
     const [area, setArea] = useState(currentArea || '');
+    const [superGroup, setSuperGroup] = useState(currentSuperGroup || '');
     const [targetIndicatorCount, setTargetIndicatorCount] = useState<string>(currentTargetIndicatorCount?.toString() || '');
     const [isSaving, setIsSaving] = useState(false);
 
@@ -42,9 +45,10 @@ export const DashboardMetadataModal: React.FC<DashboardMetadataModalProps> = ({
             setSubtitle(currentSubtitle);
             setGroup(currentGroup || '');
             setArea(currentArea || '');
+            setSuperGroup(currentSuperGroup || '');
             setTargetIndicatorCount(currentTargetIndicatorCount?.toString() || '');
         }
-    }, [isOpen, currentTitle, currentSubtitle, currentGroup, currentArea, currentTargetIndicatorCount]);
+    }, [isOpen, currentTitle, currentSubtitle, currentGroup, currentArea, currentSuperGroup, currentTargetIndicatorCount]);
 
     const handleSave = async () => {
         if (!title.trim()) {
@@ -54,7 +58,7 @@ export const DashboardMetadataModal: React.FC<DashboardMetadataModalProps> = ({
         setIsSaving(true);
         try {
             const numericTarget = targetIndicatorCount === '' ? undefined : parseInt(targetIndicatorCount, 10);
-            await onSave(title.trim(), subtitle.trim(), group.trim(), area.trim().toUpperCase(), numericTarget);
+            await onSave(title.trim(), subtitle.trim(), group.trim(), area.trim().toUpperCase(), superGroup.trim().toUpperCase(), numericTarget);
             onClose();
         } catch (error) {
             console.error("Error saving metadata:", error);
@@ -147,6 +151,23 @@ export const DashboardMetadataModal: React.FC<DashboardMetadataModalProps> = ({
                         />
                         <p className="text-[10px] text-slate-500 mt-1">
                             El &quot;Sistema de Áreas&quot; permite sincronizar KPIs solo entre tableros del mismo área.
+                        </p>
+                    </div>
+
+                    {/* SuperGroup Input (Grupo de Grupos) */}
+                    <div>
+                        <label className="block text-xs font-bold text-rose-500 uppercase tracking-wider mb-1.5 flex items-center justify-between">
+                            <span>🏢 Grupo de Grupos (Nivel 4)</span>
+                        </label>
+                        <input
+                            type="text"
+                            value={superGroup}
+                            onChange={(e) => setSuperGroup(e.target.value.toUpperCase())}
+                            className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white focus:ring-2 focus:ring-rose-500 outline-none transition-all placeholder:text-slate-600 uppercase"
+                            placeholder='Ej: "ZONA NORTE", "ZONA SUR"'
+                        />
+                        <p className="text-[10px] text-slate-500 mt-1">
+                            Agrupa múltiples grupos bajo una entidad superior (ej: una Región).
                         </p>
                     </div>
 

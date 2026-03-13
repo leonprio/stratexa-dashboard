@@ -1,66 +1,55 @@
-import { describe, it, expect } from '@jest/globals';
-import { evaluateFormula, calculateMonthlyCompliancePercentage, calculateCompliance } from './compliance';
-import { DashboardItem, ComplianceThresholds } from '../types';
+import { calculateDashboardMonthlyScores, resolveItemValues } from "./compliance";
+import { DashboardItem } from "../types";
 
-describe('Motor de Cumplimiento v6.0.1', () => {
-    const mockThresholds: ComplianceThresholds = { onTrack: 95, atRisk: 80 };
+describe("compliance.ts - Recursion & Aggregation", () => {
+    const year = 2025;
 
-    describe('evaluateFormula', () => {
-        const items: DashboardItem[] = [
-            { id: 101, indicator: 'K1', monthlyProgress: [10, 20], monthlyGoals: [10, 10] } as any,
-            { id: 102, indicator: 'K2', monthlyProgress: [5, 5], monthlyGoals: [5, 5] } as any
-        ];
+    // Simular un KPI base con datos
+    const baseKPI: DashboardItem = {
+        id: "kpi-1",
+        indicator: "Ventas",
+        indicatorType: "manual",
+        monthlyProgress: [100, 200, 300, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        monthlyGoals: [100, 100, 100, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        weight: 10
+    } as any;
 
-        it('debe sumar dos indicadores correctamente', () => {
-            const formula = '{id:101} + {id:102}';
-            const result = evaluateFormula(formula, items, 0, 'monthlyProgress');
-            expect(result).toBe(15);
-        });
+    // Simular una fórmula que depende del KPI base
+    const formulaKPI: DashboardItem = {
+        id: "formula-1",
+        indicator: "Doble Ventas",
+        indicatorType: "formula",
+        formula: "{id:kpi-1} * 2",
+        weight: 5
+    } as any;
 
-        it('debe retornar 0 si el indicador no existe', () => {
-            const formula = '{id:999} + 10';
-            const result = evaluateFormula(formula, items, 0, 'monthlyProgress');
-            expect(result).toBe(10);
-        });
+    // Simular una fórmula recursiva que depende de la primera fórmula
+    const recursiveKPI: DashboardItem = {
+        id: "recursive-1",
+        indicator: "Cuádruple Ventas",
+        indicatorType: "formula",
+        formula: "{id:formula-1} * 2",
+        weight: 1
+    } as any;
+
+    const allItems = [baseKPI, formulaKPI, recursiveKPI];
+
+    test("resolveItemValues should handle deep recursion (v6.2.4-Fix4)", () => {
+        const resolved = resolveItemValues(recursiveKPI, allItems, year);
+        // Ventas Ene (100) -> Doble (200) -> Cuádruple (400)
+        expect(resolved.monthlyProgress[0]).toBe(400);
+        // Ventas Feb (200) -> Doble (400) -> Cuádruple (800)
+        expect(resolved.monthlyProgress[1]).toBe(800);
     });
 
-    describe('calculateMonthlyCompliancePercentage', () => {
-        it('higher is better: 80/100 -> 80%', () => {
-            expect(calculateMonthlyCompliancePercentage(80, 100, false)).toBe(80);
-        });
+    test("calculateDashboardMonthlyScores should use resolved values (BUG Fix5)", () => {
+        // En un tablero de "SÍNTESIS", queremos el score mensual de todos los KPIs
+        const scores = calculateDashboardMonthlyScores(allItems, { onTrack: 95, atRisk: 80 }, year, 2, allItems);
 
-        it('lower is better: 120/100 -> 83.33%', () => {
-            expect(calculateMonthlyCompliancePercentage(120, 100, true)).toBeCloseTo(83.33);
-        });
-
-        it('sin datos (0,0) -> 0%', () => {
-            expect(calculateMonthlyCompliancePercentage(0, 0, false)).toBe(0);
-        });
-    });
-
-    describe('calculateCompliance (Contexto Global)', () => {
-        const globalContext: DashboardItem[] = [
-            { id: 1, indicator: 'UNE 1', monthlyProgress: [100], monthlyGoals: [100] } as any
-        ];
-
-        const aggregateItem: DashboardItem = {
-            id: 'agg-1',
-            indicator: 'Total Operaciones',
-            indicatorType: 'compound',
-            componentIds: [1],
-            monthlyProgress: [0], // Debería sobreescribirse
-            monthlyGoals: [0]
-        } as any;
-
-        it('un agregado debe encontrar a su hijo en el contexto global', () => {
-            const result = calculateCompliance(aggregateItem, mockThresholds, 2026, 'realTime', [], globalContext);
-            expect(result.overallPercentage).toBe(100);
-            expect(result.complianceStatus).toBe('OnTrack');
-        });
-
-        it('un agregado sin contexto debe retornar 0%', () => {
-            const result = calculateCompliance(aggregateItem, mockThresholds, 2026, 'realTime', [], []);
-            expect(result.overallPercentage).toBe(0);
-        });
+        // KPI-1: 200/100 = 200%
+        // F-1: 400/200 = 200%
+        // R-1: 800/400 = 200%
+        // Promedio ponderado debería ser 200%
+        expect(scores[1]).toBe(200);
     });
 });

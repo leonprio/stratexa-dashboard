@@ -1,21 +1,110 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Regla por defecto: Denegar todo acceso no autenticado
-    match /{document=**} {
-      allow read, write: if request.auth != null;
+
+    // --- 🛡️ NUCLEAR ISOLATION FUNCTIONS ---
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Validador de Super Admin Hardcodeado
+    function isSuperAdmin() {
+      return request.auth != null && request.auth.token.email in [
+        'leon@leonprior.com',
+        'leonprior@gmail.com',
+        'admin-backup@prior.com',
+        'admin@test.com'
+      ];
+    }
+
+    // Validador de Pertenencia: Un usuario solo accede a su propia burbuja o si es SuperAdmin
+    function isTableroUser() {
+      return isSuperAdmin() || exists(/databases/$(database)/documents/tbl_users/$(request.auth.uid));
     }
     
-    // Colección de Usuarios: Los usuarios pueden leer y escribir su propio perfil
+    function isGobernanzaUser() {
+      return isSuperAdmin() || exists(/databases/$(database)/documents/cpx_users/$(request.auth.uid));
+    }
+    
+    function isVacantesUser() {
+      return isSuperAdmin() || exists(/databases/$(database)/documents/vac_users/$(request.auth.uid));
+    }
+    
+    function isActivadorUser() {
+      return isSuperAdmin() || exists(/databases/$(database)/documents/stx_users/$(request.auth.uid));
+    }
+
+    // --- 1. AISLAMIENTO: TABLERO (tbl_*) ---
+    match /tbl_users/{userId} {
+      allow read, write: if isAuthenticated() && (request.auth.uid == userId || isTableroUser());
+    }
+    match /tbl_dashboards/{docId} {
+      allow read, write: if isTableroUser();
+      match /items/{itemId} { allow read, write: if isTableroUser(); }
+    }
+    match /tbl_systemSettings/{id=**} { allow read, write: if isTableroUser(); }
+    match /tbl_managedClients/{id=**} { allow read, write: if isTableroUser(); }
+
+    // --- 2. AISLAMIENTO: GOBERNANZA (cpx_*) ---
+    // Gobernanza usa cpx_ para proteger su integridad
+    match /cpx_users/{userId} {
+      allow read, write: if isAuthenticated() && (request.auth.uid == userId || isGobernanzaUser());
+    }
+    match /cpx_work_plans/{id=**} { allow read, write: if isGobernanzaUser(); }
+    match /cpx_indicators/{id=**} { allow read, write: if isGobernanzaUser(); }
+    match /cpx_reports/{id=**} { allow read, write: if isGobernanzaUser(); }
+
+    // --- 3. AISLAMIENTO: VACANTES (vac_*) ---
+    // Nueva burbuja aislada de Activador
+    match /vac_users/{userId} {
+      allow read, write: if isAuthenticated() && (request.auth.uid == userId || isVacantesUser());
+    }
+    match /vac_weekly_data/{id=**} { allow read, write: if isVacantesUser(); }
+    match /vac_weekly_analysis/{id=**} { allow read, write: if isVacantesUser(); }
+    match /vac_config/{id=**} { allow read, write: if isVacantesUser(); }
+    match /vac_unes/{id=**} { allow read, write: if isVacantesUser(); }
+
+    match /stx_users/{userId} {
+      allow read, write: if isAuthenticated() && (request.auth.uid == userId || isActivadorUser());
+    }
+    match /stx_dashboards/{id=**} { allow read, write: if isActivadorUser(); }
+    match /stx_history/{id=**} { allow read, write: if isActivadorUser(); }
+    match /stx_managedClients/{id=**} { allow read, write: if isActivadorUser(); }
+    match /stx_weekly_data/{id=**} { allow read, write: if isActivadorUser(); }
+    match /stx_weekly_analysis/{id=**} { allow read, write: if isActivadorUser(); }
+    match /stx_config/{id=**} { allow read: if isAuthenticated(); allow write: if isActivadorUser(); }
+    match /stx_unes/{id=**} { allow read: if isAuthenticated(); allow write: if isActivadorUser(); }
+
+    // --- 5. COMPATIBILIDAD Y LEGACY (Bloqueo Gradual) ---
     match /users/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
-      // Permitir lectura a admins globales (necesita lógica de custom claims o lookup)
+      allow read, write: if isAuthenticated();
     }
     
-    // Tableros: Solo lectura para autenticados, escritura controlada
-    match /dashboards/{dashboardId} {
-      allow read: if request.auth != null;
-      allow write: if request.auth != null; // Refinar esto luego basado en roles
+    // Bloqueo de colecciones genéricas para evitar fugas temporalmente relajadas
+    match /dashboards/{id=**} { allow read, write: if isAuthenticated(); }
+    match /weekly_data/{id=**} { allow read, write: if isAuthenticated(); }
+    match /weekly_analysis/{id=**} { allow read, write: if isAuthenticated(); }
+    match /config/{id=**} { allow read, write: if isAuthenticated(); }
+    match /unes/{id=**} { allow read, write: if isAuthenticated(); }
+    match /systemSettings/{id=**} { allow read, write: if isAuthenticated(); }
+    match /managedClients/{id=**} { allow read, write: if isAuthenticated(); }
+    match /history/{id=**} { allow read, write: if isAuthenticated(); }
+    match /clients/{id=**} { allow read: if isAuthenticated(); }
+    match /groups/{id=**} { allow read: if isAuthenticated(); }
+    match /indicators/{id=**} { allow read: if isAuthenticated(); }
+    match /directorates/{id=**} { allow read: if isAuthenticated(); }
+    match /addresses/{id=**} { allow read: if isAuthenticated(); }
+    match /ips_config/{id=**} { allow read: if isAuthenticated(); }
+    match /ips_users/{id=**} { allow read: if isAuthenticated(); }
+    match /ips_weekly_data/{id=**} { allow read, write: if isAuthenticated(); }
+    match /ips_weekly_analysis/{id=**} { allow read, write: if isAuthenticated(); }
+
+
+    // --- 🚨 REGLA DE CIERRE NUCLEAR 🚨 ---
+    // Denegar CUALQUIER acceso que no haya sido explícitamente permitido arriba.
+    // Esto evita que una app vea las colecciones de la otra.
+    match /{document=**} {
+      allow read, write: if false;
     }
   }
 }

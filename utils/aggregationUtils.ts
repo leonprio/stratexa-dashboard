@@ -1,4 +1,5 @@
 import { Dashboard, DashboardItem, SystemSettings } from '../types';
+import { resolveItemValues, isAccumulativeIndicator, calculateCapturePct } from './compliance';
 
 // Helper para obtener el último valor válido de un array (mes actual o anterior con datos)
 const getLastValidValue = (arr: (number | null)[] | undefined): number => {
@@ -103,7 +104,8 @@ export const calculateAggregateDashboard = (
         if (!d || !d.items) return; // 🛡️ BLINDAJE v5.3.6: Saltar si el tablero está corrupto
         d.items.forEach(item => {
             if (!item || !item.indicator) return; // 🛡️ BLINDAJE v5.3.6: Saltar si el item está corrupto
-            const normName = item.indicator.trim().toUpperCase();
+            // 🛡️ FIX v6.2.4-Fix7: ROBUST NORMALIZATION (handles extra spaces and accents)
+            const normName = item.indicator.replace(/\s+/g, ' ').trim().toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
             if (!uniqueIndicators.has(normName)) {
                 uniqueIndicators.set(normName, {
                     name: item.indicator.trim().toUpperCase(),
@@ -123,8 +125,8 @@ export const calculateAggregateDashboard = (
             ...base,
             id: virtualId--,
             indicator: data.sourceBoards.length === 1 && dashboards.length > 1
-                ? `${data.representative.indicator} (${data.sourceBoards[0].board.title})`
-                : data.representative.indicator
+                ? `${data.name} (${data.sourceBoards[0].board.title})`
+                : data.name
         };
 
         // 🛡️ REGLA v5.5.9.5: Inicializar con null para auditoría real
@@ -133,19 +135,36 @@ export const calculateAggregateDashboard = (
         if (base.weeklyProgress) aggItem.weeklyProgress = new Array(53).fill(null);
         if (base.weeklyGoals) aggItem.weeklyGoals = new Array(53).fill(null);
 
-        if (aggItem.type === 'accumulative') {
+
+
+        // 🛡️ REGLA v7.8.1 (NUCLEAR RECOVERY):
+        // Usamos el helper centralizado para decidir si sumamos o promediamos.
+        const effectiveType = isAccumulativeIndicator(data.name, base.type) ? 'accumulative' : 'average';
+        aggItem.type = effectiveType; // 👈 CRÍTICO: Persistir en el objeto devuelto
+
+        if (effectiveType === 'accumulative') {
             // SUMA CON PROPAGACIÓN DE NULL
-            data.sourceBoards.forEach(({ item }) => {
-                item.monthlyProgress.forEach((v, idx) => {
+            data.sourceBoards.forEach(({ item, board }) => {
+                // 🚀 RESOLVE VALUES FIRST (v6.2.2)
+                // Esto asegura que si es 'Bajas Totales' (Compuesto), usemos el valor calculado y no el 0 de la BD.
+                const { monthlyProgress: resolvedProgress, monthlyGoals: resolvedGoals } =
+                    resolveItemValues(item, board.items, board.year || new Date().getFullYear());
+
+                resolvedProgress.forEach((v, idx) => {
                     if (idx < 12 && v !== null && v !== undefined) {
                         aggItem.monthlyProgress[idx] = (aggItem.monthlyProgress[idx] || 0) + Number(v);
                     }
                 });
-                item.monthlyGoals.forEach((v, idx) => {
+                resolvedGoals.forEach((v, idx) => {
                     if (idx < 12 && v !== null && v !== undefined) {
                         aggItem.monthlyGoals[idx] = (aggItem.monthlyGoals[idx] || 0) + Number(v);
                     }
                 });
+
+                // Weekly logic remains using raw values for now as resolveItemValues handles weekly aggregation to monthly
+                // but doesn't return computed weekly arrays yet. 
+                // ⚠️ TODO: If we need computed weekly values for aggregation, we'd need to extend resolveItemValues.
+                // For now, Bajas Totales is monthly usually.
                 if (item.weeklyProgress && aggItem.weeklyProgress) {
                     item.weeklyProgress.forEach((v, idx) => {
                         if (idx < 53 && v !== null && v !== undefined) {
@@ -173,7 +192,13 @@ export const calculateAggregateDashboard = (
                     let hasData = false;
 
                     data.sourceBoards.forEach(({ board, item }) => {
-                        const val = isProgress ? item.monthlyProgress[t] : item.monthlyGoals[t];
+                        // 🚀 RESOLVE VALUES FIRST (v7.8.1)
+                        // Indispensable para indicadores semanales que no tienen data mensual en la BD.
+                        const { monthlyProgress: resolvedProgress, monthlyGoals: resolvedGoals } =
+                            resolveItemValues(item, board.items, board.year || new Date().getFullYear());
+
+                        const arr = isProgress ? resolvedProgress : resolvedGoals;
+                        const val = arr[t];
                         if (val !== null && val !== undefined) {
                             const w = dashboardWeights.get(String(board.id)) || 0;
                             sumVal += (Number(val) * w);
@@ -239,13 +264,29 @@ export const calculateAggregateDashboard = (
         aggregatedItems.push(aggItem);
     });
 
+    // 🛡️ FIX v6.2.3: Final Sort by Order
+    // Ensure the aggregated dashboard reflects the semantic order of KPIs
+    const sortedItems = aggregatedItems.sort((a, b) => {
+        const orderA = a.order !== undefined ? a.order : 9999;
+        const orderB = b.order !== undefined ? b.order : 9999;
+        return orderA - orderB;
+    });
+
+    // 🛡️ REGLA v7.8.19: Calcular matemáticamente el porcentaje de captura del consolidado
+    let totalCapture = 0;
+    dashboards.forEach(d => {
+        totalCapture += calculateCapturePct(d);
+    });
+    const avgCapture = dashboards.length > 0 ? Math.round(totalCapture / dashboards.length) : 0;
+
     return {
         id: -1,
         title: 'Tablero General',
         subtitle: `Consolidado de ${dashboards.length} tableros`,
-        items: aggregatedItems,
+        items: sortedItems,
         thresholds: firstBoard.thresholds,
-        isAggregate: true
-    };
+        isAggregate: true,
+        capturePct: avgCapture
+    } as any;
 };
 

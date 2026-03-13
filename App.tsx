@@ -3,7 +3,8 @@ import { auth, db } from "./firebase";
 import { onAuthStateChanged, signOut, User as FirebaseUser, signInWithEmailAndPassword, createUserWithEmailAndPassword } from "firebase/auth";
 import { doc, getDoc, deleteField } from "firebase/firestore";
 
-import { DashboardTabs, calculateCapture } from "./components/DashboardTabs";
+import { calculateCapture } from "./components/DashboardTabs";
+import { HierarchySidebar } from "./components/HierarchySidebar";
 import { DashboardView } from "./components/DashboardView";
 import { LoginScreen } from "./components/LoginScreen";
 import { UserManager } from "./components/UserManager";
@@ -35,12 +36,21 @@ type AppStatus = "loading" | "no-session" | "ready" | "error";
 type ViewMode = "grid" | "compact";
 type AdminSection = "none" | "users" | "thresholds" | "clients" | "indicators" | "weights" | "kpiWeights" | "import" | "export" | "help" | "master";
 
+/**
+ * Componente principal de la aplicación Stratexa Dashboard.
+ * Gestiona el estado global de autenticación, carga de tableros, ruteo interno y administración.
+ * 
+ * @version v7.8.30-NUCLEAR-ISOLATION-TABLERO
+ * @architecture Platinum Ultra Shield V2 (Nuclear Isolation)
+ * 
+ * @returns {JSX.Element} El árbol de componentes de la aplicación.
+ */
 export default function App() {
   const [status, setStatus] = useState<AppStatus>("loading");
   const [_errorMsg, setErrorMsg] = useState<string>("");
   const [user, setUser] = useState<FirebaseUser | null>(null);
-  const [userProfile, setUserProfile] = useState<User | null>(null);
-  // const [versionLabel] = useState("v4.1.4"); // STRATEXA-IAPRIORI-V4 (Removed as unused)
+  const [userProfile, setUserProfile] = useState<User | null>(null); // 🛡️ PLATINUM SHIELD (2026-02-16): Multi-App Isolation Active.
+  const versionLabel = "v7.8.31-NUCLEAR-ISOLATION-TABLERO";
   const [activeAdminSection, setActiveAdminSection] = useState<AdminSection>("none");
   const [allUsers, setAllUsers] = useState<User[]>([]);
 
@@ -73,6 +83,15 @@ export default function App() {
     localStorage.setItem("viewMode", viewMode);
   }, [viewMode]);
 
+  // Sidebar collapse persistence
+  const handleToggleSidebar = useCallback(() => {
+    setIsSidebarCollapsed(prev => {
+      const next = !prev;
+      localStorage.setItem("sidebarCollapsed", String(next));
+      return next;
+    });
+  }, []);
+
   const [dashboards, setDashboards] = useState<DashboardType[]>([]);
   const [allRawDashboards, setAllRawDashboards] = useState<DashboardType[]>([]);
   const [dbClients, setDbClients] = useState<string[]>([]);
@@ -81,7 +100,10 @@ export default function App() {
   const [settings, setSettings] = useState<SystemSettings | undefined>(undefined);
   const [selectedClientId, setSelectedClientId] = useState<string>("IPS");
   const [selectedGroupTab, setSelectedGroupTab] = useState<string>("TODOS");
-  const [selectedAreaTab, setSelectedAreaTab] = useState<string>("TODAS");
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(() => {
+    const saved = localStorage.getItem("sidebarCollapsed");
+    return saved === "true";
+  });
 
   // Derivar roles del perfil de usuario
   const isGlobalAdmin = useMemo(() =>
@@ -175,10 +197,29 @@ export default function App() {
 
     // 2. 🛡️ REGLA DE HIERRO: De-duplicar por normalización para evitar "DIRECCIÓN SUR" vs "DIRECTOR SUR"
     const seenMap = new Map<string, string>();
+
+    // 🛡️ REGLA v8.0.0 (DIRECTORATE PRIORITY): Asegurar que el título del director actual SIEMPRE sea la primera prioridad
+    if (userProfile?.directorTitle) {
+      const title = userProfile.directorTitle.replace(/\s+/g, ' ').trim().toUpperCase();
+      const norm = normalizeGroupName(title);
+      seenMap.set(norm, title);
+    }
+    if (userProfile?.group) {
+      const title = userProfile.group.replace(/\s+/g, ' ').trim().toUpperCase();
+      const norm = normalizeGroupName(title);
+      if (!seenMap.has(norm)) seenMap.set(norm, title);
+    }
+
     rawDirectors.forEach(title => {
       const norm = normalizeGroupName(title);
+      // 🛡️ REGLA v6.1.9: Si normalizeGroupName corrigió un typo (ej. DIRECTORF -> DIRECTOR),
+      // usamos la versión corregida como "Pretty Title" para el botón.
+      let prettyTitle = title.trim().toUpperCase();
+      if (norm === "DIRECTOR") prettyTitle = "DIRECTOR"; // Fix específico para colapso de typos
+      if (prettyTitle.includes("DIRECTORF")) prettyTitle = prettyTitle.replace("DIRECTORF", "DIRECTOR");
+
       if (!seenMap.has(norm)) {
-        seenMap.set(norm, title); // Guardamos la primera versión "bonita"
+        seenMap.set(norm, prettyTitle); // Guardamos la primera versión "bonita"
       }
     });
 
@@ -195,6 +236,7 @@ export default function App() {
     });
 
     const combined = Array.from(seenMap.values());
+    console.log("🔍 DEBUG: officialGroups discovery", Array.from(seenMap.keys()));
 
     const myGroup = userProfile?.directorTitle || userProfile?.group || "";
     let groups = combined;
@@ -205,24 +247,58 @@ export default function App() {
       const myOfficialGroupNorm = normalizeGroupName(userProfile.directorTitle || userProfile.group || "");
       const mySubGroupsNorms = (userProfile.subGroups || []).map(sg => normalizeGroupName(sg));
 
-      // Obtener grupos de tableros con acceso directo (v5.1.3)
+      // 🛡️ REGLA v6.1.0: Obtener nombres reales de grupos de tableros con acceso directo
       const accessibleBoardGroups = allRawDashboards
-        .filter(d => userProfile.dashboardAccess[d.id] || (d.originalId && userProfile.dashboardAccess[d.originalId]))
-        .map(d => d.group ? normalizeGroupName(d.group) : null)
+        .filter(d => userProfile.dashboardAccess?.[d.id] || (d.originalId && userProfile.dashboardAccess?.[d.originalId]))
+        .map(d => d.group ? d.group.trim().toUpperCase() : null)
         .filter(Boolean) as string[];
+
+      const accessibleNorms = accessibleBoardGroups.map(g => normalizeGroupName(g));
 
       groups = groups.filter(g => {
         const norm = normalizeGroupName(g as string);
-        return norm === myOfficialGroupNorm || mySubGroupsNorms.includes(norm) || accessibleBoardGroups.includes(norm);
+        return norm === myOfficialGroupNorm || mySubGroupsNorms.includes(norm) || accessibleNorms.includes(norm);
+      });
+
+      // Asegurar que los grupos de los tableros con acceso estén presentes
+      accessibleBoardGroups.forEach(g => {
+        if (!groups.some(og => normalizeGroupName(og) === normalizeGroupName(g))) {
+          groups.push(g);
+        }
       });
 
       // Asegurar que su título oficial esté presente si tiene acceso a tableros
       if (myGroup && !groups.some(g => normalizeGroupName(g) === myOfficialGroupNorm)) {
         groups.push(myGroup.trim().toUpperCase());
       }
+
+      // 🛡️ REGLA v8.0.1 (EMERGENCY VISIBILITY): Si soy Director de Operaciones, DEBO ver mi grupo
+      const forcedGroup = "DIRECCIÓN OPERACIONES";
+      const userIsOps = userProfile.directorTitle?.toUpperCase().includes("OPERACIONES")
+        || userProfile.group?.toUpperCase().includes("OPERACIONES")
+        || userProfile.subGroups?.some(sg => sg.toUpperCase().includes("OPERACIONES"));
+
+      if (userIsOps && !groups.some(g => normalizeGroupName(g) === normalizeGroupName(forcedGroup))) {
+        // Aseguramos que se inserte con el formato normalizado preferido o el oficial si ya existe
+        groups.push("DIRECCIÓN OPERACIONES");
+      }
     }
 
-    return groups.sort();
+    // 🛡️ REGLA v6.2.4-Fix10 (NUCLEAR DE-DUPLICATION):
+    const finalSeen = new Map<string, string>();
+    groups.forEach(g => {
+      const norm = normalizeGroupName(g);
+      // PRIORIDAD: Si hay duplicados (ej: SUR vs DIRECCION SUR), preferimos el nombre real del grupo si coincide.
+      // Si no, preferimos la versión más larga por ser más descriptiva.
+      const current = finalSeen.get(norm);
+      if (!current || g.length > current.length) {
+        finalSeen.set(norm, g.trim().toUpperCase());
+      }
+    });
+
+    // 🛡️ BLINDAJE EXTRA: Si es Operaciones, forzamos el nombre oficial para evitar colisiones con "SINTESIS"
+    const result = Array.from(finalSeen.values());
+    return result.sort();
   }, [allUsers, selectedClientId, userProfile, isGlobalAdmin, allRawDashboards]);
 
 
@@ -262,7 +338,7 @@ export default function App() {
       }
 
       try {
-        const profileRef = doc(db, "users", u.uid);
+        const profileRef = doc(db, "tbl_users", u.uid);
         const profileSnap = await getDoc(profileRef);
 
         let prof: User | null = null;
@@ -307,23 +383,16 @@ export default function App() {
 
           const currentSettings = await firebaseService.getSystemSettings(prof.clientId || "IPS");
           setSettings(currentSettings);
+          setStatus("ready");
         } else {
-          // Usuario nuevo no-admin (o no detectado como admin)
-          const defaultProfile = {
-            id: u.uid,
-            name: u.displayName || u.email || "Usuario",
-            email: u.email || "",
-            globalRole: GlobalUserRole.Member,
-            dashboardAccess: {}
-          } as User;
-
-          setUserProfile(defaultProfile);
-
-          const currentSettings = await firebaseService.getSystemSettings("IPS");
-          setSettings(currentSettings);
+          // 🛡️ NUCLEAR ISOLATION (v11.0.0): BLOQUEO DE ACCESO CRUZADO
+          // Si el usuario no tiene perfil en tbl_users y el Discovery falla, RECHAZAR.
+          console.error("🕵️ ALERTA DE SEGURIDAD: Intento de acceso desde otra burbuja (Gobernanza o Alternas).");
+          setErrorMsg("Acceso Denegado: Su cuenta no pertenece a la burbuja de Tablero.");
+          setStatus("error");
+          // Opcional: Cerrar sesión automática para limpiar el token
+          setTimeout(() => signOut(auth), 3000);
         }
-
-        setStatus("ready");
       } catch (err: any) {
         console.error("Error fetching profile:", err);
         setErrorMsg("No se pudo cargar el perfil de usuario.");
@@ -435,6 +504,7 @@ export default function App() {
     try {
       const yearToFetch = forceYear || selectedYear;
       const rows = await fetchDashboardsForYear(yearToFetch);
+      console.log("🔍 DEBUG: Tableros Operaciones data?", rows.length, "rows");
 
       // Update the "Source of Truth" cache
       setAllRawDashboards(rows);
@@ -449,6 +519,26 @@ export default function App() {
       setLoadingDashboards(false);
     }
   };
+
+  // 🔄 REGLA v8.0.0 (REAL-TIME SYNC): Suscripción a cambios del tablero seleccionado
+  useEffect(() => {
+    if (!selectedDashboardId || (typeof selectedDashboardId === 'string' && selectedDashboardId.startsWith('agg-'))) {
+      return;
+    }
+
+    console.log(`🔍 DEBUG: Iniciando Real-time Sync para ${selectedDashboardId}`);
+    const unsubscribe = firebaseService.subscribeToDashboardItems(selectedDashboardId, (newItems) => {
+      console.log(`🔍 DEBUG: Sync status? Recibidos ${newItems.length} indicadores`);
+      setDashboards(prev => prev.map(d =>
+        String(d.id) === String(selectedDashboardId) ? { ...d, items: newItems } : d
+      ));
+    });
+
+    return () => {
+      console.log(`🔍 DEBUG: Deteniendo Sync para ${selectedDashboardId}`);
+      unsubscribe();
+    };
+  }, [selectedDashboardId]);
 
   useEffect(() => {
     if (status !== "ready" || !user) return;
@@ -497,22 +587,64 @@ export default function App() {
         const seenMap = new Map<string, string>();
         rawDirectors.forEach(title => {
           const norm = normalizeGroupName(title);
-          if (!seenMap.has(norm)) seenMap.set(norm, title);
+          // 🛡️ REGLA v6.1.9: Si normalizeGroupName corrigió un typo (ej. DIRECTORF -> DIRECTOR),
+          // usamos la versión corregida como "Pretty Title" para el botón.
+          let prettyTitle = title.trim().toUpperCase();
+          if (norm === "DIRECTOR") prettyTitle = "DIRECTOR"; // Fix específico para colapso de typos
+          if (prettyTitle.includes("DIRECTORF")) prettyTitle = prettyTitle.replace("DIRECTORF", "DIRECTOR");
+
+          // 🛡️ FIX CRÍTICO DUPLICADOS (v6.2.3):
+          // Si el "Pretty Title" normalizado es IGUAL al normalized group, nos quedamos con el más corto o limpio.
+          // O simplemente confiamos en el primero que llegue.
+          if (!seenMap.has(norm)) {
+            seenMap.set(norm, prettyTitle);
+          } else {
+            // Si ya existe, ¿deberíamos actualizar el pretty title si es "mejor"?
+            // Por ahora, first-wins suele ser seguro si el orden es consistente.
+            // Pero para "FRONTERA NORTE" vs "NORTE", si ambos normalizan a "NORTE", queremos ver "FRONTERA NORTE"?
+            // Depende de la lógica de negocio. Mantenemos first-wins.
+          }
+        });
+
+        // 🛡️ DISCOVERY (v6.1.9): Agregar grupos encontrados en tableros reales
+        rows.forEach(d => {
+          if (d.group && d.group.trim()) {
+            const title = d.group.trim().toUpperCase();
+            const norm = normalizeGroupName(title);
+            if (!seenMap.has(norm)) {
+              let pretty = title;
+              if (pretty.includes("DIRECTORF")) pretty = pretty.replace("DIRECTORF", "DIRECTOR");
+              seenMap.set(norm, pretty);
+            }
+          }
         });
 
         let localOfficialGroups = Array.from(seenMap.values());
+
         if (!isGlobalAdmin && userProfile) {
           const myOfficialGroupNorm = normalizeGroupName(userProfile.directorTitle || userProfile.group || "");
           const mySubGroupsNorms = (userProfile.subGroups || []).map(sg => normalizeGroupName(sg));
+
+          // 🛡️ REGLA v6.1.0: Grupos accesibles por permiso explícito en tablero
           const accessibleBoardGroups = rows
-            .filter(d => userProfile.dashboardAccess[d.id] || (d.originalId && userProfile.dashboardAccess[d.originalId]))
-            .map(d => d.group ? normalizeGroupName(d.group) : null)
+            .filter(d => userProfile.dashboardAccess?.[d.id] || (d.originalId && userProfile.dashboardAccess?.[d.originalId]))
+            .map(d => d.group ? d.group.trim().toUpperCase() : null)
             .filter(Boolean) as string[];
+
+          const accessibleNorms = accessibleBoardGroups.map(g => normalizeGroupName(g));
 
           localOfficialGroups = localOfficialGroups.filter(g => {
             const norm = normalizeGroupName(g as string);
-            return norm === myOfficialGroupNorm || mySubGroupsNorms.includes(norm) || accessibleBoardGroups.includes(norm);
+            return norm === myOfficialGroupNorm || mySubGroupsNorms.includes(norm) || accessibleNorms.includes(norm);
           });
+
+          // Agregar explícitamente los grupos de los tableros con acceso si no están en la lista oficial
+          accessibleBoardGroups.forEach(g => {
+            if (!localOfficialGroups.some(og => normalizeGroupName(og) === normalizeGroupName(g))) {
+              localOfficialGroups.push(g);
+            }
+          });
+
           if (userProfile.directorTitle && !localOfficialGroups.some(g => normalizeGroupName(g) === myOfficialGroupNorm)) {
             localOfficialGroups.push(userProfile.directorTitle.trim().toUpperCase());
           }
@@ -552,10 +684,9 @@ export default function App() {
             const docClient = (r.clientId || "").trim().toUpperCase();
             if (!userClients.includes(docClient)) return false;
 
-            // 🛡️ REGLA DE ORO (v2.4.6): El Director ve TODO a lo que tiene acceso explícito.
-            // La coincidencia de 'group' es solo un fallback de conveniencia.
-            const hasDirectAccess = !!userProfile.dashboardAccess[r.id];
-            const hasOriginalAccess = r.originalId ? !!userProfile.dashboardAccess[r.originalId] : false;
+            // 🛡️ REGLA DE ORO (v6.1.0): El Director ve TODO a lo que tiene acceso explícito.
+            const hasDirectAccess = !!userProfile.dashboardAccess?.[r.id];
+            const hasOriginalAccess = r.originalId ? !!userProfile.dashboardAccess?.[r.originalId] : false;
             if (hasDirectAccess || hasOriginalAccess) return true;
 
             // Acceso por Título de Director (Grupo Oficial)
@@ -565,11 +696,18 @@ export default function App() {
               if (dGroupNorm === dTitleNorm) return true;
             }
 
-            // Soporte para subgrupos (Grupo de Grupos)
+            // Soporte para subgrupos (Nivel 3)
             if (isDirector && userProfile.subGroups && userProfile.subGroups.length > 0 && r.group) {
               const dGroupNorm = normalizeGroupName(r.group);
               const mySubGroupsNorm = userProfile.subGroups.map(sg => normalizeGroupName(sg));
               if (mySubGroupsNorm.includes(dGroupNorm)) return true;
+            }
+
+            // 🏢 NIVEL 4: Acceso por SuperGrupos (Grupo de Grupos)
+            if (isDirector && userProfile.superGroups && userProfile.superGroups.length > 0 && (r as any).superGroup) {
+              const dSGProjected = normalizeGroupName((r as any).superGroup);
+              const mySuperGroupsNorm = userProfile.superGroups.map(sg => normalizeGroupName(sg));
+              if (mySuperGroupsNorm.includes(dSGProjected)) return true;
             }
 
             return false;
@@ -605,9 +743,9 @@ export default function App() {
             u.dashboardAccess && (u.dashboardAccess[r.id] || (r.originalId && u.dashboardAccess[r.originalId]))
           );
 
-          // C. 🛡️ REGLA v5.5.9.6 (PRESERVE STRUCTURE):
-          // No debemos intentar re-agrupar si el tablero ya tiene un grupo válido que coincida con un Director.
-          const isOrphan = !r.group || r.group.trim() === "" || r.group === "GENERAL";
+          // 🛡️ REGLA v6.2.4-Fix6 (PROTECT GENERAL): 
+          // Ya no consideramos "GENERAL" como huérfano. Si el tablero dice GENERAL, se queda ahí.
+          const isOrphan = !r.group || r.group.trim() === "";
 
           if (isOrphan && distinctDirectors.length > 0) {
             // 🛡️ REGLA v5.1.0 (HIERARCHY PRIORITIZATION):
@@ -640,7 +778,7 @@ export default function App() {
           // o si el grupo actual no coincide con ninguno de los oficiales.
           if (isDirector && userProfile?.directorTitle) {
             const hasDirectAccess = !!userProfile.dashboardAccess[r.id] || (r.originalId && !!userProfile.dashboardAccess[r.originalId]);
-            const isBoardOrphan = !r.group || r.group.trim() === "" || r.group === "GENERAL";
+            const isBoardOrphan = !r.group || r.group.trim() === "";
 
             if (hasDirectAccess && isBoardOrphan) {
               return { ...r, group: userProfile.directorTitle.trim().toUpperCase() };
@@ -690,12 +828,8 @@ export default function App() {
           const normGName = normalizeGroupName(gName);
           const groupBoards = enrichedRows.filter(r => normalizeGroupName(r.group) === normGName);
 
-          // 🛡️ REGLA v2.4.2: Mostrar SIEMPRE el tablero agregado si hay al menos 1 item
-          // El usuario exigió ver los "Tableros Generales" siempre, para ver sus acumulados.
           if (groupBoards.length > 0) {
             const agg = calculateAggregateDashboard(groupBoards, settings);
-
-            // Usar el título del Director si existe, si no el gName (solo si NO soy Super Director)
             let displayTitle = gName;
 
             if (!userProfile?.subGroups?.length) {
@@ -707,87 +841,122 @@ export default function App() {
               if (director?.directorTitle) displayTitle = director.directorTitle.trim().toUpperCase();
             }
 
+            const isHierarchyRoot = isMeSuperDirector && userProfile?.subGroups?.some(sg => normalizeGroupName(sg) === normGName);
+            const areaCounts = new Map<string, number>();
+            groupBoards.forEach(b => {
+              const a = (b as any).area ? (b as any).area.trim().toUpperCase() : "";
+              if (a) areaCounts.set(a, (areaCounts.get(a) || 0) + 1);
+            });
+            const dominantArea = isHierarchyRoot
+              ? ""
+              : (areaCounts.size > 0 ? Array.from(areaCounts.entries()).sort((a, b) => b[1] - a[1])[0][0] : normGName);
+
             groupAggregates.push({
               ...agg,
               id: `agg-${normGName}-${selectedYear}`,
-              title: displayTitle, // Ej: "DIRECCIÓN SUR" o "SUR"
+              title: `★ RESUMEN DIRECTIVO: ${displayTitle.toUpperCase()}`, // 🛡️ v7.8.27: Nombre institucional para evitar confusión con tableros operativos
               group: gName,
-              navigationParent: (isMeSuperDirector && userProfile?.subGroups?.some(sg => normalizeGroupName(sg) === normGName))
-                ? userProfile.directorTitle?.trim().toUpperCase()
-                : undefined,
+              area: dominantArea,
+              navigationParent: isHierarchyRoot ? userProfile?.directorTitle?.trim().toUpperCase() : undefined,
               clientId: currentClientAgg,
               year: selectedYear,
               orderNumber: -1,
-              // 🛡️ REGLA v5.2.2: Un agregado es raíz de jerarquía si es un subgrupo directo del usuario actual
-              isHierarchyRoot: isMeSuperDirector && userProfile?.subGroups?.some(sg => normalizeGroupName(sg) === normGName),
+              isHierarchyRoot,
               isAggregate: true
             });
           }
         });
 
-        // 🛡️ REGLA v5.3.1: AGREGADO GLOBAL (SÍNTESIS)
-        // Se crea si:
-        // A. Es un Admin con un cliente específico.
-        // B. Es un Director (para ver el total de sus áreas/grupos).
+        // 🏢 NIVEL 4 (v7.2.1): Agregación por SuperGrupos (Grupo de Grupos)
+        const superGroupsFound = Array.from(new Set(enrichedRows.map(r => (r as any).superGroup).filter(Boolean))) as string[];
+
+        // 🛡️ v7.8.24: REGLA DE INFERENCIA — Inyectar Directores como SuperGrupos virtuales si no tienen el campo en DB
+        const hierarchyDirectors = allUsers.filter(u =>
+          u.globalRole === 'Director' &&
+          (u.clientId || 'IPS').trim().toUpperCase() === currentClientAgg &&
+          u.subGroups && u.subGroups.length > 0
+        );
+
+        hierarchyDirectors.forEach(dir => {
+          const dirName = (dir.directorTitle || dir.name || 'DIRECTOR').trim().toUpperCase();
+          if (!superGroupsFound.some(sg => normalizeGroupName(sg) === normalizeGroupName(dirName))) {
+            superGroupsFound.push(dirName);
+          }
+        });
+
+        superGroupsFound.forEach(sgName => {
+          const normSG = normalizeGroupName(sgName);
+          const dirOwner = hierarchyDirectors.find(d => normalizeGroupName(d.directorTitle || d.name || "") === normSG);
+
+          let sgBoards = enrichedRows.filter(r => (r as any).superGroup === sgName);
+          // 🛡️ v7.8.24: Si no hay tableros con ese campo, pero el nombre coincide con un Director, usamos sus subGroups
+          if (sgBoards.length === 0 && dirOwner) {
+            const subNorms = (dirOwner.subGroups || []).map(sg => normalizeGroupName(sg));
+            sgBoards = enrichedRows.filter(r => subNorms.includes(normalizeGroupName(r.group || "")));
+          }
+
+          if (sgBoards.length > 0) {
+            const agg = calculateAggregateDashboard(sgBoards, settings);
+            const normSG = normalizeGroupName(sgName);
+
+            groupAggregates.push({
+              ...agg,
+              id: `agg-super-${normSG}-${selectedYear}`,
+              title: `★ SÍNTESIS GLOBAL OPERATIVA: ${sgName.toUpperCase()}`, // 🛡️ v7.8.27: Mayor distinción para el máximo nivel jerárquico
+              group: "SÍNTESIS",
+              superGroup: sgName,
+              clientId: currentClientAgg,
+              year: selectedYear,
+              isHierarchyRoot: true,
+              isAggregate: true,
+              orderNumber: -50
+            });
+          }
+        });
+
         const shouldCreateGlobalAgg = (isGlobalAdmin && selectedClientId && selectedClientId !== "all") || isDirector;
 
         if (shouldCreateGlobalAgg) {
           const allRelevantBoards = enrichedRows.filter(r => {
-            if (isGlobalAdmin) return true; // Todo el cliente para el Admin
-
+            if (isGlobalAdmin) return true;
             const rGroupNorm = normalizeGroupName(r.group || "");
             const myTitleNorm = normalizeGroupName(userProfile?.directorTitle || "");
-
-            // 1. Coincidencia por subgrupos
             const matchesSubGroup = userProfile?.subGroups?.some(sg => normalizeGroupName(sg) === rGroupNorm);
             if (matchesSubGroup) return true;
-
-            // 2. Coincidencia por título de Director (Grupo)
             if (rGroupNorm === myTitleNorm) return true;
-
-            // 3. Coincidencia por acceso explícito (v5.3.1)
-            // Si el Director tiene acceso a la UNE, debe estar en su resumen global.
-            const hasAccess = !!userProfile?.dashboardAccess[r.id] || (r.originalId && !!userProfile?.dashboardAccess[r.originalId]);
-            return hasAccess;
+            return !!userProfile?.dashboardAccess[r.id] || (r.originalId && !!userProfile?.dashboardAccess[r.originalId]);
           });
 
           if (allRelevantBoards.length > 0) {
             const globalAgg = calculateAggregateDashboard(allRelevantBoards, settings);
-            const dirGroup = "SÍNTESIS"; // 🛡️ v5.2.2: Nombre unificado para el botón de navegación superior
 
             groupAggregates.push({
               ...globalAgg,
               id: `agg-global-total-${selectedYear}`,
-              title: userProfile?.directorTitle ? userProfile.directorTitle.trim().toUpperCase() : "RESUMEN EJECUTIVO GLOBAL",
-              group: isGlobalAdmin ? "TODOS" : dirGroup,
+              title: "SÍNTESIS GLOBAL",
+              group: "SÍNTESIS", // 🛡️ v7.8.11: Usar grupo SÍNTESIS para agregados globales para evitar conflictos con TODOS
               clientId: currentClientAgg,
               year: selectedYear,
               isAggregate: true,
-              isHierarchyRoot: true, // Siempre es raíz si es el global del director
-              orderNumber: -100 // Force first
+              isHierarchyRoot: true,
+              orderNumber: -100
             });
           }
         }
 
         let finalDashboards = [...groupAggregates, ...enrichedRows];
         if (!isGlobalAdmin && !isDirector) {
-          // Un miembro operativo NUNCA debe ver tableros agregados ni heredar el de dirección
           finalDashboards = enrichedRows.filter(r => !String(r.id).startsWith('agg-'));
         }
 
         setDashboards(finalDashboards);
 
-        // Auto-selección inteligente
         setSelectedDashboardId(prev => {
           if (prev && finalDashboards.some(d => String(d.id) === String(prev))) return prev;
-
-          // Si es Admin o Director, Prioridad al Agregado
           if (isGlobalAdmin || isDirector) {
             const firstAgg = finalDashboards.find(d => String(d.id).startsWith('agg-'));
             if (firstAgg) return firstAgg.id;
           }
-
-          // Para Miembros o si no hay agregados, el primero de la lista
           return finalDashboards.length > 0 ? finalDashboards[0].id : null;
         });
       } catch (err: any) {
@@ -896,21 +1065,19 @@ export default function App() {
     }
   };
 
-  const handleUpdateMetadata = async (id: number | string, title: string, subtitle: string, group: string, area: string, targetIndicatorCount?: number) => {
+  const handleUpdateMetadata = async (id: number | string, title: string, subtitle: string, group: string, area: string, superGroup?: string, targetIndicatorCount?: number) => {
     if ((!isGlobalAdmin && !isDirector) || id === -1) return;
     try {
-      const ref = doc(db, "dashboards", String(id));
-      const dataToUpdate: any = { title, subtitle, group, area };
+      const dataToUpdate: any = { title, subtitle, group, area, superGroup };
       if (targetIndicatorCount !== undefined) {
         dataToUpdate.targetIndicatorCount = targetIndicatorCount;
       } else {
-        // Si viene undefined (borrado en UI), lo removemos de la estructura
         dataToUpdate.targetIndicatorCount = deleteField();
       }
 
-      await firebaseService.updateDoc(ref, dataToUpdate);
+      await firebaseService.updateDashboardMetadata(id, dataToUpdate);
 
-      const updateFn = (db: DashboardType) => db.id === id ? { ...db, title, subtitle, group, area, targetIndicatorCount } : db;
+      const updateFn = (db: DashboardType) => db.id === id ? { ...db, title, subtitle, group, area, superGroup, targetIndicatorCount } : db;
       setAllRawDashboards(prev => prev.map(updateFn));
       setDashboards(prev => prev.map(updateFn));
     } catch (err: any) {
@@ -1154,10 +1321,13 @@ export default function App() {
           const merged = items.map(newItem => {
             // Normalización extrema para el match
             const cleanNewName = newItem.indicator.trim().toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-            const existing = targetItems.find(ei => {
-              const cleanExistingName = ei.indicator.trim().toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-              return cleanExistingName === cleanNewName;
-            });
+            // 🛡️ REGLA v6.2.4: Match por ID estable primero, luego por nombre normalizado
+            // Esto asegura que si reordenamos "Bajas Totales" matchee correctamente incluso si hay variaciones de nombre.
+            const existing = targetItems.find(ei => String(ei.id) === String(newItem.id))
+              || targetItems.find(ei => {
+                const cleanExistingName = ei.indicator.trim().toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+                return cleanExistingName === cleanNewName;
+              });
 
             if (existing) {
               // 🛡️ FIX CRÍTICO v5.5.1: Usar existing como BASE para evitar sobrescribir datos no deseados
@@ -1165,13 +1335,40 @@ export default function App() {
               return {
                 ...existing,  // ✅ BASE: Preservar TODOS los datos del item existente
 
-                // SINCRONIZACIÓN DE ESTRUCTURA (SIEMPRE, independiente de syncGoals)
+                // SINCRONIZACIÓN DE ESTRUCTURA (CORE v6.2.4-Fix1: Smart ID Mapping)
                 indicator: newItem.indicator,
                 unit: newItem.unit,
                 weight: newItem.weight,
                 goalType: newItem.goalType,
-                type: newItem.type,
+                // 🛡️ REGLA v6.2.4-Fix7 (TYPE PROTECTION): Bajas y Altas siempre deben ser acumulativas
+                type: (newItem.indicator.toUpperCase().includes("BAJAS") || newItem.indicator.toUpperCase().includes("ALTAS")) ? "accumulative" : newItem.type,
                 frequency: newItem.frequency,
+                indicatorType: newItem.indicatorType,
+                // 🛡️ SMART ID MAPPING (v6.2.4-Fix1): Traducir IDs de origen a IDs de destino
+                componentIds: newItem.componentIds && newItem.indicatorType !== 'simple'
+                  ? newItem.componentIds.map(sId => {
+                    const sItem = items.find(it => String(it.id) === String(sId));
+                    if (!sItem) return sId;
+                    const sNameNorm = sItem.indicator.trim().toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+                    const tItem = targetItems.find(ti => ti.indicator.trim().toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "") === sNameNorm);
+                    return tItem ? tItem.id : sId;
+                  })
+                  : [],
+                // 🛡️ SMART ID MAPPING (v6.2.4-Fix2): Traducir IDs dentro de fórmulas {id:XXX}
+                formula: newItem.formula && newItem.indicatorType === 'formula'
+                  ? newItem.formula.replace(/\{id:([^}]+)\}/g, (match, sId) => {
+                    const sItem = items.find(it => String(it.id) === String(sId));
+                    if (!sItem) return match;
+                    const sNameNorm = sItem.indicator.trim().toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+                    const tItem = targetItems.find(ti => ti.indicator.trim().toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "") === sNameNorm);
+                    return tItem ? `{id:${tItem.id}}` : match;
+                  })
+                  : (newItem.formula || ""),
+                weekStart: newItem.weekStart,
+                isActivityMode: newItem.isActivityMode,
+                alertThreshold: newItem.alertThreshold,
+                alertUnit: newItem.alertUnit,
+                order: newItem.order,
 
                 // SINCRONIZACIÓN CONDICIONAL DE METAS (solo si syncGoals=true, opción 2)
                 monthlyGoals: syncGoals ? [...newItem.monthlyGoals] : [...existing.monthlyGoals],
@@ -1240,6 +1437,7 @@ export default function App() {
 
       // 🛡️ NUEVO FLUJO (v3.3.4): Preguntar por el primer tablero inmediatamente
       setTimeout(() => {
+         
         if (confirm(`¿Deseas Crear el PRIMER TABLERO para "${cleanName}" ahora?\n\n(Ej: Operaciones, Ventas, Sucursal Centro)`)) {
           handleAddDashboard();
         }
@@ -1281,9 +1479,11 @@ export default function App() {
 
 
 
+
+
   const PageShell = ({ children }: { children: React.ReactNode }) => (
-    <div className="min-h-screen bg-slate-950 text-slate-100 p-4 font-sans">
-      <div className="max-w-[1600px] mx-auto">{children}</div>
+    <div className="min-h-screen bg-slate-950 text-slate-100 font-sans">
+      <div className="max-w-[1800px] mx-auto">{children}</div>
     </div>
   );
 
@@ -1314,38 +1514,53 @@ export default function App() {
 
   return (
     <PageShell>
-      <header className="sticky top-0 z-50 flex flex-col md:flex-row items-center justify-between gap-6 mb-8 bg-slate-950/80 p-6 rounded-b-[2.5rem] border-b border-white/5 backdrop-blur-2xl shadow-[0_20px_50px_rgba(0,0,0,0.5)]">
+      <header className="sticky top-0 z-50 flex flex-col md:flex-row items-center justify-between gap-2 bg-slate-950/90 py-1.5 px-6 rounded-b-2xl border-b border-white/5 backdrop-blur-3xl shadow-[0_4px_20px_rgba(0,0,0,0.4)]">
         {/* Lado Izquierdo: Título Dinámico basado en Cliente */}
-        <div className="flex flex-col items-start min-w-[300px]">
-          <div className="flex items-center gap-3">
-            <h1 className="text-4xl lg:text-5xl font-black text-white italic uppercase tracking-tighter leading-none filter drop-shadow-[0_0_20px_rgba(34,211,238,0.3)]">
-              {(selectedClientId === 'all' || !selectedClientId) ? "TABLERO GLOBAL" : selectedClientId.toUpperCase()}
-            </h1>
-            {isGlobalAdmin && selectedClientId && selectedClientId !== 'all' && (
-              <button
-                onClick={handleRenameClient}
-                className="p-2 bg-white/5 hover:bg-white/10 border border-white/5 rounded-lg text-cyan-400 transition-all hover:scale-110"
-                title="Renombrar Cliente"
-              >
-                ✏️
-              </button>
-            )}
+        <div className="flex flex-row items-center gap-4 shrink-0">
+          <div className="flex flex-col items-start">
+            <div className="flex items-center gap-2">
+              <h1 className="text-xl lg:text-2xl font-black text-white italic uppercase tracking-tighter leading-none filter drop-shadow-[0_0_15px_rgba(34,211,238,0.3)]">
+                {(selectedClientId === 'all' || !selectedClientId) ? "TABLERO GLOBAL" : selectedClientId.toUpperCase()}
+              </h1>
+              {isGlobalAdmin && selectedClientId && selectedClientId !== 'all' && (
+                <button
+                  onClick={handleRenameClient}
+                  className="p-1.5 bg-white/5 hover:bg-white/10 border border-white/5 rounded-lg text-cyan-400 transition-all scale-75"
+                  title="Renombrar Cliente"
+                >
+                  ✏️
+                </button>
+              )}
+            </div>
+            <div className="flex items-center gap-2 mt-0.5">
+              <p className="text-[8px] text-cyan-400 font-black uppercase tracking-[0.2em] opacity-80">STRATEXA IAPRIORI</p>
+              <span className="text-slate-800 font-black text-[8px]">|</span>
+              <p className="text-[7px] text-slate-500 font-bold uppercase tracking-[0.1em] opacity-70">BI SYSTEM</p>
+            </div>
           </div>
-          <p className="text-xs text-cyan-400 font-bold uppercase tracking-[0.3em] mt-2 opacity-80">STRATEXA IAPRIORI</p>
-          <p className="text-[10px] text-slate-500 font-bold uppercase tracking-[0.1em] mt-1 opacity-70">Business Intelligence System</p>
           {isGlobalAdmin && (
-            <div className="mt-4">
-              <span className="text-[10px] font-black text-emerald-400 bg-emerald-500/10 px-4 py-2 rounded-xl border border-emerald-500/30 shadow-[0_0_20px_rgba(16,185,129,0.2)] block w-fit animate-pulse tracking-[0.2em] uppercase">
-                v6.0.1-AUDIT • SHIELD CORE (SYNC 2026-02-10)
+            <div className="ml-2 scale-90">
+              <span className="text-[8px] font-black text-emerald-400 bg-emerald-500/5 px-2 py-0.5 rounded-md border border-emerald-500/20 shadow-[0_0_10px_rgba(16,185,129,0.1)] block w-fit tracking-[0.05em] uppercase">
+                {versionLabel}
               </span>
             </div>
           )}
         </div>
 
-        {/* Derecha: Herramientas de Administración y Selectores */}
-        <div className="flex flex-wrap items-center justify-center md:justify-end gap-4">
+        <div className="flex flex-wrap items-center justify-center md:justify-end gap-2 scale-[0.85] origin-right">
+          <div className="flex bg-black/40 p-0.5 rounded-xl border border-white/5 shadow-inner">
+            <select
+              value={selectedYear}
+              onChange={(e) => setSelectedYear(parseInt(e.target.value))}
+              className="bg-transparent text-white px-3 py-1.5 rounded-lg text-xs font-black uppercase tracking-widest outline-none border-none"
+            >
+              {[2023, 2024, 2025, 2026, 2027].map(y => (
+                <option key={y} value={y} className="bg-slate-900">{y}</option>
+              ))}
+            </select>
+          </div>
           {(isGlobalAdmin || userProfile?.canManageKPIs) && (
-            <nav className="flex items-center gap-1 bg-black/40 p-1.5 rounded-2xl border border-white/10 shadow-2xl">
+            <nav className="flex items-center gap-0.5 bg-black/40 p-0.5 rounded-xl border border-white/5 shadow-inner overflow-x-auto">
               {isGlobalAdmin && (
                 <>
                   <button
@@ -1371,7 +1586,13 @@ export default function App() {
               )}
 
               <button
-                onClick={() => setActiveAdminSection("indicators")}
+                onClick={() => {
+                  setActiveAdminSection("indicators");
+                  if (!selectedDashboard || String(selectedDashboard.id).startsWith('agg-') || selectedDashboard.id === -1) {
+                    const firstReal = dashboards.find(d => !String(d.id).startsWith('agg-') && d.id !== -1);
+                    if (firstReal) setSelectedDashboardId(firstReal.id);
+                  }
+                }}
                 className={`px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${activeAdminSection === "indicators" ? 'bg-cyan-600 text-white' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}
               >
                 KPIs
@@ -1388,7 +1609,13 @@ export default function App() {
               )}
 
               <button
-                onClick={() => setActiveAdminSection("kpiWeights")}
+                onClick={() => {
+                  setActiveAdminSection("kpiWeights");
+                  if (!selectedDashboard || String(selectedDashboard.id).startsWith('agg-') || selectedDashboard.id === -1) {
+                    const firstReal = dashboards.find(d => !String(d.id).startsWith('agg-') && d.id !== -1);
+                    if (firstReal) setSelectedDashboardId(firstReal.id);
+                  }
+                }}
                 className={`px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${activeAdminSection === "kpiWeights" ? 'bg-cyan-600 text-white' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}
                 title="Ponderación de indicadores individuales dentro del dashboard"
               >
@@ -2258,29 +2485,64 @@ Esta acción es DEFINITIVA y borrará absolutamente todos sus tableros e histori
             )}
           </div>
         ) : (
-          <>
-            <DashboardTabs
+          <div className="flex flex-col md:flex-row gap-0 overflow-hidden min-h-[calc(100vh-120px)]">
+            {/* 🏗️ SIDEBAR JERÁRQUICO (v7.3.1) */}
+            <HierarchySidebar
               dashboards={dashboards}
-              selectedDashboardId={selectedDashboardId ?? ""}
+              selectedDashboardId={selectedDashboardId}
               onSelectDashboard={setSelectedDashboardId}
               settings={settings}
+              isGlobalAdmin={isGlobalAdmin}
+              isDirector={isDirector}
+              isCollapsed={isSidebarCollapsed}
+              onToggleCollapse={handleToggleSidebar}
               onAddDashboard={isGlobalAdmin ? handleAddDashboard : undefined}
               onDeleteDashboard={isGlobalAdmin ? handleDeleteDashboard : undefined}
-              isGlobalAdmin={isGlobalAdmin}
-              allowedGroups={(isDirector || isGlobalAdmin)
-                ? ["SÍNTESIS", ...(userProfile?.subGroups || officialGroups)]
-                : (userProfile?.subGroups || officialGroups)}
-              activeGroup={selectedGroupTab}
-              onGroupChange={setSelectedGroupTab}
-              activeArea={selectedAreaTab}
-              onAreaChange={setSelectedAreaTab}
-              onUpdateDashboardTitle={(id, newTitle) => {
-                const db = dashboards.find(d => d.id === id);
-                if (db) handleUpdateMetadata(id, newTitle, db.subtitle || "", db.group || "GENERAL", (db as any).area || "");
-              }}
+              allUsers={allUsers}
+              userProfile={userProfile}
+              selectedClientId={selectedClientId}
             />
 
-            <main className="mt-12">
+            {/* 📊 CONTENIDO PRINCIPAL */}
+            <main className="flex-grow min-w-0 px-4 lg:px-8 py-1 overflow-y-auto">
+              {selectedDashboard && (
+                <div className="flex items-center gap-2 mb-2 text-[8px] font-black uppercase tracking-[0.15em] text-slate-500 overflow-x-auto whitespace-nowrap scrollbar-hide py-1.5 px-4 bg-slate-900/40 rounded-xl border border-white/5 shadow-lg backdrop-blur-md">
+                  <span className="text-cyan-500/50 shrink-0 font-black">NAVEGACIÓN</span>
+                  <span className="text-slate-800 font-black px-1">|</span>
+
+                  {/* 🛡️ NIVEL 4 (SUPERGRUPO): Solo visible para Admin o jerarquía superior */}
+                  {(isGlobalAdmin || (isDirector && (userProfile?.superGroups?.length || 0) > 0)) && (selectedDashboard as any).superGroup && (
+                    <>
+                      <span className="text-rose-500/80 font-black">{(selectedDashboard as any).superGroup}</span>
+                      <span className="text-slate-700 mx-2 text-xs">/</span>
+                    </>
+                  )}
+
+                  {/* 🛡️ NIVEL 3 (GRUPO): Solo si no es redundante con el título */}
+                  {selectedDashboard.group && selectedDashboard.group !== 'SINTESIS' && selectedDashboard.group !== 'GENERAL' && (
+                    <>
+                      {(() => {
+                        const cleanTitle = selectedDashboard.title.replace(/^★\s*RESUMEN DIRECTIVO:\s*/i, "").replace(/^★\s*SÍNTESIS GLOBAL OPERATIVA:\s*/i, "");
+                        if (normalizeGroupName(selectedDashboard.group) !== normalizeGroupName(cleanTitle)) {
+                          return (
+                            <>
+                              <span className="text-cyan-400 font-black">{selectedDashboard.group}</span>
+                              <span className="text-slate-700 mx-2 text-xs">/</span>
+                            </>
+                          );
+                        }
+                        return null;
+                      })()}
+                    </>
+                  )}
+
+                  {/* 🛡️ NIVEL ACTUAL */}
+                  <span className="text-white border-b-2 border-cyan-500/80 pb-0.5 font-black tracking-tight drop-shadow-[0_0_8px_rgba(34,211,238,0.3)]">
+                    {selectedDashboard.title}
+                  </span>
+                </div>
+              )}
+
               {selectedDashboard ? (
                 <DashboardView
                   dashboard={selectedDashboard}
@@ -2299,12 +2561,13 @@ Esta acción es DEFINITIVA y borrará absolutamente todos sus tableros e histori
                 />
               ) : (
                 <div className="py-24 text-center text-slate-500 font-bold uppercase tracking-widest text-xs border border-white/5 rounded-[2rem] bg-slate-900/20">
-                  Seleccione un elemento del menú superior
+                  ← Seleccione un elemento del panel de navegación
                 </div>
               )}
             </main>
-          </>
-        )}
+          </div>
+        )
+      }
 
       {/* Welcome Message at the bottom */}
       <div className="mt-12 flex justify-center pb-12">
@@ -2318,13 +2581,13 @@ Esta acción es DEFINITIVA y borrará absolutamente todos sus tableros e histori
                 {userProfile.globalRole === 'Admin' ? 'Super Administrador' : (userProfile.directorTitle || userProfile.globalRole)}
                 {userProfile.canManageKPIs && <span className="text-cyan-400 ml-2">🛠️ Gestión KPI Habilitada</span>}
                 <span className="text-slate-600 ml-4 border-l border-white/5 pl-4 inline-flex items-center gap-1">
-                  v6.0.1-AUDIT • SHIELD CORE {isGlobalAdmin && <span className="text-[8px] bg-emerald-500/10 text-emerald-400 px-1.5 py-0.5 rounded ml-1 animate-pulse tracking-widest">CLEAN CACHE ACTIVE</span>}
+                  {versionLabel} • MULTI-APP ISOLATION {isGlobalAdmin && <span className="text-[8px] bg-cyan-500/10 text-cyan-400 px-1.5 py-0.5 rounded ml-1 animate-pulse border border-cyan-500/30">SHIELD-TBL ACTIVE (DB LOCK)</span>}
                 </span>
               </p>
             </div>
           </div>
         )}
       </div>
-    </PageShell>
+    </PageShell >
   );
 };

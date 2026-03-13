@@ -1,94 +1,83 @@
-# 📘 Memoria Técnica Final: Sistema Tablero Prior (v5.9.7)
+# 📘 Memoria Técnica Final: Sistema Tablero Prior (v7.8.16)
 
-> **Estado**: PRODUCCIÓN (Build v5.9.7-PRO+)  
-> **Fecha de Actualización**: 5 de Febrero de 2026  
+> **Estado**: PRODUCCIÓN (Build v7.8.16-PLATINUM-ULTRA-V13)  
+> **Fecha de Actualización**: 23 de Febrero de 2026  
 > **Responsable**: IA Antigravity (Google DeepMind) & Equipo IPS
+> **Certificación de Seguridad**: PLATINUM ULTRA SHIELD ACTIVE
 
 ---
 
 ## 1. Visión General del Sistema
 
-**Tablero Prior** es una plataforma de Business Intelligence (BI) de alto rendimiento para el monitoreo estratégico organizacional. Su arquitectura es **Multi-Tenant (Multi-Cliente)**, **Segura** y altamente **Escalable**, permitiendo la gestión centralizada de múltiples clientes con aislamiento estricto de datos.
+**Tablero Prior** es una plataforma de Business Intelligence (BI) de grado empresarial diseñada para el monitoreo estratégico de KPIs. En su versión 7.8.16, el sistema alcanza la **Persistencia Universal**, optimizando la navegación tanto en escritorio como en dispositivos móviles, y garantizando un comportamiento determinista del sidebar.
 
-### 🌟 Evolución Tecnológica de Vanguardia (v5.9.x)
-*   **Manual Entry Optimization (v5.9.7)**: Eliminación de la "tortura" operativa mediante campos de entrada directa para metas altas (ej. 700+), manteniendo el blindaje contra valores negativos y malformados.
-*   **SHIELD CORE (v5.9.7)**: Motor de protección de jerarquías que impide la "absorción" accidental de tableros. Reconoce automáticamente la subordinación de mandos (Fuzzy Matching) y preserva la integridad de los grupos originales.
-*   **Auditoría de Captura Real (v5.5.9.4)**: Algoritmo de cumplimiento que ignora placeholders (`0/0`) y promedia solo datos reales capturados, eliminando falsos positivos en los semáforos ejecutados.
-*   **Discovery System (v5.5.9.5)**: Capacidad de autodescubrimiento de grupos para clientes nuevos (ej. LEÓN) que no requieren configuración previa de directores para ser funcionales.
-*   **Supreme Hierarchy (v5.5.6)**: Lógica de navegación ejecutiva que balancea la síntesis global con la supervisión regional mediante la corona **👑 MASTER**.
+### 🌟 Hitos Tecnológicos de la Versión 7.8.x
+*   **Supreme Universal Persistence (v7.8.16)**: Desacoplamiento total de la expansión del sidebar. Se eliminó el auto-expand redundante al navegar por el grupo General y se optimizó el layout móvil (Touch Targets 44px+).
+*   **Atomic Persistence Shield (v7.8.15)**: Implementación de un motor de estado basado en objetos booleanos para la expansión del sidebar.
+*   **Dynamic Synthesis Labels (v7.8.11)**: El sidebar ahora utiliza los títulos dinámicos generados (ej: "DIRECCIÓN ORIENTE") eliminando etiquetas genéricas.
+*   **General Group Recovery**: Restauración total del grupo "GENERAL" en la jerarquía.
+*   **Supreme Side-Persistence (v7.8.10)**: Desacoplamiento de filtros de áreas y selección de tableros.
+*   **Adaptive Mobile Layout V3**: Motor responsivo diseñado bajo la regla `UX001`. Asegura que la jerarquía y el tablero principal sean utilizables en dispositivos con Safe Areas (iPhone 14+) mediante un layout inteligente de apilado.
+*   **Platinum Ultra Shield (v7.0.0)**: "Hard-Lock" en Firestore. Todas las colecciones utilizan el prefijo `tbl_` y están protegidas por reglas de seguridad a nivel de servidor que impiden el acceso cruzado entre apps dentro del proyecto `prior-01`.
+*   **Formula Pro (v7.2.1)**: Motor de cálculo con soporte para procesamiento de lenguaje natural (NLP Lite). Permite referenciar KPIs por nombre (`bajas / altas`) simplificando la creación de indicadores compuestos.
 
 ---
 
-## 2. Arquitectura Tecnológica (Stack)
+## 2. Arquitectura de Datos y Blindaje
 
-| Capa | Tecnología | Justificación |
+### 2.1 Aislamiento de Micro-Colecciones
+Rutas protegidas para garantizar que el **Tablero** sea una isla de datos segura:
+
+| App | Prefijo | Estado |
 | :--- | :--- | :--- |
-| **Frontend** | React 19 + TypeScript | Estándar de la industria para aplicaciones reactivas de alta robustez. |
-| **IA Engine** | Google Gemini / OpenAI | Procesamiento de lenguaje natural para auditoría y análisis de KPIs. |
-| **Build Tool** | Vite 7 | Tiempos de carga instantáneos y optimización de bundle para producción. |
-| **Estilos** | CSS Moderno | Estética premium con efectos de Glassmorphism y diseño "Deep Space". |
-| **Backend / DB** | Firebase Firestore | NoSQL en tiempo real con escalabilidad automática. |
-| **Seguridad** | Firebase Auth + Roles | Gestión granular de acceso por tablero y por mandos delegados. |
+| **Tablero Prior** | `tbl_` | **Activo (Lock)** |
+| **Activador** | `stx_` | Aislado |
+| **Vacantes IPS**| `ips_` | Aislado |
+
+### 2.2 Jerarquía de Navegación Determinista
+1.  **Nivel 4 (SuperGrupo)**: Agrupaciones regionales o de directores (ej. "ZONA NORTE").
+2.  **Nivel 3 (Grupo)**: Unidades administrativas (ej. "GERENCIA METRO").
+3.  **Nivel 2 (Área)**: Segmentación transversal por área funcional (ej. "OPERACIONES").
+4.  **Nivel 1 (Tablero)**: Unidad mínima de reporte con hidratación en tiempo real.
 
 ---
 
-## 3. Modelo de Datos y Seguridad
+## 3. Stack Tecnológico
 
-### 3.1 Niveles de Acceso
-1.  **Super Administrador**: Control absoluto y visibilidad total para auditoría técnica.
-2.  **Super Director (Executive)**: Supervisa múltiples "Direcciones" regionales (subgrupos) y accede a tableros agregados automáticos.
-3.  **Director Regional**: Responsable de un grupo específico de tableros.
-4.  **Member (Capturista)**: Usuario enfocado en la entrada operativa de datos.
-5.  **Gestor de KPIs**: Permiso `canManageKPIs` para edición estructural de tableros.
-
-### 3.2 Protocolo de Aislamiento Inmutable
-Todo acceso a la base de datos está condicionado por el `clientId`. El sistema garantiza que los datos de **IPS**, **LEÓN** y otros clientes jamás se mezclen, incluso en consultas globales de administración.
+| Capa | Tecnología | Función |
+| :--- | :--- | :--- |
+| **Core** | React 19 + TypeScript 5.8 | Lógica de interfaz y seguridad de tipos robusta. |
+| **Fórmulas** | Intelligent Evaluator v7.2 | Procesamiento de expresiones aritméticas dinámicas. |
+| **Base de Datos** | Firestore (Prefijado) | Almacenamiento NoSQL con blindaje avanzado. |
+| **Infraestructura**| Firebase Hosting (Target: tablero) | Despliegue con control de caché no-store para evitar versiones obsoletas. |
 
 ---
 
-## 4. Funcionalidades de Auditoría (v5.9.x)
+## 4. Guía de Operación (CI/CD)
 
-### 📈 4.1 Cálculo de Captura con Propagación de Nulls
-A diferencia de versiones anteriores, el sistema ahora distingue entre un `0` capturado y la ausencia de dato. En las agregaciones globales, si ningún tablero hijo tiene datos, el resultado es `null` (0% captura), en lugar de un falso cumplimiento del 100% o 67%.
+Flujo mandatorio para despliegues en producción:
 
-### 🌳 4.2 Auto-Mapeo de Jerarquías
-El sistema infiere las relaciones de mando comparando los `subGroups` de los directores con los nombres de cargo. Se ha implementado un blindaje para que los usuarios superiores no "roben" la visibilidad de los mandos medios al compartir accesos.
-
----
-
-## 5. Mantenimiento y Operación
-
-### Comandos de Despliegue Seguro
 ```bash
-# Ejecutar Auditoría Global antes de desplegar
-node scripts/generateIntegrityReport.js
+# 1. Compilar para producción (Vite)
+npm run build
 
-# Construcción y Despliegue Limpio (Elimina cache vieja)
-npm run build && firebase deploy --only hosting
+# 2. Desplegar reglas de seguridad (Mandatorio si hay cambios en tipos)
+firebase deploy --only firestore:rules
+
+# 3. Desplegar aplicación al target específico
+firebase deploy --only hosting:tablero
 ```
 
 ---
 
-## 6. Documentos de Referencia (Memoria de la Aplicación)
-
-Para comprender la estructura completa, consulte los siguientes artefactos en el repositorio:
-1.  `MEMORIA_TECNICA_FINAL_2026.md`: Este documento (Arquitectura y Roadmap).
-2.  `App.tsx`: Núcleo de la aplicación, lógica de rutas y gestión de estado global.
-3.  `utils/compliance.ts`: El "Cerebro" de las matemáticas de cumplimiento y captura.
-4.  `components/DashboardTabs.tsx`: Motor de renderizado de la navegación y filtros.
-5.  `integrity_report.md`: Reporte generado automáticamente con el estado de salud del código (Lint, Tests, Tipado).
-
----
-
-## 7. Roadmap Consolidado (Hitos v5.9.x)
-- [x] **Cálculo de Captura Preciso**: Ignora `0/0` y placeholders (v5.5.9.4).
-- [x] **Integrity Shield**: Auditoría de grupos para clientes nuevos (v5.5.9.5).
-- [x] **Shield Core**: Blindaje de jerarquías y solución de regresión de visibilidad (v5.5.9.6).
-- [x] **Sticky Executive Header**: Navegación persistente para directivos.
-- [x] **Null Propagation**: Agregaciones basadas en datos reales, no en ceros inicializados.
-- [x] **Manual Entry UX**: Entrada manual de metas y avances para grandes volúmenes (v5.9.7).
-- [x] **Data Shielding**: Validación estricta de entradas numéricas en modo detallado.
+## 5. Roadmap Consolidado
+- [x] **v7.0.0**: Lanzamiento de **Platinum Shield** (DB Isolation).
+- [x] **v7.2.1**: Implementación de Jerarquía Nivel 4 y Formula Pro.
+- [x] **v7.8.5**: Sincronización de versiones y auditoría de respaldos.
+- [x] **v7.8.6**: **UX Shield & Mobile V3** (Selección persistente y layout móvil).
+- [x] **v7.8.7**: **Unified Navigation Core** (Simplificación de Sidebar y corrección de filtros de grupo).
+- [x] **v7.8.8**: **Extreme Navigation Shield** (Blindaje reforzado contra colapsos durante la selección).
 
 ---
 
-**CONFIDENCIAL**: Este documento es propiedad de Prior Consultoría. Toda copia no autorizada está prohibida.
+**CONFIDENCIAL**: Este documento es propiedad de Prior Consultoría. Blindaje activo bajo supervisión de IA Antigravity.

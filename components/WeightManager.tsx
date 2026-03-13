@@ -4,7 +4,7 @@ import { DashboardItem } from '../types';
 interface WeightManagerProps {
     key?: React.Key;
     items: DashboardItem[];
-    onSave: (updatedWeights: { id: number; weight: number }[]) => void;
+    onSave: (updatedWeights: { id: number | string; weight: number }[]) => void;
     onCancel: () => void;
     dashboards: { id: number | string; title: string }[];
     activeDashboardId: number | string;
@@ -16,7 +16,7 @@ export const WeightManager = ({ items, onSave, onCancel, dashboards, activeDashb
         items.map(item => ({ id: item.id, weight: item.weight }))
     );
 
-    const handleWeightChange = (id: number, value: string) => {
+    const handleWeightChange = (id: number | string, value: string) => {
         const numericValue = Number(value);
         if (isNaN(numericValue)) return;
 

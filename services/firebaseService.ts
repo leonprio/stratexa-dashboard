@@ -13,6 +13,7 @@ import {
     where,
     DocumentReference,
     DocumentData,
+    onSnapshot,
 } from "firebase/firestore";
 import {
     signInWithEmailAndPassword,
@@ -32,11 +33,12 @@ import type {
     SystemSettings,
 } from "../types";
 
-const DASHBOARDS_COLLECTION = "dashboards";
-const USERS_COLLECTION = "users";
-const SYSTEM_SETTINGS_COLLECTION = "systemSettings";
+const COLLECTION_PREFIX = "tbl_"; // BLINDAJE ACTIVO: Todas las colecciones inician con 'tbl_'
+const DASHBOARDS_COLLECTION = `${COLLECTION_PREFIX}dashboards`;
+const USERS_COLLECTION = `${COLLECTION_PREFIX}users`;
+const SYSTEM_SETTINGS_COLLECTION = `${COLLECTION_PREFIX}systemSettings`;
 const SYSTEM_SETTINGS_DOC_ID = "main";
-const CLIENTS_COLLECTION = "managedClients";
+const CLIENTS_COLLECTION = `${COLLECTION_PREFIX}managedClients`;
 
 // -----------------------------
 // Helpers
@@ -55,6 +57,14 @@ const itemsCollectionRef = (dashboardId: number | string) =>
 // -----------------------------
 // firebaseService
 // -----------------------------
+/**
+ * Capa de abstracción para servicios de Firebase (Auth y Firestore).
+ * Implementa el "Platinum Shield" para el aislamiento de datos por cliente y 
+ * la gestión de identidades híbridas en KPIs.
+ * 
+ * @namespace firebaseService
+ * @version v7.8.28-UX-ELITE
+ */
 export const firebaseService = {
     // -----------------------------
     // Auth helpers
@@ -245,10 +255,19 @@ export const firebaseService = {
                     const itemData = it.data() as DashboardItem;
                     return {
                         ...itemData,
-                        id: normalizeDashboardId(itemData.id, it.id) as number,
+                        id: normalizeDashboardId(itemData.id, it.id),
                     };
                 })
-                .sort((a, b) => (Number(a.id) || 0) - (Number(b.id) || 0));
+                .sort((a, b) => {
+                    // 🛡️ V6.2.1: Sort by order first, then ID
+                    if (a.order !== undefined && b.order !== undefined) {
+                        return a.order - b.order;
+                    }
+                    const numA = Number(a.id);
+                    const numB = Number(b.id);
+                    if (!isNaN(numA) && !isNaN(numB)) return numA - numB;
+                    return String(a.id).localeCompare(String(b.id));
+                });
 
             return {
                 ...data,
@@ -354,10 +373,19 @@ export const firebaseService = {
                 const itemData = it.data() as DashboardItem;
                 return {
                     ...itemData,
-                    id: normalizeDashboardId(itemData.id, it.id) as number,
+                    id: normalizeDashboardId(itemData.id, it.id),
                 };
             })
-            .sort((a, b) => (Number(a.id) || 0) - (Number(b.id) || 0));
+            .sort((a, b) => {
+                // 🛡️ V6.2.1: Sort by order first, then ID
+                if (a.order !== undefined && b.order !== undefined) {
+                    return a.order - b.order;
+                }
+                const numA = Number(a.id);
+                const numB = Number(b.id);
+                if (!isNaN(numA) && !isNaN(numB)) return numA - numB;
+                return String(a.id).localeCompare(String(b.id));
+            });
     },
 
     deleteDashboard: async (id: number | string) => {
@@ -904,5 +932,22 @@ export const firebaseService = {
             await batch.commit();
         }
         return { fixedCount: count };
+    },
+
+    // 🔄 SINCRONIZACIÓN REAL-TIME (v8.0.0)
+    subscribeToDashboardItems: (dashboardId: number | string, callback: (items: DashboardItem[]) => void) => {
+        const q = query(itemsCollectionRef(dashboardId));
+        return onSnapshot(q, (snap) => {
+            const items = snap.docs
+                .map((it) => {
+                    const itemData = it.data() as DashboardItem;
+                    return {
+                        ...itemData,
+                        id: normalizeDashboardId(itemData.id, it.id) as number,
+                    };
+                })
+                .sort((a, b) => (Number(a.id) || 0) - (Number(b.id) || 0));
+            callback(items);
+        });
     },
 };

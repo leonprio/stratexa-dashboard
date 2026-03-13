@@ -10,7 +10,7 @@ interface SummaryDetailsProps {
     overallCompliance: number;
     globalThresholds: ComplianceThresholds;
     year?: number;
-    decimalPrecision?: 1 | 2;
+    decimalPrecision?: 0 | 1 | 2;
     allDashboardItems?: DashboardItem[];
 }
 
@@ -27,7 +27,7 @@ const colorClasses: Record<ComplianceStatus, string> = {
 // Helper movido adentro o recibido como prop, pero aquí lo redefinimos localmente si no se pasa formatter.
 // Mejor es usar el prop decimalPrecision.
 
-export const SummaryDetails = ({ item, currentProgress, currentTarget, overallCompliance, globalThresholds, year, decimalPrecision = 2, allDashboardItems = [] }: SummaryDetailsProps) => {
+export const SummaryDetails = ({ item, currentProgress, currentTarget, overallCompliance, globalThresholds, year, decimalPrecision = 2 as 0 | 1 | 2, allDashboardItems = [] }: SummaryDetailsProps) => {
     const { unit, type, goalType } = item;
     const lowerIsBetter = goalType === 'minimize';
 
@@ -63,10 +63,10 @@ export const SummaryDetails = ({ item, currentProgress, currentTarget, overallCo
     }, [item, allDashboardItems]);
 
     const formatNumber = (num: number) => {
-        return new Intl.NumberFormat('es-MX', {
-            minimumFractionDigits: 0,
+        return new Intl.NumberFormat('en-US', {
+            minimumFractionDigits: decimalPrecision === 0 ? 0 : 0,
             maximumFractionDigits: decimalPrecision
-        }).format(num);
+        }).format(num).replace(/,/g, "'");
     };
 
     const goalLabel = type === 'accumulative' ? `Meta Anual (${unit})` : `Meta Promedio (${unit})`;

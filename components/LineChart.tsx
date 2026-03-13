@@ -52,8 +52,8 @@ export const LineChart = ({ progressData, goalData, unit: _unit, type, status, i
   const { stroke, fill, area, glow } = colorClasses[status];
 
   const width = 600;
-  const height = 280;
-  const padding = { top: 30, right: 30, bottom: 40, left: 60 };
+  const height = 220;
+  const padding = { top: 20, right: 30, bottom: 25, left: 60 };
 
   // 🎯 ESCALA DINÁMICA INTELIGENTE (v5.2.2 - FIX)
   // No filtramos por currentMonthIdx internamente para permitir ver años pasados completos.
@@ -105,7 +105,7 @@ export const LineChart = ({ progressData, goalData, unit: _unit, type, status, i
   const areaPath = linePath && validPlotData.length > 0 ? `${linePath} L ${xScale(validPlotData[validPlotData.length - 1].index)} ${yScale(yMin)} L ${xScale(validPlotData[0].index)} ${yScale(yMin)} Z` : "";
   const safeId = indicator.replace(/[^a-zA-Z0-9]/g, '_');
 
-  const formatNumber = (num: number) => new Intl.NumberFormat('es-MX', { notation: 'compact', compactDisplay: 'short', maximumFractionDigits: 1 }).format(num);
+  const formatNumber = (num: number) => new Intl.NumberFormat('en-US', { notation: 'compact', compactDisplay: 'short', maximumFractionDigits: 1 }).format(num).replace(/,/g, "'");
 
   // 🛡️ Labels a mostrar: Para semanas, mostramos solo hitos para no saturar
   // visibleLabels was unused and conditional
