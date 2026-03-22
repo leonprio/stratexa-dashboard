@@ -1,37 +1,40 @@
-# Stratexa Dashboard v7.8.27
-Business Intelligence System for IPS • **ELITE-PLATINUM Architecture**
+# Stratexa Dashboard v8.7.2
+Business Intelligence System for IPS • **CRITICAL SHIELD Architecture**
 
 [![Despliegue a Firebase Hosting](https://github.com/leonprio/stratexa-dashboard/actions/workflows/firebase-hosting-merge.yml/badge.svg)](https://github.com/leonprio/stratexa-dashboard/actions)
 
-## 🛡️ Platinum Ultra Shield: Aislamiento Total
-Esta versión implementa una arquitectura de **Aislamiento Multi-App** definitiva. El sistema garantiza que los datos operativos, configuraciones y usuarios estén blindados por cliente, utilizando prefijos de colección estrictos (`tbl_`) y reglas de seguridad de nivel granular.
+## 🛡️ Critical Nuclear Shield: Estabilidad Total
+Esta versión implementa una arquitectura de **Persistencia Nuclear** definitiva. El sistema garantiza que los datos operativos, configuraciones de actividades y metas estén blindados contra fallos de sincronización, utilizando guardados atómicos y una lógica de aislamiento de red durante el commit.
 
-## 🚀 Características de Vanguardia (v7.8.16)
-- **Institutional Hierarchy Resilience (v7.8.27)**: Rediseño total de la navegación jerárquica. Se implementó el concepto de "Resumen Directivo" y "Síntesis Global Operativa" para diferenciar claramente las vistas agregadas de los tableros de ejecución.
-- **Selective Visibility Shield (v7.8.27)**: Blindaje de niveles superiores. El acceso a la "Síntesis Global" (Nivel 4) está restringido exclusivamente a roles Directivos y Administradores, ocultando la complejidad a usuarios operativos.
-- **Smart Breadcrumb (v7.8.27)**: Motor de migas de pan inteligente que elimina redundancias visuales (ej. oculta el nombre del grupo si ya está implícito en el título del consolidado) y mejora la orientación espacial.
-- **Aggregate Write Protection (v7.8.16)**: Blindaje contra escrituras accidentales en tableros virtuales. El sistema detecta intentos de edición desde vistas consolidadas y redirige automáticamente a tableros físicos válidos.
-- **Hybrid Identity Shield (v7.8.16)**: Soporte nativo para esquemas de identidad mixtos (numéricos y string). Permite el uso de mnemónicos en indicadores sin pérdida de integridad durante la persistencia en Firestore.
-- **Supreme Universal Persistence (v7.8.16)**: Desacoplamiento total del estado de expansión. Se eliminó el auto-expand redundante al navegar por General y se optimizó el layout móvil (Touch Targets >44px).
-- **Adaptive Mobile Layout V5**: Motor responsivo optimizado bajo regla `UX001`. Sidebar con botones de gran tamaño (44px) y navegación fluida por gestos.
+## 🚀 Características de Vanguardia (v8.7.2)
+- **CRUD Nuclear (Atomic Persistence)**: Refactorización del motor de guardado para evitar pérdida de `activityConfig`. Cada interacción envía el estado completo para garantizar integridad total.
+- **Auto-Scroll Inteligente (Precision Focus)**: Posicionamiento automático en la semana actual al abrir la vista anual (600ms delay) para visibilidad inmediata.
+- **Pureza Visual (No-Shadow Policy)**: Gráficos ultra-limpios con opacidad de área al 2% y eliminación de sombras persistentes al 75%.
+- **Pre-Deploy Shielding**: Nuevo script de verificación que impide el despliegue si hay discrepancias de versión entre `App.tsx` y `package.json`.
+- **UX Privada**: Eliminación de etiquetas de versión en la pantalla de login para una interfaz más limpia y profesional.
 
 ## 📋 Guía de Inicio Rápido
 1.  **Instalación**: `npm install --legacy-peer-deps`
 2.  **Entorno**: Configurar variables en `.env.local` conectadas al proyecto `prior-01`.
 3.  **Ejecución Dev**: `npm run dev`
-4.  **Despliegue Hosting**: `npm run build && firebase deploy --only hosting:tablero`
+4.  **Despliegue Hosting**: `npm run build && firebase deploy --only hosting`
+
+## ⚙️ Documentación Exhaustiva para Desarrolladores
+- Ver **[DEVELOPER_DOCS.md](./DEVELOPER_DOCS.md)** para Diagramas de Flujo Mermaid de Arquitectura CRUD.
+- Descripciones nativas **Zod Schemas** para API/Endpoints.
+- Casos de validación con `React.memo` explicados.
 
 ## 🧪 Integridad y Pruebas
 El sistema cuenta con un motor de validación que se ejecuta antes de cada despliegue:
+- **AI Consistency Check**: Validación de que el análisis IA coincide con el cálculo de cumplimiento manual.
 - **Universal Sum**: Validación agresiva de indicadores acumulativos.
 - **Hierarchy Integrity**: Verificación automática de rutas de navegación.
 - **Atomic Navigation**: Prueba de persistencia de nodos expandidos.
-- **Identity Integrity**: Verificación de colisiones de IDs híbridos en el gestor de KPIs.
 
-## 🧠 Arquitectura Core (v7.8)
+## 🧠 Arquitectura Core (v8.6)
 
 ### 📊 Estructura Jerárquica UX-ELITE
-El sistema organiza la información en un árbol de decisión de 4 niveles, diseñado para el cumplimiento normativo e institucional.
+El sistema organiza la información en un árbol de decisión de 4 niveles.
 
 ```mermaid
 graph TD
@@ -39,12 +42,9 @@ graph TD
     B --> C[GRUPOS REGIONALES - Nivel 2]
     C --> D[TABLEROS OPERATIVOS - Nivel 1]
     
-    subgraph "High-Profile Visibility Shield"
+    subgraph "Nuclear Isolation Layer (tbl_*)"
         A
         B
-    end
-    
-    subgraph "Field Execution"
         C
         D
     end
@@ -53,27 +53,12 @@ graph TD
 ### 🧱 Componentes Principales
 | Componente | Responsabilidad | Estado de Persistencia |
 | :--- | :--- | :--- |
-| `App.tsx` | Orquestador Global y Auth | Firebase Auth + LocalStorage (Año, Sidebar) |
-| `HierarchySidebar.tsx` | Navegación Jerárquica y Filtros Regionales | LocalStorage (expandedNodes_v3) |
-| `DashboardView.tsx` | Visualización de KPIs y Reporte Ejecutivo | In-memory (State) |
-| `IndicatorManager.tsx` | Gestión de Datos e Inyecciones IA | Firestore Transactional |
-| `firebaseService.ts` | Capa de Abstracción de Datos | Firestore `tbl_` Collections |
-
-### 🛠️ Guía para Desarrolladores
-
-#### Flujo de Agregación de Datos
-El sistema utiliza un motor de agregación virtual que no requiere almacenamiento redundante:
-1. Se recuperan todos los tableros del cliente.
-2. `aggregationUtils` identifica los hijos de cada nivel superior.
-3. Se calculan promedios ponderados en tiempo real.
-4. Se inyecta un ID virtual `agg-` para prevenir colisiones con tableros físicos.
-
-#### Reglas de UX (UX001)
-- **Touch Targets**: Todos los elementos interactivos deben tener al menos 44px de altura/anchura.
-- **Safe Areas**: Padding automático de `0.75rem` en cabeceras para prevenir cortes en dispositivos con Notch.
-- **Typography**: Escalar al 85% solo en dispositivos móviles para mantener densidad.
+| `App.tsx` | Orquestador Global y Auth | Firebase Auth + LocalStorage |
+| `aiService.ts` | Inteligencia Artificial y Análisis | Simulación Sincronizada (GPT-4/o1) |
+| `DashboardView.tsx` | Visualización de KPIs y Reporte | In-memory State |
+| `ActivityManager.tsx` | Gestión Detallada de Elementos | Global State Sync |
 
 ---
-*- **Versión de Producción:** `v7.8.28-UX-ELITE` (2026-03-01)*
-*- **Arquitectura**: Platinum Ultra Shield (Hybrid ID Engine)*
+*- **Versión de Producción:** `v8.7.2-CRITICAL-SHIELD` (2026-03-22)*
+*- **Arquitectura**: Critical Nuclear Shield (Atomic Isolation)*
 *- **Copyright**: © 2026 Prior Consultoría / Stratexa Intelligence*
