@@ -2,6 +2,9 @@
   "hosting": {
     "target": "tablero",
     "public": "build_output",
+    "predeploy": [
+      "npm run predeploy"
+    ],
     "ignore": [
       "firebase.json",
       "**/.*",

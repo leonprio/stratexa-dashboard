@@ -21,7 +21,12 @@ interface UserRowProps {
     availableGroups: string[];
 }
 
-const UserRow = ({ user, dashboards, isCurrentUser, isGlobalAdmin, onAccessChange, onRoleChange, onChangePassword, onDelete, onUpdateUser, groupLabel, availableGroups }: UserRowProps) => {
+/**
+ * Componente UserRow.
+ * Representa una fila en la tabla de gestión de usuarios, encargada de mostrar y editar roles y accesos.
+ * Optimizado con React.memo para evitar re-renderizados innecesarios al editar otros usuarios.
+ */
+const UserRow = React.memo(({ user, dashboards, isCurrentUser, isGlobalAdmin, onAccessChange, onRoleChange, onChangePassword, onDelete, onUpdateUser, groupLabel, availableGroups }: UserRowProps) => {
     const safeUser = {
         ...user,
         dashboardAccess: user.dashboardAccess || {},
@@ -292,7 +297,7 @@ const UserRow = ({ user, dashboards, isCurrentUser, isGlobalAdmin, onAccessChang
             </td>
         </tr>
     );
-};
+});
 
 const PasswordChangeModal = ({ email, onConfirm, onCancel, isLoading }: { email: string; onConfirm: (password: string) => void; onCancel: () => void; isLoading: boolean; }) => {
     const [newPassword, setNewPassword] = useState('');
@@ -360,7 +365,12 @@ const PasswordChangeModal = ({ email, onConfirm, onCancel, isLoading }: { email:
     );
 };
 
-export const UserManager = ({ users, dashboards, currentUser, activeClientId, onSave, onCancel, onUserDeleted, groupLabel, availableGroups = [], fullUserList = [] }: { users: User[], dashboards: Dashboard[], currentUser: User, activeClientId: string, onSave: (updatedUsers: User[]) => void, onCancel: () => void, onUserDeleted?: (userId: string) => void, groupLabel?: string, availableGroups?: string[], fullUserList?: User[] }) => {
+/**
+ * Componente UserManager.
+ * Modal avanzado para gestionar la creación, roles y niveles de acceso de usuarios en el sistema.
+ * Optimizado con React.memo.
+ */
+export const UserManager = React.memo(({ users, dashboards, currentUser, activeClientId, onSave, onCancel, onUserDeleted, groupLabel, availableGroups = [], fullUserList = [] }: { users: User[], dashboards: Dashboard[], currentUser: User, activeClientId: string, onSave: (updatedUsers: User[]) => void, onCancel: () => void, onUserDeleted?: (userId: string) => void, groupLabel?: string, availableGroups?: string[], fullUserList?: User[] }) => {
     const [localUsers, setLocalUsers] = useState<User[]>(() => JSON.parse(JSON.stringify(users)));
     const [isSaving, setIsSaving] = useState(false);
 
@@ -681,4 +691,4 @@ export const UserManager = ({ users, dashboards, currentUser, activeClientId, on
             </div>
         </div>
     );
-};
+});

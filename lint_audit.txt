@@ -1,0 +1,585 @@
+﻿
+C:\Users\LeonPrior\OneDrive - Prior Consultor├¡a\Documentos\CONSULTOR├ìAS 2025\IPS\IA\APP TABLERO\.backups\v5.2.2-CONTROL\App.tsx
+  2108:12  error  Parsing error: Unexpected token. Did you mean `{'}'}` or `&rbrace;`?
+
+C:\Users\LeonPrior\OneDrive - Prior Consultor├¡a\Documentos\CONSULTOR├ìAS 2025\IPS\IA\APP TABLERO\.backups\v5.2.2-CONTROL\DashboardTabs.tsx
+   74:37   warning  Unexpected any. Specify a different type                                                                   @typescript-eslint/no-explicit-any
+  113:27   warning  Unexpected any. Specify a different type                                                                   @typescript-eslint/no-explicit-any
+  134:25   warning  Unexpected any. Specify a different type                                                                   @typescript-eslint/no-explicit-any
+  134:57   warning  Unexpected any. Specify a different type                                                                   @typescript-eslint/no-explicit-any
+  152:27   warning  Unexpected any. Specify a different type                                                                   @typescript-eslint/no-explicit-any
+  152:59   warning  Unexpected any. Specify a different type                                                                   @typescript-eslint/no-explicit-any
+  180:35   warning  Unexpected any. Specify a different type                                                                   @typescript-eslint/no-explicit-any
+  185:23   warning  Unexpected any. Specify a different type                                                                   @typescript-eslint/no-explicit-any
+  185:55   warning  Unexpected any. Specify a different type                                                                   @typescript-eslint/no-explicit-any
+  195:35   warning  Unexpected any. Specify a different type                                                                   @typescript-eslint/no-explicit-any
+  195:84   warning  Unexpected any. Specify a different type                                                                   @typescript-eslint/no-explicit-any
+  216:21   warning  Unexpected any. Specify a different type                                                                   @typescript-eslint/no-explicit-any
+  216:53   warning  Unexpected any. Specify a different type                                                                   @typescript-eslint/no-explicit-any
+  223:23   warning  Unexpected any. Specify a different type                                                                   @typescript-eslint/no-explicit-any
+  239:43   warning  Unexpected any. Specify a different type                                                                   @typescript-eslint/no-explicit-any
+  241:20   warning  Unexpected any. Specify a different type                                                                   @typescript-eslint/no-explicit-any
+  243:6    warning  React Hook useMemo has a missing dependency: 'activeId'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  273:81   warning  Unexpected any. Specify a different type                                                                   @typescript-eslint/no-explicit-any
+  281:55   warning  Unexpected any. Specify a different type                                                                   @typescript-eslint/no-explicit-any
+  281:89   warning  Unexpected any. Specify a different type                                                                   @typescript-eslint/no-explicit-any
+  281:130  warning  Unexpected any. Specify a different type                                                                   @typescript-eslint/no-explicit-any
+  294:34   warning  Unexpected any. Specify a different type                                                                   @typescript-eslint/no-explicit-any
+  296:38   warning  Unexpected any. Specify a different type                                                                   @typescript-eslint/no-explicit-any
+  308:57   warning  Unexpected any. Specify a different type                                                                   @typescript-eslint/no-explicit-any
+  342:76   warning  Unexpected any. Specify a different type                                                                   @typescript-eslint/no-explicit-any
+  388:68   warning  Unexpected any. Specify a different type                                                                   @typescript-eslint/no-explicit-any
+
+C:\Users\LeonPrior\OneDrive - Prior Consultor├¡a\Documentos\CONSULTOR├ìAS 2025\IPS\IA\APP TABLERO\.backups\v5.2.2-CONTROL\DashboardView.tsx
+  137:12  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  149:29  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  156:66  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  158:32  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  183:30  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  188:44  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  312:41  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  323:43  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  357:30  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  364:39  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  365:42  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  366:39  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  367:38  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  369:51  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  383:30  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\LeonPrior\OneDrive - Prior Consultor├¡a\Documentos\CONSULTOR├ìAS 2025\IPS\IA\APP TABLERO\.backups\v5.2.2-CONTROL\compliance.ts
+  177:34   warning  Unexpected any. Specify a different type                                         @typescript-eslint/no-explicit-any
+  178:31   warning  Unexpected any. Specify a different type                                         @typescript-eslint/no-explicit-any
+  203:66   warning  Unexpected any. Specify a different type                                         @typescript-eslint/no-explicit-any
+  203:103  warning  Unexpected any. Specify a different type                                         @typescript-eslint/no-explicit-any
+  203:137  warning  Unexpected any. Specify a different type                                         @typescript-eslint/no-explicit-any
+  207:14   warning  Unexpected any. Specify a different type                                         @typescript-eslint/no-explicit-any
+  334:3    error    'year' is assigned a value but never used. Allowed unused args must match /^_/u  @typescript-eslint/no-unused-vars
+
+C:\Users\LeonPrior\OneDrive - Prior Consultor├¡a\Documentos\CONSULTOR├ìAS 2025\IPS\IA\APP TABLERO\.backups\v5.2.2-CONTROL\firebaseService.ts
+  120:44  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  510:32  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  592:23  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  831:30  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\LeonPrior\OneDrive - Prior Consultor├¡a\Documentos\CONSULTOR├ìAS 2025\IPS\IA\APP TABLERO\App.tsx
+     6:10   error    'DashboardTabs' is defined but never used. Allowed unused vars must match /^_/u                                            @typescript-eslint/no-unused-vars
+   103:10   error    'selectedSuperGroupTab' is assigned a value but never used. Allowed unused vars must match /^_/u                           @typescript-eslint/no-unused-vars
+   103:33   error    'setSelectedSuperGroupTab' is assigned a value but never used. Allowed unused vars must match /^_/u                        @typescript-eslint/no-unused-vars
+   104:10   error    'selectedAreaTab' is assigned a value but never used. Allowed unused vars must match /^_/u                                 @typescript-eslint/no-unused-vars
+   104:27   error    'setSelectedAreaTab' is assigned a value but never used. Allowed unused vars must match /^_/u                              @typescript-eslint/no-unused-vars
+   171:6    warning  React Hook useMemo has an unnecessary dependency: 'isAggregate'. Either exclude it or remove the dependency array          react-hooks/exhaustive-deps
+   398:21   warning  Unexpected any. Specify a different type                                                                                   @typescript-eslint/no-explicit-any
+   409:16   warning  Unexpected any. Specify a different type                                                                                   @typescript-eslint/no-explicit-any
+   410:16   warning  Unexpected any. Specify a different type                                                                                   @typescript-eslint/no-explicit-any
+   412:25   warning  Unexpected any. Specify a different type                                                                                   @typescript-eslint/no-explicit-any
+   413:25   warning  Unexpected any. Specify a different type                                                                                   @typescript-eslint/no-explicit-any
+   422:19   warning  Unexpected any. Specify a different type                                                                                   @typescript-eslint/no-explicit-any
+   434:29   warning  Unexpected any. Specify a different type                                                                                   @typescript-eslint/no-explicit-any
+   450:19   warning  Unexpected any. Specify a different type                                                                                   @typescript-eslint/no-explicit-any
+   709:102  warning  Unexpected any. Specify a different type                                                                                   @typescript-eslint/no-explicit-any
+   710:61   warning  Unexpected any. Specify a different type                                                                                   @typescript-eslint/no-explicit-any
+   849:31   warning  Unexpected any. Specify a different type                                                                                   @typescript-eslint/no-explicit-any
+   849:49   warning  Unexpected any. Specify a different type                                                                                   @typescript-eslint/no-explicit-any
+   873:81   warning  Unexpected any. Specify a different type                                                                                   @typescript-eslint/no-explicit-any
+   893:57   warning  Unexpected any. Specify a different type                                                                                   @typescript-eslint/no-explicit-any
+   934:19   error    'dirGroup' is assigned a value but never used. Allowed unused vars must match /^_/u                                        @typescript-eslint/no-unused-vars
+   965:21   warning  Unexpected any. Specify a different type                                                                                   @typescript-eslint/no-explicit-any
+  1074:27   warning  Unexpected any. Specify a different type                                                                                   @typescript-eslint/no-explicit-any
+  1086:19   warning  Unexpected any. Specify a different type                                                                                   @typescript-eslint/no-explicit-any
+  1177:19   warning  Unexpected any. Specify a different type                                                                                   @typescript-eslint/no-explicit-any
+  1227:19   warning  Unexpected any. Specify a different type                                                                                   @typescript-eslint/no-explicit-any
+  1241:48   warning  Unexpected any. Specify a different type                                                                                   @typescript-eslint/no-explicit-any
+  1253:30   warning  Unexpected any. Specify a different type                                                                                   @typescript-eslint/no-explicit-any
+  1306:37   warning  Unexpected any. Specify a different type                                                                                   @typescript-eslint/no-explicit-any
+  1408:19   warning  Unexpected any. Specify a different type                                                                                   @typescript-eslint/no-explicit-any
+  1443:9    warning  Unused eslint-disable directive (no problems were reported from 'no-restricted-globals')
+  1485:9    error    'memoizedAllowedGroups' is assigned a value but never used. Allowed unused vars must match /^_/u                           @typescript-eslint/no-unused-vars
+  1501:9    error    'handleUpdateDashboardTitleWrapper' is assigned a value but never used. Allowed unused vars must match /^_/u               @typescript-eslint/no-unused-vars
+  1503:97   warning  Unexpected any. Specify a different type                                                                                   @typescript-eslint/no-explicit-any
+  1504:6    warning  React Hook useCallback has a missing dependency: 'handleUpdateMetadata'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  2000:43   warning  Unexpected any. Specify a different type                                                                                   @typescript-eslint/no-explicit-any
+  2033:41   warning  Unexpected any. Specify a different type                                                                                   @typescript-eslint/no-explicit-any
+  2052:41   warning  Unexpected any. Specify a different type                                                                                   @typescript-eslint/no-explicit-any
+  2071:41   warning  Unexpected any. Specify a different type                                                                                   @typescript-eslint/no-explicit-any
+  2116:41   warning  Unexpected any. Specify a different type                                                                                   @typescript-eslint/no-explicit-any
+  2150:43   warning  Unexpected any. Specify a different type                                                                                   @typescript-eslint/no-explicit-any
+  2194:43   warning  Unexpected any. Specify a different type                                                                                   @typescript-eslint/no-explicit-any
+  2239:39   warning  Unexpected any. Specify a different type                                                                                   @typescript-eslint/no-explicit-any
+  2271:39   warning  Unexpected any. Specify a different type                                                                                   @typescript-eslint/no-explicit-any
+  2303:46   warning  Unexpected any. Specify a different type                                                                                   @typescript-eslint/no-explicit-any
+  2395:96   warning  Unexpected any. Specify a different type                                                                                   @typescript-eslint/no-explicit-any
+  2544:124  warning  Unexpected any. Specify a different type                                                                                   @typescript-eslint/no-explicit-any
+  2546:92   warning  Unexpected any. Specify a different type                                                                                   @typescript-eslint/no-explicit-any
+  2588:105  warning  Unexpected any. Specify a different type                                                                                   @typescript-eslint/no-explicit-any
+
+C:\Users\LeonPrior\OneDrive - Prior Consultor├¡a\Documentos\CONSULTOR├ìAS 2025\IPS\IA\APP TABLERO\audit_activador.js
+  16:5  error  'console' is not defined  no-undef
+  20:5  error  'console' is not defined  no-undef
+  22:9  error  'console' is not defined  no-undef
+  27:5  error  'console' is not defined  no-undef
+  31:5  error  'console' is not defined  no-undef
+  34:5  error  'console' is not defined  no-undef
+  38:5  error  'console' is not defined  no-undef
+  40:5  error  'process' is not defined  no-undef
+  44:5  error  'console' is not defined  no-undef
+  45:5  error  'process' is not defined  no-undef
+
+C:\Users\LeonPrior\OneDrive - Prior Consultor├¡a\Documentos\CONSULTOR├ìAS 2025\IPS\IA\APP TABLERO\check_dash.js
+  18:9  error  'console' is not defined  no-undef
+  20:5  error  'process' is not defined  no-undef
+
+C:\Users\LeonPrior\OneDrive - Prior Consultor├¡a\Documentos\CONSULTOR├ìAS 2025\IPS\IA\APP TABLERO\check_ips.js
+  17:5  error  'console' is not defined  no-undef
+  20:5  error  'console' is not defined  no-undef
+  22:5  error  'process' is not defined  no-undef
+
+C:\Users\LeonPrior\OneDrive - Prior Consultor├¡a\Documentos\CONSULTOR├ìAS 2025\IPS\IA\APP TABLERO\components\ActivityManager.tsx
+  245:39  error  Unknown property 'aira-hidden' found  react/no-unknown-property
+
+C:\Users\LeonPrior\OneDrive - Prior Consultor├¡a\Documentos\CONSULTOR├ìAS 2025\IPS\IA\APP TABLERO\components\AdvancedDataImporter.tsx
+  258:23  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  285:23  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  356:23  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\LeonPrior\OneDrive - Prior Consultor├¡a\Documentos\CONSULTOR├ìAS 2025\IPS\IA\APP TABLERO\components\CurrentPeriodFocus.tsx
+   34:39   error    React Hook "useState" is called conditionally. React Hooks must be called in the exact same order in every component render                                                                                                                         react-hooks/rules-of-hooks
+   35:43   error    React Hook "useState" is called conditionally. React Hooks must be called in the exact same order in every component render                                                                                                                         react-hooks/rules-of-hooks
+   36:39   error    React Hook "useState" is called conditionally. React Hooks must be called in the exact same order in every component render                                                                                                                         react-hooks/rules-of-hooks
+   37:37   error    React Hook "useState" is called conditionally. React Hooks must be called in the exact same order in every component render                                                                                                                         react-hooks/rules-of-hooks
+   38:49   error    React Hook "useState" is called conditionally. React Hooks must be called in the exact same order in every component render                                                                                                                         react-hooks/rules-of-hooks
+   39:63   error    React Hook "useState" is called conditionally. React Hooks must be called in the exact same order in every component render                                                                                                                         react-hooks/rules-of-hooks
+   48:55   error    React Hook "useMemo" is called conditionally. React Hooks must be called in the exact same order in every component render. Did you accidentally call a React Hook after an early return?                                                           react-hooks/rules-of-hooks
+   70:25   error    React Hook "useMemo" is called conditionally. React Hooks must be called in the exact same order in every component render. Did you accidentally call a React Hook after an early return?                                                           react-hooks/rules-of-hooks
+   89:24   error    React Hook "useMemo" is called conditionally. React Hooks must be called in the exact same order in every component render. Did you accidentally call a React Hook after an early return?                                                           react-hooks/rules-of-hooks
+   94:5    error    React Hook "useEffect" is called conditionally. React Hooks must be called in the exact same order in every component render. Did you accidentally call a React Hook after an early return?                                                         react-hooks/rules-of-hooks
+  102:8    warning  React Hook useEffect has missing dependencies: 'isWeekly', 'item.monthlyGoals', 'item.monthlyNotes', 'item.monthlyProgress', 'item.weeklyGoals', 'item.weeklyNotes', and 'item.weeklyProgress'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+  142:23   error    React Hook "useMemo" is called conditionally. React Hooks must be called in the exact same order in every component render. Did you accidentally call a React Hook after an early return?                                                           react-hooks/rules-of-hooks
+  282:127  warning  Unexpected any. Specify a different type                                                                                                                                                                                                            @typescript-eslint/no-explicit-any
+
+C:\Users\LeonPrior\OneDrive - Prior Consultor├¡a\Documentos\CONSULTOR├ìAS 2025\IPS\IA\APP TABLERO\components\DashboardRow.tsx
+   25:72   error    'item' is missing in props validation                                                                                                                                                      react/prop-types
+   25:78   error    'onUpdateItem' is missing in props validation                                                                                                                                              react/prop-types
+   25:92   error    'globalThresholds' is missing in props validation                                                                                                                                          react/prop-types
+   25:110  error    'userRoleForDashboard' is missing in props validation                                                                                                                                      react/prop-types
+   25:132  error    'layout' is missing in props validation                                                                                                                                                    react/prop-types
+   25:149  error    'year' is missing in props validation                                                                                                                                                      react/prop-types
+   25:155  error    'isAggregate' is missing in props validation                                                                                                                                               react/prop-types
+   25:176  error    'isSelected' is missing in props validation                                                                                                                                                react/prop-types
+   25:196  error    'onSelect' is missing in props validation                                                                                                                                                  react/prop-types
+   25:206  error    'decimalPrecision' is missing in props validation                                                                                                                                          react/prop-types
+   25:241  error    'allDashboardItems' is missing in props validation                                                                                                                                         react/prop-types
+   30:22   error    'item.indicator' is missing in props validation                                                                                                                                            react/prop-types
+   38:11   error    'item.indicator' is missing in props validation                                                                                                                                            react/prop-types
+   38:22   error    'item.unit' is missing in props validation                                                                                                                                                 react/prop-types
+   38:28   error    'item.weight' is missing in props validation                                                                                                                                               react/prop-types
+   38:36   error    'item.monthlyProgress' is missing in props validation                                                                                                                                      react/prop-types
+   38:53   error    'item.monthlyGoals' is missing in props validation                                                                                                                                         react/prop-types
+   38:67   error    'item.type' is missing in props validation                                                                                                                                                 react/prop-types
+   40:83   error    React Hook "useMemo" is called conditionally. React Hooks must be called in the exact same order in every component render. Did you accidentally call a React Hook after an early return?  react-hooks/rules-of-hooks
+   44:30   error    React Hook "useMemo" is called conditionally. React Hooks must be called in the exact same order in every component render. Did you accidentally call a React Hook after an early return?  react-hooks/rules-of-hooks
+   47:26   error    React Hook "useMemo" is called conditionally. React Hooks must be called in the exact same order in every component render. Did you accidentally call a React Hook after an early return?  react-hooks/rules-of-hooks
+   53:21   error    React Hook "useMemo" is called conditionally. React Hooks must be called in the exact same order in every component render. Did you accidentally call a React Hook after an early return?  react-hooks/rules-of-hooks
+   60:33   error    'item.monthlyProgress.slice' is missing in props validation                                                                                                                                react/prop-types
+   61:27   error    'item.monthlyGoals.slice' is missing in props validation                                                                                                                                   react/prop-types
+   65:24   error    React Hook "useMemo" is called conditionally. React Hooks must be called in the exact same order in every component render. Did you accidentally call a React Hook after an early return?  react-hooks/rules-of-hooks
+  135:47   error    'item.monthlyGoals' is missing in props validation                                                                                                                                         react/prop-types
+  136:53   error    'item.monthlyProgress' is missing in props validation                                                                                                                                      react/prop-types
+  137:47   error    'item.monthlyNotes' is missing in props validation                                                                                                                                         react/prop-types
+  138:45   error    'item.weeklyGoals' is missing in props validation                                                                                                                                          react/prop-types
+  139:51   error    'item.weeklyProgress' is missing in props validation                                                                                                                                       react/prop-types
+  140:45   error    'item.weeklyNotes' is missing in props validation                                                                                                                                          react/prop-types
+  146:33   warning  Unexpected any. Specify a different type                                                                                                                                                   @typescript-eslint/no-explicit-any
+  168:21   error    'item.indicatorType' is missing in props validation                                                                                                                                        react/prop-types
+  168:43   error    'item.indicatorType' is missing in props validation                                                                                                                                        react/prop-types
+  171:27   error    'item.indicatorType' is missing in props validation                                                                                                                                        react/prop-types
+  287:35   error    'item.paiRows' is missing in props validation                                                                                                                                              react/prop-types
+
+C:\Users\LeonPrior\OneDrive - Prior Consultor├¡a\Documentos\CONSULTOR├ìAS 2025\IPS\IA\APP TABLERO\components\DashboardTabs.tsx
+   85:37   warning  Unexpected any. Specify a different type                                                                   @typescript-eslint/no-explicit-any
+  105:25   error    'setSelectedGroup' is assigned a value but never used. Allowed unused vars must match /^_/u                @typescript-eslint/no-unused-vars
+  111:70   warning  Unexpected any. Specify a different type                                                                   @typescript-eslint/no-explicit-any
+  112:60   warning  Unexpected any. Specify a different type                                                                   @typescript-eslint/no-explicit-any
+  127:24   warning  Unexpected any. Specify a different type                                                                   @typescript-eslint/no-explicit-any
+  135:9    error    'normActiveSuperGroup' is assigned a value but never used. Allowed unused vars must match /^_/u            @typescript-eslint/no-unused-vars
+  142:62   warning  Unexpected any. Specify a different type                                                                   @typescript-eslint/no-explicit-any
+  142:87   warning  Unexpected any. Specify a different type                                                                   @typescript-eslint/no-explicit-any
+  161:34   warning  Unexpected any. Specify a different type                                                                   @typescript-eslint/no-explicit-any
+  162:27   warning  Unexpected any. Specify a different type                                                                   @typescript-eslint/no-explicit-any
+  164:31   warning  Unexpected any. Specify a different type                                                                   @typescript-eslint/no-explicit-any
+  173:19   warning  Unexpected any. Specify a different type                                                                   @typescript-eslint/no-explicit-any
+  183:19   warning  Unexpected any. Specify a different type                                                                   @typescript-eslint/no-explicit-any
+  191:56   warning  Unexpected any. Specify a different type                                                                   @typescript-eslint/no-explicit-any
+  205:27   warning  Unexpected any. Specify a different type                                                                   @typescript-eslint/no-explicit-any
+  205:59   warning  Unexpected any. Specify a different type                                                                   @typescript-eslint/no-explicit-any
+  215:6    warning  React Hook useMemo has a missing dependency: 'normMain'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  226:68   warning  Unexpected any. Specify a different type                                                                   @typescript-eslint/no-explicit-any
+  248:33   warning  Unexpected any. Specify a different type                                                                   @typescript-eslint/no-explicit-any
+  248:51   warning  Unexpected any. Specify a different type                                                                   @typescript-eslint/no-explicit-any
+  255:35   warning  Unexpected any. Specify a different type                                                                   @typescript-eslint/no-explicit-any
+  265:23   warning  Unexpected any. Specify a different type                                                                   @typescript-eslint/no-explicit-any
+  265:41   warning  Unexpected any. Specify a different type                                                                   @typescript-eslint/no-explicit-any
+  294:23   warning  Unexpected any. Specify a different type                                                                   @typescript-eslint/no-explicit-any
+  365:61   warning  Unexpected any. Specify a different type                                                                   @typescript-eslint/no-explicit-any
+  447:47   warning  Unexpected any. Specify a different type                                                                   @typescript-eslint/no-explicit-any
+  492:115  warning  Unexpected any. Specify a different type                                                                   @typescript-eslint/no-explicit-any
+  498:38   warning  Unexpected any. Specify a different type                                                                   @typescript-eslint/no-explicit-any
+  502:95   warning  Unexpected any. Specify a different type                                                                   @typescript-eslint/no-explicit-any
+  502:193  warning  Unexpected any. Specify a different type                                                                   @typescript-eslint/no-explicit-any
+  503:64   warning  Unexpected any. Specify a different type                                                                   @typescript-eslint/no-explicit-any
+  506:124  warning  Unexpected any. Specify a different type                                                                   @typescript-eslint/no-explicit-any
+  506:185  warning  Unexpected any. Specify a different type                                                                   @typescript-eslint/no-explicit-any
+  507:55   warning  Unexpected any. Specify a different type                                                                   @typescript-eslint/no-explicit-any
+  511:38   warning  Unexpected any. Specify a different type                                                                   @typescript-eslint/no-explicit-any
+  515:44   warning  Unexpected any. Specify a different type                                                                   @typescript-eslint/no-explicit-any
+  528:61   warning  Unexpected any. Specify a different type                                                                   @typescript-eslint/no-explicit-any
+
+C:\Users\LeonPrior\OneDrive - Prior Consultor├¡a\Documentos\CONSULTOR├ìAS 2025\IPS\IA\APP TABLERO\components\DashboardView.test.tsx
+  22:6  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  30:6  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\LeonPrior\OneDrive - Prior Consultor├¡a\Documentos\CONSULTOR├ìAS 2025\IPS\IA\APP TABLERO\components\DashboardView.tsx
+   19:10   error    'exportDashboardToExcel' is defined but never used. Allowed unused vars must match /^_/u                           @typescript-eslint/no-unused-vars
+  110:118  warning  Unexpected any. Specify a different type                                                                           @typescript-eslint/no-explicit-any
+  124:30   warning  Unexpected any. Specify a different type                                                                           @typescript-eslint/no-explicit-any
+  124:81   warning  Unexpected any. Specify a different type                                                                           @typescript-eslint/no-explicit-any
+  125:30   warning  Unexpected any. Specify a different type                                                                           @typescript-eslint/no-explicit-any
+  125:82   warning  Unexpected any. Specify a different type                                                                           @typescript-eslint/no-explicit-any
+  127:6    warning  React Hook useMemo has an unnecessary dependency: 'isAggregate'. Either exclude it or remove the dependency array  react-hooks/exhaustive-deps
+  178:12   warning  Unexpected any. Specify a different type                                                                           @typescript-eslint/no-explicit-any
+  190:29   warning  Unexpected any. Specify a different type                                                                           @typescript-eslint/no-explicit-any
+  197:66   warning  Unexpected any. Specify a different type                                                                           @typescript-eslint/no-explicit-any
+  199:32   warning  Unexpected any. Specify a different type                                                                           @typescript-eslint/no-explicit-any
+  225:30   warning  Unexpected any. Specify a different type                                                                           @typescript-eslint/no-explicit-any
+  230:44   warning  Unexpected any. Specify a different type                                                                           @typescript-eslint/no-explicit-any
+  386:41   warning  Unexpected any. Specify a different type                                                                           @typescript-eslint/no-explicit-any
+  397:43   warning  Unexpected any. Specify a different type                                                                           @typescript-eslint/no-explicit-any
+  408:54   warning  Unexpected any. Specify a different type                                                                           @typescript-eslint/no-explicit-any
+  432:30   warning  Unexpected any. Specify a different type                                                                           @typescript-eslint/no-explicit-any
+  439:39   warning  Unexpected any. Specify a different type                                                                           @typescript-eslint/no-explicit-any
+  440:42   warning  Unexpected any. Specify a different type                                                                           @typescript-eslint/no-explicit-any
+  441:39   warning  Unexpected any. Specify a different type                                                                           @typescript-eslint/no-explicit-any
+  442:38   warning  Unexpected any. Specify a different type                                                                           @typescript-eslint/no-explicit-any
+  443:44   warning  Unexpected any. Specify a different type                                                                           @typescript-eslint/no-explicit-any
+  444:54   warning  Unexpected any. Specify a different type                                                                           @typescript-eslint/no-explicit-any
+  447:40   warning  Unexpected any. Specify a different type                                                                           @typescript-eslint/no-explicit-any
+  447:59   warning  Unexpected any. Specify a different type                                                                           @typescript-eslint/no-explicit-any
+  461:30   warning  Unexpected any. Specify a different type                                                                           @typescript-eslint/no-explicit-any
+
+C:\Users\LeonPrior\OneDrive - Prior Consultor├¡a\Documentos\CONSULTOR├ìAS 2025\IPS\IA\APP TABLERO\components\DataEditor.tsx
+  113:33  warning  Unexpected any. Specify a different type                                                   @typescript-eslint/no-explicit-any
+  115:9   error    'startDictation' is assigned a value but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+  116:42  warning  Unexpected any. Specify a different type                                                   @typescript-eslint/no-explicit-any
+  116:79  warning  Unexpected any. Specify a different type                                                   @typescript-eslint/no-explicit-any
+  130:53  error    'e' is defined but never used. Allowed unused caught errors must match /^_/u               @typescript-eslint/no-unused-vars
+  130:56  error    Empty block statement                                                                      no-empty
+  146:38  warning  Unexpected any. Specify a different type                                                   @typescript-eslint/no-explicit-any
+  163:37  warning  Unexpected any. Specify a different type                                                   @typescript-eslint/no-explicit-any
+  425:30  warning  Unexpected any. Specify a different type                                                   @typescript-eslint/no-explicit-any
+
+C:\Users\LeonPrior\OneDrive - Prior Consultor├¡a\Documentos\CONSULTOR├ìAS 2025\IPS\IA\APP TABLERO\components\HelpCenter.tsx
+  67:47  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\LeonPrior\OneDrive - Prior Consultor├¡a\Documentos\CONSULTOR├ìAS 2025\IPS\IA\APP TABLERO\components\HierarchySidebar.tsx
+  120:11   error    'versionLabel' is assigned a value but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+  132:30   warning  Unexpected any. Specify a different type                                                 @typescript-eslint/no-explicit-any
+  141:30   warning  Unexpected any. Specify a different type                                                 @typescript-eslint/no-explicit-any
+  209:56   warning  Unexpected any. Specify a different type                                                 @typescript-eslint/no-explicit-any
+  209:88   warning  Unexpected any. Specify a different type                                                 @typescript-eslint/no-explicit-any
+  257:43   warning  Unexpected any. Specify a different type                                                 @typescript-eslint/no-explicit-any
+  268:85   warning  Unexpected any. Specify a different type                                                 @typescript-eslint/no-explicit-any
+  428:157  error    'onDeleteDashboard' is defined but never used. Allowed unused args must match /^_/u      @typescript-eslint/no-unused-vars
+
+C:\Users\LeonPrior\OneDrive - Prior Consultor├¡a\Documentos\CONSULTOR├ìAS 2025\IPS\IA\APP TABLERO\components\IndicatorManager.test.tsx
+   3:18  error  'screen' is defined but never used. Allowed unused vars must match /^_/u                   @typescript-eslint/no-unused-vars
+  26:7   error  'mockItemsMixed' is assigned a value but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+
+C:\Users\LeonPrior\OneDrive - Prior Consultor├¡a\Documentos\CONSULTOR├ìAS 2025\IPS\IA\APP TABLERO\components\IndicatorManager.tsx
+  387:8  warning  React Hook React.useEffect has a missing dependency: 'value'. Either include it or remove the dependency array. If 'setLocalValue' needs the current value of 'value', you can also switch to useReducer instead of useState and read 'value' in the reducer  react-hooks/exhaustive-deps
+  387:9  warning  React Hook React.useEffect has a complex expression in the dependency array. Extract it to a separate variable so it can be statically checked                                                                                                                react-hooks/exhaustive-deps
+
+C:\Users\LeonPrior\OneDrive - Prior Consultor├¡a\Documentos\CONSULTOR├ìAS 2025\IPS\IA\APP TABLERO\components\LoginScreen.tsx
+  26:19  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\LeonPrior\OneDrive - Prior Consultor├¡a\Documentos\CONSULTOR├ìAS 2025\IPS\IA\APP TABLERO\components\MasterTrafficLight.tsx
+  54:46  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\LeonPrior\OneDrive - Prior Consultor├¡a\Documentos\CONSULTOR├ìAS 2025\IPS\IA\APP TABLERO\components\ReportCenter.tsx
+  13:21  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\LeonPrior\OneDrive - Prior Consultor├¡a\Documentos\CONSULTOR├ìAS 2025\IPS\IA\APP TABLERO\components\UserManager.tsx
+   57:30   warning  Unexpected any. Specify a different type                             @typescript-eslint/no-explicit-any
+  452:25   warning  Unexpected any. Specify a different type                             @typescript-eslint/no-explicit-any
+  474:23   warning  Unexpected any. Specify a different type                             @typescript-eslint/no-explicit-any
+  522:122  warning  Unexpected any. Specify a different type                             @typescript-eslint/no-explicit-any
+  523:56   warning  Unexpected any. Specify a different type                             @typescript-eslint/no-explicit-any
+  524:126  warning  Unexpected any. Specify a different type                             @typescript-eslint/no-explicit-any
+  524:197  warning  Unexpected any. Specify a different type                             @typescript-eslint/no-explicit-any
+  525:75   warning  Unexpected any. Specify a different type                             @typescript-eslint/no-explicit-any
+  554:59   warning  Unexpected any. Specify a different type                             @typescript-eslint/no-explicit-any
+  664:42   error    'p' is defined but never used. Allowed unused args must match /^_/u  @typescript-eslint/no-unused-vars
+  671:41   warning  Unexpected any. Specify a different type                             @typescript-eslint/no-explicit-any
+
+C:\Users\LeonPrior\OneDrive - Prior Consultor├¡a\Documentos\CONSULTOR├ìAS 2025\IPS\IA\APP TABLERO\components\WeightControlCenter.tsx
+  178:60  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  242:65  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\LeonPrior\OneDrive - Prior Consultor├¡a\Documentos\CONSULTOR├ìAS 2025\IPS\IA\APP TABLERO\debug_compliance.js
+  21:1  error  'global' is not defined   no-undef
+  29:1  error  'console' is not defined  no-undef
+  30:1  error  'console' is not defined  no-undef
+  33:1  error  'console' is not defined  no-undef
+  36:5  error  'console' is not defined  no-undef
+  38:5  error  'console' is not defined  no-undef
+
+C:\Users\LeonPrior\OneDrive - Prior Consultor├¡a\Documentos\CONSULTOR├ìAS 2025\IPS\IA\APP TABLERO\final_audit.js
+  15:5  error  'console' is not defined  no-undef
+  21:9  error  'console' is not defined  no-undef
+  26:5  error  'console' is not defined  no-undef
+  31:9  error  'console' is not defined  no-undef
+  37:5  error  'console' is not defined  no-undef
+  38:5  error  'console' is not defined  no-undef
+  43:5  error  'console' is not defined  no-undef
+  45:5  error  'process' is not defined  no-undef
+  49:5  error  'console' is not defined  no-undef
+  50:5  error  'process' is not defined  no-undef
+
+C:\Users\LeonPrior\OneDrive - Prior Consultor├¡a\Documentos\CONSULTOR├ìAS 2025\IPS\IA\APP TABLERO\final_check.js
+  20:9  error  'console' is not defined  no-undef
+  22:9  error  'console' is not defined  no-undef
+  24:5  error  'process' is not defined  no-undef
+
+C:\Users\LeonPrior\OneDrive - Prior Consultor├¡a\Documentos\CONSULTOR├ìAS 2025\IPS\IA\APP TABLERO\fix_config_final.js
+  17:5  error  'console' is not defined  no-undef
+  36:5  error  'console' is not defined  no-undef
+  37:5  error  'process' is not defined  no-undef
+  41:5  error  'console' is not defined  no-undef
+  42:5  error  'process' is not defined  no-undef
+
+C:\Users\LeonPrior\OneDrive - Prior Consultor├¡a\Documentos\CONSULTOR├ìAS 2025\IPS\IA\APP TABLERO\fix_db.js
+  13:5  error  'console' is not defined  no-undef
+  28:9  error  'console' is not defined  no-undef
+  30:9  error  'console' is not defined  no-undef
+  55:9  error  'console' is not defined  no-undef
+  56:9  error  'process' is not defined  no-undef
+  58:9  error  'console' is not defined  no-undef
+  59:9  error  'process' is not defined  no-undef
+
+C:\Users\LeonPrior\OneDrive - Prior Consultor├¡a\Documentos\CONSULTOR├ìAS 2025\IPS\IA\APP TABLERO\fix_db2.js
+  18:9   error  'console' is not defined  no-undef
+  19:9   error  'process' is not defined  no-undef
+  20:18  error  'console' is not defined  no-undef
+  20:55  error  'process' is not defined  no-undef
+
+C:\Users\LeonPrior\OneDrive - Prior Consultor├¡a\Documentos\CONSULTOR├ìAS 2025\IPS\IA\APP TABLERO\inspect_items.js
+   2:15  error  A `require()` style import is forbidden  @typescript-eslint/no-require-imports
+   2:15  error  'require' is not defined                 no-undef
+   3:24  error  A `require()` style import is forbidden  @typescript-eslint/no-require-imports
+   3:24  error  'require' is not defined                 no-undef
+  13:5   error  'console' is not defined                 no-undef
+  18:9   error  'console' is not defined                 no-undef
+  26:9   error  'console' is not defined                 no-undef
+  27:9   error  'console' is not defined                 no-undef
+  28:32  error  'console' is not defined                 no-undef
+  30:13  error  'console' is not defined                 no-undef
+  31:13  error  'console' is not defined                 no-undef
+  32:13  error  'console' is not defined                 no-undef
+  35:13  error  'console' is not defined                 no-undef
+  40:17  error  'console' is not defined                 no-undef
+
+C:\Users\LeonPrior\OneDrive - Prior Consultor├¡a\Documentos\CONSULTOR├ìAS 2025\IPS\IA\APP TABLERO\list_collections.js
+  18:9  error  'console' is not defined  no-undef
+  20:5  error  'process' is not defined  no-undef
+
+C:\Users\LeonPrior\OneDrive - Prior Consultor├¡a\Documentos\CONSULTOR├ìAS 2025\IPS\IA\APP TABLERO\migrate_to_stx.js
+  16:5  error  'console' is not defined  no-undef
+  33:5  error  'console' is not defined  no-undef
+  37:5  error  'console' is not defined  no-undef
+  50:5  error  'console' is not defined  no-undef
+  52:5  error  'process' is not defined  no-undef
+  56:5  error  'console' is not defined  no-undef
+  57:5  error  'process' is not defined  no-undef
+
+C:\Users\LeonPrior\OneDrive - Prior Consultor├¡a\Documentos\CONSULTOR├ìAS 2025\IPS\IA\APP TABLERO\repair_db.js
+   2:24  error  'writeFileSync' is defined but never used  @typescript-eslint/no-unused-vars
+   7:5   error  'console' is not defined                   no-undef
+  11:5   error  'console' is not defined                   no-undef
+  27:9   error  'console' is not defined                   no-undef
+  56:5   error  'console' is not defined                   no-undef
+  58:5   error  'process' is not defined                   no-undef
+
+C:\Users\LeonPrior\OneDrive - Prior Consultor├¡a\Documentos\CONSULTOR├ìAS 2025\IPS\IA\APP TABLERO\repair_db_2.js
+   2:24  error  'writeFileSync' is defined but never used  @typescript-eslint/no-unused-vars
+   7:5   error  'console' is not defined                   no-undef
+   9:5   error  'console' is not defined                   no-undef
+  20:9   error  'console' is not defined                   no-undef
+  25:5   error  'console' is not defined                   no-undef
+  34:5   error  'console' is not defined                   no-undef
+  36:5   error  'process' is not defined                   no-undef
+
+C:\Users\LeonPrior\OneDrive - Prior Consultor├¡a\Documentos\CONSULTOR├ìAS 2025\IPS\IA\APP TABLERO\repair_db_3.js
+   2:24  error  'writeFileSync' is defined but never used  @typescript-eslint/no-unused-vars
+   7:5   error  'console' is not defined                   no-undef
+  23:5   error  'console' is not defined                   no-undef
+  25:5   error  'console' is not defined                   no-undef
+  36:13  error  'console' is not defined                   no-undef
+  41:5   error  'process' is not defined                   no-undef
+
+C:\Users\LeonPrior\OneDrive - Prior Consultor├¡a\Documentos\CONSULTOR├ìAS 2025\IPS\IA\APP TABLERO\repair_db_4.js
+   2:24  error  'writeFileSync' is defined but never used  @typescript-eslint/no-unused-vars
+   7:5   error  'console' is not defined                   no-undef
+  20:5   error  'console' is not defined                   no-undef
+  21:5   error  'process' is not defined                   no-undef
+
+C:\Users\LeonPrior\OneDrive - Prior Consultor├¡a\Documentos\CONSULTOR├ìAS 2025\IPS\IA\APP TABLERO\reproduce_issues.js
+  41:5  error  'console' is not defined  no-undef
+
+C:\Users\LeonPrior\OneDrive - Prior Consultor├¡a\Documentos\CONSULTOR├ìAS 2025\IPS\IA\APP TABLERO\services\firebaseService.ts
+  130:44  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  563:32  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  645:23  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  884:30  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\LeonPrior\OneDrive - Prior Consultor├¡a\Documentos\CONSULTOR├ìAS 2025\IPS\IA\APP TABLERO\test_db.js
+   7:5  error  'console' is not defined  no-undef
+  17:5  error  'console' is not defined  no-undef
+  18:5  error  'console' is not defined  no-undef
+  19:5  error  'process' is not defined  no-undef
+
+C:\Users\LeonPrior\OneDrive - Prior Consultor├¡a\Documentos\CONSULTOR├ìAS 2025\IPS\IA\APP TABLERO\test_db2.js
+   7:5  error  'console' is not defined  no-undef
+   9:5  error  'console' is not defined  no-undef
+  11:5  error  'console' is not defined  no-undef
+  13:5  error  'console' is not defined  no-undef
+  14:5  error  'process' is not defined  no-undef
+
+C:\Users\LeonPrior\OneDrive - Prior Consultor├¡a\Documentos\CONSULTOR├ìAS 2025\IPS\IA\APP TABLERO\test_db3.js
+  16:5  error  'process' is not defined  no-undef
+
+C:\Users\LeonPrior\OneDrive - Prior Consultor├¡a\Documentos\CONSULTOR├ìAS 2025\IPS\IA\APP TABLERO\test_db4.js
+   2:24  error  'writeFileSync' is defined but never used  @typescript-eslint/no-unused-vars
+   7:5   error  'console' is not defined                   no-undef
+   9:5   error  'console' is not defined                   no-undef
+  14:5   error  'console' is not defined                   no-undef
+  18:5   error  'console' is not defined                   no-undef
+  21:5   error  'console' is not defined                   no-undef
+  23:5   error  'process' is not defined                   no-undef
+
+C:\Users\LeonPrior\OneDrive - Prior Consultor├¡a\Documentos\CONSULTOR├ìAS 2025\IPS\IA\APP TABLERO\test_db5.js
+  2:24  error  'writeFileSync' is defined but never used  @typescript-eslint/no-unused-vars
+  8:29  error  'console' is not defined                   no-undef
+  9:5   error  'process' is not defined                   no-undef
+
+C:\Users\LeonPrior\OneDrive - Prior Consultor├¡a\Documentos\CONSULTOR├ìAS 2025\IPS\IA\APP TABLERO\test_db6.js
+   2:24  error  'writeFileSync' is defined but never used  @typescript-eslint/no-unused-vars
+   8:5   error  'console' is not defined                   no-undef
+  10:9   error  'console' is not defined                   no-undef
+  13:5   error  'console' is not defined                   no-undef
+  15:9   error  'console' is not defined                   no-undef
+  17:5   error  'process' is not defined                   no-undef
+
+C:\Users\LeonPrior\OneDrive - Prior Consultor├¡a\Documentos\CONSULTOR├ìAS 2025\IPS\IA\APP TABLERO\test_db7.js
+   2:24  error  'writeFileSync' is defined but never used  @typescript-eslint/no-unused-vars
+   8:5   error  'console' is not defined                   no-undef
+  10:9   error  'console' is not defined                   no-undef
+  12:5   error  'process' is not defined                   no-undef
+
+C:\Users\LeonPrior\OneDrive - Prior Consultor├¡a\Documentos\CONSULTOR├ìAS 2025\IPS\IA\APP TABLERO\test_tbl.js
+   2:24  error  'writeFileSync' is defined but never used  @typescript-eslint/no-unused-vars
+  13:5   error  'console' is not defined                   no-undef
+  17:9   error  'console' is not defined                   no-undef
+  18:9   error  'console' is not defined                   no-undef
+  20:9   error  'console' is not defined                   no-undef
+  23:5   error  'process' is not defined                   no-undef
+
+C:\Users\LeonPrior\OneDrive - Prior Consultor├¡a\Documentos\CONSULTOR├ìAS 2025\IPS\IA\APP TABLERO\test_vis.js
+   2:24  error  'writeFileSync' is defined but never used  @typescript-eslint/no-unused-vars
+  21:5   error  'console' is not defined                   no-undef
+  22:5   error  'process' is not defined                   no-undef
+
+C:\Users\LeonPrior\OneDrive - Prior Consultor├¡a\Documentos\CONSULTOR├ìAS 2025\IPS\IA\APP TABLERO\test_week6.js
+   2:24  error  'writeFileSync' is defined but never used  @typescript-eslint/no-unused-vars
+  13:5   error  'console' is not defined                   no-undef
+  21:5   error  'console' is not defined                   no-undef
+  29:5   error  'console' is not defined                   no-undef
+  31:5   error  'process' is not defined                   no-undef
+
+C:\Users\LeonPrior\OneDrive - Prior Consultor├¡a\Documentos\CONSULTOR├ìAS 2025\IPS\IA\APP TABLERO\test_week6_all.js
+   2:24  error  'writeFileSync' is defined but never used  @typescript-eslint/no-unused-vars
+  11:12  error  'console' is not defined                   no-undef
+  19:12  error  'console' is not defined                   no-undef
+  27:12  error  'console' is not defined                   no-undef
+  31:5   error  'process' is not defined                   no-undef
+
+C:\Users\LeonPrior\OneDrive - Prior Consultor├¡a\Documentos\CONSULTOR├ìAS 2025\IPS\IA\APP TABLERO\utils\aggregationUtils.test.ts
+  28:93  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  45:93  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  61:93  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\LeonPrior\OneDrive - Prior Consultor├¡a\Documentos\CONSULTOR├ìAS 2025\IPS\IA\APP TABLERO\utils\aggregationUtils.ts
+   32:7   error    'haveIdenticalIndicators' is assigned a value but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+  290:10  warning  Unexpected any. Specify a different type                                                            @typescript-eslint/no-explicit-any
+
+C:\Users\LeonPrior\OneDrive - Prior Consultor├¡a\Documentos\CONSULTOR├ìAS 2025\IPS\IA\APP TABLERO\utils\compliance.test.ts
+  15:10  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  24:10  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  33:10  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\LeonPrior\OneDrive - Prior Consultor├¡a\Documentos\CONSULTOR├ìAS 2025\IPS\IA\APP TABLERO\utils\compliance.ts
+   72:37   error    Unnecessary escape character: \.                                            no-useless-escape
+  115:15   error    Unnecessary escape character: \.                                            no-useless-escape
+  115:17   error    Unnecessary escape character: \+                                            no-useless-escape
+  115:21   error    Unnecessary escape character: \*                                            no-useless-escape
+  115:23   error    Unnecessary escape character: \/                                            no-useless-escape
+  115:25   error    Unnecessary escape character: \(                                            no-useless-escape
+  115:27   error    Unnecessary escape character: \)                                            no-useless-escape
+  121:5    warning  Unused eslint-disable directive (no problems were reported from 'no-eval')
+  122:9    error    'result' is never reassigned. Use 'const' instead                           prefer-const
+  310:39   warning  Unexpected any. Specify a different type                                    @typescript-eslint/no-explicit-any
+  311:36   warning  Unexpected any. Specify a different type                                    @typescript-eslint/no-explicit-any
+  395:66   warning  Unexpected any. Specify a different type                                    @typescript-eslint/no-explicit-any
+  395:103  warning  Unexpected any. Specify a different type                                    @typescript-eslint/no-explicit-any
+  395:137  warning  Unexpected any. Specify a different type                                    @typescript-eslint/no-explicit-any
+  399:14   warning  Unexpected any. Specify a different type                                    @typescript-eslint/no-explicit-any
+  516:48   warning  Unexpected any. Specify a different type                                    @typescript-eslint/no-explicit-any
+  536:24   warning  Unexpected any. Specify a different type                                    @typescript-eslint/no-explicit-any
+  545:43   warning  Unexpected any. Specify a different type                                    @typescript-eslint/no-explicit-any
+  546:44   warning  Unexpected any. Specify a different type                                    @typescript-eslint/no-explicit-any
+
+C:\Users\LeonPrior\OneDrive - Prior Consultor├¡a\Documentos\CONSULTOR├ìAS 2025\IPS\IA\APP TABLERO\utils\dashboardLogic.test.ts
+  31:57  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  31:76  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  31:96  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  54:57  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  54:76  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  54:96  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  80:57  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  80:76  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  80:96  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\LeonPrior\OneDrive - Prior Consultor├¡a\Documentos\CONSULTOR├ìAS 2025\IPS\IA\APP TABLERO\utils\dateUtils.ts
+  29:65  error  'startDay' is assigned a value but never used. Allowed unused args must match /^_/u  @typescript-eslint/no-unused-vars
+  35:11  error  'day' is assigned a value but never used. Allowed unused vars must match /^_/u       @typescript-eslint/no-unused-vars
+
+C:\Users\LeonPrior\OneDrive - Prior Consultor├¡a\Documentos\CONSULTOR├ìAS 2025\IPS\IA\APP TABLERO\utils\exportUtils.ts
+   36:36  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   51:24  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  169:30  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  170:30  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  177:30  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\LeonPrior\OneDrive - Prior Consultor├¡a\Documentos\CONSULTOR├ìAS 2025\IPS\IA\APP TABLERO\utils\powerPointExport.ts
+    2:21  error    'DashboardItem' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+  337:57  error    'i' is defined but never used. Allowed unused args must match /^_/u              @typescript-eslint/no-unused-vars
+  516:26  warning  Unexpected any. Specify a different type                                         @typescript-eslint/no-explicit-any
+  678:39  warning  Unexpected any. Specify a different type                                         @typescript-eslint/no-explicit-any
+
+C:\Users\LeonPrior\OneDrive - Prior Consultor├¡a\Documentos\CONSULTOR├ìAS 2025\IPS\IA\APP TABLERO\verify_fix.js
+  41:9   error  'console' is not defined  no-undef
+  44:9   error  'console' is not defined  no-undef
+  48:13  error  'process' is not defined  no-undef
+  49:1   error  'console' is not defined  no-undef
+
+Ô£û 459 problems (231 errors, 228 warnings)
+  1 error and 2 warnings potentially fixable with the `--fix` option.
+

@@ -18,11 +18,18 @@ interface DashboardProps {
   isAggregate?: boolean;
   selectedItemId?: number | string | null;
   onSelectItem?: (id: number | string | null) => void;
-  decimalPrecision?: 1 | 2;
+  decimalPrecision?: 0 | 1 | 2;
   allContextItems?: DashboardItem[];
+  isGlobalAdmin?: boolean; // 🛡️ v9.1.0-PRO-FINAL-SHIELDED: Propagado hasta DashboardRow
 }
 
-export const Dashboard: React.FC<DashboardProps> = ({
+/**
+ * Componente Dashboard
+ * 
+ * Orquestador principal de la cuadrícula de KPIs o vista compacta. 
+ * Realiza filtrado reactivo y gestión de selección de indicadores.
+ */
+export const Dashboard: React.FC<DashboardProps> = React.memo(({
   data,
   onUpdateItem,
   globalThresholds,
@@ -32,8 +39,9 @@ export const Dashboard: React.FC<DashboardProps> = ({
   isAggregate = false,
   selectedItemId,
   onSelectItem,
-  decimalPrecision = 2,
-  allContextItems = []
+  decimalPrecision = 0,
+  allContextItems = [],
+  isGlobalAdmin = false
 }) => {
   const safeData: DashboardItem[] = useMemo(() => {
     const list = Array.isArray(data) ? data : [];
@@ -69,6 +77,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
             onSelect={() => onSelectItem?.(item.id === selectedItemId ? null : item.id)}
             decimalPrecision={decimalPrecision}
             allDashboardItems={allContextItems.length > 0 ? allContextItems : (data || [])}
+            isGlobalAdmin={isGlobalAdmin}
           />
         ))
       ) : (
@@ -81,4 +90,4 @@ export const Dashboard: React.FC<DashboardProps> = ({
       )}
     </div>
   );
-};
+});

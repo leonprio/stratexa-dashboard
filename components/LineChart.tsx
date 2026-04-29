@@ -1,9 +1,10 @@
 import React, { useMemo } from 'react';
 import { ComplianceStatus } from '../types';
+import { formatNumberWithCommas } from '../utils/formatters';
 
 interface LineChartProps {
-  progressData: number[];
-  goalData: number[];
+  progressData: (number | null)[];
+  goalData: (number | null)[];
   unit: string;
   type: 'accumulative' | 'average';
   status: ComplianceStatus;
@@ -11,7 +12,16 @@ interface LineChartProps {
   frequency?: 'monthly' | 'weekly';
 }
 
-export const LineChart = ({ progressData, goalData, unit: _unit, type, status, indicator = 'chart', frequency = 'monthly' }: LineChartProps) => {
+/**
+ * Componente LineChart
+ * 
+ * Visualiza el progreso semanal o mensual frente a la meta mediante un gráfico de líneas
+ * fluido con áreas de degradado Reactivas.
+ * 
+ * @param {LineChartProps} props - Propiedades para los datos y configuración del gráfico.
+ * @returns {JSX.Element} Gráfico SVG responsivo.
+ */
+export const LineChart: React.FC<LineChartProps> = React.memo(({ progressData, goalData, unit: _unit, type, status, indicator = 'chart', frequency = 'monthly' }) => {
   const isWeekly = frequency === 'weekly';
   const numPeriods = progressData.length;
 
@@ -23,13 +33,24 @@ export const LineChart = ({ progressData, goalData, unit: _unit, type, status, i
     return ['E', 'F', 'M', 'A', 'M', 'J', 'J', 'A', 'S', 'O', 'N', 'D'];
   }, [isWeekly]);
 
-  const processLineData = (data: number[], calculationType: 'accumulative' | 'average') => {
+  const processLineData = (data: (number | null)[], calculationType: 'accumulative' | 'average') => {
     if (calculationType === 'accumulative') {
       return data.reduce((acc, value, i) => {
-        const accumulatedValue = (acc[i - 1]?.value || 0) + value;
-        acc.push({ index: i, value: accumulatedValue });
+        if (value === null || value === undefined) {
+          acc.push({ index: i, value: null });
+        } else {
+          // Find the last valid accumulated value
+          let lastValid = 0;
+          for (let prevIdx = i - 1; prevIdx >= 0; prevIdx--) {
+            if (acc[prevIdx]?.value !== null) {
+              lastValid = acc[prevIdx].value as number;
+              break;
+            }
+          }
+          acc.push({ index: i, value: lastValid + value });
+        }
         return acc;
-      }, [] as { index: number; value: number }[]);
+      }, [] as { index: number; value: number | null }[]);
     }
     return data.map((value, i) => ({ index: i, value }));
   };
@@ -38,28 +59,28 @@ export const LineChart = ({ progressData, goalData, unit: _unit, type, status, i
   const goalPlotData = useMemo(() => processLineData(goalData, type), [goalData, type]);
 
   if (numPeriods === 0) {
-    return <div className="text-center text-slate-400 p-4 h-[220px] flex items-center justify-center glass-panel rounded-2xl">No hay datos para mostrar.</div>;
+    return <div className="text-center text-slate-400 p-4 h-[120px] flex items-center justify-center glass-panel rounded-2xl">No hay datos para mostrar.</div>;
   }
 
   const colorClasses: Record<ComplianceStatus, { stroke: string; fill: string; area: string; glow: string }> = {
-    "OnTrack": { stroke: '#10b981', fill: '#10b981', area: 'rgba(16, 185, 129, 0.15)', glow: 'rgba(16, 185, 129, 0.4)' },
-    "AtRisk": { stroke: '#f59e0b', fill: '#f59e0b', area: 'rgba(245, 158, 11, 0.15)', glow: 'rgba(245, 158, 11, 0.4)' },
-    "OffTrack": { stroke: '#f43f5e', fill: '#f43f5e', area: 'rgba(244, 63, 94, 0.15)', glow: 'rgba(244, 63, 94, 0.4)' },
-    "Neutral": { stroke: '#64748b', fill: '#64748b', area: 'rgba(100, 116, 139, 0.15)', glow: 'rgba(100, 116, 139, 0.4)' },
-    "InProgress": { stroke: '#0ea5e9', fill: '#0ea5e9', area: 'rgba(14, 165, 233, 0.15)', glow: 'rgba(14, 165, 233, 0.4)' },
+    "OnTrack": { stroke: '#10b981', fill: '#10b981', area: 'rgba(16, 185, 129, 0.02)', glow: 'rgba(16, 185, 129, 0.1)' },
+    "AtRisk": { stroke: '#f59e0b', fill: '#f59e0b', area: 'rgba(245, 158, 11, 0.02)', glow: 'rgba(245, 158, 11, 0.1)' },
+    "OffTrack": { stroke: '#f43f5e', fill: '#f43f5e', area: 'rgba(244, 63, 94, 0.02)', glow: 'rgba(244, 63, 94, 0.1)' },
+    "Neutral": { stroke: '#64748b', fill: '#64748b', area: 'rgba(100, 116, 139, 0.02)', glow: 'rgba(100, 116, 139, 0.1)' },
+    "InProgress": { stroke: '#0ea5e9', fill: '#0ea5e9', area: 'rgba(14, 165, 233, 0.02)', glow: 'rgba(14, 165, 233, 0.1)' },
   };
 
   const { stroke, fill, area, glow } = colorClasses[status];
 
   const width = 600;
-  const height = 220;
-  const padding = { top: 20, right: 30, bottom: 25, left: 60 };
+  const height = 150;
+  const padding = { top: 15, right: 30, bottom: 20, left: 50 };
 
   // 🎯 ESCALA DINÁMICA INTELIGENTE (v5.2.2 - FIX)
   // No filtramos por currentMonthIdx internamente para permitir ver años pasados completos.
   // Confiamos en los datos que vienen del padre o los mostramos todos si es acumulado.
-  const validPlotData = plotData.filter(d => d.value !== null);
-  const validGoalData = goalPlotData.filter(d => d.value !== null);
+  const validPlotData = plotData.filter(d => d.value !== null) as { index: number; value: number }[];
+  const validGoalData = goalPlotData.filter(d => d.value !== null) as { index: number; value: number }[];
 
   const allValues = [...validPlotData.map(d => d.value), ...validGoalData.map(d => d.value)];
 
@@ -105,7 +126,7 @@ export const LineChart = ({ progressData, goalData, unit: _unit, type, status, i
   const areaPath = linePath && validPlotData.length > 0 ? `${linePath} L ${xScale(validPlotData[validPlotData.length - 1].index)} ${yScale(yMin)} L ${xScale(validPlotData[0].index)} ${yScale(yMin)} Z` : "";
   const safeId = indicator.replace(/[^a-zA-Z0-9]/g, '_');
 
-  const formatNumber = (num: number) => new Intl.NumberFormat('en-US', { notation: 'compact', compactDisplay: 'short', maximumFractionDigits: 1 }).format(num).replace(/,/g, "'");
+  const formatNumber = (num: number) => formatNumberWithCommas(num);
 
   // 🛡️ Labels a mostrar: Para semanas, mostramos solo hitos para no saturar
   // visibleLabels was unused and conditional
@@ -121,7 +142,7 @@ export const LineChart = ({ progressData, goalData, unit: _unit, type, status, i
         </defs>
 
         <g className="text-white/5">
-          {[0, 0.25, 0.5, 0.75, 1].map(tick => {
+          {[0, 0.5, 1].map(tick => {
             const value = yMin + (yMax - yMin) * tick;
             const y = yScale(value);
             return (
@@ -132,7 +153,7 @@ export const LineChart = ({ progressData, goalData, unit: _unit, type, status, i
 
         <path d={goalLinePath} fill="none" stroke="#22d3ee" strokeWidth="2.5" strokeDasharray="8 6" opacity="0.85" strokeLinecap="round" />
         <path d={areaPath} fill={`url(#${safeId}-areaGradient)`} />
-        <path d={linePath} fill="none" stroke={stroke} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" style={{ filter: `drop-shadow(0 0 8px ${glow})` }} />
+        <path d={linePath} fill="none" stroke={stroke} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" style={{ filter: `drop-shadow(0 0 2px ${glow})` }} />
 
         {validPlotData.map((d) => (
           <g key={`point-${d.index}`} className="group/point">
@@ -173,4 +194,4 @@ export const LineChart = ({ progressData, goalData, unit: _unit, type, status, i
       </svg>
     </div>
   );
-};
+});

@@ -23,16 +23,16 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">3.75% </span>
+                <span class="strong">3.44% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>3/80</span>
+                <span class='fraction'>3/87</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>0/33</span>
+                <span class='fraction'>0/36</span>
             </div>
         
             
@@ -44,9 +44,9 @@
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">3.12% </span>
+                <span class="strong">2.85% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>2/64</span>
+                <span class='fraction'>2/70</span>
             </div>
         
             
@@ -239,7 +239,18 @@
 <a name='L174'></a><a href='#L174'>174</a>
 <a name='L175'></a><a href='#L175'>175</a>
 <a name='L176'></a><a href='#L176'>176</a>
-<a name='L177'></a><a href='#L177'>177</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">1x</span>
+<a name='L177'></a><a href='#L177'>177</a>
+<a name='L178'></a><a href='#L178'>178</a>
+<a name='L179'></a><a href='#L179'>179</a>
+<a name='L180'></a><a href='#L180'>180</a>
+<a name='L181'></a><a href='#L181'>181</a>
+<a name='L182'></a><a href='#L182'>182</a>
+<a name='L183'></a><a href='#L183'>183</a>
+<a name='L184'></a><a href='#L184'>184</a>
+<a name='L185'></a><a href='#L185'>185</a>
+<a name='L186'></a><a href='#L186'>186</a>
+<a name='L187'></a><a href='#L187'>187</a>
+<a name='L188'></a><a href='#L188'>188</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -269,6 +280,17 @@
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -419,8 +441,8 @@
 import { ComplianceStatus } from '../types';
 &nbsp;
 interface LineChartProps {
-  progressData: number[];
-  goalData: number[];
+  progressData: (number | null)[];
+  goalData: (number | null)[];
   unit: string;
   type: 'accumulative' | 'average';
   status: ComplianceStatus;
@@ -440,13 +462,24 @@ export const LineChart = <span class="fstat-no" title="function not covered" >({
 <span class="cstat-no" title="statement not covered" >    return ['E', 'F', 'M', 'A', 'M', 'J', 'J', 'A', 'S', 'O', 'N', 'D'];</span>
   }, [isWeekly]);
 &nbsp;
-  const processLineData = <span class="cstat-no" title="statement not covered" ><span class="fstat-no" title="function not covered" >(d</span>ata: number[], calculationType: 'accumulative' | 'average') =&gt; {</span>
+  const processLineData = <span class="cstat-no" title="statement not covered" ><span class="fstat-no" title="function not covered" >(d</span>ata: (number | null)[], calculationType: 'accumulative' | 'average') =&gt; {</span>
 <span class="cstat-no" title="statement not covered" >    <span class="missing-if-branch" title="if path not taken" >I</span>if (calculationType === 'accumulative') {</span>
 <span class="cstat-no" title="statement not covered" >      return data.reduce(<span class="fstat-no" title="function not covered" >(a</span>cc, value, i) =&gt; {</span>
-        const accumulatedValue = <span class="cstat-no" title="statement not covered" >(acc[i - 1]?.value || 0) + value;</span>
-<span class="cstat-no" title="statement not covered" >        acc.push({ index: i, value: accumulatedValue });</span>
+<span class="cstat-no" title="statement not covered" >        if (value === null || value === undefined) {</span>
+<span class="cstat-no" title="statement not covered" >          acc.push({ index: i, value: null });</span>
+        } else {
+          // Find the last valid accumulated value
+          let lastValid = <span class="cstat-no" title="statement not covered" >0;</span>
+<span class="cstat-no" title="statement not covered" >          for (let prevIdx = <span class="cstat-no" title="statement not covered" >i - 1;</span> prevIdx &gt;= 0; prevIdx--) {</span>
+<span class="cstat-no" title="statement not covered" >            <span class="missing-if-branch" title="if path not taken" >I</span>if (acc[prevIdx]?.value !== null) {</span>
+<span class="cstat-no" title="statement not covered" >              lastValid = acc[prevIdx].value as number;</span>
+<span class="cstat-no" title="statement not covered" >              break;</span>
+            }
+          }
+<span class="cstat-no" title="statement not covered" >          acc.push({ index: i, value: lastValid + value });</span>
+        }
 <span class="cstat-no" title="statement not covered" >        return acc;</span>
-      }, [] as { index: number; value: number }[]);
+      }, [] as { index: number; value: number | null }[]);
     }
 <span class="cstat-no" title="statement not covered" >    return data.map(<span class="fstat-no" title="function not covered" >(v</span>alue, i) =&gt; (<span class="cstat-no" title="statement not covered" >{ index: i, value })</span>);</span>
   };
@@ -455,28 +488,28 @@ export const LineChart = <span class="fstat-no" title="function not covered" >({
   const goalPlotData = <span class="cstat-no" title="statement not covered" >useMemo(<span class="fstat-no" title="function not covered" >() =</span>&gt; <span class="cstat-no" title="statement not covered" >processLineData(goalData, type),</span> [goalData, type]);</span>
 &nbsp;
 <span class="cstat-no" title="statement not covered" >  <span class="missing-if-branch" title="if path not taken" >I</span>if (numPeriods === 0) {</span>
-<span class="cstat-no" title="statement not covered" >    return &lt;div className="text-center text-slate-400 p-4 h-[220px] flex items-center justify-center glass-panel rounded-2xl"&gt;No hay datos para mostrar.&lt;/div&gt;;</span>
+<span class="cstat-no" title="statement not covered" >    return &lt;div className="text-center text-slate-400 p-4 h-[120px] flex items-center justify-center glass-panel rounded-2xl"&gt;No hay datos para mostrar.&lt;/div&gt;;</span>
   }
 &nbsp;
   const colorClasses: Record&lt;ComplianceStatus, { stroke: string; fill: string; area: string; glow: string }&gt; = <span class="cstat-no" title="statement not covered" >{</span>
-    "OnTrack": { stroke: '#10b981', fill: '#10b981', area: 'rgba(16, 185, 129, 0.15)', glow: 'rgba(16, 185, 129, 0.4)' },
-    "AtRisk": { stroke: '#f59e0b', fill: '#f59e0b', area: 'rgba(245, 158, 11, 0.15)', glow: 'rgba(245, 158, 11, 0.4)' },
-    "OffTrack": { stroke: '#f43f5e', fill: '#f43f5e', area: 'rgba(244, 63, 94, 0.15)', glow: 'rgba(244, 63, 94, 0.4)' },
-    "Neutral": { stroke: '#64748b', fill: '#64748b', area: 'rgba(100, 116, 139, 0.15)', glow: 'rgba(100, 116, 139, 0.4)' },
-    "InProgress": { stroke: '#0ea5e9', fill: '#0ea5e9', area: 'rgba(14, 165, 233, 0.15)', glow: 'rgba(14, 165, 233, 0.4)' },
+    "OnTrack": { stroke: '#10b981', fill: '#10b981', area: 'rgba(16, 185, 129, 0.02)', glow: 'rgba(16, 185, 129, 0.1)' },
+    "AtRisk": { stroke: '#f59e0b', fill: '#f59e0b', area: 'rgba(245, 158, 11, 0.02)', glow: 'rgba(245, 158, 11, 0.1)' },
+    "OffTrack": { stroke: '#f43f5e', fill: '#f43f5e', area: 'rgba(244, 63, 94, 0.02)', glow: 'rgba(244, 63, 94, 0.1)' },
+    "Neutral": { stroke: '#64748b', fill: '#64748b', area: 'rgba(100, 116, 139, 0.02)', glow: 'rgba(100, 116, 139, 0.1)' },
+    "InProgress": { stroke: '#0ea5e9', fill: '#0ea5e9', area: 'rgba(14, 165, 233, 0.02)', glow: 'rgba(14, 165, 233, 0.1)' },
   };
 &nbsp;
   const { stroke, fill, area, glow } = <span class="cstat-no" title="statement not covered" >colorClasses[status];</span>
 &nbsp;
   const width = <span class="cstat-no" title="statement not covered" >600;</span>
-  const height = <span class="cstat-no" title="statement not covered" >220;</span>
-  const padding = <span class="cstat-no" title="statement not covered" >{ top: 20, right: 30, bottom: 25, left: 60 };</span>
+  const height = <span class="cstat-no" title="statement not covered" >150;</span>
+  const padding = <span class="cstat-no" title="statement not covered" >{ top: 15, right: 30, bottom: 20, left: 50 };</span>
 &nbsp;
   // 🎯 ESCALA DINÁMICA INTELIGENTE (v5.2.2 - FIX)
   // No filtramos por currentMonthIdx internamente para permitir ver años pasados completos.
   // Confiamos en los datos que vienen del padre o los mostramos todos si es acumulado.
-  const validPlotData = <span class="cstat-no" title="statement not covered" >plotData.filter(<span class="fstat-no" title="function not covered" >d </span>=&gt; <span class="cstat-no" title="statement not covered" >d.value !== null)</span>;</span>
-  const validGoalData = <span class="cstat-no" title="statement not covered" >goalPlotData.filter(<span class="fstat-no" title="function not covered" >d </span>=&gt; <span class="cstat-no" title="statement not covered" >d.value !== null)</span>;</span>
+  const validPlotData = <span class="cstat-no" title="statement not covered" >plotData.filter(<span class="fstat-no" title="function not covered" >d </span>=&gt; <span class="cstat-no" title="statement not covered" >d.value !== null)</span> as { index: number; value: number }[];</span>
+  const validGoalData = <span class="cstat-no" title="statement not covered" >goalPlotData.filter(<span class="fstat-no" title="function not covered" >d </span>=&gt; <span class="cstat-no" title="statement not covered" >d.value !== null)</span> as { index: number; value: number }[];</span>
 &nbsp;
   const allValues = <span class="cstat-no" title="statement not covered" >[...validPlotData.map(<span class="fstat-no" title="function not covered" >d </span>=&gt; <span class="cstat-no" title="statement not covered" >d.value)</span>, ...validGoalData.map(<span class="fstat-no" title="function not covered" >d </span>=&gt; <span class="cstat-no" title="statement not covered" >d.value)</span>];</span>
 &nbsp;
@@ -522,7 +555,7 @@ export const LineChart = <span class="fstat-no" title="function not covered" >({
   const areaPath = <span class="cstat-no" title="statement not covered" >linePath &amp;&amp; validPlotData.length &gt; 0 ? `${linePath} L ${xScale(validPlotData[validPlotData.length - 1].index)} ${yScale(yMin)} L ${xScale(validPlotData[0].index)} ${yScale(yMin)} Z` : "";</span>
   const safeId = <span class="cstat-no" title="statement not covered" >indicator.replace(/[^a-zA-Z0-9]/g, '_');</span>
 &nbsp;
-  const formatNumber = <span class="cstat-no" title="statement not covered" ><span class="fstat-no" title="function not covered" >(n</span>um: number) =&gt; <span class="cstat-no" title="statement not covered" >new Intl.NumberFormat('en-US', { notation: 'compact', compactDisplay: 'short', maximumFractionDigits: 1 }).format(num).replace(/,/g, "'");</span></span>
+  const formatNumber = <span class="cstat-no" title="statement not covered" ><span class="fstat-no" title="function not covered" >(n</span>um: number) =&gt; <span class="cstat-no" title="statement not covered" >new Intl.NumberFormat('en-US', { notation: 'compact', compactDisplay: 'short', maximumFractionDigits: 1 }).format(num);</span></span>
 &nbsp;
   // 🛡️ Labels a mostrar: Para semanas, mostramos solo hitos para no saturar
   // visibleLabels was unused and conditional
@@ -538,7 +571,7 @@ export const LineChart = <span class="fstat-no" title="function not covered" >({
         &lt;/defs&gt;
 &nbsp;
         &lt;g className="text-white/5"&gt;
-          {[0, 0.25, 0.5, 0.75, 1].map(<span class="fstat-no" title="function not covered" >tick </span>=&gt; {
+          {[0, 0.5, 1].map(<span class="fstat-no" title="function not covered" >tick </span>=&gt; {
             const value = <span class="cstat-no" title="statement not covered" >yMin + (yMax - yMin) * tick;</span>
             const y = <span class="cstat-no" title="statement not covered" >yScale(value);</span>
 <span class="cstat-no" title="statement not covered" >            return (</span>
@@ -549,7 +582,7 @@ export const LineChart = <span class="fstat-no" title="function not covered" >({
 &nbsp;
         &lt;path d={goalLinePath} fill="none" stroke="#22d3ee" strokeWidth="2.5" strokeDasharray="8 6" opacity="0.85" strokeLinecap="round" /&gt;
         &lt;path d={areaPath} fill={`url(#${safeId}-areaGradient)`} /&gt;
-        &lt;path d={linePath} fill="none" stroke={stroke} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" style={{ filter: `drop-shadow(0 0 8px ${glow})` }} /&gt;
+        &lt;path d={linePath} fill="none" stroke={stroke} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" style={{ filter: `drop-shadow(0 0 2px ${glow})` }} /&gt;
 &nbsp;
         {validPlotData.map(<span class="fstat-no" title="function not covered" >(d</span>) =&gt; (
 <span class="cstat-no" title="statement not covered" >          &lt;g key={`point-${d.index}`} c</span>lassName="group/point"&gt;
@@ -598,7 +631,7 @@ export const LineChart = <span class="fstat-no" title="function not covered" >({
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-03-12T23:51:29.052Z
+                at 2026-03-22T22:30:11.403Z
             </div>
         <script src="../../prettify.js"></script>
         <script>

@@ -28,12 +28,11 @@ export const ProgressBar = ({ percentage, status, showLabel = true }: ProgressBa
 
   return (
     <div className="w-full flex items-center gap-6">
-      <div className="flex-1 bg-slate-950/80 rounded-full h-2.5 p-0.5 shadow-inner border border-white/5 relative overflow-hidden">
+      <div className="flex-1 bg-slate-950/80 rounded-full h-2.5 p-0.5 border border-white/5 relative overflow-hidden">
         <div
           className={`h-full rounded-full transition-all duration-[1.5s] ease-[cubic-bezier(0.23,1,0.32,1)] relative ${colorClasses[status]}`}
           style={{
-            width: `${safePercentage}%`,
-            boxShadow: `0 0 15px ${glowColors[status]}`
+            width: `${safePercentage}%`
           }}
         >
           {/* Shimmer Effect */}
@@ -41,7 +40,7 @@ export const ProgressBar = ({ percentage, status, showLabel = true }: ProgressBa
         </div>
       </div>
       {showLabel && (
-        <span className="text-[10px] font-black text-white tabular-nums tracking-widest min-w-[35px] text-right drop-shadow-lg">
+        <span className="text-[10px] font-black text-white tabular-nums tracking-widest min-w-[35px] text-right">
           {Math.round(percentage)}%
         </span>
       )}

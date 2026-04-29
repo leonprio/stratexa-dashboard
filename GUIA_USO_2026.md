@@ -1,6 +1,6 @@
 # 📖 Guía de Uso 2026: Tablero Prior
 
-Bienvenido al Manual de Operación del **Sistema de Tableros Prior (v4.1.5 Agentic Shield)**. Esta guía está diseñada para que saques el máximo provecho de las herramientas de BI con IA integradas y los nuevos módulos de presentación ejecutiva.
+Bienvenido al Manual de Operación del **Sistema de Tableros Prior (v9.1.0-PRO-FINAL-SHIELDED)**. Esta guía está diseñada para que saques el máximo provecho de las herramientas de BI con IA integradas y los nuevos módulos de presentación ejecutiva.
 
 ---
 

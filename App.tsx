@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState, useRef } from "react";
 import { auth, db } from "./firebase";
 import { onAuthStateChanged, signOut, User as FirebaseUser, signInWithEmailAndPassword, createUserWithEmailAndPassword } from "firebase/auth";
 import { doc, getDoc, deleteField } from "firebase/firestore";
@@ -15,6 +15,7 @@ import { WeightControlCenter } from "./components/WeightControlCenter";
 import { AdvancedDataImporter } from "./components/AdvancedDataImporter";
 import { HelpCenter } from "./components/HelpCenter";
 import { MasterTrafficLight } from "./components/MasterTrafficLight";
+import { ClientSettings } from "./components/ClientSettings";
 
 import {
   Dashboard as DashboardType,
@@ -27,6 +28,7 @@ import {
 import { calculateAggregateDashboard } from "./utils/aggregationUtils";
 import { IPS_DASHBOARDS, getIPSDashboardGroup } from "./utils/standardStructure";
 import { firebaseService } from "./services/firebaseService";
+import { shieldItem } from "./utils/compliance";
 
 import { IPS_INDICATORS } from "./utils/standardStructure";
 import { exportBulkDataToCSV } from "./utils/exportUtils";
@@ -40,8 +42,8 @@ type AdminSection = "none" | "users" | "thresholds" | "clients" | "indicators" |
  * Componente principal de la aplicación Stratexa Dashboard.
  * Gestiona el estado global de autenticación, carga de tableros, ruteo interno y administración.
  * 
- * @version v7.8.30-NUCLEAR-ISOLATION-TABLERO
- * @architecture Platinum Ultra Shield V2 (Nuclear Isolation)
+ * @version v9.2.2-CLEAN-UI
+ * @architecture Critical Nuclear Shield (Atomic Isolation)
  * 
  * @returns {JSX.Element} El árbol de componentes de la aplicación.
  */
@@ -49,8 +51,10 @@ export default function App() {
   const [status, setStatus] = useState<AppStatus>("loading");
   const [_errorMsg, setErrorMsg] = useState<string>("");
   const [user, setUser] = useState<FirebaseUser | null>(null);
-  const [userProfile, setUserProfile] = useState<User | null>(null); // 🛡️ PLATINUM SHIELD (2026-02-16): Multi-App Isolation Active.
-  const versionLabel = "v7.8.31-NUCLEAR-ISOLATION-TABLERO";
+  const [userProfile, setUserProfile] = useState<User | null>(null);
+// 🛡️ v9.2.2-CLEAN-UI: MOTOR DUAL, RECURSIÓN SOLUCIONADA, BLINDAJE ADMIN
+const VERSION_LABEL = "v9.2.2-CLEAN-UI";
+const SHIELD_ID = "STX-2026-PRO-SHIELD-GLOBAL";
   const [activeAdminSection, setActiveAdminSection] = useState<AdminSection>("none");
   const [allUsers, setAllUsers] = useState<User[]>([]);
 
@@ -79,6 +83,9 @@ export default function App() {
     return saved === "compact" ? "compact" : "grid";
   });
 
+  // 🛡️ REGLA v8.2.0: Escudo de Sincronización (Evita pisar datos locales durante guardado)
+  const isSavingRef = useRef(false);
+
   useEffect(() => {
     localStorage.setItem("viewMode", viewMode);
   }, [viewMode]);
@@ -95,11 +102,29 @@ export default function App() {
   const [dashboards, setDashboards] = useState<DashboardType[]>([]);
   const [allRawDashboards, setAllRawDashboards] = useState<DashboardType[]>([]);
   const [dbClients, setDbClients] = useState<string[]>([]);
-  const [selectedDashboardId, setSelectedDashboardId] = useState<number | string | null>(null);
+  const [selectedDashboardId, setSelectedDashboardId] = useState<number | string | null>(() => {
+    return localStorage.getItem("selectedDashboardId");
+  });
   const [loadingDashboards, setLoadingDashboards] = useState<boolean>(false);
   const [settings, setSettings] = useState<SystemSettings | undefined>(undefined);
-  const [selectedClientId, setSelectedClientId] = useState<string>("IPS");
-  const [selectedGroupTab, setSelectedGroupTab] = useState<string>("TODOS");
+  const [selectedClientId, setSelectedClientId] = useState<string>(() => {
+    return localStorage.getItem("selectedClientId") || "IPS";
+  });
+  const [selectedGroupTab, setSelectedGroupTab] = useState<string>(() => {
+    return localStorage.getItem("selectedGroupTab") || "TODOS";
+  });
+  useEffect(() => {
+    if (selectedClientId) localStorage.setItem("selectedClientId", selectedClientId);
+  }, [selectedClientId]);
+
+  useEffect(() => {
+    if (selectedDashboardId) localStorage.setItem("selectedDashboardId", String(selectedDashboardId));
+  }, [selectedDashboardId]);
+
+  useEffect(() => {
+    if (selectedGroupTab) localStorage.setItem("selectedGroupTab", selectedGroupTab);
+  }, [selectedGroupTab]);
+
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(() => {
     const saved = localStorage.getItem("sidebarCollapsed");
     return saved === "true";
@@ -528,10 +553,55 @@ export default function App() {
 
     console.log(`🔍 DEBUG: Iniciando Real-time Sync para ${selectedDashboardId}`);
     const unsubscribe = firebaseService.subscribeToDashboardItems(selectedDashboardId, (newItems) => {
-      console.log(`🔍 DEBUG: Sync status? Recibidos ${newItems.length} indicadores`);
-      setDashboards(prev => prev.map(d =>
-        String(d.id) === String(selectedDashboardId) ? { ...d, items: newItems } : d
-      ));
+      // 🛡️ SYNC ISOLATION (v8.2.0): Si estamos guardando locales, NO pisamos con el sync
+      if (isSavingRef.current) {
+        console.log(`⏳ [SYNC] Ignorando update porque estamos en medio de un guardado local`);
+        return;
+      }
+
+      console.log(`🔄 [SYNC] Recibidos ${newItems.length} indicadores desde Firebase`);
+      setDashboards(prev => prev.map(d => {
+        if (String(d.id) !== String(selectedDashboardId)) return d;
+        
+        // 🛡️ REGLA v8.1.0: MERGE PROFUNDO (DEEP SHIELD)
+        // Mezclamos lo que viene del servidor con lo que tenemos localmente
+        // para no perder las semanas que aún están siendo procesadas por Firebase.
+        const mergedItems = newItems.map(raw => {
+          const oldItem = d.items.find(it => String(it.id) === String(raw.id));
+          if (!oldItem) return raw;
+
+          // 🛡️ REGLA v8.5.0 (CRUD-NUCLEAR SHIELD): Merge que respeta eliminaciones
+          // ANTES: Solo iterábamos claves locales → las eliminaciones se perdían (el server restauraba lo borrado)
+          // AHORA: Si hay CUALQUIER activityConfig local, lo usamos COMPLETO como fuente de verdad.
+          // Esto asegura que: (1) eliminaciones persistan, (2) ediciones persistan, (3) adiciones persistan.
+          let mergedActivityConfig = raw.activityConfig || {};
+          if (oldItem.activityConfig) {
+            const localKeys = Object.keys(oldItem.activityConfig);
+            const rawKeys = Object.keys(raw.activityConfig || {});
+            const allKeys = new Set([...localKeys, ...rawKeys]);
+            
+            const hasAnyDifference = Array.from(allKeys).some(weekKey => {
+              const localStr = JSON.stringify(oldItem.activityConfig![weekKey] || []);
+              const rawStr = JSON.stringify((raw.activityConfig || {})[weekKey] || []);
+              return localStr !== rawStr;
+            });
+            
+            if (hasAnyDifference) {
+              // 🛡️ CRUD-NUCLEAR: Lo local es la fuente de verdad (incluye eliminaciones)
+              console.log(`⚠️ [SYNC] activityConfig discrepante para ${raw.indicator}. Protegiendo estado local completo.`);
+              mergedActivityConfig = { ...oldItem.activityConfig };
+            }
+          }
+
+          return {
+            ...oldItem,
+            ...raw,
+            activityConfig: mergedActivityConfig
+          };
+        });
+
+        return { ...d, items: mergedItems };
+      }));
     });
 
     return () => {
@@ -1031,38 +1101,119 @@ export default function App() {
   const handleUpdateItem = async (updatedItem: DashboardItem) => {
     if (!selectedDashboard || selectedDashboard.id === -1) return;
 
+    // 🛡️ REGLA v8.0.0: Blindaje de Integridad (SHIELD-UP)
+    isSavingRef.current = true; // Activar escudo de sync
+
+    // CRITICO v7.9.12: Crear copia profunda ANTES de shieldItem para evitar mutación
+    const deepCopy = JSON.parse(JSON.stringify(updatedItem)) as DashboardItem;
+    const shieldedItem = shieldItem(deepCopy);
+
+    // 🔬 DIAGNÓSTICO v7.9.12: Rastrear exactamente qué se guarda
+    console.log(`💾 [SAVE] Item ${shieldedItem.id} (${shieldedItem.indicator})`);
+    console.log(`💾 [SAVE] Dashboard: ${selectedDashboard.id}`);
+    console.log(`💾 [SAVE] weeklyGoals:`, JSON.stringify(shieldedItem.weeklyGoals?.slice(0, 15)));
+    console.log(`💾 [SAVE] weeklyProgress:`, JSON.stringify(shieldedItem.weeklyProgress?.slice(0, 15)));
+    console.log(`💾 [SAVE] monthlyGoals:`, JSON.stringify(shieldedItem.monthlyGoals));
+    console.log(`💾 [SAVE] monthlyProgress:`, JSON.stringify(shieldedItem.monthlyProgress));
+    console.log(`💾 [SAVE] activityConfig keys:`, shieldedItem.activityConfig ? Object.keys(shieldedItem.activityConfig) : 'none');
+    console.log(`💾 [SAVE] isActivityMode:`, shieldedItem.isActivityMode);
+
     // 🛡️ REGLA v4.0.0: Actualización Atómica Local (Sin Drift)
-    const updater = (prev: DashboardType[]) => prev.map(db => {
-      if (db.id !== selectedDashboard.id) return db;
-      return {
-        ...db,
-        items: db.items.map(it => it.id === updatedItem.id ? updatedItem : it)
-      };
-    });
+    // 🛡️ REGLA v8.8.1-CRUD: Propagación de agregados a fuentes
+    if (selectedDashboard.isAggregate && (shieldedItem as any).sources) {
+      console.log(`🚀 [CRUD] Detectado tablero agregado. Propagando a ${(shieldedItem as any).sources.length} fuentes...`);
+      const sources = (shieldedItem as any).sources as { boardId: string | number, itemId: string | number }[];
+      
+      try {
+        let workingList = [...dashboards];
+        
+        // 1. Procesar cada actualización de fuente y preparar estado local
+        for (const src of sources) {
+          const boardIdx = workingList.findIndex(d => String(d.id) === String(src.boardId));
+          if (boardIdx === -1) continue;
 
-    setDashboards(prev => {
-      const updatedList = updater(prev);
-      // Actualizar agregaciones en caliente
-      const targetGroup = (selectedDashboard.group || "").trim().toUpperCase();
-      if (targetGroup) {
-        const groupBoards = updatedList.filter(d => !String(d.id).startsWith('agg-') && (d.group || "").trim().toUpperCase() === targetGroup);
-        if (groupBoards.length > 0) {
-          const newAgg = calculateAggregateDashboard(groupBoards, settings);
-          const aggId = `agg-${targetGroup}-${selectedYear}`;
-          return updatedList.map(d => (d.id === aggId) ? { ...d, items: newAgg.items } : d);
+          const originalItem = workingList[boardIdx].items.find(it => String(it.id) === String(src.itemId));
+          if (!originalItem) continue;
+
+          const sourceUpdate = {
+            ...originalItem,
+            activityConfig: shieldedItem.activityConfig,
+            monthlyProgress: shieldedItem.monthlyProgress,
+            monthlyGoals: shieldedItem.monthlyGoals,
+            weeklyProgress: shieldedItem.weeklyProgress,
+            weeklyGoals: shieldedItem.weeklyGoals,
+            isActivityMode: shieldedItem.isActivityMode
+          };
+
+          workingList[boardIdx] = {
+            ...workingList[boardIdx],
+            items: workingList[boardIdx].items.map(it => String(it.id) === String(src.itemId) ? sourceUpdate : it)
+          };
+
+          // Persistir en Firebase
+          await firebaseService.updateDashboardItems(src.boardId, [sourceUpdate], false);
         }
+        
+        // 2. Recalcular el agregador localmente antes de actualizar estados para evitar parpadeos
+        const targetGroup = (selectedDashboard.group || "").trim().toUpperCase();
+        if (targetGroup) {
+          const groupBoards = workingList.filter(d => !String(d.id).startsWith('agg-') && (d.group || "").trim().toUpperCase() === targetGroup);
+          if (groupBoards.length > 0) {
+            const newAgg = calculateAggregateDashboard(groupBoards, settings);
+            const aggId = `agg-${targetGroup}-${selectedYear}`;
+            workingList = workingList.map(d => (d.id === aggId) ? { ...d, items: newAgg.items } : d);
+          }
+        }
+
+        // 3. Actualización atómica única
+        setDashboards(workingList);
+        setAllRawDashboards(workingList);
+        
+        console.log("✅ [CRUD] Propagación completada exitosamente.");
+      } catch (err) {
+        console.error("❌ [CRUD] Fallo en propagación:", err);
       }
-      return updatedList;
-    });
+    } else {
+      // Flujo normal: Tablero Real
+      const updater = (prev: DashboardType[]) => prev.map(db => {
+        if (db.id !== selectedDashboard.id) return db;
+        return {
+          ...db,
+          items: db.items.map(it => String(it.id) === String(shieldedItem.id) ? shieldedItem : it)
+        };
+      });
 
-    // CRÍTICO: Mantener allRawDashboards sincronizado para el gestor de KPIs posterior
-    setAllRawDashboards(prev => updater(prev));
+      setDashboards(prev => {
+        const updatedList = updater(prev);
+        // Actualizar agregaciones en caliente
+        const targetGroup = (selectedDashboard.group || "").trim().toUpperCase();
+        if (targetGroup) {
+          const groupBoards = updatedList.filter(d => !String(d.id).startsWith('agg-') && (d.group || "").trim().toUpperCase() === targetGroup);
+          if (groupBoards.length > 0) {
+            const newAgg = calculateAggregateDashboard(groupBoards, settings);
+            const aggId = `agg-${targetGroup}-${selectedYear}`;
+            return updatedList.map(d => (d.id === aggId) ? { ...d, items: newAgg.items } : d);
+          }
+        }
+        return updatedList;
+      });
 
-    try {
-      await firebaseService.updateDashboardItems(selectedDashboard.id, [updatedItem], false);
-    } catch (err) {
-      console.error("Error persisting item update:", err);
+      setAllRawDashboards(prev => updater(prev));
+
+      try {
+        await firebaseService.updateDashboardItems(selectedDashboard.id, [shieldedItem], false);
+        console.log(`✅ [SAVE] Persistido exitosamente en Firebase`);
+      } catch (err) {
+        console.error("❌ [SAVE] Error persisting item update:", err);
+        alert("⚠️ Error al guardar en el servidor. Verifique su conexión.");
+      }
     }
+
+    // 🛡️ REGLA v8.0.0: Bloqueo común (Reducido a 2s para mayor respuesta)
+    setTimeout(() => {
+      isSavingRef.current = false;
+      console.log(`🛡️ [SAVE] Sync Isolation liberado.`);
+    }, 2000);
   };
 
   const handleUpdateMetadata = async (id: number | string, title: string, subtitle: string, group: string, area: string, superGroup?: string, targetIndicatorCount?: number) => {
@@ -1502,10 +1653,11 @@ export default function App() {
     return (
       <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4">
         <div className="w-full max-w-md">
+          {/* Versión oculta en pantalla de acceso */}
           {/* Redundant header removed per user request */}
-          <div className="bg-slate-900/40 backdrop-blur-3xl border border-white/5 rounded-[2rem] p-10 shadow-2xl relative overflow-hidden">
+          <div className="bg-slate-900/40 backdrop-blur-3xl border border-white/5 rounded-[2rem] p-10 relative overflow-hidden">
             <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-cyan-500/50 to-transparent"></div>
-            <LoginScreen onLogin={handleLogin} />
+            <LoginScreen onLogin={handleLogin} versionLabel={VERSION_LABEL} />
           </div>
         </div>
       </div>
@@ -1514,12 +1666,12 @@ export default function App() {
 
   return (
     <PageShell>
-      <header className="sticky top-0 z-50 flex flex-col md:flex-row items-center justify-between gap-2 bg-slate-950/90 py-1.5 px-6 rounded-b-2xl border-b border-white/5 backdrop-blur-3xl shadow-[0_4px_20px_rgba(0,0,0,0.4)]">
+      <header className="sticky top-0 z-50 flex flex-col md:flex-row items-center justify-between gap-2 bg-slate-950/90 py-1.5 px-6 rounded-b-2xl border-b border-white/5 backdrop-blur-3xl">
         {/* Lado Izquierdo: Título Dinámico basado en Cliente */}
         <div className="flex flex-row items-center gap-4 shrink-0">
           <div className="flex flex-col items-start">
             <div className="flex items-center gap-2">
-              <h1 className="text-xl lg:text-2xl font-black text-white italic uppercase tracking-tighter leading-none filter drop-shadow-[0_0_15px_rgba(34,211,238,0.3)]">
+              <h1 className="text-xl lg:text-2xl font-black text-white italic uppercase tracking-tighter leading-none">
                 {(selectedClientId === 'all' || !selectedClientId) ? "TABLERO GLOBAL" : selectedClientId.toUpperCase()}
               </h1>
               {isGlobalAdmin && selectedClientId && selectedClientId !== 'all' && (
@@ -1540,15 +1692,15 @@ export default function App() {
           </div>
           {isGlobalAdmin && (
             <div className="ml-2 scale-90">
-              <span className="text-[8px] font-black text-emerald-400 bg-emerald-500/5 px-2 py-0.5 rounded-md border border-emerald-500/20 shadow-[0_0_10px_rgba(16,185,129,0.1)] block w-fit tracking-[0.05em] uppercase">
-                {versionLabel}
+              <span className="text-[8px] font-black text-emerald-400 bg-emerald-500/5 px-2 py-0.5 rounded-md border border-emerald-500/20 block w-fit tracking-[0.05em] uppercase">
+                {VERSION_LABEL} • {SHIELD_ID}
               </span>
             </div>
           )}
         </div>
 
         <div className="flex flex-wrap items-center justify-center md:justify-end gap-2 scale-[0.85] origin-right">
-          <div className="flex bg-black/40 p-0.5 rounded-xl border border-white/5 shadow-inner">
+          <div className="flex bg-black/40 p-0.5 rounded-xl border border-white/5">
             <select
               value={selectedYear}
               onChange={(e) => setSelectedYear(parseInt(e.target.value))}
@@ -1560,7 +1712,7 @@ export default function App() {
             </select>
           </div>
           {(isGlobalAdmin || userProfile?.canManageKPIs) && (
-            <nav className="flex items-center gap-0.5 bg-black/40 p-0.5 rounded-xl border border-white/5 shadow-inner overflow-x-auto">
+            <nav className="flex items-center gap-0.5 bg-black/40 p-0.5 rounded-xl border border-white/5 overflow-x-auto">
               {isGlobalAdmin && (
                 <>
                   <button
@@ -1601,7 +1753,7 @@ export default function App() {
               {isGlobalAdmin && (
                 <button
                   onClick={() => setActiveAdminSection("weights")}
-                  className={`px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${activeAdminSection === "weights" ? 'bg-indigo-600 text-white shadow-indigo-900/40' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}
+                  className={`px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${activeAdminSection === "weights" ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}
                   title="Ponderación de Áreas / Sucursales para el total global"
                 >
                   Pesos Tablero
@@ -1658,7 +1810,7 @@ export default function App() {
                     setSelectedClientId(e.target.value);
                   }
                 }}
-                className="bg-slate-900 border-2 border-cyan-500/20 rounded-2xl px-4 py-2.5 text-xs font-black text-cyan-400 outline-none min-w-[180px] shadow-xl focus:border-cyan-500 transition-all uppercase tracking-widest cursor-pointer"
+                className="bg-slate-900 border-2 border-cyan-500/20 rounded-2xl px-4 py-2.5 text-xs font-black text-cyan-400 outline-none min-w-[180px] focus:border-cyan-500 transition-all uppercase tracking-widest cursor-pointer"
               >
                 {/* <option value="all">VISTA GLOBAL</option> -- ELIMINADO POR SOLICITUD DEL USUARIO */}
                 {availableClients.map(c => <option key={c} value={c}>{c}</option>)}
@@ -1710,7 +1862,7 @@ export default function App() {
 
             <button
               onClick={handleLogout}
-              className="bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white border border-red-500/20 px-4 py-2.5 rounded-2xl text-xs font-black uppercase tracking-widest transition-all shadow-lg"
+              className="bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white border border-red-500/20 px-4 py-2.5 rounded-2xl text-xs font-black uppercase tracking-widest transition-all"
             >
               Salir
             </button>
@@ -1772,7 +1924,7 @@ export default function App() {
       {
         activeAdminSection === "export" && (
           <div className="fixed inset-0 z-[100] bg-slate-950/90 backdrop-blur-xl flex items-center justify-center p-4" onClick={() => setActiveAdminSection("none")}>
-            <div className="bg-slate-900 border border-white/10 rounded-[2.5rem] w-full max-w-lg p-10 shadow-3xl text-center" onClick={e => e.stopPropagation()}>
+            <div className="bg-slate-900 border border-white/10 rounded-[2.5rem] w-full max-w-lg p-10 text-center" onClick={e => e.stopPropagation()}>
               <div className="w-20 h-20 bg-green-500/10 rounded-3xl flex items-center justify-center mx-auto mb-6 border border-green-500/20">
                 <span className="text-4xl">📊</span>
               </div>
@@ -1787,7 +1939,7 @@ export default function App() {
                     exportBulkDataToCSV(dashboards.filter(d => !String(d.id).startsWith('agg-') && d.id !== -1), selectedClientId, selectedYear);
                     setActiveAdminSection("none");
                   }}
-                  className="w-full py-4 bg-green-600 hover:bg-green-500 text-white font-black rounded-2xl shadow-xl transition-all uppercase tracking-widest text-xs flex items-center justify-center gap-3"
+                  className="w-full py-4 bg-green-600 hover:bg-green-500 text-white font-black rounded-2xl transition-all uppercase tracking-widest text-xs flex items-center justify-center gap-3"
                 >
                   <span>📥</span> Descargar Excel (.CSV)
                 </button>
@@ -1814,7 +1966,7 @@ export default function App() {
       {
         activeAdminSection === "thresholds" && (
           <div className="fixed inset-0 z-[100] bg-slate-950/90 backdrop-blur-xl flex items-center justify-center p-4">
-            <div className="bg-slate-900 border border-white/10 rounded-[2.5rem] w-full max-w-lg p-8 shadow-3xl text-center">
+            <div className="bg-slate-900 border border-white/10 rounded-[2.5rem] w-full max-w-lg p-8 text-center">
               <h2 className="text-3xl font-black italic uppercase tracking-tighter mb-8">Configuración de Semáforos</h2>
               <ThresholdEditor
                 thresholds={settings?.thresholds || { onTrack: 95, atRisk: 85 }}
@@ -1855,500 +2007,18 @@ Esto corregirá cualquier inconsistencia en colores (ej. Amarillo vs Rojo).`)) {
 
       {
         activeAdminSection === "clients" && (
-          <div className="fixed inset-0 z-[100] bg-slate-950/90 backdrop-blur-xl flex justify-center items-start p-4 overflow-y-auto" onClick={() => setActiveAdminSection("none")}>
-            <div className="bg-slate-900 border border-white/10 rounded-[2rem] w-full max-w-4xl p-8 shadow-3xl ring-1 ring-cyan-500/20 my-8" onClick={(e) => e.stopPropagation()}>
-              <div className="text-center mb-8">
-                <div className="w-16 h-16 bg-cyan-500/10 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-cyan-500/20">
-                  <span className="text-2xl">⚙️</span>
-                </div>
-                <h2 className="text-3xl font-black italic uppercase tracking-tighter mb-2 text-white">Configuración del Sistema</h2>
-                <p className="text-slate-400 text-sm">
-                  Cliente: <span className="text-cyan-400 font-bold">{selectedClientId}</span> •
-                  Año: <span className="text-cyan-400 font-bold">{selectedYear}</span>
-                </p>
-              </div>
-
-              <div className="space-y-6">
-                {/* Vista de los Tableros Numerados - Cualquier cliente con tableros */}
-                {(dashboards.length > 0 || selectedClientId.toUpperCase() === 'IPS') && (
-                  <div className="bg-slate-800/40 border border-white/5 rounded-2xl p-6">
-                    <div className="flex justify-between items-center mb-4">
-                      <h3 className="text-[10px] font-black text-cyan-500 uppercase tracking-widest flex items-center gap-2">
-                        <span>📊</span> Tableros para {selectedClientId}/{selectedYear}
-                      </h3>
-                      <button
-                        onClick={async () => {
-                          await handleFixOrder();
-                          alert("✅ Tableros renumerados correctamente (1, 2, 3...)");
-                        }}
-                        className="px-3 py-1 bg-cyan-500/10 border border-cyan-500/30 rounded-lg text-[8px] font-black text-cyan-400 hover:bg-cyan-500 hover:text-white transition-all uppercase"
-                      >
-                        Renumerar 1, 2, 3...
-                      </button>
-                    </div>
-
-
-
-                    <div className="grid grid-cols-7 gap-2">
-                      {(() => {
-                        const isIPS = (selectedClientId || "").trim().toUpperCase() === "IPS";
-                        const clientYearDashboards = dashboards.filter(d => !String(d.id).startsWith('agg-')).sort((a, b) => (Number((a).orderNumber) || 0) - (Number((b).orderNumber) || 0));
-
-                        // Si es IPS, mostramos el grid de 14 tradicional
-                        if (isIPS) {
-                          const STANDARD_NAMES = ["METRO CENTRO", "METRO SUR", "METRO NORTE", "TOLUCA", "GTMI", "OCCIDENTE", "BAJIO", "SLP", "SUR", "GOLFO", "PENINSULA", "PACIFICO", "NOROESTE", "NORESTE"];
-                          return STANDARD_NAMES.map((stdName, idx) => {
-                            const dash = clientYearDashboards.find(d => (d).orderNumber === (idx + 1));
-                            const exists = !!dash;
-                            return (
-                              <div key={idx} className={`p-2 rounded-lg text-center transition-all ${exists ? "bg-green-500/10 border border-green-500/20" : "bg-red-500/10 border border-red-500/20"}`}>
-                                <div className={`text-lg font-black ${exists ? "text-green-400" : "text-red-400"}`}>{idx + 1}</div>
-                                <div className="text-[8px] text-slate-400 uppercase truncate">{exists ? dash.title.split(" ")[0] : stdName.split(" ")[0]}</div>
-                              </div>
-                            );
-                          });
-                        }
-
-                        // Si es cualquier otro cliente, mostramos cuadrícula dinámica de lo que realmente existe
-                        return clientYearDashboards.map((dash, idx) => (
-                          <div key={dash.id} className="p-2 rounded-lg text-center bg-cyan-500/10 border border-cyan-500/20 hover:border-cyan-500/50 transition-all">
-                            <div className="text-lg font-black text-cyan-400">{(dash).orderNumber || (idx + 1)}</div>
-                            <div className="text-[8px] text-slate-400 uppercase truncate">{dash.title}</div>
-                          </div>
-                        ));
-                      })()}
-                    </div>
-                    <p className="text-[9px] text-slate-500 mt-3 text-center">
-                      <span className="text-green-400">■</span> Existe • <span className="text-red-400">■</span> Falta •
-                      Total: {dashboards.filter(d => Number(d.id) > 0).length} tableros
-                    </p>
-                  </div>
-                )}
-
-                {/* Respaldo de Seguridad */}
-                <div className="bg-cyan-500/10 border border-cyan-500/20 rounded-2xl p-6">
-                  <h3 className="text-[10px] font-black text-cyan-400 uppercase tracking-widest mb-4 flex items-center gap-2">
-                    <span>💾</span> Respaldo de Seguridad (Garantía de Datos)
-                  </h3>
-                  <p className="text-xs text-slate-300 mb-4">Descarga una copia completa de todos los tableros, indicadores e información capturada para este cliente y año en formato JSON. Puedes usar este archivo como respaldo antes de realizar cambios masivos.</p>
-                  <button
-                    onClick={handleDownloadBackup}
-                    className="w-full py-3 bg-cyan-600/20 hover:bg-cyan-600/40 text-cyan-400 border border-cyan-500/30 font-black rounded-xl shadow-lg transition-all uppercase tracking-widest text-[10px] mb-3"
-                  >
-                    Descargar Respaldo Completo (.JSON)
-                  </button>
-                  <button
-                    onClick={() => exportBulkDataToCSV(dashboards.filter(d => !String(d.id).startsWith('agg-')), selectedClientId, selectedYear)}
-                    className="w-full py-3 bg-green-600 hover:bg-green-500 text-white font-black rounded-xl shadow-lg transition-all uppercase tracking-widest text-[10px]"
-                    title="Exporta un archivo CSV compatible con el Importador Avanzado para realizar ediciones masivas."
-                  >
-                    Exportar Datos Masivos (Excel / CSV)
-                  </button>
-                </div>
-
-                {/* Opciones de Restablecimiento - SOLO PARA IPS */}
-                {(selectedClientId.toUpperCase() === 'IPS') && (
-                  <div className="bg-slate-800/40 border border-amber-500/20 rounded-2xl p-6">
-                    <h3 className="text-[10px] font-black text-amber-400 uppercase tracking-widest mb-4 flex items-center gap-2">
-                      <span>🔄</span> Restablecer Estructura Estándar IPS
-                    </h3>
-
-                    <div className="grid grid-cols-1 gap-4">
-                      <button
-                        onClick={async () => {
-                          const ok = confirm(`¿Restablecer SOLO los nombres de los tableros IPS?
-
-Año: ${selectedYear}
-
-✅ Esto corregirá los títulos a la estructura estándar.
-✅ MANTIENE todos los indicadores y datos intactos.`);
-                          if (ok) {
-                            try {
-                              const result = await firebaseService.resetDashboardNamesOnly(selectedClientId, selectedYear);
-                              alert(`✅ ${result.updatedCount} tableros actualizados.`);
-                              window.location.reload();
-                            } catch (err: any) {
-                              alert(`❌ Error: ${err.message}`);
-                            }
-                          }
-                        }}
-                        className="p-4 bg-slate-950 border border-amber-500/30 rounded-xl text-left hover:border-amber-500 transition-all group"
-                      >
-                        <div className="text-amber-400 font-black text-sm mb-1 group-hover:text-amber-300">
-                          Corregir Solo Nombres
-                        </div>
-                        <p className="text-[10px] text-slate-400">Restablece los nombres a la estructura estándar IPS. Mantiene indicadores y datos.</p>
-                      </button>
-                    </div>
-                  </div>
-                )}
-
-                {/* 🛡️ LIMPIEZA NUCLEAR (v5.2.2) */}
-                <div className="bg-red-950/20 border border-red-500/30 rounded-2xl p-6 relative overflow-hidden">
-                  <div className="absolute top-0 right-0 p-4 opacity-10 rotate-12 scale-150">☣️</div>
-                  <h3 className="text-[10px] font-black text-rose-500 uppercase tracking-widest mb-4 flex items-center gap-2">
-                    <span>☢️</span> Zona de Riesgo: Limpieza Nuclear
-                  </h3>
-
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <button
-                      onClick={async () => {
-                        const ok = confirm(`⚠️ ⚛️ LIMPIEZA OPERATIVA (AVANCES)\n\n¿Seguro que deseas BORRAR TODOS LOS AVANCES de ${selectedClientId} para el año ${selectedYear}?\n\n- Los nombres, metas y pesos NO se tocan.\n- El ahorro/progreso de cada mes va a 0.\n\nEscribe 'ELIMINAR' para confirmar:`);
-                        if (ok && prompt("Confirmación de seguridad:") === "ELIMINAR") {
-                          setLoadingDashboards(true);
-                          try {
-                            await firebaseService.resetDashboardDataOnly(selectedClientId, selectedYear);
-                            alert("✅ Datos operativos borrados. Reiniciando...");
-                            window.location.reload();
-                          } catch (err: any) { alert("❌ Error: " + err.message); }
-                          finally { setLoadingDashboards(false); }
-                        }
-                      }}
-                      className="p-4 bg-slate-950/80 border border-rose-500/40 rounded-xl text-left hover:border-rose-400 transition-all group"
-                    >
-                      <div className="text-rose-400 font-black text-xs mb-1 group-hover:text-rose-300 uppercase">Borrar Avances</div>
-                      <p className="text-[9px] text-slate-500">Limpia el progreso real del año.</p>
-                    </button>
-
-                    <button
-                      onClick={async () => {
-                        const ok = confirm(`⚠️ ⚛️ LIMPIEZA DE METAS (PLANIFICACIÓN)\n\n¿Seguro que deseas BORRAR TODAS LAS METAS de ${selectedClientId} para el año ${selectedYear}?\n\n- Los indicadores y avances se mantienen.\n- Las metas de todos los meses irán a 0.\n\nEscribe 'METAS' para confirmar:`);
-                        if (ok && prompt("Confirmación de seguridad:") === "METAS") {
-                          setLoadingDashboards(true);
-                          try {
-                            await firebaseService.resetDashboardGoalsOnly(selectedClientId, selectedYear);
-                            alert("✅ Metas borradas satisfactoriamente. Reiniciando...");
-                            window.location.reload();
-                          } catch (err: any) { alert("❌ Error: " + err.message); }
-                          finally { setLoadingDashboards(false); }
-                        }
-                      }}
-                      className="p-4 bg-slate-950/80 border border-amber-500/40 rounded-xl text-left hover:border-amber-400 transition-all group"
-                    >
-                      <div className="text-amber-400 font-black text-xs mb-1 group-hover:text-amber-300 uppercase">Borrar Metas</div>
-                      <p className="text-[9px] text-slate-500">Limpia objetivos mensuales y semanales.</p>
-                    </button>
-
-                    <button
-                      onClick={async () => {
-                        const ok = confirm(`🚨 ⚛️ ELIMINACIÓN TOTAL (NUCLEAR)\n\n¿Seguro que deseas ELIMINAR COMPLETAMENTE todos los tableros de ${selectedClientId} para el año ${selectedYear}?\n\nSe borrará: ESTRUCTURA, METAS Y AVANCES.\n\nEscribe 'NUCLEAR' para confirmar:`);
-                        if (ok && prompt("Confirmación de seguridad:") === "NUCLEAR") {
-                          setLoadingDashboards(true);
-                          try {
-                            await firebaseService.deleteClientYearData(selectedClientId, selectedYear);
-                            alert("✅ Estructura eliminada satisfactoriamente.");
-                            window.location.reload();
-                          } catch (err: any) { alert("❌ Error: " + err.message); }
-                          finally { setLoadingDashboards(false); }
-                        }
-                      }}
-                      className="p-4 bg-red-900/10 border border-red-500/50 rounded-xl text-left hover:bg-red-900/20 transition-all group md:col-span-full xl:col-span-1"
-                    >
-                      <div className="text-red-500 font-black text-xs mb-1 group-hover:text-red-400 uppercase">Borrado Nuclear Total</div>
-                      <p className="text-[9px] text-rose-400/70 font-bold">⚠️ Irreversible: Borra el año completo del cliente.</p>
-                    </button>
-                  </div>
-                </div>
-
-                {/* Generación de Nuevo Año */}
-                <div className="bg-slate-800/40 border border-cyan-500/20 rounded-2xl p-6">
-                  <h3 className="text-[10px] font-black text-cyan-400 uppercase tracking-widest mb-4 flex items-center gap-2">
-                    <span>📅</span> Generar Nuevo Año
-                  </h3>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {/* Copiar desde año anterior */}
-                    <button
-                      onClick={async () => {
-                        if (!selectedClientId || selectedClientId === 'all') {
-                          alert("Selecciona un cliente específico primero.");
-                          return;
-                        }
-                        const fromYear = selectedYear - 1;
-                        const toYear = selectedYear;
-                        const ok = confirm(`¿Generar ${toYear} copiando estructura de ${fromYear}?
-
-Cliente: ${selectedClientId}
-Origen: ${fromYear}
-Destino: ${toYear}
-
-Se copiarán los 14 tableros con todos sus indicadores, pero con metas=0 y progreso=0.`);
-                        if (ok) {
-                          try {
-                            const result = await firebaseService.generateYearForClient(selectedClientId, fromYear, toYear);
-                            alert(`✅ ¡Año ${toYear} generado!
-
-• ${result.createdDashboards} tableros creados
-• ${result.indicatorsPerDashboard} indicadores por tablero
-• ${result.totalIndicators} indicadores totales
-• Todos con metas y progreso en 0`);
-                            window.location.reload();
-                          } catch (err: any) {
-                            alert(`❌ Error: ${err.message}`);
-                          }
-                        }
-                      }}
-                      className="p-4 bg-slate-950 border border-cyan-500/30 rounded-xl text-left hover:border-cyan-500 transition-all group"
-                    >
-                      <div className="text-cyan-400 font-black text-sm mb-1 group-hover:text-cyan-300">
-                        Copiar desde {selectedYear - 1}
-                      </div>
-                      <p className="text-[10px] text-slate-400">
-                        Crea {selectedYear} con la misma estructura que {selectedYear - 1}, datos vacíos.
-                      </p>
-                    </button>
-
-                    {/* Crear estructura - DIFERENTE para IPS vs otros clientes */}
-                    {selectedClientId.toUpperCase() === 'IPS' ? (
-                      <button
-                        onClick={async () => {
-                          const ok = confirm(`¿Crear estructura IPS estándar desde CERO?
-
-Cliente: IPS
-Año: ${selectedYear}
-
-Se crearán los 14 tableros IPS (Metro Centro, Toluca, etc.) con los 14 indicadores estándar, todos con datos vacíos.`);
-                          if (ok) {
-                            try {
-                              const result = await firebaseService.createIPSStructure(selectedYear);
-                              alert(`✅ ¡Estructura IPS creada!
-
-• ${result.createdDashboards} tableros creados
-• ${result.indicatorsPerDashboard} indicadores por tablero
-• ${result.totalIndicators} indicadores totales`);
-                              window.location.reload();
-                            } catch (err: any) {
-                              alert(`❌ Error: ${err.message}`);
-                            }
-                          }
-                        }}
-                        className="p-4 bg-slate-950 border border-green-500/30 rounded-xl text-left hover:border-green-500 transition-all group"
-                      >
-                        <div className="text-green-400 font-black text-sm mb-1 group-hover:text-green-300">
-                          Crear Estructura IPS
-                        </div>
-                        <p className="text-[10px] text-slate-400">
-                          Crea 14 tableros IPS con 14 indicadores estándar (solo para IPS).
-                        </p>
-                      </button>
-                    ) : (
-                      <button
-                        onClick={async () => {
-                          if (!selectedClientId || selectedClientId === 'all') {
-                            alert("Selecciona un cliente específico primero.");
-                            return;
-                          }
-                          const countStr = prompt(`¿Cuántos tableros vacíos deseas crear para ${selectedClientId}/${selectedYear}?
-
-Ingresa un número (ej: 5, 10, 14):`, "5");
-                          if (!countStr) return;
-                          const count = parseInt(countStr, 10);
-                          if (isNaN(count) || count < 1 || count > 50) {
-                            alert("Ingresa un número válido entre 1 y 50.");
-                            return;
-                          }
-                          const ok = confirm(`¿Crear ${count} tableros VACÍOS?
-
-Cliente: ${selectedClientId}
-Año: ${selectedYear}
-
-Los tableros se crearán sin indicadores. Podrás agregar indicadores manualmente después.`);
-                          if (ok) {
-                            try {
-                              const result = await firebaseService.createMultipleEmptyDashboards(selectedClientId, selectedYear, count);
-                              alert(`✅ ¡Tableros creados!
-
-• ${result.createdDashboards} tableros vacíos creados
-• Sin indicadores (agrégalos manualmente)`);
-                              window.location.reload();
-                            } catch (err: any) {
-                              alert(`❌ Error: ${err.message}`);
-                            }
-                          }
-                        }}
-                        className="p-4 bg-slate-950 border border-green-500/30 rounded-xl text-left hover:border-green-500 transition-all group"
-                      >
-                        <div className="text-green-400 font-black text-sm mb-1 group-hover:text-green-300">
-                          Crear Tableros Vacíos
-                        </div>
-                        <p className="text-[10px] text-slate-400">
-                          Crea tableros sin indicadores para {selectedClientId} (los configuras tú).
-                        </p>
-                      </button>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {/* Zona Peligrosa */}
-              <div className="bg-slate-800/40 border border-red-500/20 rounded-2xl p-6">
-                <h3 className="text-[10px] font-black text-red-400 uppercase tracking-widest mb-4 flex items-center gap-2">
-                  <span>⚠️</span> Zona Peligrosa
-                </h3>
-                <button
-                  onClick={async () => {
-                    if (!selectedClientId || selectedClientId === 'all') {
-                      alert("Selecciona un cliente específico primero.");
-                      return;
-                    }
-                    const ok = confirm(`⚠️ ELIMINAR TODOS LOS DATOS ⚠️
-
-Cliente: ${selectedClientId}
-Año: ${selectedYear}
-
-Esta acción eliminará PERMANENTEMENTE todos los tableros e indicadores de ${selectedClientId}/${selectedYear}.
-
-¿Estás ABSOLUTAMENTE seguro?`);
-                    if (ok) {
-                      const ok2 = confirm("ÚLTIMA ADVERTENCIA: No hay forma de recuperar estos datos. ¿Proceder con la eliminación?");
-                      if (ok2) {
-                        try {
-                          const result = await firebaseService.deleteClientYearData(selectedClientId, selectedYear);
-                          alert(`✅ Eliminados ${result.deletedCount} tableros de ${selectedClientId}/${selectedYear}.`);
-                          window.location.reload();
-                        } catch (err: any) {
-                          alert(`❌ Error: ${err.message}`);
-                        }
-                      }
-                    }
-                  }}
-                  className="w-full p-4 bg-red-500/10 border border-red-500/30 rounded-xl text-left hover:bg-red-500/20 transition-all group"
-                >
-                  <div className="text-red-400 font-black text-sm mb-1">Eliminar TODO ({selectedClientId}/{selectedYear})</div>
-                  <p className="text-[10px] text-slate-400">Borra todos los tableros del cliente y año seleccionado. IRREVERSIBLE.</p>
-                </button>
-
-                <button
-                  onClick={async () => {
-                    if (!selectedClientId || selectedClientId === 'all') {
-                      alert("Selecciona un cliente específico primero.");
-                      return;
-                    }
-                    const ok = confirm(`🚨 ELIMINACIÓN GLOBAL DE CLIENTE 🚨
-
-Eliminarás: "${selectedClientId}" de TODOS los años (2025, 2026, etc.).
-
-Esta acción es DEFINITIVA y borrará absolutamente todos sus tableros e historial del sistema.
-
-¿Deseas proceder?`);
-                    if (ok) {
-                      const safetyCheck = prompt(`Escribe el nombre del cliente "${selectedClientId}" para confirmar la eliminación total:`);
-                      if (safetyCheck?.toUpperCase() === selectedClientId.toUpperCase()) {
-                        try {
-                          const result = await firebaseService.deleteClientGlobally(selectedClientId);
-                          alert(`✅ Cliente eliminado globalmente. Se borraron ${result.deletedCount} tableros en total.`);
-                          window.location.reload();
-                        } catch (err: any) {
-                          alert(`❌ Error: ${err.message}`);
-                        }
-                      } else {
-                        alert("Confirmación incorrecta. Operación cancelada.");
-                      }
-                    }
-                  }}
-                  className="w-full mt-4 p-4 bg-red-950/40 border border-red-500/50 rounded-xl text-left hover:bg-red-900/40 transition-all group"
-                >
-                  <div className="text-red-500 font-black text-sm mb-1">🔥 ELIMINAR CLIENTE GLOBALMENTE</div>
-                  <p className="text-[10px] text-slate-400">Elimina el historial completo (todos los años) de este cliente. Solo para administradores.</p>
-                </button>
-
-              </div>
-
-              {/* Gestión de Datos Operativos */}
-              <div className="mt-6">
-                <div className="bg-slate-800/40 border border-white/5 rounded-2xl p-6 mb-6">
-                  <h3 className="text-[10px] font-black text-cyan-500 uppercase tracking-widest mb-4 flex items-center gap-2">
-                    <span>🛠️</span> Gestión de Datos Operativos
-                  </h3>
-
-                  <div className="grid gap-4">
-                    <button
-                      onClick={async () => {
-                        const targetClient = selectedClientId.trim().toUpperCase();
-                        const allAreas = [...new Set(
-                          allRawDashboards
-                            .filter(d => !String(d.id).startsWith('agg-') && d.id !== -1 &&
-                              String(d.clientId || "IPS").toUpperCase() === targetClient &&
-                              Number(d.year || selectedYear) === Number(selectedYear))
-                            .map(d => ((d as any).area || "").trim().toUpperCase())
-                            .filter(a => a.length > 0)
-                        )];
-
-                        let selectedArea: string | undefined = undefined;
-
-                        if (allAreas.length > 0) {
-                          const choice = prompt(
-                            `🏢 SISTEMA DE ÁREAS (v5.5.3)\n\n` +
-                            `Áreas disponibles: ${allAreas.join(', ')}\n\n` +
-                            `Escribe el nombre del ÁREA para limpiar solo es tableros, o 'TODOS' para limpiar todo el cliente.`
-                          );
-                          if (!choice) return;
-                          if (choice.trim().toUpperCase() === 'TODOS') selectedArea = undefined;
-                          else {
-                            const match = allAreas.find(a => a === choice.trim().toUpperCase());
-                            selectedArea = match || choice.trim().toUpperCase();
-                          }
-                        }
-
-                        const ok = confirm(`¿⚠️ LIMPIAR DATOS DE OPERACIÓN?
-                            
-  Cliente: ${selectedClientId}
-  ${selectedArea ? `Área: ${selectedArea}` : ''}
-  
-  Esto borrará los avances mensuales cargados. Útil para reiniciar captura.`);
-                        if (ok) {
-                          const result = await firebaseService.resetDashboardDataOnly(selectedClientId, selectedYear, selectedArea);
-                          alert(`Limpieza realizada en ${result.resetDashboards} tableros.`);
-                          window.location.reload();
-                        }
-                      }}
-                      className="p-4 bg-red-900/20 border border-red-500/30 rounded-xl text-left hover:bg-red-900/40 transition-all"
-                    >
-                      <h4 className="text-red-400 font-bold text-xs uppercase mb-1">🧹 Limpiar Datos Operativos</h4>
-                      <p className="text-[10px] text-slate-400">Reinicia los valores de avance a cero. No borra indicadores.</p>
-                    </button>
-                  </div>
-                </div>
-
-
-
-                {/* Terminología Personalizada */}
-                <div className="bg-slate-800/40 border border-white/5 rounded-2xl p-6">
-                  <h3 className="text-[10px] font-black text-cyan-500 uppercase tracking-widest mb-4">🏷️ Terminología Personalizada</h3>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="text-[10px] font-bold text-slate-500 block mb-1">Nombre de Grupos</label>
-                      <input
-                        defaultValue={settings?.groupLabel}
-                        onBlur={(e) => handleUpdateSystemSettings({ groupLabel: e.target.value })}
-                        className="w-full bg-slate-900 border border-white/10 rounded-lg p-2 text-xs text-white"
-                        placeholder="Ej: Dirección"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-[10px] font-bold text-slate-500 block mb-1">Nombre de Tableros</label>
-                      <input
-                        defaultValue={settings?.dashboardLabel}
-                        onBlur={(e) => handleUpdateSystemSettings({ dashboardLabel: e.target.value })}
-                        className="w-full bg-slate-900 border border-white/10 rounded-lg p-2 text-xs text-white"
-                        placeholder="Ej: UNE"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-              </div>
-
-              <div className="mt-8">
-                <button
-                  onClick={() => setActiveAdminSection("none")}
-                  className="w-full py-4 bg-cyan-600 hover:bg-cyan-500 text-white font-black uppercase tracking-widest rounded-xl transition-all shadow-xl shadow-cyan-900/20 active:scale-[0.98]"
-                >
-                  Cerrar
-                </button>
-              </div>
-            </div>
-          </div>
+          <ClientSettings
+            dashboards={dashboards}
+            selectedClientId={selectedClientId}
+            selectedYear={selectedYear}
+            setActiveAdminSection={(s) => setActiveAdminSection(s as any)}
+            handleFixOrder={handleFixOrder}
+            handleDownloadBackup={handleDownloadBackup}
+            settings={settings}
+            handleUpdateSystemSettings={handleUpdateSystemSettings}
+            setLoadingDashboards={setLoadingDashboards}
+            allRawDashboards={allRawDashboards}
+          />
         )
       }
 
@@ -2464,7 +2134,7 @@ Esta acción es DEFINITIVA y borrará absolutamente todos sus tableros e histori
 
                 <div className="flex items-center gap-4 w-full max-w-md py-2">
                   <div className="h-px bg-white/5 flex-grow"></div>
-                  <span className="text-[10px] font-black text-slate-700 uppercase tracking-widest">Otras opciones</span>
+                  <span className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">Stratexa Dashboard {VERSION_LABEL}</span>
                   <div className="h-px bg-white/5 flex-grow"></div>
                 </div>
 
@@ -2522,7 +2192,12 @@ Esta acción es DEFINITIVA y borrará absolutamente todos sus tableros e histori
                   {selectedDashboard.group && selectedDashboard.group !== 'SINTESIS' && selectedDashboard.group !== 'GENERAL' && (
                     <>
                       {(() => {
-                        const cleanTitle = selectedDashboard.title.replace(/^★\s*RESUMEN DIRECTIVO:\s*/i, "").replace(/^★\s*SÍNTESIS GLOBAL OPERATIVA:\s*/i, "");
+                        const cleanTitle = selectedDashboard.title
+                          .replace(/^★\s*RESUMEN DIRECTIVO:\s*/i, "")
+                          .replace(/^★\s*SÍNTESIS GLOBAL OPERATIVA:\s*/i, "")
+                          .replace(/^★\s*CONSOLIDADO DIRECTIVO:\s*/i, "")
+                          .replace(/^★\s*CONSOLIDADO DIRECTIVO GLOBAL:\s*/i, "");
+                        
                         if (normalizeGroupName(selectedDashboard.group) !== normalizeGroupName(cleanTitle)) {
                           return (
                             <>
@@ -2581,7 +2256,7 @@ Esta acción es DEFINITIVA y borrará absolutamente todos sus tableros e histori
                 {userProfile.globalRole === 'Admin' ? 'Super Administrador' : (userProfile.directorTitle || userProfile.globalRole)}
                 {userProfile.canManageKPIs && <span className="text-cyan-400 ml-2">🛠️ Gestión KPI Habilitada</span>}
                 <span className="text-slate-600 ml-4 border-l border-white/5 pl-4 inline-flex items-center gap-1">
-                  {versionLabel} • MULTI-APP ISOLATION {isGlobalAdmin && <span className="text-[8px] bg-cyan-500/10 text-cyan-400 px-1.5 py-0.5 rounded ml-1 animate-pulse border border-cyan-500/30">SHIELD-TBL ACTIVE (DB LOCK)</span>}
+                  {VERSION_LABEL} • {SHIELD_ID} • MULTI-APP ISOLATION {isGlobalAdmin && <span className="text-[8px] bg-cyan-500/10 text-cyan-400 px-1.5 py-0.5 rounded ml-1 animate-pulse border border-cyan-500/30">SHIELD-TBL ACTIVE (DB LOCK)</span>}
                 </span>
               </p>
             </div>

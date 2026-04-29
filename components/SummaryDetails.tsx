@@ -2,6 +2,7 @@
 import React, { useMemo } from 'react';
 import { DashboardItem, ComplianceStatus, ComplianceThresholds } from '../types';
 import { getStatusForPercentage, calculateMonthlyCompliancePercentage, evaluateFormula } from '../utils/compliance';
+import { formatNumberWithCommas } from '../utils/formatters';
 
 interface SummaryDetailsProps {
     item: DashboardItem;
@@ -63,10 +64,7 @@ export const SummaryDetails = ({ item, currentProgress, currentTarget, overallCo
     }, [item, allDashboardItems]);
 
     const formatNumber = (num: number) => {
-        return new Intl.NumberFormat('en-US', {
-            minimumFractionDigits: decimalPrecision === 0 ? 0 : 0,
-            maximumFractionDigits: decimalPrecision
-        }).format(num).replace(/,/g, "'");
+        return formatNumberWithCommas(num, decimalPrecision);
     };
 
     const goalLabel = type === 'accumulative' ? `Meta Anual (${unit})` : `Meta Promedio (${unit})`;
@@ -98,13 +96,14 @@ export const SummaryDetails = ({ item, currentProgress, currentTarget, overallCo
                     {monthlyProgress.map((progress, index) => {
                         const goal = monthlyGoals[index];
 
-                        // Logic to hide future months if it's the current year
+                        // 🛡️ UX REFLUX (v7.9.0): Hacer visibles todos los periodos hasta la fecha
                         const currentYear = new Date().getFullYear();
                         const currentMonth = new Date().getMonth();
                         if (year === currentYear && index > currentMonth) return null;
-                        if (year && year > currentYear && index > 0) return null; // Future year
+                        if (year && year > currentYear) return null; 
 
-                        if (progress === 0 && goal === 0) return null;
+                        // Si no hay datos, no ocultamos, mostramos placeholder
+                        const hasData = progress !== 0 || goal !== 0;
 
                         const monthlyCompliance = calculateMonthlyCompliancePercentage(progress, goal, lowerIsBetter);
                         const safePercentage = Math.max(0, Math.min(100, monthlyCompliance));
@@ -116,9 +115,12 @@ export const SummaryDetails = ({ item, currentProgress, currentTarget, overallCo
                         const status = getStatusForPercentage(monthlyCompliance, globalThresholds, hasProgress || isExpired);
 
                         return (
-                            <div key={index} className="text-xs">
+                            <div key={index} className={`text-xs p-2 rounded-xl border ${hasData ? 'border-white/5 bg-white/5' : 'border-dashed border-white/10 opacity-40'} transition-all`}>
                                 <div className="flex justify-between items-center mb-1">
-                                    <span className="font-semibold text-slate-300">{months[index]}</span>
+                                    <div className="flex items-center gap-2">
+                                        <span className="font-semibold text-slate-300">{months[index]}</span>
+                                        {!hasData && <span className="text-[8px] font-bold text-slate-500 uppercase tracking-tighter">Sin Datos</span>}
+                                    </div>
                                     <span className="font-mono text-slate-400">{formatNumber(progress)} / {formatNumber(goal)}</span>
                                 </div>
                                 <div className="w-full flex items-center gap-2">

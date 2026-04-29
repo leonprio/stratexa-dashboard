@@ -7,6 +7,7 @@ import { DataEditor } from './DataEditor';
 import { ActionPlan } from './ActionPlan';
 import { SummaryDetails } from './SummaryDetails';
 import { calculateCompliance, findLastIndexWithData, getMissingMonthsWarning, getOverdueWarning } from '../utils/compliance';
+import { formatNumberWithCommas } from '../utils/formatters';
 
 interface DashboardRowProps {
   item: DashboardItem;
@@ -20,11 +21,27 @@ interface DashboardRowProps {
   onSelect?: () => void;
   decimalPrecision?: 0 | 1 | 2;
   allDashboardItems?: DashboardItem[];
+  isGlobalAdmin?: boolean; // 🛡️ v9.1.0-PRO-FINAL-SHIELDED: Blindaje explícito para admins
 }
 
-export const DashboardRow: React.FC<DashboardRowProps> = React.memo(({ item, onUpdateItem, globalThresholds, userRoleForDashboard, layout = 'grid', year, isAggregate = false, isSelected = false, onSelect, decimalPrecision = 2 as 0 | 1 | 2, allDashboardItems = [] }) => {
+/**
+ * Componente DashboardRow
+ * 
+ * Representa una fila individual (o tarjeta) de un indicador.
+ * Gestiona estados de expansión, edición y visualización de gráficos y progreso local.
+ * Implementa auto-scroll reactivo cuando es seleccionado.
+ */
+export const DashboardRow: React.FC<DashboardRowProps> = React.memo(({ item, onUpdateItem, globalThresholds, userRoleForDashboard, layout = 'grid', year, isAggregate = false, isSelected = false, onSelect, decimalPrecision = 2 as 0 | 1 | 2, allDashboardItems = [], isGlobalAdmin = false }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+  const rowRef = React.useRef<HTMLDivElement>(null);
+
+  // 🚀 AUTO-SCROLL v7.9.0: Asegurar que el dashboard seleccionado sea el foco visual
+  React.useEffect(() => {
+    if (isSelected && rowRef.current) {
+        rowRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }, [isSelected]);
 
   const { currentProgress, currentTarget, overallPercentage, complianceStatus } = useMemo(() => {
     if (!item || !item.indicator) return { currentProgress: 0, currentTarget: 0, overallPercentage: 0, complianceStatus: 'Neutral' };
@@ -59,10 +76,7 @@ export const DashboardRow: React.FC<DashboardRowProps> = React.memo(({ item, onU
   }, [item]);
 
   const formatNumber = useMemo(() => (num: number) => {
-    return new Intl.NumberFormat('en-US', {
-      minimumFractionDigits: decimalPrecision === 0 ? 0 : decimalPrecision === 1 ? 0 : 0,
-      maximumFractionDigits: decimalPrecision
-    }).format(num).replace(/,/g, "'");
+    return formatNumberWithCommas(num, decimalPrecision);
   }, [decimalPrecision]);
 
   // 🛡️ ACTIVE SHIELD: Blindaje contra ítems malformados
@@ -81,7 +95,7 @@ export const DashboardRow: React.FC<DashboardRowProps> = React.memo(({ item, onU
     return (
       <div
         onClick={(e) => { e.stopPropagation(); onSelect?.(); setIsExpanded(true); }}
-        className={`glass-card rounded-2xl p-5 cursor-pointer transition-all group flex items-center justify-between gap-6 shadow-xl hover:shadow-cyan-500/10 active:scale-95 border ${isSelected ? 'border-cyan-500 shadow-cyan-500/20' : 'border-white/5'}`}
+        className={`glass-card rounded-2xl p-5 cursor-pointer transition-all group flex items-center justify-between gap-6 active:scale-95 border ${isSelected ? 'border-cyan-500' : 'border-white/5'}`}
       >
         <div className="flex-grow min-w-0">
           <div className="flex items-center gap-2 mb-1">
@@ -108,7 +122,7 @@ export const DashboardRow: React.FC<DashboardRowProps> = React.memo(({ item, onU
             </span>
           </div>
           <div className="relative w-5 h-5">
-            <div className={`absolute inset-0 rounded-full blur-[8px] opacity-40 ${complianceStatus === 'OnTrack' ? 'bg-emerald-500' : complianceStatus === 'AtRisk' ? 'bg-amber-500' : complianceStatus === 'InProgress' ? 'bg-sky-500' : complianceStatus === 'Neutral' ? 'bg-slate-600' : 'bg-rose-500'}`} />
+            <div className={`absolute inset-0 rounded-full opacity-40 ${complianceStatus === 'OnTrack' ? 'bg-emerald-500' : complianceStatus === 'AtRisk' ? 'bg-amber-500' : complianceStatus === 'InProgress' ? 'bg-sky-500' : complianceStatus === 'Neutral' ? 'bg-slate-600' : 'bg-rose-500'}`} />
             <div className={`relative w-full h-full rounded-full border border-slate-950/20 ${complianceStatus === 'OnTrack' ? 'bg-emerald-500' : complianceStatus === 'AtRisk' ? 'bg-amber-500' : complianceStatus === 'InProgress' ? 'bg-sky-500' : complianceStatus === 'Neutral' ? 'bg-slate-600' : 'bg-rose-500'}`} />
           </div>
         </div>
@@ -136,18 +150,15 @@ export const DashboardRow: React.FC<DashboardRowProps> = React.memo(({ item, onU
     setIsEditing(true);
   }
 
-  const handleSave = (data: Partial<DashboardItem>) => {
+  const handleSave = (data: Partial<DashboardItem>, autoSave?: boolean) => {
     const updatedItem = {
       ...item,
-      monthlyGoals: data.monthlyGoals || item.monthlyGoals,
-      monthlyProgress: data.monthlyProgress || item.monthlyProgress,
-      monthlyNotes: data.monthlyNotes || item.monthlyNotes,
-      weeklyGoals: data.weeklyGoals || item.weeklyGoals,
-      weeklyProgress: data.weeklyProgress || item.weeklyProgress,
-      weeklyNotes: data.weeklyNotes || item.weeklyNotes,
+      ...data, // 🚀 FIJO: asegurar que todos los campos (incluyendo activityConfig y isActivityMode) se propaguen
     };
     onUpdateItem(updatedItem);
-    setIsEditing(false);
+    if (!autoSave) {
+      setIsEditing(false);
+    }
   };
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -159,11 +170,17 @@ export const DashboardRow: React.FC<DashboardRowProps> = React.memo(({ item, onU
     setIsEditing(false);
   };
 
-  const canEdit = userRoleForDashboard === DashboardRole.Editor && !isAggregate;
+  // 🛡️ v9.1.0-PRO-FINAL-SHIELDED: BLINDAJE DE PERMISOS
+  // canEdit = true SI:
+  //   1. Es ADMIN GLOBAL (siempre puede editar, sin importar el rol)
+  //   2. Tiene rol Editor explícito Y no es un tablero agregado (solo lectura)
+  // Como un ascensor que tiene llave maestra: el Admin SIEMPRE puede subir a cualquier piso.
+  const canEdit = isGlobalAdmin || (userRoleForDashboard === DashboardRole.Editor && !isAggregate);
 
   return (
     <div
-      className={`glass-card rounded-2xl shadow-2xl flex flex-col transition-all duration-500 ease-[cubic-bezier(0.23,1,0.32,1)] hover:scale-[1.01] ${isExpanded ? 'md:col-span-2 xl:col-span-full ring-2 ring-cyan-500/50 bg-slate-900/60' : ''} ${isSelected ? 'ring-2 ring-cyan-500' : ''}`}
+      ref={rowRef}
+      className={`glass-card rounded-2xl flex flex-col transition-all duration-500 ease-[cubic-bezier(0.23,1,0.32,1)] hover:scale-[1.01] ${isExpanded ? 'md:col-span-2 xl:col-span-full ring-2 ring-cyan-500/50 bg-slate-900/60' : ''} ${isSelected ? 'ring-2 ring-cyan-500' : ''}`}
     >
       <div className="p-5 cursor-pointer flex flex-col flex-grow" onClick={handleToggleExpand}>
         <div className="flex justify-between items-start gap-3">
@@ -205,7 +222,7 @@ export const DashboardRow: React.FC<DashboardRowProps> = React.memo(({ item, onU
             <div className="flex flex-col">
               <span className="text-[10px] text-slate-500 uppercase font-black tracking-[0.2em] mb-2 opacity-80">Rendimiento Real</span>
               <div className="flex items-baseline gap-2">
-                <span className="text-4xl sm:text-5xl font-black text-white tabular-nums tracking-tighter drop-shadow-2xl">
+                <span className="text-4xl sm:text-5xl font-black text-white tabular-nums tracking-tighter">
                   {formatNumber(currentProgress)}
                 </span>
                 <span className="text-xs font-bold text-slate-500 uppercase tracking-widest italic">{unit}</span>
@@ -293,7 +310,7 @@ export const DashboardRow: React.FC<DashboardRowProps> = React.memo(({ item, onU
               {/* ACTION PROTOCOL SECTION */}
               <ActionPlan
                 initialRows={item.paiRows}
-                status={complianceStatus}
+                status={complianceStatus as any}
                 onSave={handleSavePlan}
                 canEdit={canEdit}
                 year={year}

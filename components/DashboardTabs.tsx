@@ -32,6 +32,15 @@ export const calculateCapture = (d: DashboardType & { capturePct?: number }) => 
   return calculateCapturePct(d);
 };
 
+/**
+ * Componente DashboardTabsComponent (exportado como DashboardTabs)
+ * 
+ * Gestiona la navegación principal de grupos y áreas.
+ * Proporciona un sistema visual de pestañas integradas con selectores de jerarquía.
+ * Filtra los tableros que luego DashboardView consume.
+ * 
+ * @component
+ */
 const DashboardTabsComponent: React.FC<DashboardTabsProps> = ({
   dashboards,
   selectedDashboardId,
@@ -112,11 +121,13 @@ const DashboardTabsComponent: React.FC<DashboardTabsProps> = ({
   const rootAgg = useMemo(() => dashboards.find(d => (d as any).isHierarchyRoot), [dashboards]);
 
   const mainLabel = useMemo(() => {
-    // 🛡️ REGLA v6.2.4-Fix2: Si tenemos un título de director oficial, usarlo como etiqueta principal para la síntesis
-    if (rootAgg && rootAgg.title) return rootAgg.title.trim().toUpperCase();
-    if (rootAgg && rootAgg.group) return normalizeGroupName(rootAgg.group);
-    return "SINTESIS";
-  }, [rootAgg]);
+    if (!activeGroup) return "CONSOLIDADO";
+    const g = activeGroup.toUpperCase();
+    if (g === 'GENERAL' || g === 'DIRECTORIO' || g === 'TODOS' || g === 'IPS') {
+      return "CONSOLIDADO: DIRECCIÓN DE OPERACIONES";
+    }
+    return `CONSOLIDADO: ${activeGroup}`;
+  }, [activeGroup]);
 
   const normMain = useMemo(() => normalizeGroupName(mainLabel), [mainLabel]);
 

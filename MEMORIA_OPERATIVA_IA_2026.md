@@ -1,12 +1,12 @@
-# 📗 Protocolo de Integridad y Desarrollo: Sistema Tablero Prior (v4.0.0)
+# 📗 Protocolo de Integridad y Desarrollo: Sistema Tablero Prior (v9.1.0-PRO-FINAL-SHIELDED)
 
-> **Versión Actual**: v4.0.0-PRO ACTIVE SHIELD (CONTROL)  
+> **Versión Actual**: v9.1.0-PRO-FINAL-SHIELDED  
 > **Última Actualización**: 31 de Enero de 2026  
 > **Estado**: BLINDADO / PRODUCCIÓN  
 
 ---
 
-## 🏗️ 1. Arquitectura de Jerarquías (v5.1.0)
+## 🏗️ 1. Arquitectura de Jerarquías (v9.1.0-PRO-FINAL-SHIELDED)
 
 ### 1.1 Jerarquías Ejecutivas (👑 MASTER y 🏢 DIR)
 - **Concepto**: Los directores supervisan grupos de tableros.
@@ -15,14 +15,14 @@
   - **🏢 DIR (Cyan Glow)**: Agregado de una Dirección Regional o Grupo.
 - **Agregación Smart-Match (v5.1.2)**: Los agregados se calculan por coincidencia de NOMBRE de indicador, no por posición, permitiendo promedios correctos aunque los tableros tengan estructuras distintas.
 
-### 1.2 Regla de Oro de Posesión (v5.1.0)
+### 1.2 Regla de Oro de Posesión (v9.1.0-PRO-FINAL-SHIELDED)
 - **Priorización de Hojas**: Si varios directores tienen acceso a un mismo tablero, el sistema lo asignará visualmente al director de menor nivel (el que no supervisa a otros). Esto evita que los grupos operativos desaparezcan cuando un director superior les da seguimiento.
 
 ---
 
 ## 🛡️ 2. Blindaje de Integridad (Data & Logic)
 
-### 2.1 Normalización de Grupos (Preservación de Jerarquía v5.1.5)
+### 2.1 Normalización de Grupos (v9.1.0-PRO-FINAL-SHIELDED)
 - **Fuente de Verdad**: `utils/formatters.ts`. 
 - **Regla v5.1.5**: Se ha desactivado el recorte de prefijos (DIRECCIÓN, GRUPO) para permitir que el sistema distinga entre la "DIRECCIÓN SUR" (concentrado) y el grupo "SUR" (operativo).
 - **Importancia**: Evita la colisión de pestañas y asegura que los agregados regionales sean visibles independientemente de los grupos de sus tableros hijos.

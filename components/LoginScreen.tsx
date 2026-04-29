@@ -2,9 +2,10 @@ import React, { useState } from 'react';
 
 interface LoginScreenProps {
   onLogin: (email: string, password: string) => Promise<boolean>;
+  versionLabel?: string;
 }
 
-export const LoginScreen = ({ onLogin }: LoginScreenProps) => {
+export const LoginScreen = ({ onLogin, versionLabel }: LoginScreenProps) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -39,7 +40,7 @@ export const LoginScreen = ({ onLogin }: LoginScreenProps) => {
 
       <div className="w-full max-w-md relative z-10">
         <div className="text-center mb-10">
-          <h1 className="text-5xl font-black text-white uppercase tracking-tighter mb-2 drop-shadow-2xl">
+          <h1 className="text-5xl font-black text-white uppercase tracking-tighter mb-2">
             STRATEXA <span className="text-cyan-400">IAPRIORI</span>
           </h1>
           <div className="flex items-center justify-center gap-3">
@@ -49,7 +50,7 @@ export const LoginScreen = ({ onLogin }: LoginScreenProps) => {
           </div>
         </div>
 
-        <div className="glass-panel rounded-[2.5rem] p-10 shadow-2xl relative overflow-hidden">
+        <div className="glass-panel rounded-[2.5rem] p-10 relative overflow-hidden">
           <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-cyan-500 to-transparent opacity-50" />
 
           <form onSubmit={handleSubmit} className="space-y-8">
@@ -109,12 +110,18 @@ export const LoginScreen = ({ onLogin }: LoginScreenProps) => {
           </form>
         </div>
 
-        <footer className="text-center mt-12 space-y-2">
+        <footer className="text-center mt-12 space-y-1">
           <p className="text-slate-600 text-[9px] font-bold uppercase tracking-widest">
             © {new Date().getFullYear()} STRATEXA IAPRIORI • Business Intelligence System
           </p>
+          {versionLabel && (
+            <p className="text-slate-700 text-[8px] font-black tracking-[0.2em] uppercase mt-2">
+              ENGINE {versionLabel}
+            </p>
+          )}
         </footer>
       </div>
     </div>
+
   );
 };

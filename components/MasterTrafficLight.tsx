@@ -57,8 +57,6 @@ export const MasterTrafficLight: React.FC<MasterTrafficLightProps> = ({ allDashb
                             onClick={() => { onSelectClient(c.name); onClose(); }}
                             className="group relative bg-slate-900/50 border border-white/5 p-6 rounded-[2rem] hover:bg-slate-800/50 transition-all cursor-pointer overflow-hidden"
                         >
-                            <div className={`absolute top-0 right-0 w-32 h-32 blur-[60px] opacity-20 transition-all group-hover:opacity-40 ${c.status === 'OnTrack' ? 'bg-emerald-500' : c.status === 'AtRisk' ? 'bg-amber-500' : 'bg-rose-500'}`} />
-
                             <div className="flex justify-between items-start mb-6 relative z-10">
                                 <div>
                                     <h3 className="text-2xl font-black text-white uppercase tracking-tight group-hover:text-cyan-400 transition-colors">{c.name}</h3>

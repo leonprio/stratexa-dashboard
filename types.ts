@@ -18,7 +18,7 @@ export interface SystemSettings {
   groupLabel?: string; // e.g. "Dirección", "Gerencia", "Zona" (Default: "Agrupación")
   dashboardLabel?: string; // e.g. "Tablero", "UNE", "Tienda" (Default: "Tablero")
   thresholds?: ComplianceThresholds;
-  decimalPrecision?: 1 | 2; // Default: 2
+  decimalPrecision?: 0 | 1 | 2; // Default: 2 (Updated to allow 0 for cleaner UI)
 
   // 🌟 ESTRATEGIA DE AGREGACIÓN (v3.0.0)
   aggregationStrategy?: 'equal' | 'manual' | 'indicator';

@@ -60,7 +60,7 @@ const NEW_INDICATOR_TEMPLATE: Omit<DashboardItem, 'id'> = {
  *    onCancel={closeModal}
  * />
  */
-export const IndicatorManager = ({ initialItems, onSaveChanges, onCancel, dashboards, activeDashboardId, onDashboardSelect, defaultItems }: IndicatorManagerProps) => {
+export const IndicatorManager = React.memo(({ initialItems, onSaveChanges, onCancel, dashboards, activeDashboardId, onDashboardSelect, defaultItems }: IndicatorManagerProps) => {
     const [items, setItems] = useState<EditableIndicator[]>(() => {
         return [...initialItems].sort((a, b) => {
             // 🛡️ V6.2.1: Sort by order first, then ID
@@ -192,24 +192,33 @@ export const IndicatorManager = ({ initialItems, onSaveChanges, onCancel, dashbo
 
     return (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[100] p-4" onClick={onCancel} role="dialog" aria-modal="true" aria-labelledby="modal-title">
-            <div className="bg-slate-800 rounded-xl shadow-2xl ring-1 ring-white/10 w-full max-w-6xl p-6 flex flex-col" onClick={(e) => e.stopPropagation()}>
+            <div className="bg-slate-800 rounded-xl ring-1 ring-white/10 w-full max-w-6xl p-6 flex flex-col" onClick={(e) => e.stopPropagation()}>
                 <div className="flex justify-between items-center mb-4">
                     <div>
-                        <h3 id="modal-title" className="text-xl font-bold text-slate-100">Gestionar Indicadores</h3>
+                        <h3 id="modal-title" className="text-xl font-bold text-slate-100 italic uppercase tracking-tighter">Gestionar Indicadores</h3>
                         <p className="text-sm text-slate-400">Añade, elimina o edita las propiedades de tus KPIs.</p>
                     </div>
-                    <div className="flex items-center gap-2">
-                        <span className="text-sm text-slate-400">Tablero:</span>
-                        <select
-                            aria-label="Seleccionar tablero activo"
-                            value={activeDashboardId}
-                            onChange={(e) => onDashboardSelect(e.target.value)}
-                            className="bg-slate-700 border border-slate-600 rounded-md p-2 text-white text-sm focus:ring-2 focus:ring-cyan-500 outline-none min-w-[200px]"
+                    <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-2">
+                            <span className="text-sm text-slate-400">Tablero:</span>
+                            <select
+                                aria-label="Seleccionar tablero activo"
+                                value={activeDashboardId}
+                                onChange={(e) => onDashboardSelect(e.target.value)}
+                                className="bg-slate-700 border border-slate-600 rounded-md p-2 text-white text-sm focus:ring-2 focus:ring-cyan-500 outline-none min-w-[200px]"
+                            >
+                                {dashboards.map(d => (
+                                    <option key={d.id} value={d.id}>{d.title}</option>
+                                ))}
+                            </select>
+                        </div>
+                        <button 
+                            onClick={onCancel}
+                            className="w-10 h-10 flex items-center justify-center bg-slate-700/50 hover:bg-slate-600 rounded-lg text-slate-400 hover:text-white transition-all active:scale-95"
+                            aria-label="Cerrar modal"
                         >
-                            {dashboards.map(d => (
-                                <option key={d.id} value={d.id}>{d.title}</option>
-                            ))}
-                        </select>
+                            ✕
+                        </button>
                     </div>
                 </div>
 
@@ -239,7 +248,7 @@ export const IndicatorManager = ({ initialItems, onSaveChanges, onCancel, dashbo
                                     onDragOver={handleDragOver}
                                     onDrop={(e) => handleDrop(e, index)}
                                 >
-                                    <td className="p-2 font-mono text-xs text-slate-500 cursor-move" title={`ID: ${item.id} (Arrastra para reordenar)`}>
+                                    <td className="p-2 font-mono text-xs text-slate-500 cursor-move" title={`Arrastra para reordenar`}>
                                         <div className="flex items-center gap-2">
                                             <span className="text-lg opacity-50">☰</span>
                                             {String(item.id).startsWith('new-') ? '*' : (typeof item.id === 'string' && item.id.length > 8 ? item.id.substring(0, 6) + '..' : item.id)}
@@ -292,7 +301,7 @@ export const IndicatorManager = ({ initialItems, onSaveChanges, onCancel, dashbo
                                             {item.indicatorType === 'formula' && (
                                                 <input
                                                     type="text"
-                                                    placeholder="bajas totales / altas"
+                                                    placeholder="{101} + {102} ó bajas / altas"
                                                     value={item.formula || ''}
                                                     onChange={(e) => handleInputChange(item.id, 'formula', e.target.value)}
                                                     className="w-full bg-slate-950 border border-indigo-500/30 rounded px-2 py-1 text-[9px] text-indigo-200 placeholder:text-indigo-500/30 shadow-[0_0_10px_rgba(99,102,241,0.1)] focus:border-indigo-500 outline-none transition-all"
@@ -372,7 +381,7 @@ export const IndicatorManager = ({ initialItems, onSaveChanges, onCancel, dashbo
             </div>
         </div>
     );
-};
+});
 
 /**
  * 🛡️ REGLA v6.1.8 - COMPONENTE DE INPUT DE IDs

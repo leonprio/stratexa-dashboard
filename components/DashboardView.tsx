@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useEffect, useCallback } from "react";
 import {
   Dashboard as DashboardType,
   DashboardRole,
@@ -15,7 +15,6 @@ import { calculateDashboardWeightedScore, getStatusForPercentage, calculateCaptu
 import { ReportCenter } from "./ReportCenter";
 
 import { CurrentPeriodFocus } from "./CurrentPeriodFocus";
-// ActionPlan was unused
 import { exportDashboardToExcel } from '../utils/exportUtils';
 
 interface DashboardViewProps {
@@ -47,24 +46,9 @@ interface DashboardViewProps {
  * Proporciona visualización de KPIs, análisis de IA, herramientas de exportación y gestión de metadatos.
  * 
  * @component
- * @param {DashboardViewProps} props - Propiedades del componente.
- * @param {DashboardType} props.dashboard - Objeto de tablero a visualizar.
- * @param {Function} props.onUpdateItem - Callback para actualizar un KPI individual.
- * @param {DashboardRole | null} props.userRole - Rol del usuario actual para este tablero.
- * @param {boolean} props.isGlobalAdmin - Indica si el usuario es administrador global.
- * @param {User} props.currentUser - Perfil del usuario autenticado.
- * @param {Function} [props.onUpdateMetadata] - Callback para actualizar metadatos del tablero.
- * @param {string[]} [props.existingGroups] - Lista de grupos existentes para el autocompletado.
- * @param {SystemSettings} [props.settings] - Configuraciones del sistema (umbrales, etc.).
- * @param {"grid" | "compact"} [props.layout] - Modo de visualización de los contenedores.
- * @param {number} [props.year] - Año de gestión seleccionado.
- * @param {DashboardType[]} [props.allDashboards] - Lista de todos los tableros (para comparativas o consolidación).
- * @param {boolean} [props.isDirector] - Indica si el usuario tiene rol de director.
- * @param {Function} [props.onOpenWeights] - Callback para abrir el gestor de ponderaciones.
- * 
- * @returns {JSX.Element} El componente de vista de tablero.
+ * @version v9.2.2-CLEAN-UI
  */
-export const DashboardView: React.FC<DashboardViewProps> = ({
+export const DashboardView: React.FC<DashboardViewProps> = React.memo(({
   dashboard,
   onUpdateItem,
   userRole,
@@ -80,13 +64,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   onOpenWeights,
 }) => {
   const [isAnalysisOpen, setIsAnalysisOpen] = useState(false);
-  const [analysisResult, setAnalysisResult] = useState<AIAnalysisResult | null>(
-    null
-  );
+  const [analysisResult, setAnalysisResult] = useState<AIAnalysisResult | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisError, setAnalysisError] = useState<string | null>(null);
   const [isEditingMetadata, setIsEditingMetadata] = useState(false);
   const [isExportingPPTX, setIsExportingPPTX] = useState(false);
+  
   // ✅ items siempre array (evita fallos y deja evidencia clara si viene vacío)
   const safeItems: DashboardItem[] = useMemo(() => dashboard.items ?? [], [dashboard]);
 
@@ -106,8 +89,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const isAggregate = (typeof dashboard.id === 'string' && dashboard.id.startsWith('agg-')) || dashboard.id === -1 || dashboard.isAggregate === true;
 
   // 🛡️ ESTADO LOCAL DE PRECISIÓN (Inicializado con configuración global)
-  // Permite a CUALQUIER USUARIO cambiar temporalmente la vista de decimales
-  const [localDecimalPrecision, setLocalDecimalPrecision] = useState<0 | 1 | 2>(() => (settings?.decimalPrecision as any) || 2);
+  // 🎯 PREFERENCIA USUARIO: Iniciar en 0 para tablero más limpio
+  const [localDecimalPrecision, setLocalDecimalPrecision] = useState<0 | 1 | 2>(0);
 
   const activeThresholds = useMemo(() => {
     return dashboard.thresholds || settings?.thresholds || { onTrack: 95, atRisk: 85 };
@@ -124,17 +107,37 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     if (typeof (dashboard as any).capturePct === 'number') return (dashboard as any).capturePct;
     if (typeof (dashboard as any)._capturePct === 'number') return (dashboard as any)._capturePct;
     return calculateCapturePct(dashboard);
-  }, [dashboard, isAggregate]);
-
-  // Sincronizar si cambia settings (opcional, pero buena práctica si settings carga asíncrono)
-  // React.useEffect(() => {
-  //   if (settings?.decimalPrecision) setLocalDecimalPrecision(settings.decimalPrecision);
-  // }, [settings?.decimalPrecision]);
+  }, [dashboard]);
 
   const selectedItem = useMemo(() => {
     if (selectedItemId === null) return null;
     return safeItems.find((it) => it.id === selectedItemId) || null;
   }, [selectedItemId, safeItems]);
+
+  const handleCloseFocus = useCallback(() => setSelectedItemId(null), []);
+
+  const displayTitle = useMemo(() => {
+    const t = (dashboard as any).title || "";
+    // 🛡️ REGLA v7.9.1-INTEGRITY: Limpiar títulos redundantes en la vista principal
+    if (isAggregate || t.toUpperCase().includes("SÍNTESIS") || t.toUpperCase().includes("RESUMEN")) {
+      const g = (dashboard as any).group || "DIRECCIÓN DE OPERACIONES";
+      const cleanGroup = g.toUpperCase().replace("SÍNTESIS", "").replace("GLOBAL", "").trim();
+      return `CONSOLIDADO: ${cleanGroup}`;
+    }
+    return t;
+  }, [dashboard, isAggregate]);
+
+  // 🛡️ UX AUTO-SCROLL (v7.8.35-UX): Desplazar la vista al abrir la gestión detallada
+  useEffect(() => {
+    if (selectedItemId) {
+      setTimeout(() => {
+        const el = document.getElementById('gestion-detallada-focus');
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }, 150); // Delay para asegurar renderizado de transición
+    }
+  }, [selectedItemId]);
 
   const diag = useMemo(() => {
     const d = dashboard;
@@ -153,15 +156,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     };
   }, [dashboard, safeItems, year]);
 
-  // ✅ Protección anti-blank (MOVIDO DESPUÉS DE HOOKS)
   if (!dashboard) {
     return (
       <div className="p-6 rounded-2xl bg-slate-900/40 border border-slate-800 text-slate-200">
         <div className="text-lg font-semibold">Tablero no disponible</div>
         <div className="mt-2 text-slate-400">
-          No se recibió información del tablero. Esto suele pasar si aún se
-          están cargando datos o si el tablero seleccionado no existe para el
-          año elegido.
+          No se recibió información del tablero. Esto suele pasar si aún se están cargando datos.
         </div>
       </div>
     );
@@ -186,8 +186,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     }
   };
 
+  const handleTogglePrecision = () => {
+    // Ciclo: 0 -> 1 -> 2 -> 0
+    setLocalDecimalPrecision(prev => (prev === 0 ? 1 : prev === 1 ? 2 : 0));
+  };
+
   return (
     <div key={(dashboard as any).id} className="space-y-4 animate-in fade-in duration-700 fill-mode-both">
+      {/* HEADER SECTION */}
       <div className="DashboardView_Header flex justify-between items-center border-b border-white/5 pb-2 gap-4">
         <div className="flex items-center gap-6">
           <div className="flex flex-col">
@@ -196,19 +202,15 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 className="text-2xl font-black text-white uppercase tracking-tight leading-none cursor-help"
                 title={isGlobalAdmin ? `Tablero #${(dashboard as any).orderNumber || 'N/A'}` : undefined}
               >
-                {(dashboard as any).title}
+                {displayTitle}
               </h2>
               {isGlobalAdmin && (
                 <button
-                  onClick={() => {
-                    console.log("🛠️ Metadata Modal Triggered");
-                    setIsEditingMetadata(true);
-                  }}
+                  onClick={() => setIsEditingMetadata(true)}
                   className="p-2 bg-cyan-500/10 hover:bg-cyan-500 border border-cyan-500/30 rounded-xl text-cyan-400 hover:text-white transition-all hover:scale-110 flex items-center gap-2"
-                  title="Configurar Título, Grupo y Área Funcional"
-                  aria-label="Abrir configuración de área y metadatos del tablero"
+                  title="Configurar Metadatos"
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
                     <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
                   </svg>
                   <span className="text-[8px] font-black uppercase">Ficha</span>
@@ -237,51 +239,26 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
 
         <div className="flex flex-wrap items-center justify-center sm:justify-end gap-2 sm:gap-4 w-full lg:w-auto">
-          <div
-            className="flex items-center gap-3 glass-panel px-4 py-1.5 rounded-xl shadow-xl border border-white/5"
-            role="group"
-            aria-label="Resumen de cumplimiento global"
-          >
+          {/* CUMPLIMIENTO GLOBAL BADGE */}
+          <div className="flex items-center gap-3 glass-panel px-4 py-1.5 rounded-xl shadow-xl border border-white/5">
             <div className="flex flex-col items-end">
               <span className="text-[8px] sm:text-[9px] font-black text-slate-500 uppercase tracking-widest leading-none mb-1">Cumplimiento Global</span>
-              <span
-                className={`text-2xl sm:text-3xl font-black tabular-nums leading-none ${totalStatus === 'OnTrack' ? 'text-emerald-400 drop-shadow-[0_0_12px_rgba(16,185,129,0.4)]' : totalStatus === 'AtRisk' ? 'text-amber-400 drop-shadow-[0_0_12px_rgba(245,158,11,0.4)]' : 'text-rose-400 drop-shadow-[0_0_12px_rgba(244,63,94,0.4)]'}`}
-                aria-label={`Valor: ${Math.round(totalScore)} por ciento. Estado: ${totalStatus === 'OnTrack' ? 'En Tiempo' : totalStatus === 'AtRisk' ? 'En Riesgo' : 'Critico'}`}
-              >
+              <span className={`text-2xl sm:text-3xl font-black tabular-nums leading-none ${totalStatus === 'OnTrack' ? 'text-emerald-400' : totalStatus === 'AtRisk' ? 'text-amber-400' : 'text-rose-400'}`}>
                 {Math.round(totalScore)}%
               </span>
             </div>
-            <div className="relative">
-              <div className={`absolute inset-0 rounded-full blur-[8px] opacity-40 animate-pulse ${totalStatus === 'OnTrack' ? 'bg-emerald-500' : totalStatus === 'AtRisk' ? 'bg-amber-500' : 'bg-rose-500'}`} aria-hidden="true" />
-              <div className={`relative w-5 h-5 sm:w-6 sm:h-6 rounded-full border-2 border-slate-950/50 ${totalStatus === 'OnTrack' ? 'bg-emerald-500' : totalStatus === 'AtRisk' ? 'bg-amber-500' : 'bg-rose-500'}`} aria-hidden="true" />
-            </div>
+            <div className={`w-5 h-5 sm:w-6 sm:h-6 rounded-full border-2 border-slate-950/50 ${totalStatus === 'OnTrack' ? 'bg-emerald-500' : totalStatus === 'AtRisk' ? 'bg-amber-500' : 'bg-rose-500'}`} />
           </div>
 
-          {/* 🎯 BADGE DE CAPTURA (v5.5.3) */}
+          {/* CAPTURA BADGE */}
           {typeof capturePct === 'number' && (
-            <div
-              className="flex items-center gap-3 border border-white/5 bg-slate-900/50 px-4 py-1.5 rounded-xl shadow-lg"
-              role="group"
-              aria-label="Estado de captura de indicadores"
-            >
+            <div className="flex items-center gap-3 border border-white/5 bg-slate-900/50 px-4 py-1.5 rounded-xl shadow-lg">
               <div className="flex flex-col items-end">
                 <span className="text-[8px] sm:text-[9px] font-black text-slate-500 uppercase tracking-widest leading-none mb-1">Captura</span>
                 <div className="flex items-center gap-2">
-                  <span className={`text-base sm:text-lg font-black tracking-tight ${capturePct === 100 ? 'text-emerald-400' : capturePct > 0 ? 'text-amber-400' : 'text-slate-500'}`}>
+                  <span className={`text-base sm:text-lg font-black tracking-tight ${capturePct === 100 ? 'text-emerald-400' : 'text-amber-400'}`}>
                     {capturePct}%
                   </span>
-                  <div
-                    className="h-1 w-8 sm:h-1.5 sm:w-12 bg-slate-800 rounded-full overflow-hidden"
-                    role="progressbar"
-                    aria-valuenow={capturePct}
-                    aria-valuemin={0}
-                    aria-valuemax={100}
-                  >
-                    <div
-                      className={`h-full transition-all duration-1000 ${capturePct === 100 ? 'bg-emerald-500' : capturePct > 0 ? 'bg-amber-500' : 'bg-slate-700'}`}
-                      style={{ width: `${capturePct}%` }}
-                    />
-                  </div>
                 </div>
               </div>
             </div>
@@ -290,45 +267,41 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           <div className="flex flex-wrap items-center justify-center gap-2">
             <button
               onClick={handleAnalyze}
-              className="group flex items-center gap-2 bg-gradient-to-br from-indigo-500 via-purple-600 to-fuchsia-600 hover:from-indigo-400 hover:to-fuchsia-500 text-white px-3 py-2 rounded-xl text-[8px] font-black uppercase tracking-widest transition-all border border-white/20 shadow-xl shadow-purple-900/40 active:scale-95 whitespace-nowrap"
-              aria-label="Ejecutar análisis inteligente con IA del tablero"
+              className="group flex items-center gap-2 bg-gradient-to-br from-indigo-500 via-purple-600 to-fuchsia-600 hover:from-indigo-400 hover:to-fuchsia-500 text-white px-3 py-2 rounded-xl text-[8px] font-black uppercase tracking-widest transition-all border border-white/20 active:scale-95 whitespace-nowrap"
             >
-              <span className="text-sm group-hover:rotate-12 transition-transform drop-shadow-lg" aria-hidden="true">✨</span>
-              <span className="drop-shadow-md">Audit IA</span>
+              <span className="text-sm">✨</span>
+              <span>Audit IA</span>
             </button>
 
             {(isGlobalAdmin || currentUser.canExportPPT) && (
               <button
                 onClick={() => setIsExportingPPTX(true)}
-                className="flex items-center gap-2 bg-gradient-to-r from-orange-600 to-orange-500 hover:from-orange-500 hover:to-orange-400 text-white px-3 py-2 rounded-xl text-[8px] font-black uppercase tracking-widest transition-all border border-white/10 shadow-lg shadow-orange-900/40 active:scale-95"
-                title="Exportar presentación ejecutiva a PowerPoint"
+                className="flex items-center gap-2 bg-gradient-to-r from-orange-600 to-orange-500 hover:from-orange-500 hover:to-orange-400 text-white px-3 py-2 rounded-xl text-[8px] font-black uppercase tracking-widest transition-all shadow-lg active:scale-95"
               >
                 <span className="text-sm">📊</span>
                 <span className="hidden sm:inline">Exportar </span>PPTX
               </button>
             )}
 
+            {/* PRECISION TOGGLE */}
             <button
-              onClick={() => setLocalDecimalPrecision(prev => prev === 2 ? 1 : prev === 1 ? 0 : 2)}
-              className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white px-3 py-2 rounded-xl text-[8px] font-black uppercase tracking-widest transition-all border border-white/5"
+              onClick={handleTogglePrecision}
+              className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white px-3 py-2 rounded-xl text-[8px] font-black uppercase tracking-widest transition-all border border-white/5 min-w-[50px] justify-center"
               title="Alternar decimales visibles (0, 1 o 2)"
-              aria-label={`Mostrar ${localDecimalPrecision === 2 ? 'un' : localDecimalPrecision === 1 ? 'cero' : 'dos'} decimales`}
             >
-              <span className="text-sm" aria-hidden="true">{localDecimalPrecision === 2 ? '.00' : localDecimalPrecision === 1 ? '.0' : '0'}</span>
+              <span className="text-sm font-black">{localDecimalPrecision === 2 ? '.00' : localDecimalPrecision === 1 ? '.0' : '0'}</span>
             </button>
 
             <div className="flex bg-slate-900/95 p-0.5 rounded-xl border border-white/10 shadow-2xl backdrop-blur-xl">
               <button
                 onClick={() => setActiveView("dashboard")}
                 className={`px-4 sm:px-6 py-2 rounded-xl text-[9px] font-extrabold uppercase tracking-widest transition-all duration-500 flex items-center gap-2 ${activeView === 'dashboard' ? 'bg-cyan-600 text-white shadow-[0_0_20px_rgba(8,145,178,0.5)]' : 'text-slate-500 hover:text-slate-300 hover:bg-white/5'}`}
-                aria-label="Ver Tablero de Indicadores"
               >
                 <span>📊</span> <span className="hidden sm:inline">Tablero</span>
               </button>
               <button
                 onClick={() => setActiveView("reports")}
                 className={`px-4 sm:px-6 py-2 rounded-xl text-[9px] font-extrabold uppercase tracking-widest transition-all duration-500 flex items-center gap-2 ${activeView === 'reports' ? 'bg-indigo-600 text-white shadow-[0_0_20px_rgba(79,70,229,0.5)]' : 'text-slate-500 hover:text-slate-300 hover:bg-white/5'}`}
-                aria-label="Ver Centro de Reportes"
               >
                 <span>📑</span> <span className="hidden sm:inline">Reporte</span>
               </button>
@@ -337,8 +310,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             {isAggregate && isGlobalAdmin && onOpenWeights && (
               <button
                 onClick={onOpenWeights}
-                className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-3 rounded-2xl text-[9px] font-black uppercase tracking-widest transition-all border border-white/10 shadow-lg shadow-indigo-900/40 active:scale-95"
-                title="Configurar pesos de los tableros que alimentan este consolidado"
+                className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-3 rounded-2xl text-[9px] font-black uppercase tracking-widest transition-all"
               >
                 <span className="text-base">⚖️</span>
                 <span>Pesos</span>
@@ -348,52 +320,46 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
       </div>
 
-      {/* ✅ Si la IA falla, no rompemos UI */}
       {analysisError && (
         <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-200">
           {analysisError}
         </div>
       )}
 
-      {/* ✅ Estado inicial amigable (Empty State) */}
-      {/* 🚀 FOCO EN PERIODO ACTUAL (v2.6.0) */}
+      {/* SELECTED ITEM FOCUS SECTION */}
       {selectedItem && (
-        <div className="mb-8">
+        <div className="mb-8" id="gestion-detallada-focus">
           <CurrentPeriodFocus
             item={selectedItem}
             globalThresholds={activeThresholds}
             year={year}
-            onUpdateItem={(updated) => {
-              onUpdateItem(updated);
-              // No cerramos el foco para permitir ver el efecto del cambio
-            }}
-            canEdit={userRole === DashboardRole.Editor && !isAggregate}
-            onClose={() => setSelectedItemId(null)}
+            onUpdateItem={onUpdateItem}
+            canEdit={(userRole === DashboardRole.Editor && !isAggregate) || isGlobalAdmin}
+            onClose={handleCloseFocus}
             allDashboardItems={safeItems}
+            decimalPrecision={localDecimalPrecision as 0 | 1 | 2}
           />
         </div>
       )}
 
-      {(diag.itemsCount === 0 || diag.itemsCount === -1) && (
+      {/* EMPTY STATE */}
+      {diag.itemsCount === 0 && (
         <div className="py-12 px-6 rounded-3xl bg-slate-900/30 border-2 border-dashed border-slate-800 text-center flex flex-col items-center">
-          <div className="w-16 h-16 bg-slate-800 rounded-full flex items-center justify-center mb-4 text-3xl">
-            📊
-          </div>
-          <h3 className="text-xl font-bold text-white">Tablero Nuevo</h3>
-          <p className="text-slate-400 max-w-md mt-2 mb-6 text-sm">
-            Este tablero está listo pero aún no tiene indicadores asignados. Usa el botón &quot;KPIs&quot; (Gestión de Indicadores) en el menú superior para agregar métricas.
-          </p>
+          <div className="w-16 h-16 bg-slate-800 rounded-full flex items-center justify-center mb-4 text-3xl">📊</div>
+          <h3 className="text-xl font-bold text-white">Tablero Sin Indicadores</h3>
+          <p className="text-slate-400 max-w-md mt-2 mb-6 text-sm">Este tablero aún no tiene indicadores asignados.</p>
           {isGlobalAdmin && (
             <button
-              onClick={() => (window as any).openIndicatorManager?.()}
-              className="px-6 py-2 bg-cyan-600 hover:bg-cyan-500 text-white font-bold rounded-lg text-xs uppercase tracking-widest transition-all shadow-lg shadow-cyan-900/20"
+               onClick={() => (window as any).openIndicatorManager?.()}
+               className="px-6 py-2 bg-cyan-600 hover:bg-cyan-500 text-white font-bold rounded-lg text-xs uppercase tracking-widest transition-all"
             >
-              + Agregar Indicadores
+              + Gestionar KPIs
             </button>
           )}
         </div>
       )}
 
+      {/* MAIN CONTENT VIEW */}
       {activeView === 'dashboard' ? (
         <Dashboard
           key={`dashboard-${(dashboard as any).id}`}
@@ -407,8 +373,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           isAggregate={isAggregate}
           selectedItemId={selectedItemId}
           onSelectItem={setSelectedItemId}
-          decimalPrecision={localDecimalPrecision as any}
+          decimalPrecision={localDecimalPrecision}
           allContextItems={allContextItems}
+          isGlobalAdmin={isGlobalAdmin}
         />
       ) : (
         <ReportCenter
@@ -426,6 +393,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         />
       )}
 
+      {/* MODALS */}
       <AIAnalysisModal
         isOpen={isAnalysisOpen}
         onClose={() => setIsAnalysisOpen(false)}
@@ -464,4 +432,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       />
     </div>
   );
-};
+});
+
+DashboardView.displayName = "DashboardView";

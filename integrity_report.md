@@ -66,44 +66,38 @@ C:\Users\LeonPrior\OneDrive - Prior Consultoría\Documentos\CONSULTORÍAS 2025\I
   831:30  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
 
 C:\Users\LeonPrior\OneDrive - Prior Consultoría\Documentos\CONSULTORÍAS 2025\IPS\IA\APP TABLERO\App.tsx
-   169:6    warning  React Hook useMemo has an unnecessary dependency: 'isAggregate'. Either exclude it or remove the dependency array  react-hooks/exhaustive-deps
-   396:21   warning  Unexpected any. Specify a different type                                                                           @typescript-eslint/no-explicit-any
-   407:16   warning  Unexpected any. Specify a different type                                                                           @typescript-eslint/no-explicit-any
-   408:16   warning  Unexpected any. Specify a different type                                                                           @typescript-eslint/no-explicit-any
-   410:25   warning  Unexpected any. Specify a different type                                                                           @typescript-eslint/no-explicit-any
-   411:25   warning  Unexpected any. Specify a different type                                                                           @typescript-eslint/no-explicit-any
-   420:19   warning  Unexpected any. Specify a different type                                                                           @typescript-eslint/no-explicit-any
-   432:29   warning  Unexpected any. Specify a different type                                                                           @typescript-eslint/no-explicit-any
-   448:19   warning  Unexpected any. Specify a different type                                                                           @typescript-eslint/no-explicit-any
-   707:102  warning  Unexpected any. Specify a different type                                                                           @typescript-eslint/no-explicit-any
-   708:61   warning  Unexpected any. Specify a different type                                                                           @typescript-eslint/no-explicit-any
-   847:31   warning  Unexpected any. Specify a different type                                                                           @typescript-eslint/no-explicit-any
-   847:49   warning  Unexpected any. Specify a different type                                                                           @typescript-eslint/no-explicit-any
-   871:81   warning  Unexpected any. Specify a different type                                                                           @typescript-eslint/no-explicit-any
-   891:57   warning  Unexpected any. Specify a different type                                                                           @typescript-eslint/no-explicit-any
-   962:21   warning  Unexpected any. Specify a different type                                                                           @typescript-eslint/no-explicit-any
-  1071:27   warning  Unexpected any. Specify a different type                                                                           @typescript-eslint/no-explicit-any
-  1083:19   warning  Unexpected any. Specify a different type                                                                           @typescript-eslint/no-explicit-any
-  1174:19   warning  Unexpected any. Specify a different type                                                                           @typescript-eslint/no-explicit-any
-  1224:19   warning  Unexpected any. Specify a different type                                                                           @typescript-eslint/no-explicit-any
-  1238:48   warning  Unexpected any. Specify a different type                                                                           @typescript-eslint/no-explicit-any
-  1250:30   warning  Unexpected any. Specify a different type                                                                           @typescript-eslint/no-explicit-any
-  1303:37   warning  Unexpected any. Specify a different type                                                                           @typescript-eslint/no-explicit-any
-  1405:19   warning  Unexpected any. Specify a different type                                                                           @typescript-eslint/no-explicit-any
-  1970:43   warning  Unexpected any. Specify a different type                                                                           @typescript-eslint/no-explicit-any
-  2003:41   warning  Unexpected any. Specify a different type                                                                           @typescript-eslint/no-explicit-any
-  2022:41   warning  Unexpected any. Specify a different type                                                                           @typescript-eslint/no-explicit-any
-  2041:41   warning  Unexpected any. Specify a different type                                                                           @typescript-eslint/no-explicit-any
-  2086:41   warning  Unexpected any. Specify a different type                                                                           @typescript-eslint/no-explicit-any
-  2120:43   warning  Unexpected any. Specify a different type                                                                           @typescript-eslint/no-explicit-any
-  2164:43   warning  Unexpected any. Specify a different type                                                                           @typescript-eslint/no-explicit-any
-  2209:39   warning  Unexpected any. Specify a different type                                                                           @typescript-eslint/no-explicit-any
-  2241:39   warning  Unexpected any. Specify a different type                                                                           @typescript-eslint/no-explicit-any
-  2273:46   warning  Unexpected any. Specify a different type                                                                           @typescript-eslint/no-explicit-any
-  2365:96   warning  Unexpected any. Specify a different type                                                                           @typescript-eslint/no-explicit-any
-  2514:124  warning  Unexpected any. Specify a different type                                                                           @typescript-eslint/no-explicit-any
-  2516:92   warning  Unexpected any. Specify a different type                                                                           @typescript-eslint/no-explicit-any
-  2558:105  warning  Unexpected any. Specify a different type                                                                           @typescript-eslint/no-explicit-any
+   194:6    warning  React Hook useMemo has an unnecessary dependency: 'isAggregate'. Either exclude it or remove the dependency array  react-hooks/exhaustive-deps
+   421:21   warning  Unexpected any. Specify a different type                                                                           @typescript-eslint/no-explicit-any
+   432:16   warning  Unexpected any. Specify a different type                                                                           @typescript-eslint/no-explicit-any
+   433:16   warning  Unexpected any. Specify a different type                                                                           @typescript-eslint/no-explicit-any
+   435:25   warning  Unexpected any. Specify a different type                                                                           @typescript-eslint/no-explicit-any
+   436:25   warning  Unexpected any. Specify a different type                                                                           @typescript-eslint/no-explicit-any
+   445:19   warning  Unexpected any. Specify a different type                                                                           @typescript-eslint/no-explicit-any
+   457:29   warning  Unexpected any. Specify a different type                                                                           @typescript-eslint/no-explicit-any
+   473:19   warning  Unexpected any. Specify a different type                                                                           @typescript-eslint/no-explicit-any
+   777:102  warning  Unexpected any. Specify a different type                                                                           @typescript-eslint/no-explicit-any
+   778:61   warning  Unexpected any. Specify a different type                                                                           @typescript-eslint/no-explicit-any
+   917:31   warning  Unexpected any. Specify a different type                                                                           @typescript-eslint/no-explicit-any
+   917:49   warning  Unexpected any. Specify a different type                                                                           @typescript-eslint/no-explicit-any
+   941:81   warning  Unexpected any. Specify a different type                                                                           @typescript-eslint/no-explicit-any
+   961:57   warning  Unexpected any. Specify a different type                                                                           @typescript-eslint/no-explicit-any
+  1032:21   warning  Unexpected any. Specify a different type                                                                           @typescript-eslint/no-explicit-any
+  1123:59   warning  Unexpected any. Specify a different type                                                                           @typescript-eslint/no-explicit-any
+  1124:90   warning  Unexpected any. Specify a different type                                                                           @typescript-eslint/no-explicit-any
+  1125:40   warning  Unexpected any. Specify a different type                                                                           @typescript-eslint/no-explicit-any
+  1222:27   warning  Unexpected any. Specify a different type                                                                           @typescript-eslint/no-explicit-any
+  1234:19   warning  Unexpected any. Specify a different type                                                                           @typescript-eslint/no-explicit-any
+  1325:19   warning  Unexpected any. Specify a different type                                                                           @typescript-eslint/no-explicit-any
+  1375:19   warning  Unexpected any. Specify a different type                                                                           @typescript-eslint/no-explicit-any
+  1389:48   warning  Unexpected any. Specify a different type                                                                           @typescript-eslint/no-explicit-any
+  1401:30   warning  Unexpected any. Specify a different type                                                                           @typescript-eslint/no-explicit-any
+  1454:37   warning  Unexpected any. Specify a different type                                                                           @typescript-eslint/no-explicit-any
+  1556:19   warning  Unexpected any. Specify a different type                                                                           @typescript-eslint/no-explicit-any
+  2014:70   warning  Unexpected any. Specify a different type                                                                           @typescript-eslint/no-explicit-any
+  2035:96   warning  Unexpected any. Specify a different type                                                                           @typescript-eslint/no-explicit-any
+  2184:124  warning  Unexpected any. Specify a different type                                                                           @typescript-eslint/no-explicit-any
+  2186:92   warning  Unexpected any. Specify a different type                                                                           @typescript-eslint/no-explicit-any
+  2233:105  warning  Unexpected any. Specify a different type                                                                           @typescript-eslint/no-explicit-any
 
 C:\Users\LeonPrior\OneDrive - Prior Consultoría\Documentos\CONSULTORÍAS 2025\IPS\IA\APP TABLERO\audit_activador.js
   16:5  error  'console' is not defined  no-undef
@@ -126,61 +120,88 @@ C:\Users\LeonPrior\OneDrive - Prior Consultoría\Documentos\CONSULTORÍAS 2025\I
   20:5  error  'console' is not defined  no-undef
   22:5  error  'process' is not defined  no-undef
 
+C:\Users\LeonPrior\OneDrive - Prior Consultoría\Documentos\CONSULTORÍAS 2025\IPS\IA\APP TABLERO\components\ActivityManager.tsx
+   3:69  error    'Save' is defined but never used. Allowed unused vars must match /^_/u                                                @typescript-eslint/no-unused-vars
+   3:75  error    'ArrowLeft' is defined but never used. Allowed unused vars must match /^_/u                                           @typescript-eslint/no-unused-vars
+   3:86  error    'ArrowRight' is defined but never used. Allowed unused vars must match /^_/u                                          @typescript-eslint/no-unused-vars
+  62:6   warning  React Hook useEffect has a missing dependency: 'activities.length'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
 C:\Users\LeonPrior\OneDrive - Prior Consultoría\Documentos\CONSULTORÍAS 2025\IPS\IA\APP TABLERO\components\AdvancedDataImporter.tsx
   258:23  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
   285:23  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
   356:23  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
 
+C:\Users\LeonPrior\OneDrive - Prior Consultoría\Documentos\CONSULTORÍAS 2025\IPS\IA\APP TABLERO\components\ClientSettings.tsx
+  137:37  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  170:35  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  189:35  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  208:35  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  242:35  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  267:37  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  301:37  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  340:33  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  366:33  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  398:40  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
 C:\Users\LeonPrior\OneDrive - Prior Consultoría\Documentos\CONSULTORÍAS 2025\IPS\IA\APP TABLERO\components\CurrentPeriodFocus.tsx
-  103:8    warning  React Hook useEffect has a missing dependency: 'item'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
-  286:127  warning  Unexpected any. Specify a different type                                                                 @typescript-eslint/no-explicit-any
-  307:47   warning  Unexpected any. Specify a different type                                                                 @typescript-eslint/no-explicit-any
-  308:72   warning  Unexpected any. Specify a different type                                                                 @typescript-eslint/no-explicit-any
-  329:68   warning  Unexpected any. Specify a different type                                                                 @typescript-eslint/no-explicit-any
+    5:10   error    'ProgressBar' is defined but never used. Allowed unused vars must match /^_/u                                                                   @typescript-eslint/no-unused-vars
+   53:24   error    'periodLabel' is assigned a value but never used. Allowed unused vars must match /^_/u                                                          @typescript-eslint/no-unused-vars
+   53:37   error    'detailedRange' is assigned a value but never used. Allowed unused vars must match /^_/u                                                        @typescript-eslint/no-unused-vars
+   79:8    warning  React Hook useEffect has a missing dependency: 'activePeriodIdx'. Either include it or remove the dependency array                              react-hooks/exhaustive-deps
+  135:8    warning  React Hook useEffect has missing dependencies: 'localActual', 'localGoal', and 'localNote'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+  451:51   warning  Unexpected any. Specify a different type                                                                                                        @typescript-eslint/no-explicit-any
+  452:76   warning  Unexpected any. Specify a different type                                                                                                        @typescript-eslint/no-explicit-any
+  465:68   warning  Unexpected any. Specify a different type                                                                                                        @typescript-eslint/no-explicit-any
+  479:126  warning  Unexpected any. Specify a different type                                                                                                        @typescript-eslint/no-explicit-any
+  492:74   warning  Unexpected any. Specify a different type                                                                                                        @typescript-eslint/no-explicit-any
+  493:74   warning  Unexpected any. Specify a different type                                                                                                        @typescript-eslint/no-explicit-any
 
 C:\Users\LeonPrior\OneDrive - Prior Consultoría\Documentos\CONSULTORÍAS 2025\IPS\IA\APP TABLERO\components\DashboardRow.tsx
-   77:36  error    'monthlyProgress' is assigned a value but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
-   77:53  error    'monthlyGoals' is assigned a value but never used. Allowed unused vars must match /^_/u     @typescript-eslint/no-unused-vars
-  153:33  warning  Unexpected any. Specify a different type                                                    @typescript-eslint/no-explicit-any
+   85:36  error    'monthlyProgress' is assigned a value but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+   85:53  error    'monthlyGoals' is assigned a value but never used. Allowed unused vars must match /^_/u     @typescript-eslint/no-unused-vars
+  231:85  warning  Unexpected any. Specify a different type                                                    @typescript-eslint/no-explicit-any
+  284:47  warning  Unexpected any. Specify a different type                                                    @typescript-eslint/no-explicit-any
+  302:45  warning  Unexpected any. Specify a different type                                                    @typescript-eslint/no-explicit-any
 
 C:\Users\LeonPrior\OneDrive - Prior Consultoría\Documentos\CONSULTORÍAS 2025\IPS\IA\APP TABLERO\components\DashboardTabs.tsx
    85:37   warning  Unexpected any. Specify a different type                                                                   @typescript-eslint/no-explicit-any
   105:25   error    'setSelectedGroup' is assigned a value but never used. Allowed unused vars must match /^_/u                @typescript-eslint/no-unused-vars
   111:70   warning  Unexpected any. Specify a different type                                                                   @typescript-eslint/no-explicit-any
+  112:9    error    'rootAgg' is assigned a value but never used. Allowed unused vars must match /^_/u                         @typescript-eslint/no-unused-vars
   112:60   warning  Unexpected any. Specify a different type                                                                   @typescript-eslint/no-explicit-any
-  127:24   warning  Unexpected any. Specify a different type                                                                   @typescript-eslint/no-explicit-any
-  135:9    error    'normActiveSuperGroup' is assigned a value but never used. Allowed unused vars must match /^_/u            @typescript-eslint/no-unused-vars
-  142:62   warning  Unexpected any. Specify a different type                                                                   @typescript-eslint/no-explicit-any
-  142:87   warning  Unexpected any. Specify a different type                                                                   @typescript-eslint/no-explicit-any
-  161:34   warning  Unexpected any. Specify a different type                                                                   @typescript-eslint/no-explicit-any
-  162:27   warning  Unexpected any. Specify a different type                                                                   @typescript-eslint/no-explicit-any
-  164:31   warning  Unexpected any. Specify a different type                                                                   @typescript-eslint/no-explicit-any
-  173:19   warning  Unexpected any. Specify a different type                                                                   @typescript-eslint/no-explicit-any
-  183:19   warning  Unexpected any. Specify a different type                                                                   @typescript-eslint/no-explicit-any
-  191:56   warning  Unexpected any. Specify a different type                                                                   @typescript-eslint/no-explicit-any
-  205:27   warning  Unexpected any. Specify a different type                                                                   @typescript-eslint/no-explicit-any
-  205:59   warning  Unexpected any. Specify a different type                                                                   @typescript-eslint/no-explicit-any
-  215:6    warning  React Hook useMemo has a missing dependency: 'normMain'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
-  226:68   warning  Unexpected any. Specify a different type                                                                   @typescript-eslint/no-explicit-any
-  248:33   warning  Unexpected any. Specify a different type                                                                   @typescript-eslint/no-explicit-any
-  248:51   warning  Unexpected any. Specify a different type                                                                   @typescript-eslint/no-explicit-any
-  255:35   warning  Unexpected any. Specify a different type                                                                   @typescript-eslint/no-explicit-any
-  265:23   warning  Unexpected any. Specify a different type                                                                   @typescript-eslint/no-explicit-any
-  265:41   warning  Unexpected any. Specify a different type                                                                   @typescript-eslint/no-explicit-any
-  294:23   warning  Unexpected any. Specify a different type                                                                   @typescript-eslint/no-explicit-any
-  365:61   warning  Unexpected any. Specify a different type                                                                   @typescript-eslint/no-explicit-any
-  447:47   warning  Unexpected any. Specify a different type                                                                   @typescript-eslint/no-explicit-any
-  492:115  warning  Unexpected any. Specify a different type                                                                   @typescript-eslint/no-explicit-any
-  498:38   warning  Unexpected any. Specify a different type                                                                   @typescript-eslint/no-explicit-any
-  502:95   warning  Unexpected any. Specify a different type                                                                   @typescript-eslint/no-explicit-any
-  502:193  warning  Unexpected any. Specify a different type                                                                   @typescript-eslint/no-explicit-any
-  503:64   warning  Unexpected any. Specify a different type                                                                   @typescript-eslint/no-explicit-any
-  506:124  warning  Unexpected any. Specify a different type                                                                   @typescript-eslint/no-explicit-any
-  506:185  warning  Unexpected any. Specify a different type                                                                   @typescript-eslint/no-explicit-any
-  507:55   warning  Unexpected any. Specify a different type                                                                   @typescript-eslint/no-explicit-any
-  511:38   warning  Unexpected any. Specify a different type                                                                   @typescript-eslint/no-explicit-any
-  515:44   warning  Unexpected any. Specify a different type                                                                   @typescript-eslint/no-explicit-any
-  528:61   warning  Unexpected any. Specify a different type                                                                   @typescript-eslint/no-explicit-any
+  129:24   warning  Unexpected any. Specify a different type                                                                   @typescript-eslint/no-explicit-any
+  137:9    error    'normActiveSuperGroup' is assigned a value but never used. Allowed unused vars must match /^_/u            @typescript-eslint/no-unused-vars
+  144:62   warning  Unexpected any. Specify a different type                                                                   @typescript-eslint/no-explicit-any
+  144:87   warning  Unexpected any. Specify a different type                                                                   @typescript-eslint/no-explicit-any
+  163:34   warning  Unexpected any. Specify a different type                                                                   @typescript-eslint/no-explicit-any
+  164:27   warning  Unexpected any. Specify a different type                                                                   @typescript-eslint/no-explicit-any
+  166:31   warning  Unexpected any. Specify a different type                                                                   @typescript-eslint/no-explicit-any
+  175:19   warning  Unexpected any. Specify a different type                                                                   @typescript-eslint/no-explicit-any
+  185:19   warning  Unexpected any. Specify a different type                                                                   @typescript-eslint/no-explicit-any
+  193:56   warning  Unexpected any. Specify a different type                                                                   @typescript-eslint/no-explicit-any
+  207:27   warning  Unexpected any. Specify a different type                                                                   @typescript-eslint/no-explicit-any
+  207:59   warning  Unexpected any. Specify a different type                                                                   @typescript-eslint/no-explicit-any
+  217:6    warning  React Hook useMemo has a missing dependency: 'normMain'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  228:68   warning  Unexpected any. Specify a different type                                                                   @typescript-eslint/no-explicit-any
+  250:33   warning  Unexpected any. Specify a different type                                                                   @typescript-eslint/no-explicit-any
+  250:51   warning  Unexpected any. Specify a different type                                                                   @typescript-eslint/no-explicit-any
+  257:35   warning  Unexpected any. Specify a different type                                                                   @typescript-eslint/no-explicit-any
+  267:23   warning  Unexpected any. Specify a different type                                                                   @typescript-eslint/no-explicit-any
+  267:41   warning  Unexpected any. Specify a different type                                                                   @typescript-eslint/no-explicit-any
+  296:23   warning  Unexpected any. Specify a different type                                                                   @typescript-eslint/no-explicit-any
+  367:61   warning  Unexpected any. Specify a different type                                                                   @typescript-eslint/no-explicit-any
+  449:47   warning  Unexpected any. Specify a different type                                                                   @typescript-eslint/no-explicit-any
+  494:115  warning  Unexpected any. Specify a different type                                                                   @typescript-eslint/no-explicit-any
+  500:38   warning  Unexpected any. Specify a different type                                                                   @typescript-eslint/no-explicit-any
+  504:95   warning  Unexpected any. Specify a different type                                                                   @typescript-eslint/no-explicit-any
+  504:193  warning  Unexpected any. Specify a different type                                                                   @typescript-eslint/no-explicit-any
+  505:64   warning  Unexpected any. Specify a different type                                                                   @typescript-eslint/no-explicit-any
+  508:124  warning  Unexpected any. Specify a different type                                                                   @typescript-eslint/no-explicit-any
+  508:185  warning  Unexpected any. Specify a different type                                                                   @typescript-eslint/no-explicit-any
+  509:55   warning  Unexpected any. Specify a different type                                                                   @typescript-eslint/no-explicit-any
+  513:38   warning  Unexpected any. Specify a different type                                                                   @typescript-eslint/no-explicit-any
+  517:44   warning  Unexpected any. Specify a different type                                                                   @typescript-eslint/no-explicit-any
+  530:61   warning  Unexpected any. Specify a different type                                                                   @typescript-eslint/no-explicit-any
 
 C:\Users\LeonPrior\OneDrive - Prior Consultoría\Documentos\CONSULTORÍAS 2025\IPS\IA\APP TABLERO\components\DashboardView.test.tsx
   22:6  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
@@ -194,63 +215,82 @@ C:\Users\LeonPrior\OneDrive - Prior Consultoría\Documentos\CONSULTORÍAS 2025\I
   125:30   warning  Unexpected any. Specify a different type                                                                           @typescript-eslint/no-explicit-any
   125:82   warning  Unexpected any. Specify a different type                                                                           @typescript-eslint/no-explicit-any
   127:6    warning  React Hook useMemo has an unnecessary dependency: 'isAggregate'. Either exclude it or remove the dependency array  react-hooks/exhaustive-deps
-  178:12   warning  Unexpected any. Specify a different type                                                                           @typescript-eslint/no-explicit-any
-  190:29   warning  Unexpected any. Specify a different type                                                                           @typescript-eslint/no-explicit-any
-  197:66   warning  Unexpected any. Specify a different type                                                                           @typescript-eslint/no-explicit-any
-  199:32   warning  Unexpected any. Specify a different type                                                                           @typescript-eslint/no-explicit-any
-  225:30   warning  Unexpected any. Specify a different type                                                                           @typescript-eslint/no-explicit-any
-  230:44   warning  Unexpected any. Specify a different type                                                                           @typescript-eslint/no-explicit-any
-  386:41   warning  Unexpected any. Specify a different type                                                                           @typescript-eslint/no-explicit-any
-  397:43   warning  Unexpected any. Specify a different type                                                                           @typescript-eslint/no-explicit-any
-  408:54   warning  Unexpected any. Specify a different type                                                                           @typescript-eslint/no-explicit-any
-  432:30   warning  Unexpected any. Specify a different type                                                                           @typescript-eslint/no-explicit-any
-  439:39   warning  Unexpected any. Specify a different type                                                                           @typescript-eslint/no-explicit-any
-  440:42   warning  Unexpected any. Specify a different type                                                                           @typescript-eslint/no-explicit-any
-  441:39   warning  Unexpected any. Specify a different type                                                                           @typescript-eslint/no-explicit-any
-  442:38   warning  Unexpected any. Specify a different type                                                                           @typescript-eslint/no-explicit-any
-  443:44   warning  Unexpected any. Specify a different type                                                                           @typescript-eslint/no-explicit-any
-  444:54   warning  Unexpected any. Specify a different type                                                                           @typescript-eslint/no-explicit-any
-  447:40   warning  Unexpected any. Specify a different type                                                                           @typescript-eslint/no-explicit-any
-  447:59   warning  Unexpected any. Specify a different type                                                                           @typescript-eslint/no-explicit-any
-  461:30   warning  Unexpected any. Specify a different type                                                                           @typescript-eslint/no-explicit-any
+  139:9    error    'handleCloseFocus' is assigned a value but never used. Allowed unused vars must match /^_/u                        @typescript-eslint/no-unused-vars
+  142:29   warning  Unexpected any. Specify a different type                                                                           @typescript-eslint/no-explicit-any
+  145:31   warning  Unexpected any. Specify a different type                                                                           @typescript-eslint/no-explicit-any
+  203:12   warning  Unexpected any. Specify a different type                                                                           @typescript-eslint/no-explicit-any
+  215:29   warning  Unexpected any. Specify a different type                                                                           @typescript-eslint/no-explicit-any
+  222:66   warning  Unexpected any. Specify a different type                                                                           @typescript-eslint/no-explicit-any
+  250:30   warning  Unexpected any. Specify a different type                                                                           @typescript-eslint/no-explicit-any
+  255:44   warning  Unexpected any. Specify a different type                                                                           @typescript-eslint/no-explicit-any
+  413:41   warning  Unexpected any. Specify a different type                                                                           @typescript-eslint/no-explicit-any
+  424:43   warning  Unexpected any. Specify a different type                                                                           @typescript-eslint/no-explicit-any
+  435:54   warning  Unexpected any. Specify a different type                                                                           @typescript-eslint/no-explicit-any
+  459:30   warning  Unexpected any. Specify a different type                                                                           @typescript-eslint/no-explicit-any
+  466:39   warning  Unexpected any. Specify a different type                                                                           @typescript-eslint/no-explicit-any
+  467:42   warning  Unexpected any. Specify a different type                                                                           @typescript-eslint/no-explicit-any
+  468:39   warning  Unexpected any. Specify a different type                                                                           @typescript-eslint/no-explicit-any
+  469:38   warning  Unexpected any. Specify a different type                                                                           @typescript-eslint/no-explicit-any
+  470:44   warning  Unexpected any. Specify a different type                                                                           @typescript-eslint/no-explicit-any
+  471:54   warning  Unexpected any. Specify a different type                                                                           @typescript-eslint/no-explicit-any
+  474:40   warning  Unexpected any. Specify a different type                                                                           @typescript-eslint/no-explicit-any
+  474:59   warning  Unexpected any. Specify a different type                                                                           @typescript-eslint/no-explicit-any
+  488:30   warning  Unexpected any. Specify a different type                                                                           @typescript-eslint/no-explicit-any
 
 C:\Users\LeonPrior\OneDrive - Prior Consultoría\Documentos\CONSULTORÍAS 2025\IPS\IA\APP TABLERO\components\DataEditor.tsx
-  113:33  warning  Unexpected any. Specify a different type                                                   @typescript-eslint/no-explicit-any
-  115:9   error    'startDictation' is assigned a value but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
-  116:42  warning  Unexpected any. Specify a different type                                                   @typescript-eslint/no-explicit-any
-  116:79  warning  Unexpected any. Specify a different type                                                   @typescript-eslint/no-explicit-any
-  130:53  error    'e' is defined but never used. Allowed unused caught errors must match /^_/u               @typescript-eslint/no-unused-vars
-  130:56  error    Empty block statement                                                                      no-empty
-  146:38  warning  Unexpected any. Specify a different type                                                   @typescript-eslint/no-explicit-any
-  163:37  warning  Unexpected any. Specify a different type                                                   @typescript-eslint/no-explicit-any
-  425:30  warning  Unexpected any. Specify a different type                                                   @typescript-eslint/no-explicit-any
+  115:33   warning  Unexpected any. Specify a different type                                                            @typescript-eslint/no-explicit-any
+  117:9    error    'startDictation' is assigned a value but never used. Allowed unused vars must match /^_/u           @typescript-eslint/no-unused-vars
+  118:42   warning  Unexpected any. Specify a different type                                                            @typescript-eslint/no-explicit-any
+  118:79   warning  Unexpected any. Specify a different type                                                            @typescript-eslint/no-explicit-any
+  132:53   error    'e' is defined but never used. Allowed unused caught errors must match /^_/u                        @typescript-eslint/no-unused-vars
+  132:56   error    Empty block statement                                                                               no-empty
+  148:38   warning  Unexpected any. Specify a different type                                                            @typescript-eslint/no-explicit-any
+  165:37   warning  Unexpected any. Specify a different type                                                            @typescript-eslint/no-explicit-any
+  196:9    error    'calculateFromActivities' is assigned a value but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+  196:83   warning  Unexpected any. Specify a different type                                                            @typescript-eslint/no-explicit-any
+  199:58   warning  Unexpected any. Specify a different type                                                            @typescript-eslint/no-explicit-any
+  200:58   warning  Unexpected any. Specify a different type                                                            @typescript-eslint/no-explicit-any
+  471:124  warning  Unexpected any. Specify a different type                                                            @typescript-eslint/no-explicit-any
+  480:31   warning  Unexpected any. Specify a different type                                                            @typescript-eslint/no-explicit-any
+  481:74   warning  Unexpected any. Specify a different type                                                            @typescript-eslint/no-explicit-any
+  482:74   warning  Unexpected any. Specify a different type                                                            @typescript-eslint/no-explicit-any
+  484:17   error    'finalWeeklyGoals' is never reassigned. Use 'const' instead                                         prefer-const
+  485:17   error    'finalWeeklyProgress' is never reassigned. Use 'const' instead                                      prefer-const
+  486:17   error    'finalMonthlyGoals' is never reassigned. Use 'const' instead                                        prefer-const
+  487:17   error    'finalMonthlyProgress' is never reassigned. Use 'const' instead                                     prefer-const
+  519:35   warning  Unexpected any. Specify a different type                                                            @typescript-eslint/no-explicit-any
+  522:60   warning  Unexpected any. Specify a different type                                                            @typescript-eslint/no-explicit-any
 
 C:\Users\LeonPrior\OneDrive - Prior Consultoría\Documentos\CONSULTORÍAS 2025\IPS\IA\APP TABLERO\components\HelpCenter.tsx
   67:47  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
 
 C:\Users\LeonPrior\OneDrive - Prior Consultoría\Documentos\CONSULTORÍAS 2025\IPS\IA\APP TABLERO\components\HierarchySidebar.tsx
-  120:11   error    'versionLabel' is assigned a value but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
-  132:30   warning  Unexpected any. Specify a different type                                                 @typescript-eslint/no-explicit-any
-  141:30   warning  Unexpected any. Specify a different type                                                 @typescript-eslint/no-explicit-any
-  209:56   warning  Unexpected any. Specify a different type                                                 @typescript-eslint/no-explicit-any
-  209:88   warning  Unexpected any. Specify a different type                                                 @typescript-eslint/no-explicit-any
-  257:43   warning  Unexpected any. Specify a different type                                                 @typescript-eslint/no-explicit-any
-  268:85   warning  Unexpected any. Specify a different type                                                 @typescript-eslint/no-explicit-any
-  428:157  error    'onDeleteDashboard' is defined but never used. Allowed unused args must match /^_/u      @typescript-eslint/no-unused-vars
+  120:11   error    'versionLabel' is assigned a value but never used. Allowed unused vars must match /^_/u                                 @typescript-eslint/no-unused-vars
+  132:30   warning  Unexpected any. Specify a different type                                                                                @typescript-eslint/no-explicit-any
+  141:30   warning  Unexpected any. Specify a different type                                                                                @typescript-eslint/no-explicit-any
+  201:56   warning  Unexpected any. Specify a different type                                                                                @typescript-eslint/no-explicit-any
+  201:88   warning  Unexpected any. Specify a different type                                                                                @typescript-eslint/no-explicit-any
+  264:48   warning  Unexpected any. Specify a different type                                                                                @typescript-eslint/no-explicit-any
+  309:8    warning  React Hook useMemo has a missing dependency: 'availableAreas.length'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  432:157  error    'onDeleteDashboard' is defined but never used. Allowed unused args must match /^_/u                                     @typescript-eslint/no-unused-vars
 
 C:\Users\LeonPrior\OneDrive - Prior Consultoría\Documentos\CONSULTORÍAS 2025\IPS\IA\APP TABLERO\components\IndicatorManager.test.tsx
    3:18  error  'screen' is defined but never used. Allowed unused vars must match /^_/u                   @typescript-eslint/no-unused-vars
   26:7   error  'mockItemsMixed' is assigned a value but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
 
 C:\Users\LeonPrior\OneDrive - Prior Consultoría\Documentos\CONSULTORÍAS 2025\IPS\IA\APP TABLERO\components\IndicatorManager.tsx
-  387:8  warning  React Hook React.useEffect has a missing dependency: 'value'. Either include it or remove the dependency array. If 'setLocalValue' needs the current value of 'value', you can also switch to useReducer instead of useState and read 'value' in the reducer  react-hooks/exhaustive-deps
-  387:9  warning  React Hook React.useEffect has a complex expression in the dependency array. Extract it to a separate variable so it can be statically checked                                                                                                                react-hooks/exhaustive-deps
+  396:8  warning  React Hook React.useEffect has a missing dependency: 'value'. Either include it or remove the dependency array. If 'setLocalValue' needs the current value of 'value', you can also switch to useReducer instead of useState and read 'value' in the reducer  react-hooks/exhaustive-deps
+  396:9  warning  React Hook React.useEffect has a complex expression in the dependency array. Extract it to a separate variable so it can be statically checked                                                                                                                react-hooks/exhaustive-deps
 
 C:\Users\LeonPrior\OneDrive - Prior Consultoría\Documentos\CONSULTORÍAS 2025\IPS\IA\APP TABLERO\components\LoginScreen.tsx
-  26:19  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   8:40  error    'versionLabel' is defined but never used. Allowed unused args must match /^_/u  @typescript-eslint/no-unused-vars
+  27:19  warning  Unexpected any. Specify a different type                                        @typescript-eslint/no-explicit-any
 
 C:\Users\LeonPrior\OneDrive - Prior Consultoría\Documentos\CONSULTORÍAS 2025\IPS\IA\APP TABLERO\components\MasterTrafficLight.tsx
   54:46  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+C:\Users\LeonPrior\OneDrive - Prior Consultoría\Documentos\CONSULTORÍAS 2025\IPS\IA\APP TABLERO\components\ProgressBar.tsx
+  21:9  error  'glowColors' is assigned a value but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
 
 C:\Users\LeonPrior\OneDrive - Prior Consultoría\Documentos\CONSULTORÍAS 2025\IPS\IA\APP TABLERO\components\ReportCenter.tsx
   13:21  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
@@ -382,11 +422,15 @@ C:\Users\LeonPrior\OneDrive - Prior Consultoría\Documentos\CONSULTORÍAS 2025\I
 C:\Users\LeonPrior\OneDrive - Prior Consultoría\Documentos\CONSULTORÍAS 2025\IPS\IA\APP TABLERO\reproduce_issues.js
   41:5  error  'console' is not defined  no-undef
 
+C:\Users\LeonPrior\OneDrive - Prior Consultoría\Documentos\CONSULTORÍAS 2025\IPS\IA\APP TABLERO\scripts\preDeployCheck.js
+  11:71  error  Unnecessary escape character: \.  no-useless-escape
+
 C:\Users\LeonPrior\OneDrive - Prior Consultoría\Documentos\CONSULTORÍAS 2025\IPS\IA\APP TABLERO\services\firebaseService.ts
   130:44  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
-  563:32  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
-  645:23  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
-  884:30  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  396:45  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  611:32  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  693:23  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  932:30  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
 
 C:\Users\LeonPrior\OneDrive - Prior Consultoría\Documentos\CONSULTORÍAS 2025\IPS\IA\APP TABLERO\test_db.js
    7:5  error  'console' is not defined  no-undef
@@ -466,7 +510,8 @@ C:\Users\LeonPrior\OneDrive - Prior Consultoría\Documentos\CONSULTORÍAS 2025\I
 
 C:\Users\LeonPrior\OneDrive - Prior Consultoría\Documentos\CONSULTORÍAS 2025\IPS\IA\APP TABLERO\utils\aggregationUtils.ts
    32:7   error    'haveIdenticalIndicators' is assigned a value but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
-  290:10  warning  Unexpected any. Specify a different type                                                            @typescript-eslint/no-explicit-any
+  132:14  warning  Unexpected any. Specify a different type                                                            @typescript-eslint/no-explicit-any
+  292:10  warning  Unexpected any. Specify a different type                                                            @typescript-eslint/no-explicit-any
 
 C:\Users\LeonPrior\OneDrive - Prior Consultoría\Documentos\CONSULTORÍAS 2025\IPS\IA\APP TABLERO\utils\compliance.test.ts
   15:10  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
@@ -474,34 +519,43 @@ C:\Users\LeonPrior\OneDrive - Prior Consultoría\Documentos\CONSULTORÍAS 2025\I
   33:10  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
 
 C:\Users\LeonPrior\OneDrive - Prior Consultoría\Documentos\CONSULTORÍAS 2025\IPS\IA\APP TABLERO\utils\compliance.ts
-   72:37   error    Unnecessary escape character: \.          no-useless-escape
-  115:15   error    Unnecessary escape character: \.          no-useless-escape
-  115:17   error    Unnecessary escape character: \+          no-useless-escape
-  115:21   error    Unnecessary escape character: \*          no-useless-escape
-  115:23   error    Unnecessary escape character: \/          no-useless-escape
-  115:25   error    Unnecessary escape character: \(          no-useless-escape
-  115:27   error    Unnecessary escape character: \)          no-useless-escape
-  310:39   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
-  311:36   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
-  395:66   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
-  395:103  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
-  395:137  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
-  399:14   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
-  516:48   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
-  536:24   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
-  545:43   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
-  546:44   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  115:37   error    Unnecessary escape character: \.          no-useless-escape
+  158:15   error    Unnecessary escape character: \.          no-useless-escape
+  158:17   error    Unnecessary escape character: \+          no-useless-escape
+  158:21   error    Unnecessary escape character: \*          no-useless-escape
+  158:23   error    Unnecessary escape character: \/          no-useless-escape
+  158:25   error    Unnecessary escape character: \(          no-useless-escape
+  158:27   error    Unnecessary escape character: \)          no-useless-escape
+  212:75   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  350:39   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  351:36   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  435:66   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  435:103  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  435:137  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  439:14   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  556:48   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  576:24   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  585:43   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  586:44   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
 
 C:\Users\LeonPrior\OneDrive - Prior Consultoría\Documentos\CONSULTORÍAS 2025\IPS\IA\APP TABLERO\utils\dashboardLogic.test.ts
-  31:57  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
-  31:76  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
-  31:96  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
-  54:57  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
-  54:76  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
-  54:96  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
-  80:57  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
-  80:76  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
-  80:96  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+    2:10  error    'DashboardRole' is defined but never used. Allowed unused vars must match /^_/u       @typescript-eslint/no-unused-vars
+    3:10  error    'normalizeGroupName' is defined but never used. Allowed unused vars must match /^_/u  @typescript-eslint/no-unused-vars
+   33:57  warning  Unexpected any. Specify a different type                                              @typescript-eslint/no-explicit-any
+   33:76  warning  Unexpected any. Specify a different type                                              @typescript-eslint/no-explicit-any
+   33:96  warning  Unexpected any. Specify a different type                                              @typescript-eslint/no-explicit-any
+   49:57  warning  Unexpected any. Specify a different type                                              @typescript-eslint/no-explicit-any
+   49:76  warning  Unexpected any. Specify a different type                                              @typescript-eslint/no-explicit-any
+   49:96  warning  Unexpected any. Specify a different type                                              @typescript-eslint/no-explicit-any
+   68:57  warning  Unexpected any. Specify a different type                                              @typescript-eslint/no-explicit-any
+   68:76  warning  Unexpected any. Specify a different type                                              @typescript-eslint/no-explicit-any
+   68:96  warning  Unexpected any. Specify a different type                                              @typescript-eslint/no-explicit-any
+   85:57  warning  Unexpected any. Specify a different type                                              @typescript-eslint/no-explicit-any
+   85:76  warning  Unexpected any. Specify a different type                                              @typescript-eslint/no-explicit-any
+   85:96  warning  Unexpected any. Specify a different type                                              @typescript-eslint/no-explicit-any
+  102:57  warning  Unexpected any. Specify a different type                                              @typescript-eslint/no-explicit-any
+  102:76  warning  Unexpected any. Specify a different type                                              @typescript-eslint/no-explicit-any
+  102:96  warning  Unexpected any. Specify a different type                                              @typescript-eslint/no-explicit-any
 
 C:\Users\LeonPrior\OneDrive - Prior Consultoría\Documentos\CONSULTORÍAS 2025\IPS\IA\APP TABLERO\utils\dateUtils.ts
   29:65  error  'startDay' is assigned a value but never used. Allowed unused args must match /^_/u  @typescript-eslint/no-unused-vars
@@ -526,403 +580,884 @@ C:\Users\LeonPrior\OneDrive - Prior Consultoría\Documentos\CONSULTORÍAS 2025\I
   48:13  error  'process' is not defined  no-undef
   49:1   error  'console' is not defined  no-undef
 
-✖ 404 problems (177 errors, 227 warnings)
+✖ 450 problems (195 errors, 255 warnings)
+  4 errors and 0 warnings potentially fixable with the `--fix` option.
 ```
 
 ## TypeScript Check
 ```
-components/DashboardRow.tsx(224,57): error TS2322: Type 'string' is not assignable to type 'ComplianceStatus'.
-components/DashboardRow.tsx(277,19): error TS2322: Type 'string' is not assignable to type 'ComplianceStatus'.
-components/DashboardRow.tsx(295,17): error TS2322: Type 'string' is not assignable to type 'ComplianceStatus'.
+components/ActivityManager.test.tsx(21,17): error TS2322: Type '{ periodLabel: string; initialActivities: { id: string; label: string; targetCount: number; completedCount: number; }[]; onSave: Mock<any, any, any>; onClose: Mock<any, any, any>; canEdit: true; }' is not assignable to type 'IntrinsicAttributes & ActivityManagerProps'.
+  Property 'periodLabel' does not exist on type 'IntrinsicAttributes & ActivityManagerProps'.
+components/ActivityManager.test.tsx(37,17): error TS2322: Type '{ periodLabel: string; initialActivities: { id: string; label: string; targetCount: number; completedCount: number; }[]; onSave: Mock<any, any, any>; onClose: Mock<any, any, any>; canEdit: true; }' is not assignable to type 'IntrinsicAttributes & ActivityManagerProps'.
+  Property 'periodLabel' does not exist on type 'IntrinsicAttributes & ActivityManagerProps'.
+components/ActivityManager.test.tsx(54,17): error TS2322: Type '{ periodLabel: string; initialActivities: undefined[]; onSave: Mock<any, any, any>; onClose: Mock<any, any, any>; canEdit: true; }' is not assignable to type 'IntrinsicAttributes & ActivityManagerProps'.
+  Property 'periodLabel' does not exist on type 'IntrinsicAttributes & ActivityManagerProps'.
+components/ActivityManager.test.tsx(78,17): error TS2322: Type '{ periodLabel: string; initialActivities: { id: string; label: string; targetCount: number; completedCount: number; }[]; onSave: Mock<any, any, any>; onClose: Mock<any, any, any>; canEdit: true; }' is not assignable to type 'IntrinsicAttributes & ActivityManagerProps'.
+  Property 'periodLabel' does not exist on type 'IntrinsicAttributes & ActivityManagerProps'.
 ```
 
 ## Pruebas Unitarias
 ```
-> stratexa-iapriori@7.8.29 test
+> stratexa-iapriori@8.7.2 test
 > jest --coverage
 
------------------------------|---------|----------|---------|---------|--------------------------------------------------------------------------------------------------------------------------------------------
-File                         | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s                                                                                                                          
------------------------------|---------|----------|---------|---------|--------------------------------------------------------------------------------------------------------------------------------------------
-All files                    |   29.86 |    20.74 |   21.89 |   30.06 |                                                                                                                                            
- APP TABLERO                 |     100 |      100 |     100 |     100 |                                                                                                                                            
-  types.ts                   |     100 |      100 |     100 |     100 |                                                                                                                                            
- APP TABLERO/components      |   19.07 |    16.24 |   13.65 |   18.42 |                                                                                                                                            
-  AIAnalysisModal.tsx        |      50 |     6.66 |      20 |    37.5 | 15-132                                                                                                                                     
-  ActionPlan.tsx             |    6.66 |        0 |       0 |       5 | 20-224                                                                                                                                     
-  ActivityManager.tsx        |   67.85 |    70.37 |   58.06 |   69.23 | 60-61,119,162,198-214,223-255                                                                                                              
-  CurrentPeriodFocus.tsx     |    7.33 |        0 |       0 |    7.57 | 32-364                                                                                                                                     
-  DashboardMetadataModal.tsx |    7.14 |        0 |       0 |       5 | 34-183                                                                                                                                     
-  DashboardView.tsx          |   59.03 |    50.39 |   37.03 |   60.27 | 98-100,136,158,171-185,204-322,365-457                                                                                                     
-  DataEditor.tsx             |     2.9 |        0 |       0 |    2.68 | 15-431                                                                                                                                     
-  IndicatorManager.tsx       |   25.89 |     33.8 |   13.72 |      27 | 82-83,87-97,105-106,110-111,116-121,125,129-130,135-136,140-154,162-190,195-206,238-358,382-404                                            
-  LineChart.tsx              |    3.75 |        0 |       0 |    3.12 | 15-168                                                                                                                                     
-  PowerPointExportModal.tsx  |      20 |     3.44 |    5.55 |   19.51 | 28-182,267-302                                                                                                                             
-  ProgressBar.tsx            |   42.85 |        0 |       0 |   33.33 | 11-29                                                                                                                                      
-  SummaryDetails.tsx         |   10.34 |        0 |       0 |   10.86 | 31-118                                                                                                                                     
- APP TABLERO/services        |    2.04 |        0 |       0 |    2.38 |                                                                                                                                            
-  aiService.ts               |    2.04 |        0 |       0 |    2.38 | 15-81                                                                                                                                      
- APP TABLERO/utils           |    41.7 |    27.24 |   40.33 |   42.46 |                                                                                                                                            
-  aggregationUtils.ts        |   49.66 |     31.7 |   47.82 |   54.07 | 6-19,33-50,65,86,88-91,159-160,169-171,176-178,203-206,211,221-239,243-261                                                                 
-  compliance.ts              |   40.46 |    21.12 |   65.62 |   40.92 | 95-101,110-111,116-117,129-130,179-181,193-194,205-211,222-247,258-279,306,315-331,344-349,364-502,545-546,553-576,584-585,601-628,666-672 
-  dashboardLogic.ts          |   78.12 |    52.08 |   66.66 |   87.03 | 44-46,73,132,146,155                                                                                                                       
-  dateUtils.ts               |      75 |       40 |      50 |      70 | 34-39                                                                                                                                      
-  formatters.ts              |   94.11 |      100 |      50 |   93.33 | 45                                                                                                                                         
-  powerPointExport.ts        |    2.52 |        0 |       0 |    2.68 | 88-190,210-735                                                                                                                             
-  weeklyUtils.ts             |   96.72 |    75.86 |     100 |     100 | 10,38,72,92                                                                                                                                
------------------------------|---------|----------|---------|---------|--------------------------------------------------------------------------------------------------------------------------------------------
+-----------------------------|---------|----------|---------|---------|---------------------------------------------------------------------------------------------------------------------------------------------------
+File                         | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s                                                                                                                                 
+-----------------------------|---------|----------|---------|---------|---------------------------------------------------------------------------------------------------------------------------------------------------
+All files                    |   28.77 |     19.2 |   20.09 |   29.21 |                                                                                                                                                   
+ APP TABLERO                 |     100 |      100 |     100 |     100 |                                                                                                                                                   
+  types.ts                   |     100 |      100 |     100 |     100 |                                                                                                                                                   
+ APP TABLERO/components      |   17.33 |    13.84 |   10.99 |   17.45 |                                                                                                                                                   
+  AIAnalysisModal.tsx        |      50 |     6.66 |      20 |    37.5 | 15-132                                                                                                                                            
+  ActionPlan.tsx             |    6.66 |        0 |       0 |       5 | 20-224                                                                                                                                            
+  ActivityManager.tsx        |      50 |    41.26 |   27.27 |   52.38 | 65-77,81-82,86-87,105,107,171-182,213-335                                                                                                         
+  CurrentPeriodFocus.tsx     |    4.81 |        0 |       0 |    4.76 | 31-508                                                                                                                                            
+  DashboardMetadataModal.tsx |    7.14 |        0 |       0 |       5 | 34-183                                                                                                                                            
+  DashboardView.tsx          |   58.16 |    49.27 |   41.93 |   59.77 | 98-100,136,145-147,155-158,183,196-210,229-337,392-484                                                                                            
+  DataEditor.tsx             |    2.31 |        0 |       0 |    2.09 | 15-531                                                                                                                                            
+  IndicatorManager.tsx       |   25.89 |     33.8 |   13.72 |      27 | 82-83,87-97,105-106,110-111,116-121,125,129-130,135-136,140-154,162-190,195-207,247-367,391-413                                                   
+  LineChart.tsx              |    3.44 |        0 |       0 |    2.85 | 15-179                                                                                                                                            
+  PowerPointExportModal.tsx  |      20 |     3.44 |    5.55 |   19.51 | 28-182,267-302                                                                                                                                    
+ APP TABLERO/services        |    3.77 |        0 |       0 |    4.34 |                                                                                                                                                   
+  aiService.ts               |    3.77 |        0 |       0 |    4.34 | 33-112                                                                                                                                            
+ APP TABLERO/utils           |   41.43 |    27.06 |      40 |   42.38 |                                                                                                                                                   
+  aggregationUtils.ts        |      50 |     31.7 |      50 |   54.41 | 6-19,33-50,65,86,88-91,161-162,171-173,178-180,205-208,213,223-241,245-263                                                                        
+  compliance.ts              |   39.01 |    20.85 |   63.63 |   39.73 | 45-70,138-144,153-154,159-160,172-173,225-226,233-234,245-251,262-287,298-319,346,355-371,384-389,404-542,585-586,593-621,629-630,646-673,711-717 
+  dashboardLogic.ts          |   77.77 |    52.94 |   56.25 |   85.48 | 44-46,73,97,113-114,122,125                                                                                                                       
+  dateUtils.ts               |      75 |       40 |      50 |      70 | 34-39                                                                                                                                             
+  formatters.ts              |   94.11 |      100 |      50 |   93.33 | 45                                                                                                                                                
+  powerPointExport.ts        |    2.52 |        0 |       0 |    2.68 | 88-190,210-735                                                                                                                                    
+  weeklyUtils.ts             |   96.72 |    75.86 |     100 |     100 | 10,38,72,92                                                                                                                                       
+-----------------------------|---------|----------|---------|---------|---------------------------------------------------------------------------------------------------------------------------------------------------
 
-PASS utils/dateUtils.test.ts
-PASS utils/formatters.test.ts
-PASS utils/weeklyUtils.test.ts
-FAIL utils/dashboardLogic.test.ts
-  ● calculateOfficialGroups › deduplicates "Frontera Norte" from mixed sources
+PASS utils/dateUtils.test.ts (5.825 s)
+PASS utils/formatters.test.ts (5.833 s)
+PASS utils/weeklyUtils.test.ts (5.873 s)
+[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+PASS utils/dashboardLogic.test.ts (7.554 s)
+  ● Console
 
-    expect(received).toMatch(expected)
+    console.log
+      DEBUG: groups for Ops Director [ 'DIRECTOR OPERACIONES' ]
 
-    Expected pattern: /^(NORTE|FRONTERA NORTE|DIRECCIÓN FRONTERA NORTE)$/
-    Received string:  "DIRECTOR FRONTERA NORTE"
+      at Object.<anonymous> (utils/dashboardLogic.test.ts:70:17)
 
-    [0m [90m 42 |[39m
-     [90m 43 |[39m         expect(groups)[33m.[39mtoHaveLength([35m1[39m)[33m;[39m
-    [31m[1m>[22m[39m[90m 44 |[39m         expect(groups[[35m0[39m])[33m.[39mtoMatch([35m/^(NORTE|FRONTERA NORTE|DIRECCIÓN FRONTERA NORTE)$/[39m)[33m;[39m
-     [90m    |[39m                           [31m[1m^[22m[39m
-     [90m 45 |[39m     })[33m;[39m
-     [90m 46 |[39m
-     [90m 47 |[39m     test([32m'deduplicates "Operaciones" vs "Dirección de Operaciones"'[39m[33m,[39m () [33m=>[39m {[0m
+PASS utils/compliance.test.ts (8.237 s)
+PASS utils/aggregationUtils.test.ts (8.628 s)
+PASS components/IndicatorManager.test.tsx (8.682 s)
+FAIL components/ActivityManager.test.tsx (9.123 s)
+  ● Console
 
-      at Object.<anonymous> (utils/dashboardLogic.test.ts:44:27)
+    console.log
+      🛡️ [v8.6.0] Modal Actividades Abierto. Items: 2
 
-  ● calculateOfficialGroups › handles "Dirección Operaciones" visibility for Ops Director
+      at log (components/ActivityManager.tsx:61:13)
 
-    expect(received).toContain(expected) // indexOf
+    console.log
+      🛡️ [v8.6.0] Modal Actividades Abierto. Items: 2
 
-    Expected value: "OPERACIONES"
-    Received array: ["DIRECCIÓN DE OPERACIONES"]
+      at log (components/ActivityManager.tsx:61:13)
 
-    [0m [90m 81 |[39m
-     [90m 82 |[39m         [90m// Should contain "OPERACIONES" (forced or natural)[39m
-    [31m[1m>[22m[39m[90m 83 |[39m         expect(groups)[33m.[39mtoContain([32m'OPERACIONES'[39m)[33m;[39m [90m// Or similar pretty title[39m
-     [90m    |[39m                        [31m[1m^[22m[39m
-     [90m 84 |[39m         [90m// Should NOT contain "VENTAS"[39m
-     [90m 85 |[39m         expect(groups[33m.[39msome(g [33m=>[39m g[33m.[39mincludes([32m'VENTAS'[39m)))[33m.[39mtoBe([36mfalse[39m)[33m;[39m
-     [90m 86 |[39m     })[33m;[39m[0m
+    console.log
+      🛡️ [v8.6.0] Modal Actividades Abierto. Items: 0
 
-      at Object.<anonymous> (utils/dashboardLogic.test.ts:83:24)
+      at log (components/ActivityManager.tsx:61:13)
 
-PASS utils/aggregationUtils.test.ts
-PASS utils/compliance.test.ts
-PASS components/IndicatorManager.test.tsx
-PASS components/ActivityManager.test.tsx
-FAIL components/DashboardView.test.tsx
-  ● DashboardView Component › debe alternar entre vista de tablero y reporte
+    console.log
+      🛡️ [v8.6.0] Modal Actividades Abierto. Items: 2
 
-    TestingLibraryElementError: Found multiple elements with the text: /Tablero/i
+      at log (components/ActivityManager.tsx:61:13)
 
-    Here are the matching elements:
+  ● ActivityManager Component › debe renderizar la lista de actividades
 
-    Ignored nodes: comments, script, style
-    [36m<h2[39m
-      [33mclass[39m=[32m"text-2xl font-black text-white uppercase tracking-tight leading-none cursor-help"[39m
-      [33mtitle[39m=[32m"Tablero #N/A"[39m
-    [36m>[39m
-      [0mTablero de Prueba[0m
-    [36m</h2>[39m
-
-    Ignored nodes: comments, script, style
-    [36m<span[39m
-      [33mclass[39m=[32m"hidden sm:inline"[39m
-    [36m>[39m
-      [0mTablero[0m
-    [36m</span>[39m
-
-    Ignored nodes: comments, script, style
-    [36m<h3[39m
-      [33mclass[39m=[32m"text-xl font-bold text-white"[39m
-    [36m>[39m
-      [0mTablero Nuevo[0m
-    [36m</h3>[39m
-
-    Ignored nodes: comments, script, style
-    [36m<p[39m
-      [33mclass[39m=[32m"text-slate-400 max-w-md mt-2 mb-6 text-sm"[39m
-    [36m>[39m
-      [0mEste tablero está listo pero aún no tiene indicadores asignados. Usa el botón "KPIs" (Gestión de Indicadores) en el menú superior para agregar métricas.[0m
-    [36m</p>[39m
-
-    (If this is intentional, then use the `*AllBy*` variant of the query (like `queryAllByText`, `getAllByText`, or `findAllByText`)).
+    TestingLibraryElementError: Unable to find an element with the text: /Gestión de Actividades - Enero 2026/i. This could be because the text is broken up by multiple elements. In this case, you can provide a function for your text matcher to make your matcher more flexible.
 
     Ignored nodes: comments, script, style
     [36m<body>[39m
-      [36m<div>[39m
+      [36m<div />[39m
+      [36m<div[39m
+        [33mclass[39m=[32m"fixed inset-0 z-[50] flex items-center justify-center bg-slate-950/90 backdrop-blur-md p-4"[39m
+      [36m>[39m
         [36m<div[39m
-          [33mclass[39m=[32m"space-y-4 animate-in fade-in duration-700 fill-mode-both"[39m
+          [33mclass[39m=[32m"bg-[#0f172a] border border-slate-800 w-full max-w-4xl max-h-[90vh] rounded-[24px] flex flex-col overflow-hidden relative"[39m
         [36m>[39m
           [36m<div[39m
-            [33mclass[39m=[32m"DashboardView_Header flex justify-between items-center border-b border-white/5 pb-2 gap-4"[39m
+            [33mclass[39m=[32m"p-4 sm:p-6 border-b border-slate-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-gradient-to-r from-slate-900 to-slate-950"[39m
           [36m>[39m
             [36m<div[39m
-              [33mclass[39m=[32m"flex items-center gap-6"[39m
+              [33mclass[39m=[32m"flex flex-col min-w-0"[39m
             [36m>[39m
-              [36m<div[39m
-                [33mclass[39m=[32m"flex flex-col"[39m
+              [36m<h2[39m
+                [33mclass[39m=[32m"text-xl sm:text-2xl font-black text-white leading-tight mb-1 flex items-center flex-wrap gap-2"[39m
               [36m>[39m
-                [36m<div[39m
-                  [33mclass[39m=[32m"flex items-center gap-3"[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"truncate"[39m
+                [36m/>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"text-[9px] px-2 py-0.5 rounded-full border bg-emerald-500/10 border-emerald-500/20 text-emerald-500 font-bold uppercase tracking-widest shrink-0"[39m
                 [36m>[39m
-                  [36m<h2[39m
-                    [33mclass[39m=[32m"text-2xl font-black text-white uppercase tracking-tight leading-none cursor-help"[39m
-                    [33mtitle[39m=[32m"Tablero #N/A"[39m
-                  [36m>[39m
-                    [0mTablero de Prueba[0m
-                  [36m</h2>[39m
-                  [36m<button[39m
-                    [33maria-label[39m=[32m"Abrir configuración de área y metadatos del tablero"[39m
-                    [33mclass[39m=[32m"p-2 bg-cyan-500/10 hover:bg-cyan-500 border border-cyan-500/30 rounded-xl text-cyan-400 hover:text-white transition-all hover:scale-110 flex items-center gap-2"[39m
-                    [33mtitle[39m=[32m"Configurar Título, Grupo y Área Funcional"[39m
-                  [36m>[39m
-                    [36m<svg[39m
-                      [33maria-hidden[39m=[32m"true"[39m
-                      [33mclass[39m=[32m"h-4 w-4"[39m
-                      [33mfill[39m=[32m"currentColor"[39m
-                      [33mviewBox[39m=[32m"0 0 20 20"[39m
-                      [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
-                    [36m>[39m
-                      [36m<path[39m
-                        [33md[39m=[32m"M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z"[39m
-                      [36m/>[39m
-                    [36m</svg>[39m
-                    [36m<span[39m
-                      [33mclass[39m=[32m"text-[8px] font-black uppercase"[39m
-                    [36m>[39m
-                      [0mFicha[0m
-                    [36m</span>[39m
-                  [36m</button>[39m
-                [36m</div>[39m
-                [36m<div[39m
-                  [33mclass[39m=[32m"flex items-center gap-3"[39m
+                  [0mOBJETIVO: [0m
+                  [0mMaximizar[0m
+                [36m</span>[39m
+              [36m</h2>[39m
+              [36m<p[39m
+                [33mclass[39m=[32m"text-slate-500 font-bold uppercase tracking-[0.2em] text-[10px] flex items-center gap-2"[39m
+              [36m>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"w-2 h-2 rounded-full bg-cyan-500 shrink-0"[39m
+                [36m/>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"truncate"[39m
                 [36m>[39m
-                  [36m<div[39m
-                    [33mclass[39m=[32m"flex items-center gap-2"[39m
-                  [36m>[39m
-                    [36m<span[39m
-                      [33mclass[39m=[32m"w-2 h-2 rounded-full bg-cyan-500 shadow-[0_0_8px_#22d3ee]"[39m
-                    [36m/>[39m
-                    [36m<span[39m
-                      [33mclass[39m=[32m"text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em]"[39m
-                    [36m>[39m
-                      [0mDashboard Operativo[0m
-                    [36m</span>[39m
-                  [36m</div>[39m
-                [36m</div>[39m
-              [36m</div>[39m
+                  [0mGESTOR DE ELEMENTOS DETALLADO v8.6.6[0m
+                [36m</span>[39m
+              [36m</p>[39m
             [36m</div>[39m
             [36m<div[39m
-              [33mclass[39m=[32m"flex flex-wrap items-center justify-center sm:justify-end gap-2 sm:gap-4 w-full lg:w-auto"[39m
+              [33mclass[39m=[32m"flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-end"[39m
             [36m>[39m
               [36m<div[39m
-                [33maria-label[39m=[32m"Resumen de cumplimiento global"[39m
-                [33mclass[39m=[32m"flex items-center gap-3 glass-panel px-4 py-1.5 rounded-xl shadow-xl border border-white/5"[39m
-                [33mrole[39m=[32m"group"[39m
+                [33mclass[39m=[32m"flex items-center gap-3 sm:gap-4 bg-slate-900/60 p-2 sm:p-3 rounded-2xl border border-white/5"[39m
               [36m>[39m
                 [36m<div[39m
-                  [33mclass[39m=[32m"flex flex-col items-end"[39m
+                  [33mclass[39m=[32m"text-right"[39m
                 [36m>[39m
-                  [36m<span[39m
-                    [33mclass[39m=[32m"text-[8px] sm:text-[9px] font-black text-slate-500 uppercase tracking-widest leading-none mb-1"[39m
+                  [36m<p[39m
+                    [33mclass[39m=[32m"text-[8px] sm:text-[10px] text-slate-500 font-bold uppercase tracking-widest"[39m
                   [36m>[39m
-                    [0mCumplimiento Global[0m
-                  [36m</span>[39m
+                    [0mIMPACTO TOTAL[0m
+                  [36m</p>[39m
+                  [36m<p[39m
+                    [33mclass[39m=[32m"text-lg sm:text-xl font-black text-white leading-none mt-1"[39m
+                  [36m>[39m
+                    [0m15[0m
+                    [0m / [0m
+                    [0m10[0m
+                  [36m</p>[39m
+                [36m</div>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-slate-800 flex items-center justify-center relative overflow-hidden ring-1 ring-white/10"[39m
+                [36m>[39m
+                  [36m<div[39m
+                    [33mclass[39m=[32m"absolute bottom-0 left-0 w-full transition-all duration-1000 bg-indigo-500"[39m
+                    [33mstyle[39m=[32m"height: 66.66666666666666%;"[39m
+                  [36m/>[39m
                   [36m<span[39m
-                    [33maria-label[39m=[32m"Valor: 0 por ciento. Estado: Critico"[39m
-                    [33mclass[39m=[32m"text-2xl sm:text-3xl font-black tabular-nums leading-none text-rose-400 drop-shadow-[0_0_12px_rgba(244,63,94,0.4)]"[39m
+                    [33mclass[39m=[32m"relative z-10 font-black text-[10px] sm:text-xs text-white drop-shadow-none"[39m
+                  [36m>[39m
+                    [0m67[0m
+                    [0m%[0m
+                  [36m</span>[39m
+                [36m</div>[39m
+              [36m</div>[39m
+              [36m<button[39m
+                [33mclass[39m=[32m"w-10 h-10 flex-shrink-0 flex items-center justify-center bg-rose-500/10 hover:bg-rose-500 text-rose-500 hover:text-white rounded-xl transition-all border border-rose-500/20 active:scale-90"[39m
+                [33mtitle[39m=[32m"Cerrar"[39m
+              [36m>[39m
+                [36m<svg[39m
+                  [33mclass[39m=[32m"lucide lucide-x w-5 h-5"[39m
+                  [33mfill[39m=[32m"none"[39m
+                  [33mheight[39m=[32m"24"[39m
+                  [33mstroke[39m=[32m"currentColor"[39m
+                  [33mstroke-linecap[39m=[32m"round"[39m
+                  [33mstroke-linejoin[39m=[32m"round"[39m
+                  [33mstroke-width[39m=[32m"2"[39m
+                  [33mviewBox[39m=[32m"0 0 24 24"[39m
+                  [33mwidth[39m=[32m"24"[39m
+                  [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+                [36m>[39m
+                  [36m<path[39m
+                    [33md[39m=[32m"M18 6 6 18"[39m
+                  [36m/>[39m
+                  [36m<path[39m
+                    [33md[39m=[32m"m6 6 12 12"[39m
+                  [36m/>[39m
+                [36m</svg>[39m
+              [36m</button>[39m
+            [36m</div>[39m
+          [36m</div>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"p-6 bg-slate-900/30 grid grid-cols-1 md:grid-cols-2 gap-4 border-b border-slate-800"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"relative"[39m
+            [36m>[39m
+              [36m<svg[39m
+                [33mclass[39m=[32m"lucide lucide-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 w-5 h-5"[39m
+                [33mfill[39m=[32m"none"[39m
+                [33mheight[39m=[32m"24"[39m
+                [33mstroke[39m=[32m"currentColor"[39m
+                [33mstroke-linecap[39m=[32m"round"[39m
+                [33mstroke-linejoin[39m=[32m"round"[39m
+                [33mstroke-width[39m=[32m"2"[39m
+                [33mviewBox[39m=[32m"0 0 24 24"[39m
+                [33mwidth[39m=[32m"24"[39m
+                [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+              [36m>[39m
+                [36m<circle[39m
+                  [33mcx[39m=[32m"11"[39m
+                  [33mcy[39m=[32m"11"[39m
+                  [33mr[39m=[32m"8"[39m
+                [36m/>[39m
+                [36m<path[39m
+                  [33md[39m=[32m"m21 21-4.3-4.3"[39m
+                [36m/>[39m
+              [36m</svg>[39m
+              [36m<input[39m
+                [33mclass[39m=[32m"w-full bg-slate-950 border border-slate-800 rounded-2xl py-3 pl-12 pr-4 text-white focus:border-indigo-500 outline-none transition-all font-medium"[39m
+                [33mplaceholder[39m=[32m"BUSCAR ELEMENTO..."[39m
+                [33mtype[39m=[32m"text"[39m
+                [33mvalue[39m=[32m""[39m
+              [36m/>[39m
+            [36m</div>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"flex gap-2"[39m
+            [36m>[39m
+              [36m<input[39m
+                [33mclass[39m=[32m"flex-1 bg-slate-950 border border-slate-800 rounded-2xl py-3 px-4 text-white focus:border-indigo-500 outline-none transition-all font-medium disabled:opacity-50"[39m
+                [33mplaceholder[39m=[32m"NOMBRE (EJ: GENERAL, SERVICIOS...)"[39m
+                [33mtype[39m=[32m"text"[39m
+                [33mvalue...
+
+    [0m [90m 27 |[39m         )[33m;[39m
+     [90m 28 |[39m
+    [31m[1m>[22m[39m[90m 29 |[39m         expect(screen[33m.[39mgetByText([35m/Gestión de Actividades - Enero 2026/i[39m))[33m.[39mtoBeInTheDocument()[33m;[39m
+     [90m    |[39m                       [31m[1m^[22m[39m
+     [90m 30 |[39m         expect(screen[33m.[39mgetByText([32m'Actividad 1'[39m))[33m.[39mtoBeInTheDocument()[33m;[39m
+     [90m 31 |[39m         expect(screen[33m.[39mgetByText([32m'Actividad 2'[39m))[33m.[39mtoBeInTheDocument()[33m;[39m
+     [90m 32 |[39m     })[33m;[39m[0m
+
+      at Object.getElementError (node_modules/@testing-library/dom/dist/config.js:37:19)
+      at node_modules/@testing-library/dom/dist/query-helpers.js:76:38
+      at node_modules/@testing-library/dom/dist/query-helpers.js:52:17
+      at node_modules/@testing-library/dom/dist/query-helpers.js:95:19
+      at Object.<anonymous> (components/ActivityManager.test.tsx:29:23)
+
+  ● ActivityManager Component › debe permitir actualizar el conteo realizado
+
+    TestingLibraryElementError: Unable to find a label with the text of: /Cantidad realizada de/i
+
+    Ignored nodes: comments, script, style
+    [36m<body>[39m
+      [36m<div />[39m
+      [36m<div[39m
+        [33mclass[39m=[32m"fixed inset-0 z-[50] flex items-center justify-center bg-slate-950/90 backdrop-blur-md p-4"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"bg-[#0f172a] border border-slate-800 w-full max-w-4xl max-h-[90vh] rounded-[24px] flex flex-col overflow-hidden relative"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"p-4 sm:p-6 border-b border-slate-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-gradient-to-r from-slate-900 to-slate-950"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"flex flex-col min-w-0"[39m
+            [36m>[39m
+              [36m<h2[39m
+                [33mclass[39m=[32m"text-xl sm:text-2xl font-black text-white leading-tight mb-1 flex items-center flex-wrap gap-2"[39m
+              [36m>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"truncate"[39m
+                [36m/>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"text-[9px] px-2 py-0.5 rounded-full border bg-emerald-500/10 border-emerald-500/20 text-emerald-500 font-bold uppercase tracking-widest shrink-0"[39m
+                [36m>[39m
+                  [0mOBJETIVO: [0m
+                  [0mMaximizar[0m
+                [36m</span>[39m
+              [36m</h2>[39m
+              [36m<p[39m
+                [33mclass[39m=[32m"text-slate-500 font-bold uppercase tracking-[0.2em] text-[10px] flex items-center gap-2"[39m
+              [36m>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"w-2 h-2 rounded-full bg-cyan-500 shrink-0"[39m
+                [36m/>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"truncate"[39m
+                [36m>[39m
+                  [0mGESTOR DE ELEMENTOS DETALLADO v8.6.6[0m
+                [36m</span>[39m
+              [36m</p>[39m
+            [36m</div>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-end"[39m
+            [36m>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"flex items-center gap-3 sm:gap-4 bg-slate-900/60 p-2 sm:p-3 rounded-2xl border border-white/5"[39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"text-right"[39m
+                [36m>[39m
+                  [36m<p[39m
+                    [33mclass[39m=[32m"text-[8px] sm:text-[10px] text-slate-500 font-bold uppercase tracking-widest"[39m
+                  [36m>[39m
+                    [0mIMPACTO TOTAL[0m
+                  [36m</p>[39m
+                  [36m<p[39m
+                    [33mclass[39m=[32m"text-lg sm:text-xl font-black text-white leading-none mt-1"[39m
+                  [36m>[39m
+                    [0m15[0m
+                    [0m / [0m
+                    [0m10[0m
+                  [36m</p>[39m
+                [36m</div>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-slate-800 flex items-center justify-center relative overflow-hidden ring-1 ring-white/10"[39m
+                [36m>[39m
+                  [36m<div[39m
+                    [33mclass[39m=[32m"absolute bottom-0 left-0 w-full transition-all duration-1000 bg-indigo-500"[39m
+                    [33mstyle[39m=[32m"height: 66.66666666666666%;"[39m
+                  [36m/>[39m
+                  [36m<span[39m
+                    [33mclass[39m=[32m"relative z-10 font-black text-[10px] sm:text-xs text-white drop-shadow-none"[39m
+                  [36m>[39m
+                    [0m67[0m
+                    [0m%[0m
+                  [36m</span>[39m
+                [36m</div>[39m
+              [36m</div>[39m
+              [36m<button[39m
+                [33mclass[39m=[32m"w-10 h-10 flex-shrink-0 flex items-center justify-center bg-rose-500/10 hover:bg-rose-500 text-rose-500 hover:text-white rounded-xl transition-all border border-rose-500/20 active:scale-90"[39m
+                [33mtitle[39m=[32m"Cerrar"[39m
+              [36m>[39m
+                [36m<svg[39m
+                  [33mclass[39m=[32m"lucide lucide-x w-5 h-5"[39m
+                  [33mfill[39m=[32m"none"[39m
+                  [33mheight[39m=[32m"24"[39m
+                  [33mstroke[39m=[32m"currentColor"[39m
+                  [33mstroke-linecap[39m=[32m"round"[39m
+                  [33mstroke-linejoin[39m=[32m"round"[39m
+                  [33mstroke-width[39m=[32m"2"[39m
+                  [33mviewBox[39m=[32m"0 0 24 24"[39m
+                  [33mwidth[39m=[32m"24"[39m
+                  [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+                [36m>[39m
+                  [36m<path[39m
+                    [33md[39m=[32m"M18 6 6 18"[39m
+                  [36m/>[39m
+                  [36m<path[39m
+                    [33md[39m=[32m"m6 6 12 12"[39m
+                  [36m/>[39m
+                [36m</svg>[39m
+              [36m</button>[39m
+            [36m</div>[39m
+          [36m</div>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"p-6 bg-slate-900/30 grid grid-cols-1 md:grid-cols-2 gap-4 border-b border-slate-800"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"relative"[39m
+            [36m>[39m
+              [36m<svg[39m
+                [33mclass[39m=[32m"lucide lucide-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 w-5 h-5"[39m
+                [33mfill[39m=[32m"none"[39m
+                [33mheight[39m=[32m"24"[39m
+                [33mstroke[39m=[32m"currentColor"[39m
+                [33mstroke-linecap[39m=[32m"round"[39m
+                [33mstroke-linejoin[39m=[32m"round"[39m
+                [33mstroke-width[39m=[32m"2"[39m
+                [33mviewBox[39m=[32m"0 0 24 24"[39m
+                [33mwidth[39m=[32m"24"[39m
+                [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+              [36m>[39m
+                [36m<circle[39m
+                  [33mcx[39m=[32m"11"[39m
+                  [33mcy[39m=[32m"11"[39m
+                  [33mr[39m=[32m"8"[39m
+                [36m/>[39m
+                [36m<path[39m
+                  [33md[39m=[32m"m21 21-4.3-4.3"[39m
+                [36m/>[39m
+              [36m</svg>[39m
+              [36m<input[39m
+                [33mclass[39m=[32m"w-full bg-slate-950 border border-slate-800 rounded-2xl py-3 pl-12 pr-4 text-white focus:border-indigo-500 outline-none transition-all font-medium"[39m
+                [33mplaceholder[39m=[32m"BUSCAR ELEMENTO..."[39m
+                [33mtype[39m=[32m"text"[39m
+                [33mvalue[39m=[32m""[39m
+              [36m/>[39m
+            [36m</div>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"flex gap-2"[39m
+            [36m>[39m
+              [36m<input[39m
+                [33mclass[39m=[32m"flex-1 bg-slate-950 border border-slate-800 rounded-2xl py-3 px-4 text-white focus:border-indigo-500 outline-none transition-all font-medium disabled:opacity-50"[39m
+                [33mplaceholder[39m=[32m"NOMBRE (EJ: GENERAL, SERVICIOS...)"[39m
+                [33mtype[39m=[32m"text"[39m
+                [33mvalue...
+
+    [0m [90m 43 |[39m         )[33m;[39m
+     [90m 44 |[39m
+    [31m[1m>[22m[39m[90m 45 |[39m         [36mconst[39m inputs [33m=[39m screen[33m.[39mgetAllByLabelText([35m/Cantidad realizada de/i[39m)[33m;[39m
+     [90m    |[39m                               [31m[1m^[22m[39m
+     [90m 46 |[39m         fireEvent[33m.[39mchange(inputs[[35m0[39m][33m,[39m { target[33m:[39m { value[33m:[39m [32m'7'[39m } })[33m;[39m
+     [90m 47 |[39m
+     [90m 48 |[39m         expect(inputs[[35m0[39m])[33m.[39mtoHaveValue([35m7[39m)[33m;[39m[0m
+
+      at Object.getElementError (node_modules/@testing-library/dom/dist/config.js:37:19)
+      at getAllByLabelText (node_modules/@testing-library/dom/dist/queries/label-text.js:111:38)
+      at node_modules/@testing-library/dom/dist/query-helpers.js:109:15
+      at Object.<anonymous> (components/ActivityManager.test.tsx:45:31)
+
+  ● ActivityManager Component › debe permitir el modo de carga masiva
+
+    TestingLibraryElementError: Unable to find an element with the text: /Carga Masiva/i. This could be because the text is broken up by multiple elements. In this case, you can provide a function for your text matcher to make your matcher more flexible.
+
+    Ignored nodes: comments, script, style
+    [36m<body>[39m
+      [36m<div />[39m
+      [36m<div[39m
+        [33mclass[39m=[32m"fixed inset-0 z-[50] flex items-center justify-center bg-slate-950/90 backdrop-blur-md p-4"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"bg-[#0f172a] border border-slate-800 w-full max-w-4xl max-h-[90vh] rounded-[24px] flex flex-col overflow-hidden relative"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"p-4 sm:p-6 border-b border-slate-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-gradient-to-r from-slate-900 to-slate-950"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"flex flex-col min-w-0"[39m
+            [36m>[39m
+              [36m<h2[39m
+                [33mclass[39m=[32m"text-xl sm:text-2xl font-black text-white leading-tight mb-1 flex items-center flex-wrap gap-2"[39m
+              [36m>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"truncate"[39m
+                [36m/>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"text-[9px] px-2 py-0.5 rounded-full border bg-emerald-500/10 border-emerald-500/20 text-emerald-500 font-bold uppercase tracking-widest shrink-0"[39m
+                [36m>[39m
+                  [0mOBJETIVO: [0m
+                  [0mMaximizar[0m
+                [36m</span>[39m
+              [36m</h2>[39m
+              [36m<p[39m
+                [33mclass[39m=[32m"text-slate-500 font-bold uppercase tracking-[0.2em] text-[10px] flex items-center gap-2"[39m
+              [36m>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"w-2 h-2 rounded-full bg-cyan-500 shrink-0"[39m
+                [36m/>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"truncate"[39m
+                [36m>[39m
+                  [0mGESTOR DE ELEMENTOS DETALLADO v8.6.6[0m
+                [36m</span>[39m
+              [36m</p>[39m
+            [36m</div>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-end"[39m
+            [36m>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"flex items-center gap-3 sm:gap-4 bg-slate-900/60 p-2 sm:p-3 rounded-2xl border border-white/5"[39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"text-right"[39m
+                [36m>[39m
+                  [36m<p[39m
+                    [33mclass[39m=[32m"text-[8px] sm:text-[10px] text-slate-500 font-bold uppercase tracking-widest"[39m
+                  [36m>[39m
+                    [0mIMPACTO TOTAL[0m
+                  [36m</p>[39m
+                  [36m<p[39m
+                    [33mclass[39m=[32m"text-lg sm:text-xl font-black text-white leading-none mt-1"[39m
+                  [36m>[39m
+                    [0m0[0m
+                    [0m / [0m
+                    [0m0[0m
+                  [36m</p>[39m
+                [36m</div>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-slate-800 flex items-center justify-center relative overflow-hidden ring-1 ring-white/10"[39m
+                [36m>[39m
+                  [36m<div[39m
+                    [33mclass[39m=[32m"absolute bottom-0 left-0 w-full transition-all duration-1000 bg-indigo-500"[39m
+                    [33mstyle[39m=[32m"height: 0%;"[39m
+                  [36m/>[39m
+                  [36m<span[39m
+                    [33mclass[39m=[32m"relative z-10 font-black text-[10px] sm:text-xs text-white drop-shadow-none"[39m
                   [36m>[39m
                     [0m0[0m
                     [0m%[0m
                   [36m</span>[39m
                 [36m</div>[39m
-                [36m<div[39m
-                  [33mclass[39m=[32m"relative"[39m
-                [36m>[39m
-                  [36m<div[39m
-                    [33maria-hidden[39m=[32m"true"[39m
-                    [33mclass[39m=[32m"absolute inset-0 rounded-full blur-[8px] opacity-40 animate-pulse bg-rose-500"[39m
-                  [36m/>[39m
-                  [36m<div[39m
-                    [33maria-hidden[39m=[32m"true"[39m
-                    [33mclass[39m=[32m"relative w-5 h-5 sm:w-6 sm:h-6 rounded-full border-2 border-slate-950/50 bg-rose-500"[39m
-                  [36m/>[39m
-                [36m</div>[39m
               [36m</div>[39m
-              [36m<div[39m
-                [33maria-label[39m=[32m"Estado de captura de indicadores"[39m
-                [33mclass[39m=[32m"flex items-center gap-3 border border-white/5 bg-slate-900/50 px-4 py-1.5 rounded-xl shadow-lg"[39m
-                [33mrole[39m=[32m"group"[39m
+              [36m<button[39m
+                [33mclass[39m=[32m"w-10 h-10 flex-shrink-0 flex items-center justify-center bg-rose-500/10 hover:bg-rose-500 text-rose-500 hover:text-white rounded-xl transition-all border border-rose-500/20 active:scale-90"[39m
+                [33mtitle[39m=[32m"Cerrar"[39m
               [36m>[39m
-                [36m<div[39m
-                  [33mclass[39m=[32m"flex flex-col items-end"[39m
+                [36m<svg[39m
+                  [33mclass[39m=[32m"lucide lucide-x w-5 h-5"[39m
+                  [33mfill[39m=[32m"none"[39m
+                  [33mheight[39m=[32m"24"[39m
+                  [33mstroke[39m=[32m"currentColor"[39m
+                  [33mstroke-linecap[39m=[32m"round"[39m
+                  [33mstroke-linejoin[39m=[32m"round"[39m
+                  [33mstroke-width[39m=[32m"2"[39m
+                  [33mviewBox[39m=[32m"0 0 24 24"[39m
+                  [33mwidth[39m=[32m"24"[39m
+                  [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
                 [36m>[39m
-                  [36m<span[39m
-                    [33mclass[39m=[32m"text-[8px] sm:text-[9px] font-black text-slate-500 uppercase tracking-widest leading-none mb-1"[39m
-                  [36m>[39m
-                    [0mCaptura[0m
-                  [36m</span>[39m
-                  [36m<div[39m
-                    [33mclass[39m=[32m"flex items-center gap-2"[39m
-                  [36m>[39m
-                    [36m<span[39m
-                      [33mclass[39m=[32m"text-base sm:text-lg font-black tracking-tight text-emerald-400"[39m
-                    [36m>[39m
-                      [0m100[0m
-                      [0m%[0m
-                    [36m</span>[39m
-                    [36m<div[39m
-                      [33maria-valuemax[39m=[32m"100"[39m
-                      [33maria-valuemin[39m=[32m"0"[39m
-                      [33maria-valuenow[39m=[32m"100"[39m
-                      [33mclass[39m=[32m"h-1 w-8 sm:h-1.5 sm:w-12 bg-slate-800 rounded-full overflow-hidden"[39m
-                      [33mrole[39m=[32m"progressbar"[39m
-                    [36m>[39m
-                      [36m<div[39m
-                        [33mclass[39m=[32m"h-full transition-all duration-1000 bg-emerald-500"[39m
-                        [33mstyle[39m=[32m"width: 100%;"[39m
-                      [36m/>[39m
-                    [36m</div>[39m
-                  [36m</div>[39m
-                [36m</div>[39m
-              [36m</div>[39m
-              [36m<div[39m
-                [33mclass[39m=[32m"flex flex-wrap items-center justify-center gap-2"[39m
-              [36m>[39m
-                [36m<button[39m
-                  [33maria-label[39m=[32m"Ejecutar análisis inteligente con IA del tablero"[39m
-                  [33mclass[39m=[32m"group flex items-center gap-2 bg-gradient-to-br from-indigo-500 via-purple-600 to-fuchsia-600 hover:from-indigo-400 hover:to-fuchsia-500 text-white px-3 py-2 rounded-xl text-[8px] font-black uppercase tracking-widest transition-all border border-white/20 shadow-xl shadow-purple-900/40 active:scale-95 whitespace-nowrap"[39m
-                [36m>[39m
-                  [36m<span[39m
-                    [33maria-hidden[39m=[32m"true"[39m
-                    [33mclass[39m=[32m"text-sm group-hover:rotate-12 transition-transform drop-shadow-lg"[39m
-                  [36m>[39m
-                    [0m✨[0m
-                  [36m</span>[39m
-                  [36m<span[39m
-                    [33mclass[39m=[32m"drop-shadow-md"[39m
-                  [36m>[39m
-                    [0mAudit IA[0m
-                  [36m</span>[39m
-                [36m</button>[39m
-                [36m<button[39m
-                  [33mclass[39m=[32m"flex items-center gap-2 bg-gradient-to-r from-orange-600 to-orange-500 hover:from-orange-500 hover:to-orange-400 text-white px-3 py-2 rounded-xl text-[8px] font-black uppercase tracking-widest transition-all border border-white/10 shadow-lg shadow-orange-900/40 active:scale-95"[39m
-                  [33mtitle[39m=[32m"Exportar presentación ejecutiva a PowerPoint"[39m
-                [36m>[39m
-                  [36m<span[39m
-                    [33mclass[39m=[32m"text-sm"[39m
-                  [36m>[39m
-                    [0m📊[0m
-                  [36m</span>[39m
-                  [36m<span[39m
-                    [33mclass[39m=[32m"hidden sm:inline"[39m
-                  [36m>[39m
-                    [0mExportar [0m
-                  [36m</span>[39m
-                  [0mPPTX[0m
-                [36m</button>[39m
-                [36m<button[39m
-                  [33maria-label[39m=[32m"Mostrar un decimales"[39m
-                  [33mclass[39m=[32m"flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white px-3 py-2 rounded-xl text-[8px] font-black uppercase tracking-widest transition-all border border-white/5"[39m
-                  [33mtitle[39m=[32m"Alternar decimales visibles (0, 1 o 2)"[39m
-                [36m>[39m
-                  [36m<span[39m
-                    [33maria-hidden[39m=[32m"true"[39m
-                    [33mclass[39m=[32m"text-sm"[39m
-                  [36m>[39m
-                    [0m.00[0m
-                  [36m</span>[39m
-                [36m</button>[39m
-                [36m<div[39m
-                  [33mclass[39m=[32m"flex bg-slate-900/95 p-0.5 rounded-xl border border-white/10 shadow-2xl backdrop-blur-xl"[39m
-                [36m>[39m
-                  [36m<button[39m
-                    [33mclass[39m=[32m"px-4 sm:px-6 py-2 rounded-xl text-[9px] font-extrabold uppercase tracking-widest transition-all duration-500 flex items-center gap-2 text-slate-500 hover:text-slate-300 hover:bg-white/5"[39m
-                  [36m>[39m
-                    [36m<span>[39m
-                      [0m📊[0m
-                    [36m</span>[39m
-                    [0m [0m
-                    [36m<span[39m
-                      [33mclass[39m=[32m"hidden sm:inline"[39m
-                    [36m>[39m
-                      [0mTablero[0m
-                    [36m</span>[39m
-                  [36m</button>[39m
-                  [36m<button[39m
-                    [33mclass[39m=[32m"px-4 sm:px-6 py-2 rounded-xl text-[9px] font-extrabold uppercase tracking-widest transition-all duration-500 flex items-center gap-2 bg-indigo-600 text-white shadow-[0_0_20px_rgba(79,70,229,0.5)]"[39m
-                  [36m>[39m
-                    [36m<span>[39m
-                      [0m📑[0m
-                    [36m</span>[39m
-                    [0m [0m
-                    [36m<span[39m
-                      [33mclass[39m=[32m"hidden sm:inline"[39m
-                    [36m>[39m
-                      [0mReporte[0m
-                    [36m</span>[39m
-                  [36m</button>[39m
-                [36m</div>[39m
-              [36m</div>[39m
+                  [36m<path[39m
+                    [33md[39m=[32m"M18 6 6 18"[39m
+                  [36m/>[39m
+                  [36m<path[39m
+                    [33md[39m=[32m"m6 6 12 12"[39m
+                  [36m/>[39m
+                [36m</svg>[39m
+              [36m</button>[39m
             [36m</div>[39m
           [36m</div>[39m
           [36m<div[39m
-            [33mclass[39m=[32m"py-12 px-6 rounded-3xl bg-slate-900/30 border-2 border-dashed border-slate-800 text-center flex flex-col items-center"[39m
+            [33mclass[39m=[32m"p-6 bg-slate-900/30 grid grid-cols-1 md:grid-cols-2 gap-4 border-b border-slate-800"[39m
           [36m>[39m
             [36m<div[39m
-              [33mclass[39m=[32m"w-16 h-16 bg-slate-800 rounded-full flex items-center justify-center mb-4 text-3xl"[39m
+              [33mclass[39m=[32m"relative"[39m
             [36m>[39m
-              [0m📊[0m
+              [36m<svg[39m
+                [33mclass[39m=[32m"lucide lucide-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 w-5 h-5"[39m
+                [33mfill[39m=[32m"none"[39m
+                [33mheight[39m=[32m"24"[39m
+                [33mstroke[39m=[32m"currentColor"[39m
+                [33mstroke-linecap[39m=[32m"round"[39m
+                [33mstroke-linejoin[39m=[32m"round"[39m
+                [33mstroke-width[39m=[32m"2"[39m
+                [33mviewBox[39m=[32m"0 0 24 24"[39m
+                [33mwidth[39m=[32m"24"[39m
+                [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+              [36m>[39m
+                [36m<circle[39m
+                  [33mcx[39m=[32m"11"[39m
+                  [33mcy[39m=[32m"11"[39m
+                  [33mr[39m=[32m"8"[39m
+                [36m/>[39m
+                [36m<path[39m
+                  [33md[39m=[32m"m21 21-4.3-4.3"[39m
+                [36m/>[39m
+              [36m</svg>[39m
+              [36m<input[39m
+                [33mclass[39m=[32m"w-full bg-slate-950 border border-slate-800 rounded-2xl py-3 pl-12 pr-4 text-white focus:border-indigo-500 outline-none transition-all font-medium"[39m
+                [33mplaceholder[39m=[32m"BUSCAR ELEMENTO..."[39m
+                [33mtype[39m=[32m"text"[39m
+                [33mvalue[39m=[32m""[39m
+              [36m/>[39m
             [36m</div>[39m
-            [36m<h3[39m
-              [33mclass[39m=[32m"text-xl font-bold text-white"[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"flex gap-2"[39m
             [36m>[39m
-              [0mTablero Nuevo[0m
-            [36m</h3>[39m
-            [36m<p[39m
-              [33mclass[39m=[32m"text-slate-400 max-w-md mt-2 mb-6 text-sm"[39m
-            [36m>[39m
-              [0mEste tablero está listo pero aún no tiene indicadores asignados. Usa el botón "KPIs" (Gestión de Indicadores) en el menú superior para agregar métricas.[0m
-            [36m</p>[39m
-            [36m<button[39m
-              [33mclass[39m=[32m"px-6 py-2 bg-cyan-600 hover:bg-cyan-500 text-white font-bold rounded-lg text-xs uppercase tracking-widest transition-all shadow-lg shadow-cyan-900/20"[39m
-            [36m>[39m
-              [0m+ Agregar Indicadores[0m
-            [36m</button>[39m
+              [36m<input[39m
+                [33mclass[39m=[32m"flex-1 bg-slate-950 border border-slate-800 rounded-2xl py-3 px-4 text-white focus:border-indigo-500 outline-none transition-all font-medium disabled:opacity-50"[39m
+                [33mplaceholder[39m=[32m"NOMBRE (EJ: GENERAL, SERVICIOS...)"[39m
+                [33mtype[39m=[32m"text"[39m
+                [33mvalue[39m=[32m""[39m
+              [36m/>[39m
+              [36m<button[39m
+                [33mclass[39m=[32m"bg-indigo-600 hover:bg-indigo-500 text-white px-6 rounded-2xl font-black transition-all flex items-center gap-2 active:scale-95 disabled:grayscale disabled:pointer-events-none"[39m
+              [36m>[39m
+                [36m<svg[39m
+                  [33mclass[39m=[32m"lucide lucide-plus w-5 h-5"[39m
+                  [33mfill[39m=[32m"none"[39m
+                  [33mheight[39m=[32m"24"[39m
+                  [33mstroke[39m=[32m"currentColor"[39m
+                  [33mstroke-linecap[39m=[32m"round"[39m
+                  [33mstroke-linejoin[39m=[32m"round"[39m
+                  [33mstroke-width[39m=[32m"2"[39m
+                  [33mviewBox[39m=[32m"0 0 24 24"[39m
+                  [33mwidth[39m=[32m"24"[39m
+                  [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+                [36m>[39m
+                  [36m<path[39m
+                    [33md[39m=[32m"M5 12h14"[39m
+                  [36m/>[39m
+                  [36m<path[39m
+                    [33md[39m=[32m"M12 5v14"[39m
+                  [36m/>[39m
+                [36m</svg>[39m
+                [0mAÑADIR ELEMENTO[0m
+              [36m</button>[39m
+            [36m</div>[39m
           [36m</div>[39m
           [36m<div[39m
-            [33mdata-testid[39m=[32m"report-center"[39m
+            [33mclass[39m=[32m"flex-1 overflow-y-auto p-6 space-y-3 custom-scrollbar bg-slate-950/20"[39m
           [36m>[39m
-            [0mMock Report Center[0m
+            [36m<div[39m
+              [33mclass[39m=[32m"h-40 flex flex-col items-center justify-center text-slate-600 border-2 border-dashed border-slate-800 rounded-3xl"[39m
+            [36m>[39m
+              [36m<svg[39m
+                [33mclass[39m=[32m"lucide lucide-circle-alert w-10 h-10 mb-2 opacity-20"[39m
+                [33mfill[39m=[32m"none"[39m
+                [33mheight[39m=[32m"24"[39m
+                [33mstroke[39m=[32m"currentColor"[39m
+                [33mstroke-linecap[39m=[32m"round"[39m
+                [33mstroke-linejoin[39m=[32m"round"[39m
+                [33mstroke-width[39m=[32m"2"[39m
+                [33mviewBox[39m=[32m"0 0 24 24"[39m
+                [33mwidth[39m=[32m"24"[39m
+                [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+              [36m>[39m
+                [36m<circle[39m
+                  [33mcx[39m=[32m"12"[39m
+                  [33mcy[39m=[32m"12"[39m
+                  [33mr[39m=[32m"10"[39m
+                [36m/>[39m
+                [36m<line[39m
+                  [33mx1[39m=[32m"12"[39m
+                  [33mx2[39m=[32m"12"[39m
+                  [33my1[39m=[32m"8"[39m
+                  [33my2[39m=[32m"12"[39m
+                [36m/>[39m
+                [36m<line[39m
+                  [33mx1[39m=[32m"12"[39m
+                  [33mx2[39m=[32m"12.01"[39m
+                  [33my1[39m=[32m"16"[39m
+                  [33my2[39m=[32m"16"[39m
+                [36m/>[39m
+              [36m</svg>[39m
+              [36m<p[39m
+                [33mclass[39m=[32m"font-bold uppercase tracking-widest text-sm"[39m
+              [36m>[39m
+                [0mNo hay elementos registrados[0m
+              [36m</p>[39m
+            [36m</div>[39m
+          [36m</div>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"p-6 bg-slate-900 border-t border-slate-800 flex items-center justify-between"[39m
+          [36m>[39m
+            [36m<button[39m
+              [33mclass[39m=[32m"text-slate-400 hover:text-white font-bold uppercase tracking-widest text-xs transition-colors"[39m
+            [36m>[39m
+              [0mDESCARTAR CAMBIOS[0m
+            [36m</button>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"flex gap-3"[39m
+            [36m>[39m
+              [36m<button[39m
+                [33mclass[39m=[32m"bg-emerald-600 hover:bg-emerald-500 text-white px-8 py-3 rounded-2xl font-black transition-all flex items-center gap-3 active:scale-95 disabled:grayscale disabled:pointer-events-none"[39m
+              [36m>[39m
+                [36m<svg[39m
+                  [33mclass[39m=[32m"lucide lucide-circle-check w-5 h-5"[39m
+                  [33mfill[39m=[32m"none"[39m
+                  [33mheight[39m=[32m"24"[39m
+                  [33mstroke[39m=[32m"currentColor"[39m
+                  [33mstroke-linecap[39m=[32m"round"[39m
+                  [33mstroke-linejoin[39m=[32m"round"[39m
+                  [33mstroke-width[39m=[32m"2"[39m
+                  [33mviewBox[39m=[32m"0 0 24 24"[39m
+                  [33mwidth[39m=[32m"24"[39m
+                  [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+                [36m>[39m
+                  [36m<circle[39m
+                    [33mcx[39m=[32m"12"[39m
+                    [33mcy[39m=[32m"12"[39m
+                    [33mr[39m=[32m"10"[39m
+                  [36m/>[39m
+                  [36m<path[39m
+                    [33md[39m=[32m"m9 12 2 2 4-4"[39m
+                  [36m/>[39m
+                [36m</svg>[39m
+                [0mCONFIRMAR LISTA[0m
+              [36m</button>[39m
+            [36m</div>[39m
+          [36m</div>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"text-center pb-2 bg-slate-900 border-t border-slate-800/10"[39m
+          [36m>[39m
+            [36m<span[39m
+              [33mclass[39m=[32m"text-[8px] font-mono text-slate-600 uppercase tracking-widest opacity-30"[39m
+            [36m>[39m
+              [0mENGINE: PLATINUM-ROBUST | v8.6.6 | ISOLATED-UX[0m
+            [36m</span>[39m
           [36m</div>[39m
         [36m</div>[39m
       [36m</div>[39m
     [36m</body>[39m
 
-    [0m [90m 62 |[39m         expect(screen[33m.[39mgetByTestId([32m'report-center'[39m))[33m.[39mtoBeInTheDocument()[33m;[39m
-     [90m 63 |[39m
-    [31m[1m>[22m[39m[90m 64 |[39m         [36mconst[39m dashboardTab [33m=[39m screen[33m.[39mgetByText([35m/Tablero/i[39m)[33m;[39m
-     [90m    |[39m                                     [31m[1m^[22m[39m
-     [90m 65 |[39m         fireEvent[33m.[39mclick(dashboardTab)[33m;[39m
-     [90m 66 |[39m         expect(screen[33m.[39mgetByTestId([32m'dashboard-component'[39m))[33m.[39mtoBeInTheDocument()[33m;[39m
-     [90m 67 |[39m     })[33m;[39m[0m
+    [0m [90m 60 |[39m         )[33m;[39m
+     [90m 61 |[39m
+    [31m[1m>[22m[39m[90m 62 |[39m         [36mconst[39m bulkBtn [33m=[39m screen[33m.[39mgetByText([35m/Carga Masiva/i[39m)[33m;[39m
+     [90m    |[39m                                [31m[1m^[22m[39m
+     [90m 63 |[39m         fireEvent[33m.[39mclick(bulkBtn)[33m;[39m
+     [90m 64 |[39m
+     [90m 65 |[39m         [36mconst[39m textarea [33m=[39m screen[33m.[39mgetByLabelText([35m/Lista de metas/i[39m)[33m;[39m[0m
 
       at Object.getElementError (node_modules/@testing-library/dom/dist/config.js:37:19)
-      at getElementError (node_modules/@testing-library/dom/dist/query-helpers.js:20:35)
-      at getMultipleElementsFoundError (node_modules/@testing-library/dom/dist/query-helpers.js:23:10)
-      at node_modules/@testing-library/dom/dist/query-helpers.js:55:13
+      at node_modules/@testing-library/dom/dist/query-helpers.js:76:38
+      at node_modules/@testing-library/dom/dist/query-helpers.js:52:17
       at node_modules/@testing-library/dom/dist/query-helpers.js:95:19
-      at Object.<anonymous> (components/DashboardView.test.tsx:64:37)
+      at Object.<anonymous> (components/ActivityManager.test.tsx:62:32)
 
-Test Suites: 2 failed, 7 passed, 9 total
-Tests:       3 failed, 30 passed, 33 total
+  ● ActivityManager Component › debe llamar a onSave al hacer clic en guardar ahora
+
+    TestingLibraryElementError: Unable to find an element with the text: /GUARDAR CAMBIOS/i. This could be because the text is broken up by multiple elements. In this case, you can provide a function for your text matcher to make your matcher more flexible.
+
+    Ignored nodes: comments, script, style
+    [36m<body>[39m
+      [36m<div />[39m
+      [36m<div[39m
+        [33mclass[39m=[32m"fixed inset-0 z-[50] flex items-center justify-center bg-slate-950/90 backdrop-blur-md p-4"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"bg-[#0f172a] border border-slate-800 w-full max-w-4xl max-h-[90vh] rounded-[24px] flex flex-col overflow-hidden relative"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"p-4 sm:p-6 border-b border-slate-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-gradient-to-r from-slate-900 to-slate-950"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"flex flex-col min-w-0"[39m
+            [36m>[39m
+              [36m<h2[39m
+                [33mclass[39m=[32m"text-xl sm:text-2xl font-black text-white leading-tight mb-1 flex items-center flex-wrap gap-2"[39m
+              [36m>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"truncate"[39m
+                [36m/>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"text-[9px] px-2 py-0.5 rounded-full border bg-emerald-500/10 border-emerald-500/20 text-emerald-500 font-bold uppercase tracking-widest shrink-0"[39m
+                [36m>[39m
+                  [0mOBJETIVO: [0m
+                  [0mMaximizar[0m
+                [36m</span>[39m
+              [36m</h2>[39m
+              [36m<p[39m
+                [33mclass[39m=[32m"text-slate-500 font-bold uppercase tracking-[0.2em] text-[10px] flex items-center gap-2"[39m
+              [36m>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"w-2 h-2 rounded-full bg-cyan-500 shrink-0"[39m
+                [36m/>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"truncate"[39m
+                [36m>[39m
+                  [0mGESTOR DE ELEMENTOS DETALLADO v8.6.6[0m
+                [36m</span>[39m
+              [36m</p>[39m
+            [36m</div>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-end"[39m
+            [36m>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"flex items-center gap-3 sm:gap-4 bg-slate-900/60 p-2 sm:p-3 rounded-2xl border border-white/5"[39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"text-right"[39m
+                [36m>[39m
+                  [36m<p[39m
+                    [33mclass[39m=[32m"text-[8px] sm:text-[10px] text-slate-500 font-bold uppercase tracking-widest"[39m
+                  [36m>[39m
+                    [0mIMPACTO TOTAL[0m
+                  [36m</p>[39m
+                  [36m<p[39m
+                    [33mclass[39m=[32m"text-lg sm:text-xl font-black text-white leading-none mt-1"[39m
+                  [36m>[39m
+                    [0m15[0m
+                    [0m / [0m
+                    [0m10[0m
+                  [36m</p>[39m
+                [36m</div>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-slate-800 flex items-center justify-center relative overflow-hidden ring-1 ring-white/10"[39m
+                [36m>[39m
+                  [36m<div[39m
+                    [33mclass[39m=[32m"absolute bottom-0 left-0 w-full transition-all duration-1000 bg-indigo-500"[39m
+                    [33mstyle[39m=[32m"height: 66.66666666666666%;"[39m
+                  [36m/>[39m
+                  [36m<span[39m
+                    [33mclass[39m=[32m"relative z-10 font-black text-[10px] sm:text-xs text-white drop-shadow-none"[39m
+                  [36m>[39m
+                    [0m67[0m
+                    [0m%[0m
+                  [36m</span>[39m
+                [36m</div>[39m
+              [36m</div>[39m
+              [36m<button[39m
+                [33mclass[39m=[32m"w-10 h-10 flex-shrink-0 flex items-center justify-center bg-rose-500/10 hover:bg-rose-500 text-rose-500 hover:text-white rounded-xl transition-all border border-rose-500/20 active:scale-90"[39m
+                [33mtitle[39m=[32m"Cerrar"[39m
+              [36m>[39m
+                [36m<svg[39m
+                  [33mclass[39m=[32m"lucide lucide-x w-5 h-5"[39m
+                  [33mfill[39m=[32m"none"[39m
+                  [33mheight[39m=[32m"24"[39m
+                  [33mstroke[39m=[32m"currentColor"[39m
+                  [33mstroke-linecap[39m=[32m"round"[39m
+                  [33mstroke-linejoin[39m=[32m"round"[39m
+                  [33mstroke-width[39m=[32m"2"[39m
+                  [33mviewBox[39m=[32m"0 0 24 24"[39m
+                  [33mwidth[39m=[32m"24"[39m
+                  [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+                [36m>[39m
+                  [36m<path[39m
+                    [33md[39m=[32m"M18 6 6 18"[39m
+                  [36m/>[39m
+                  [36m<path[39m
+                    [33md[39m=[32m"m6 6 12 12"[39m
+                  [36m/>[39m
+                [36m</svg>[39m
+              [36m</button>[39m
+            [36m</div>[39m
+          [36m</div>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"p-6 bg-slate-900/30 grid grid-cols-1 md:grid-cols-2 gap-4 border-b border-slate-800"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"relative"[39m
+            [36m>[39m
+              [36m<svg[39m
+                [33mclass[39m=[32m"lucide lucide-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 w-5 h-5"[39m
+                [33mfill[39m=[32m"none"[39m
+                [33mheight[39m=[32m"24"[39m
+                [33mstroke[39m=[32m"currentColor"[39m
+                [33mstroke-linecap[39m=[32m"round"[39m
+                [33mstroke-linejoin[39m=[32m"round"[39m
+                [33mstroke-width[39m=[32m"2"[39m
+                [33mviewBox[39m=[32m"0 0 24 24"[39m
+                [33mwidth[39m=[32m"24"[39m
+                [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+              [36m>[39m
+                [36m<circle[39m
+                  [33mcx[39m=[32m"11"[39m
+                  [33mcy[39m=[32m"11"[39m
+                  [33mr[39m=[32m"8"[39m
+                [36m/>[39m
+                [36m<path[39m
+                  [33md[39m=[32m"m21 21-4.3-4.3"[39m
+                [36m/>[39m
+              [36m</svg>[39m
+              [36m<input[39m
+                [33mclass[39m=[32m"w-full bg-slate-950 border border-slate-800 rounded-2xl py-3 pl-12 pr-4 text-white focus:border-indigo-500 outline-none transition-all font-medium"[39m
+                [33mplaceholder[39m=[32m"BUSCAR ELEMENTO..."[39m
+                [33mtype[39m=[32m"text"[39m
+                [33mvalue[39m=[32m""[39m
+              [36m/>[39m
+            [36m</div>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"flex gap-2"[39m
+            [36m>[39m
+              [36m<input[39m
+                [33mclass[39m=[32m"flex-1 bg-slate-950 border border-slate-800 rounded-2xl py-3 px-4 text-white focus:border-indigo-500 outline-none transition-all font-medium disabled:opacity-50"[39m
+                [33mplaceholder[39m=[32m"NOMBRE (EJ: GENERAL, SERVICIOS...)"[39m
+                [33mtype[39m=[32m"text"[39m
+                [33mvalue...
+
+    [0m [90m 84 |[39m         )[33m;[39m
+     [90m 85 |[39m
+    [31m[1m>[22m[39m[90m 86 |[39m         [36mconst[39m saveButtons [33m=[39m screen[33m.[39mgetAllByText([35m/GUARDAR CAMBIOS/i[39m)[33m;[39m
+     [90m    |[39m                                    [31m[1m^[22m[39m
+     [90m 87 |[39m         fireEvent[33m.[39mclick(saveButtons[[35m0[39m])[33m;[39m
+     [90m 88 |[39m
+     [90m 89 |[39m         expect(mockOnSave)[33m.[39mtoHaveBeenCalled()[33m;[39m[0m
+
+      at Object.getElementError (node_modules/@testing-library/dom/dist/config.js:37:19)
+      at node_modules/@testing-library/dom/dist/query-helpers.js:76:38
+      at node_modules/@testing-library/dom/dist/query-helpers.js:109:15
+      at Object.<anonymous> (components/ActivityManager.test.tsx:86:36)
+
+PASS components/DashboardView.test.tsx (10.467 s)
+
+Test Suites: 1 failed, 8 passed, 9 total
+Tests:       4 failed, 31 passed, 35 total
 Snapshots:   0 total
-Time:        9.622 s
+Time:        19.744 s
 Ran all test suites.
 ```
 

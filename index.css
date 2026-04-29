@@ -25,7 +25,7 @@ body {
     backdrop-filter: blur(12px) saturate(180%);
     -webkit-backdrop-filter: blur(12px) saturate(180%);
     border: 1px solid var(--glass-border);
-    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+    border: 1px solid var(--glass-border);
 }
 
 .glass-card {
@@ -39,7 +39,8 @@ body {
     background: rgba(30, 41, 59, 0.6);
     border-color: rgba(34, 211, 238, 0.3);
     transform: translateY(-4px);
-    box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.5);
+    border-color: rgba(34, 211, 238, 0.3);
+    transform: translateY(-4px);
 }
 
 /* Animations */
@@ -96,7 +97,7 @@ body {
 
 /* Typography Enhancements */
 .text-neon {
-    text-shadow: 0 0 10px rgba(34, 211, 238, 0.5);
+    color: var(--neon-cyan);
 }
 
 .font-black {

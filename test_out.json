@@ -1,0 +1,131 @@
+{
+  "config": {
+    "regions": {
+      "list": [
+        {
+          "editor": "",
+          "id": "R1",
+          "name": "CENTRO"
+        },
+        {
+          "id": "R2",
+          "editor": "JAVIER GRIFALDO",
+          "name": "CENTRO NORTE"
+        },
+        {
+          "editor": "ISRAEL GUIDO",
+          "name": "SUR",
+          "id": "R3"
+        },
+        {
+          "id": "R4",
+          "editor": "GERARDO GUTIERREZ",
+          "name": "FRONTERA NORTE"
+        },
+        {
+          "id": "R5",
+          "name": "TSP+",
+          "editor": "COORDINACIÓN TSP+"
+        }
+      ]
+    }
+  },
+  "stx_config": {
+    "metrics": {
+      "metas": {
+        "altas": 200,
+        "edoFza": 5500,
+        "porcentaje": 5,
+        "vacantes": 300,
+        "bajas": 100
+      },
+      "thresholds": {
+        "green": 90,
+        "yellow": 80
+      },
+      "globalPeriod": {
+        "syncEnabled": false,
+        "week": 9,
+        "year": 2026
+      }
+    },
+    "regions": {
+      "list": [
+        {
+          "name": "CENTRO",
+          "id": "R1",
+          "editor": ""
+        },
+        {
+          "id": "R2",
+          "name": "CENTRO NORTE",
+          "editor": "JAVIER GRIFALDO"
+        },
+        {
+          "editor": "ISRAEL GUIDO",
+          "id": "R3",
+          "name": "SUR"
+        },
+        {
+          "name": "FRONTERA NORTE",
+          "id": "R4",
+          "editor": "GERARDO GUTIERREZ"
+        },
+        {
+          "editor": "COORDINACIÓN TSP+",
+          "name": "TSP+",
+          "id": "R5"
+        }
+      ]
+    }
+  },
+  "vac_config": {
+    "metrics": {
+      "metas": {
+        "altas": 200,
+        "edoFza": 5500,
+        "porcentaje": 5,
+        "vacantes": 300,
+        "bajas": 100
+      },
+      "thresholds": {
+        "green": 90,
+        "yellow": 80
+      },
+      "globalPeriod": {
+        "syncEnabled": false,
+        "week": 9,
+        "year": 2026
+      }
+    },
+    "regions": {
+      "list": [
+        {
+          "name": "CENTRO",
+          "id": "R1",
+          "editor": ""
+        },
+        {
+          "id": "R2",
+          "name": "CENTRO NORTE",
+          "editor": "JAVIER GRIFALDO"
+        },
+        {
+          "editor": "ISRAEL GUIDO",
+          "id": "R3",
+          "name": "SUR"
+        },
+        {
+          "name": "FRONTERA NORTE",
+          "id": "R4",
+          "editor": "GERARDO GUTIERREZ"
+        },
+        {
+          "editor": "COORDINACIÓN TSP+",
+          "name": "TSP+",
+          "id": "R5"
+        }
+      ]
+    }
+  }
+}

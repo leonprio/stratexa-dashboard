@@ -1,0 +1,39 @@
+
+> stratexa-iapriori@7.8.29 test
+> jest utils/dashboardLogic.test.ts
+
+  console.log
+    DEBUG: groups for Ops Director [ 'DIRECTOR OPERACIONES' ]
+
+      at Object.<anonymous> (utils/dashboardLogic.test.ts:70:17)
+
+FAIL utils/dashboardLogic.test.ts
+  calculateOfficialGroups
+    √ debe de-duplicar grupos por normalización (9 ms)
+    √ debe de-duplicar "Operaciones" vs "Dirección de Operaciones" (2 ms)
+    × debe manejar visibilidad de "Dirección Operaciones" para Director de Ops (49 ms)
+    √ debe mostrar todos los grupos para Admin Global (1 ms)
+    √ no debe mostrar grupos sin acceso para directores normales (1 ms)
+
+  ● calculateOfficialGroups › debe manejar visibilidad de "Dirección Operaciones" para Director de Ops
+
+    expect(received).toContain(expected) // indexOf
+
+    Expected value: "DIRECCIÓN OPERACIONES"
+    Received array: ["DIRECTOR OPERACIONES"]
+
+    [0m [90m 72 |[39m         [90m// Debe ver Operaciones porque su título lo dice, aunque no tenga acceso explícito al dashboard 99?[39m
+     [90m 73 |[39m         [90m// Actualmente App.tsx dice: userIsOps && !groups.some(...) -> push("DIRECCIÓN OPERACIONES")[39m
+    [31m[1m>[22m[39m[90m 74 |[39m         expect(groups)[33m.[39mtoContain([32m'DIRECCIÓN OPERACIONES'[39m)[33m;[39m
+     [90m    |[39m                        [31m[1m^[22m[39m
+     [90m 75 |[39m     })[33m;[39m
+     [90m 76 |[39m
+     [90m 77 |[39m     test([32m'debe mostrar todos los grupos para Admin Global'[39m[33m,[39m () [33m=>[39m {[0m
+
+      at Object.<anonymous> (utils/dashboardLogic.test.ts:74:24)
+
+Test Suites: 1 failed, 1 total
+Tests:       1 failed, 4 passed, 5 total
+Snapshots:   0 total
+Time:        3.338 s
+Ran all test suites matching /utils\\dashboardLogic.test.ts/i.

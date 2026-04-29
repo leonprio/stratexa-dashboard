@@ -17,7 +17,15 @@ interface ReportCenterProps {
     user: User;
 }
 
-export const ReportCenter: React.FC<ReportCenterProps> = ({ items, thresholds, year, allDashboards = [], currentDashboardId, user, onEditItem, onClose }) => {
+/**
+ * Componente ReportCenter
+ * 
+ * Central de análisis e informes de cumplimiento de indicadores.
+ * Proporciona un desglose de tendencias, semaforización y exportación PPTX a nivel de UNE o Global.
+ * 
+ * @component
+ */
+export const ReportCenter: React.FC<ReportCenterProps> = React.memo(({ items, thresholds, year, allDashboards = [], currentDashboardId, user, onEditItem, onClose }) => {
     const isGlobalMode = currentDashboardId === -1 || String(currentDashboardId).startsWith('agg-global');
     const activeDashboard = allDashboards.find(d => d.id === currentDashboardId);
     const activeGroupName = isGlobalMode ? "ESTADO GLOBAL" : (activeDashboard?.group || "GENERAL");
@@ -551,4 +559,4 @@ export const ReportCenter: React.FC<ReportCenterProps> = ({ items, thresholds, y
             )}
         </div>
     );
-};
+});

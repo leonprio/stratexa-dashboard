@@ -2,16 +2,27 @@ import React, { useMemo, useState, useEffect, useCallback, useRef } from "react"
 import type { DashboardItem } from "../types";
 import { getYearWeekMapping, getWeekNumber } from "../utils/weeklyUtils";
 import { ActivityManager } from "./ActivityManager";
+import { formatNumberWithCommas, parseFormattedNumber } from "../utils/formatters";
 
 interface DataEditorProps {
   item: DashboardItem;
-  onSave: (data: Partial<DashboardItem>) => void;
+  onSave: (data: Partial<DashboardItem>, autoSave?: boolean) => void;
   onCancel: () => void;
   canEdit: boolean;
   year?: number;
 }
 
-export const DataEditor: React.FC<DataEditorProps> = ({ item, onSave, onCancel, canEdit, year = 2025 }) => {
+/**
+ * Componente DataEditor
+ * 
+ * Permite la edición detallada de un indicador (DashboardItem), incluyendo metas,
+ * progresos y notas tanto en frecuencia mensual como semanal.
+ * Soporta el "Modo Actividades" para el desglose de metas complejas.
+ * 
+ * @param {DataEditorProps} props - Propiedades del componente.
+ * @returns {JSX.Element} El editor de datos renderizado.
+ */
+export const DataEditor: React.FC<DataEditorProps> = React.memo(({ item, onSave, onCancel, canEdit, year = 2025 }) => {
   const [monthlyGoals, setMonthlyGoals] = useState<(number | null)[]>(
     Array.isArray(item.monthlyGoals) ? [...item.monthlyGoals] : Array(12).fill(0)
   );
@@ -30,6 +41,7 @@ export const DataEditor: React.FC<DataEditorProps> = ({ item, onSave, onCancel, 
   const [weeklyNotes, setWeeklyNotes] = useState<string[]>(
     Array.isArray(item.weeklyNotes) ? [...item.weeklyNotes] : Array(53).fill("")
   );
+  const [focusedInputId, setFocusedInputId] = useState<string | null>(null);
 
   const isWeekly = item.frequency === 'weekly';
 
@@ -45,19 +57,19 @@ export const DataEditor: React.FC<DataEditorProps> = ({ item, onSave, onCancel, 
   }, [isWeekly, year, item.weekStart]);
 
   const setGoalAt = (idx: number, val: string) => {
-    const n = Number(val);
+    const n = parseFormattedNumber(val) ?? 0;
     setMonthlyGoals((prev) => {
       const copy = [...prev];
-      copy[idx] = isNaN(n) ? 0 : n;
+      copy[idx] = n;
       return copy;
     });
   };
 
   const setProgressAt = (idx: number, val: string) => {
-    const n = Number(val);
+    const n = parseFormattedNumber(val) ?? 0;
     setMonthlyProgress((prev) => {
       const copy = [...prev];
-      copy[idx] = isNaN(n) ? 0 : n;
+      copy[idx] = n;
       return copy;
     });
   };
@@ -92,7 +104,8 @@ export const DataEditor: React.FC<DataEditorProps> = ({ item, onSave, onCancel, 
         weeklyProgress,
         monthlyNotes,
         weeklyNotes,
-        activityConfig
+        activityConfig,
+        isActivityMode
       });
     } finally {
       setIsSaving(false);
@@ -100,7 +113,7 @@ export const DataEditor: React.FC<DataEditorProps> = ({ item, onSave, onCancel, 
   };
 
   const setWeeklyVal = (field: 'goals' | 'progress', idx: number, val: string) => {
-    const n = val === "" ? null : Number(val);
+    const n = parseFormattedNumber(val);
     const setter = field === 'goals' ? setWeeklyGoals : setWeeklyProgress;
     setter(prev => {
       const copy = [...prev];
@@ -188,12 +201,14 @@ export const DataEditor: React.FC<DataEditorProps> = ({ item, onSave, onCancel, 
   const [activityConfig, setActivityConfig] = useState<DashboardItem['activityConfig']>(
     item.activityConfig || {}
   );
+  const [isActivityMode, setIsActivityMode] = useState<boolean>(item.isActivityMode || false);
   const [activeActivityPeriod, setActiveActivityPeriod] = useState<number | null>(null);
 
-  const calculateFromActivities = useCallback((periodIdx: number) => {
-    const activities = activityConfig[periodIdx] || [];
-    const totalGoal = activities.reduce((sum, a) => sum + (Number(a.targetCount) || 0), 0);
-    const totalReal = activities.reduce((sum, a) => sum + (Number(a.completedCount) || 0), 0);
+  const calculateFromActivities = useCallback((periodIdx: number, newActivities?: any[]) => {
+    const raw = newActivities || activityConfig[periodIdx];
+    const activities = Array.isArray(raw) ? raw : (raw ? Object.values(raw) : []);
+    const totalGoal = activities.reduce((sum: number, a: any) => sum + (Number(a.targetCount) || 0), 0) as number;
+    const totalReal = activities.reduce((sum: number, a: any) => sum + (Number(a.completedCount) || 0), 0) as number;
 
     if (isWeekly) {
       setWeeklyGoals(prev => { const c = [...prev]; c[periodIdx] = totalGoal; return c; });
@@ -203,14 +218,6 @@ export const DataEditor: React.FC<DataEditorProps> = ({ item, onSave, onCancel, 
       setMonthlyProgress(prev => { const c = [...prev]; c[periodIdx] = totalReal; return c; });
     }
   }, [activityConfig, isWeekly]);
-
-  // handleUpdateActivity was unused
-
-  useEffect(() => {
-    if (activeActivityPeriod !== null) {
-      calculateFromActivities(activeActivityPeriod);
-    }
-  }, [activityConfig, activeActivityPeriod, calculateFromActivities]);
 
   // handleCopyActivitiesToNext was unused
 
@@ -228,6 +235,21 @@ export const DataEditor: React.FC<DataEditorProps> = ({ item, onSave, onCancel, 
     };
   }, [year, item.weekStart]);
 
+    // 🚀 AUTO-SCROLL v8.7.2: Navegar automáticamente al periodo actual
+    useEffect(() => {
+    const targetId = isWeekly ? `week-card-${currentPeriod.weekIdx}` : `month-card-${currentPeriod.monthIdx}`;
+    const timer = setTimeout(() => {
+      const el = document.getElementById(targetId);
+      if (el) {
+        console.log(`🎯 [SCROLL] Navegando a ${targetId}`);
+        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      } else {
+        console.warn(`⚠️ [SCROLL] No se encontró el elemento ${targetId}`);
+      }
+    }, 600); // Delay robusto
+    return () => clearTimeout(timer);
+  }, [currentPeriod.isCurrentYear, currentPeriod.weekIdx, currentPeriod.monthIdx, isWeekly]);
+
   return (
     <div className="bg-slate-900/40 border border-white/10 rounded-xl p-4">
       <div className="flex items-center justify-between mb-3">
@@ -236,6 +258,20 @@ export const DataEditor: React.FC<DataEditorProps> = ({ item, onSave, onCancel, 
           <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest bg-white/5 px-2 py-0.5 rounded border border-white/5">
             Año {year}
           </span>
+          <button 
+            onClick={() => {
+              const newVal = !isActivityMode;
+              setIsActivityMode(newVal);
+              // 🛡️ nuclear save: incluir config actual para que App.tsx no la borre
+              onSave({ 
+                isActivityMode: newVal,
+                activityConfig: activityConfig
+              }, true);
+            }}
+            className={`ml-2 px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest transition-all ${isActivityMode ? 'bg-cyan-500 text-slate-950 ring-4 ring-cyan-500/20 shadow-lg shadow-cyan-500/40' : 'bg-slate-800 text-slate-400 border border-white/5 hover:bg-slate-700 hover:text-white'}`}
+          >
+            MODO: {isActivityMode ? 'ACTIVIDADES' : 'MANUAL'}
+          </button>
         </div>
         <div className="flex gap-2">
           <button
@@ -248,10 +284,12 @@ export const DataEditor: React.FC<DataEditorProps> = ({ item, onSave, onCancel, 
           <button
             onClick={handleSave}
             disabled={!canEdit || isSaving}
-            className="px-3 py-2 rounded-lg bg-cyan-600 hover:bg-cyan-500 font-extrabold disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+            className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 uppercase tracking-widest text-[11px] transition-all hover:scale-105 active:scale-95"
+            aria-label="Confirmar y subir datos permanentemente"
           >
-            {isSaving && <span className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
-            {isSaving ? "Guardando..." : "Guardar"}
+            {isSaving && <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" aria-hidden="true" />}
+            <span aria-hidden="true">💾</span>
+            {isSaving ? "GUARDANDO..." : "GUARDAR CAMBIOS"}
           </button>
         </div>
       </div>
@@ -260,13 +298,16 @@ export const DataEditor: React.FC<DataEditorProps> = ({ item, onSave, onCancel, 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           {months.map((m, idx) => {
             const isToday = currentPeriod.isCurrentYear && currentPeriod.monthIdx === idx;
-            const activityCount = activityConfig[idx]?.length || 0;
+            const rawActs = activityConfig[idx];
+            const activityCount = rawActs ? (Array.isArray(rawActs) ? rawActs.length : Object.values(rawActs).length) : 0;
 
             return (
               <div
                 key={m}
-                className={`glass-card rounded-2xl p-4 border relative overflow-hidden group/m transition-all duration-500 flex flex-col ${isToday
-                  ? "border-cyan-500/50 bg-cyan-500/5 shadow-[0_0_20px_rgba(34,211,238,0.1)] ring-1 ring-cyan-500/20"
+                id={`month-card-${idx}`}
+                className={`relative group/m p-5 rounded-2xl border transition-all duration-500 ${
+                  isToday 
+                  ? "border-cyan-500/50 bg-cyan-500/5 ring-1 ring-cyan-500/20"
                   : "border-white/5 bg-slate-900/40"
                   }`}
               >
@@ -275,35 +316,45 @@ export const DataEditor: React.FC<DataEditorProps> = ({ item, onSave, onCancel, 
                     Mes Actual
                   </div>
                 )}
-                <div className="flex items-center justify-between mb-4">
-                  <span className={`text-sm font-black uppercase tracking-widest ${isToday ? 'text-cyan-400' : 'text-white'}`}>{m}</span>
-                  <span className={`w-1.5 h-1.5 rounded-full ${isToday ? 'bg-cyan-400 shadow-[0_0_8px_#22d3ee]' : 'bg-slate-700 group-hover/m:bg-cyan-500'} transition-colors`} />
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className={`text-lg font-black uppercase tracking-tighter ${isToday ? 'text-white' : 'text-slate-400'}`}>
+                    {m}
+                  </h3>
+                  <div className="w-8 h-8 rounded-lg bg-slate-950/50 flex items-center justify-center border border-white/5">
+                    <span className="text-[10px] font-bold text-slate-500">{(idx + 1).toString().padStart(2, '0')}</span>
+                  </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-1.5">
-                    <label className="block text-[8px] font-black text-cyan-500/70 uppercase tracking-widest">Meta</label>
+                <div className="space-y-3 mb-4">
+                  <div className="space-y-1">
+                    <label className="text-[8px] font-black text-cyan-500/60 uppercase tracking-widest ml-1">Meta Mensual</label>
                     <input
-                      type="number"
-                      value={monthlyGoals[idx] ?? 0}
+                      type="text"
+                      inputMode="decimal"
+                      value={focusedInputId === `m-goal-${idx}` ? (monthlyGoals[idx] ?? '').toString() : formatNumberWithCommas(monthlyGoals[idx])}
+                      onFocus={() => setFocusedInputId(`m-goal-${idx}`)}
+                      onBlur={() => setFocusedInputId(null)}
                       onChange={(e) => setGoalAt(idx, e.target.value)}
-                      className={`w-full bg-slate-950/50 border border-white/5 rounded-xl p-2 text-white text-xs font-black focus:ring-1 focus:ring-cyan-500/50 outline-none transition-all tabular-nums ${isToday && 'ring-1 ring-cyan-500/20'}`}
-                      disabled={!canEdit || item.isActivityMode}
+                      className="w-full bg-slate-950/50 border border-white/5 rounded-xl p-2.5 text-white text-sm font-black focus:ring-1 focus:ring-cyan-500 transition-all text-center placeholder:text-slate-800 tabular-nums"
+                      disabled={!canEdit || isActivityMode}
                     />
                   </div>
-                  <div className="space-y-1.5">
-                    <label className="block text-[8px] font-black text-emerald-500/70 uppercase tracking-widest">Real</label>
+                  <div className="space-y-1">
+                    <label className="text-[8px] font-black text-emerald-500/60 uppercase tracking-widest ml-1">Avance Real</label>
                     <input
-                      type="number"
-                      value={monthlyProgress[idx] ?? 0}
+                      type="text"
+                      inputMode="decimal"
+                      value={focusedInputId === `m-actual-${idx}` ? (monthlyProgress[idx] ?? '').toString() : formatNumberWithCommas(monthlyProgress[idx])}
+                      onFocus={() => setFocusedInputId(`m-actual-${idx}`)}
+                      onBlur={() => setFocusedInputId(null)}
                       onChange={(e) => setProgressAt(idx, e.target.value)}
-                      className={`w-full bg-slate-950/50 border border-white/5 rounded-xl p-2 text-white text-xs font-black focus:ring-1 focus:ring-emerald-500/50 outline-none transition-all tabular-nums ${isToday && 'ring-1 ring-emerald-500/20'}`}
-                      disabled={!canEdit || item.isActivityMode}
+                      className="w-full bg-slate-950/50 border border-white/5 rounded-xl p-2.5 text-white text-sm font-black focus:ring-1 focus:ring-emerald-500 transition-all text-center placeholder:text-slate-800 tabular-nums"
+                      disabled={!canEdit || isActivityMode}
                     />
                   </div>
                 </div>
 
-                {item.isActivityMode && (
+                {isActivityMode && (
                   <button
                     onClick={() => setActiveActivityPeriod(idx)}
                     className={`mt-4 w-full py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest border transition-all ${activityCount > 0 ? 'bg-indigo-600/20 border-indigo-500/40 text-indigo-400 hover:bg-indigo-600/40' : 'bg-slate-800 border-white/10 text-slate-500 hover:text-white'}`}
@@ -338,13 +389,15 @@ export const DataEditor: React.FC<DataEditorProps> = ({ item, onSave, onCancel, 
               "";
 
             const isToday = currentPeriod.isCurrentYear && currentPeriod.weekIdx === i;
-            const activityCount = activityConfig[i]?.length || 0;
+            const rawActs = activityConfig[i];
+            const activityCount = rawActs ? (Array.isArray(rawActs) ? rawActs.length : Object.values(rawActs).length) : 0;
 
             return (
               <div
                 key={i}
+                id={`week-card-${i}`}
                 className={`glass-card rounded-xl p-3 border relative overflow-hidden group/w transition-all duration-500 flex flex-col ${isToday
-                  ? "border-indigo-500/50 bg-indigo-500/5 shadow-[0_0_20px_rgba(99,102,241,0.1)] ring-1 ring-indigo-500/20"
+                  ? "border-indigo-500/50 bg-indigo-500/5 ring-1 ring-indigo-500/20"
                   : "border-white/5 bg-slate-900/40"
                   }`}
               >
@@ -359,33 +412,50 @@ export const DataEditor: React.FC<DataEditorProps> = ({ item, onSave, onCancel, 
                 </div>
                 <div className="grid grid-cols-2 gap-2 mb-3">
                   <div className="space-y-1">
-                    <label className="block text-[7px] font-black text-cyan-500/40 uppercase">Meta</label>
+                    <label htmlFor={`w-goal-${i}`} className="block text-[7px] font-black text-cyan-500/40 uppercase">Meta</label>
                     <input
-                      type="number"
-                      placeholder="M"
-                      value={weeklyGoals[i] ?? ""}
-                      onChange={(e) => setWeeklyVal('goals', i, e.target.value)}
+                      type="text"
+                      inputMode="decimal"
+                      placeholder="0"
+                      value={focusedInputId === `w-goal-${i}` ? (weeklyGoals[i] ?? '').toString() : formatNumberWithCommas(weeklyGoals[i])}
+                      onFocus={() => setFocusedInputId(`w-goal-${i}`)}
+                      onBlur={() => setFocusedInputId(null)}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setWeeklyVal('goals', i, val);
+                      }}
+                      id={`w-goal-${i}`}
                       className={`w-full bg-slate-950/50 border border-white/5 rounded-lg p-1.5 text-white text-[10px] font-black text-center focus:ring-1 focus:ring-cyan-500/50 outline-none transition-all tabular-nums ${isToday && 'ring-1 ring-indigo-500/20'}`}
-                      disabled={!canEdit || item.isActivityMode}
+                      disabled={!canEdit || isActivityMode}
+                      aria-label={`Meta para la semana ${i + 1}`}
                     />
                   </div>
                   <div className="space-y-1">
-                    <label className="block text-[7px] font-black text-emerald-500/40 uppercase">Real</label>
+                    <label htmlFor={`w-actual-${i}`} className="block text-[7px] font-black text-emerald-500/40 uppercase">Real</label>
                     <input
-                      type="number"
-                      placeholder="R"
-                      value={weeklyProgress[i] ?? ""}
-                      onChange={(e) => setWeeklyVal('progress', i, e.target.value)}
+                      type="text"
+                      inputMode="decimal"
+                      placeholder="0"
+                      value={focusedInputId === `w-actual-${i}` ? (weeklyProgress[i] ?? '').toString() : formatNumberWithCommas(weeklyProgress[i])}
+                      onFocus={() => setFocusedInputId(`w-actual-${i}`)}
+                      onBlur={() => setFocusedInputId(null)}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setWeeklyVal('progress', i, val);
+                      }}
+                      id={`w-actual-${i}`}
                       className={`w-full bg-slate-950/50 border border-white/5 rounded-lg p-1.5 text-white text-[10px] font-black text-center focus:ring-1 focus:ring-emerald-500/50 outline-none transition-all tabular-nums ${isToday && 'ring-1 ring-emerald-500/20'}`}
-                      disabled={!canEdit || item.isActivityMode}
+                      disabled={!canEdit || isActivityMode}
+                      aria-label={`Realizado para la semana ${i + 1}`}
                     />
                   </div>
                 </div>
 
-                {item.isActivityMode && (
+                {isActivityMode && (
                   <button
                     onClick={() => setActiveActivityPeriod(i)}
                     className={`mb-3 w-full py-1.5 rounded-lg text-[7px] font-black uppercase tracking-widest border transition-all ${activityCount > 0 ? 'bg-indigo-600/20 border-indigo-500/40 text-indigo-400 hover:bg-indigo-600' : 'bg-slate-800 border-white/10 text-slate-500 hover:text-white'}`}
+                    aria-label={`Configurar actividades para la semana ${i + 1}`}
                   >
                     📝 {activityCount > 0 ? `Detalle (${activityCount})` : 'Configurar'}
                   </button>
@@ -398,6 +468,7 @@ export const DataEditor: React.FC<DataEditorProps> = ({ item, onSave, onCancel, 
                     className="w-full bg-slate-950/30 border border-white/5 rounded-lg p-1.5 text-slate-400 text-[10px] min-h-[40px] focus:ring-1 focus:ring-slate-500 outline-none transition-all resize-none italic"
                     placeholder="Análisis semanal..."
                     disabled={!canEdit}
+                    aria-label={`Análisis o nota para la semana ${i + 1}`}
                   />
                 </div>
               </div>
@@ -406,30 +477,73 @@ export const DataEditor: React.FC<DataEditorProps> = ({ item, onSave, onCancel, 
         </div>
       )}
 
-      {/* Activity Modal Rendering */}
       {activeActivityPeriod !== null && (
         <ActivityManager
-          periodLabel={!isWeekly ? months[activeActivityPeriod] : `Semana ${activeActivityPeriod + 1}`}
-          initialActivities={activityConfig[activeActivityPeriod] || []}
+          title={item.indicator}
+          subtitle={!isWeekly ? months[activeActivityPeriod] : `Semana ${activeActivityPeriod + 1}`}
+          initialActivities={Array.isArray(activityConfig[activeActivityPeriod]) ? activityConfig[activeActivityPeriod] as any : (activityConfig[activeActivityPeriod] ? Object.values(activityConfig[activeActivityPeriod] || {}) : [])}
           canEdit={canEdit}
           onClose={() => setActiveActivityPeriod(null)}
           onSave={(updatedList) => {
-            setActivityConfig(prev => ({ ...prev, [activeActivityPeriod]: updatedList }));
-            // El useEffect se encargará de recalcular meta/real
-          }}
-          onCopyToAll={canEdit ? () => {
-            const source = activityConfig[activeActivityPeriod] || [];
-            if (source.length === 0) return;
-            if (!confirm(`¿Copiar la lista de ${source.length} metas a TODO EL AÑO?\n\nNota: Solo se copiará la estructura, los avances de cada mes se mantendrán en cero.`)) return;
+            // 🛡️ FIX v8.7.2 (CRITICAL): Sincronización completa para evitar pérdida de datos
+            const currentPeriodToUpdate = activeActivityPeriod;
+            const newConfig = { ...activityConfig, [currentPeriodToUpdate]: updatedList };
+            setActivityConfig(newConfig);
 
-            const newConfig: any = { ...activityConfig };
+            const activities: any[] = Array.isArray(updatedList) ? updatedList : (updatedList ? Object.values(updatedList) : []);
+            const totalGoal: number = activities.reduce((sum: number, a: any) => sum + (Number(a.targetCount) || 0), 0 as number);
+            const totalReal: number = activities.reduce((sum: number, a: any) => sum + (Number(a.completedCount) || 0), 0 as number);
+
+            let finalWeeklyGoals = [...weeklyGoals];
+            let finalWeeklyProgress = [...weeklyProgress];
+            let finalMonthlyGoals = [...monthlyGoals];
+            let finalMonthlyProgress = [...monthlyProgress];
+
+            if (isWeekly) {
+              finalWeeklyGoals[currentPeriodToUpdate] = totalGoal;
+              finalWeeklyProgress[currentPeriodToUpdate] = totalReal;
+              setWeeklyGoals(finalWeeklyGoals);
+              setWeeklyProgress(finalWeeklyProgress);
+            } else {
+              finalMonthlyGoals[currentPeriodToUpdate] = totalGoal;
+              finalMonthlyProgress[currentPeriodToUpdate] = totalReal;
+              setMonthlyGoals(finalMonthlyGoals);
+              setMonthlyProgress(finalMonthlyProgress);
+            }
+
+            setActiveActivityPeriod(null);
+            
+            // 🚀 AUTO-SAVE NUCLEAR: Persistir TODO en Firebase inmediatamente
+            onSave({ 
+              activityConfig: newConfig,
+              isActivityMode: true,
+              weeklyGoals: isWeekly ? finalWeeklyGoals : weeklyGoals,
+              weeklyProgress: isWeekly ? finalWeeklyProgress : weeklyProgress,
+              monthlyGoals: isWeekly ? monthlyGoals : finalMonthlyGoals,
+              monthlyProgress: isWeekly ? monthlyProgress : finalMonthlyProgress,
+              monthlyNotes,
+              weeklyNotes
+            }, true);
+          }}
+          onCopyToAll={canEdit ? (sourceActivities) => {
+            if (!sourceActivities || sourceActivities.length === 0) return;
+            if (!confirm(`¿Copiar esta estructura a TODO EL AÑO?\n(Los avances se reiniciarán a 0 en los otros periodos)`)) return;
+
+            const newTotalConfig: any = { ...activityConfig };
             const limit = isWeekly ? 53 : 12;
             for (let i = 0; i < limit; i++) {
-              newConfig[i] = source.map(a => ({ ...a, completedCount: 0 }));
+              newTotalConfig[i] = sourceActivities.map((a: any) => ({ ...a, completedCount: 0 }));
             }
-            setActivityConfig(newConfig);
-            alert("Estructura copiada exitosamente a todos los periodos.");
+            setActivityConfig(newTotalConfig);
+            
+            onSave({ 
+              activityConfig: newTotalConfig,
+              isActivityMode: true 
+            }, true);
+
+            alert("Estructura copiada exitosamente.");
           } : undefined}
+          goalType={item.goalType}
         />
       )}
 
@@ -440,4 +554,4 @@ export const DataEditor: React.FC<DataEditorProps> = ({ item, onSave, onCancel, 
       )}
     </div>
   );
-};
+});

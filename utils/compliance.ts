@@ -9,7 +9,7 @@ export type ComplianceStatus = "OnTrack" | "AtRisk" | "OffTrack" | "Neutral" | "
 export const CURRENT_MONTH_INDEX = new Date().getMonth();
 
 /**
- * 🛡️ HELPER DE ACUMULADOS v7.6.0 (ULTRA-AGGRESSIVE)
+ * 🛡️ HELPER DE ACUMULADOS v9.1.0-PRO-FINAL-SHIELDED (ULTRA-AGGRESSIVE)
  * Determina si un indicador debe sumarse (acumulativo) basándose en su nombre o tipo explícito.
  */
 export const isAccumulativeIndicator = (indicatorName: string | undefined, type?: string): boolean => {
@@ -22,26 +22,69 @@ export const isAccumulativeIndicator = (indicatorName: string | undefined, type?
     .replace(/[\u0300-\u036f]/g, "")
     .replace(/[^A-Z0-9]/g, "");
 
-  // Lista de palabras clave que SIEMPRE se suman (conteo de personas, ventas, etc.)
-  const keywords = ["BAJA", "ALTA", "VACANTE", "VENTA", "CONTRATACION", "INGRESO"];
+  // Lista de palabras clave que SIEMPRE se suman (conteo de personas, ventas, montos, etc.)
+  const keywords = [
+    "BAJA", "ALTA", "VACANTE", "VENTA", "CONTRATACION", "INGRESO",
+    "NOTA", "SERVICIO", "SUPERVISION", "PREMIO", "INCIDENCIA", 
+    "DISMINUCION", "RECUPERACION", "FALTA", "ACCIDENTE", "RETIRO", "QUEJA",
+    "TURNO", "PERSONA", "HORA", "PESO", "MONTO", "CANTIDAD", "TOTAL", "UNIDAD",
+    "MONTO", "PESO", "FACTURA", "GASTO", "COSTO", "UTILIDAD", "PUNTOS", "CREDITO",
+    "DINERO", "EFECTIVO", "COBRO", "CARGO", "MULTA", "FALTANTE", "SOBRANTE"
+  ];
+  
+  // 🛡️ REGLA v9.1.0-PRO-FINAL-SHIELDED: Si el nombre contiene alguna de estas palabras, es SUMATORIA (Accumulative)
   return keywords.some(key => clean.includes(key));
 };
 
 /**
- * 🚀 MOTOR DE FÓRMULAS v7.2.1 (INTELLIGENT NAMES)
+ * 🛡️ REGLA v9.1.0-PRO-FINAL-SHIELDED (SHIELD-UP): Integridad de Datos Nuclear
+ * Asegura que un indicador tenga todos sus campos obligatorios antes de procesar o guardar.
+ * Evita la pérdida de información por "undefined" o arreglos incompletos.
+ */
+export const shieldItem = (item: DashboardItem): DashboardItem => {
+  if (!item) return {} as DashboardItem;
+  
+  // 🛡️ v9.1.0-PRO-FINAL-SHIELDED: Crear copia para NO mutar el objeto original (prevención de bugs de React)
+  const shielded: DashboardItem = { ...item };
+
+  // 1. Asegurar arreglos de datos mensuales (SOPORTE 12 MESES)
+  if (!Array.isArray(shielded.monthlyGoals)) shielded.monthlyGoals = Array(12).fill(0);
+  if (!Array.isArray(shielded.monthlyProgress)) shielded.monthlyProgress = Array(12).fill(0);
+  
+  // 2. Asegurar arreglos de datos semanales si existen
+  if (shielded.frequency === 'weekly') {
+      if (!Array.isArray(shielded.weeklyGoals)) shielded.weeklyGoals = [];
+      if (!Array.isArray(shielded.weeklyProgress)) shielded.weeklyProgress = [];
+  }
+  
+  // 3. Asegurar campos de Modo Actividades
+  if (shielded.isActivityMode && !shielded.activityConfig) {
+      shielded.activityConfig = {};
+  }
+
+  // 4. Sanitización de nombres para evitar colisiones en fórmulas
+  if (shielded.indicator) {
+      shielded.indicator = shielded.indicator.trim();
+  }
+
+  return shielded;
+};
+
+/**
+ * 🚀 MOTOR DE FÓRMULAS v9.1.0-PRO-FINAL-SHIELDED (DUAL MOTOR + RECURSION SHIELD)
  * Evalúa expresiones aritméticas dinámicas basadas en otros indicadores del tablero.
  * 
- * Soporta dos sintaxis:
- * 1. Legacy IDs: `{id:101} + {id:102}`
- * 2. Natural Names: `bajas totales / altas` (Case-insensitive, ignora acentos)
+ * Soporta tres sintaxis:
+ * 1. Sintaxis Simplificada: `{101} + {102}` (NUEVA - omite "id:")
+ * 2. Legacy IDs: `{id:101} + {id:102}` (Compatibilidad)
+ * 3. Natural Names: `bajas totales / altas` (Case-insensitive, ignora acentos)
  * 
  * @param formula - La expresión aritmética a evaluar.
  * @param allDashboardItems - Lista completa de indicadores para resolver dependencias.
  * @param monthIdx - Índice del mes (0-11) para extraer el valor.
  * @param field - Campo a extraer: 'monthlyProgress' (avance real) o 'monthlyGoals' (meta).
  * @param year - Año de los datos.
- * @param visitedIds - Set para evitar recursión infinita en fórmulas circulares.
- * @returns El resultado numérico de la evaluación.
+ *  * @returns El resultado de la evaluación.
  */
 export const evaluateFormula = (
   formula: string,
@@ -56,34 +99,34 @@ export const evaluateFormula = (
   try {
     let expression = formula.toLowerCase();
 
-    // 1. Reemplazar {id:XXX} con el valor real (Compatibilidad Legacy)
-    const idRegex = /\{id:([^}]+)\}/g;
-    expression = expression.replace(idRegex, (_, id) => {
+    // 🛡️ REGLA v9.1.0-PRO-FINAL-SHIELDED: Soporte Dual de Sintaxis ({101} o {id:101})
+    const universalIdRegex = /\{(?:id:)?([\w-]+)\}/g;
+    expression = expression.replace(universalIdRegex, (_, id) => {
       const depItem = allDashboardItems.find(it => String(it.id) === String(id));
       if (!depItem) return "0";
-      const { monthlyProgress: childP, monthlyGoals: childG } = resolveItemValues(depItem, allDashboardItems, year, visitedIds);
+      
+      const itemId = String(depItem.id);
+      if (visitedIds.has(itemId)) return "0";
+      
+      const { monthlyProgress: childP, monthlyGoals: childG } = resolveItemValues(depItem, allDashboardItems, year, new Set(visitedIds));
       const val = field === 'monthlyProgress' ? childP[monthIdx] : childG[monthIdx];
       return String(Number(val) || 0);
     });
 
-    // 2. 🚀 DETECCIÓN DE NOMBRES INTELIGENTES (v7.2.2 - DOT SUPPORT)
-    // Buscamos palabras que NO sean operadores o números y tratamos de matchearlas con indicadores
-    // Soporta puntos (.) para nombres como "Edo. Fza."
+    // 2. 🚀 DETECCIÓN DE NOMBRES INTELIGENTES
     const nameRegex = /[a-záéíóúñ0-9\.\s]+/g;
     const matches = formula.toLowerCase().match(nameRegex);
 
     if (matches) {
-      // Ordenar por longitud descendente para evitar colisiones (greedy match)
       const sortedMatches = [...new Set(matches.map(m => m.trim()))]
-        .filter(m => m.length > 1) // nombres de al menos 2 chars
+        .filter(m => m.length > 1)
         .sort((a, b) => b.length - a.length);
 
       sortedMatches.forEach(namePart => {
-        // Normalización para match (quitar acentos, puntos y espacios extras)
         const normalize = (s: string) => s.toUpperCase()
           .normalize("NFD")
           .replace(/[\u0300-\u036f]/g, "")
-          .replace(/\./g, "") // removemos puntos para el match
+          .replace(/\./g, "")
           .replace(/\s+/g, "");
 
         const normTarget = normalize(namePart);
@@ -92,41 +135,32 @@ export const evaluateFormula = (
         const depItem = allDashboardItems.find(it => normalize(it.indicator) === normTarget);
 
         if (depItem) {
-          const { monthlyProgress: childP, monthlyGoals: childG } = resolveItemValues(depItem, allDashboardItems, year, visitedIds);
-          const val = field === 'monthlyProgress' ? childP[monthIdx] : childG[monthIdx];
+          const itemId = String(depItem.id);
+          if (visitedIds.has(itemId)) return;
 
-          // Reemplazamos el nombre literal con el valor numérico
+          const { monthlyProgress: childP, monthlyGoals: childG } = resolveItemValues(depItem, allDashboardItems, year, new Set(visitedIds));
+          const val = field === 'monthlyProgress' ? childP[monthIdx] : childG[monthIdx];
+          
           const escapedName = namePart.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-          // Usamos Regex con "bordes" simulados para no reemplazar partes de palabras
           expression = expression.replace(new RegExp(escapedName, 'g'), String(Number(val) || 0));
         }
       });
     }
 
-    // 3. Limpieza y validación final por seguridad
-    // Si después de los reemplazos quedan letras, es que un nombre no fue resuelto.
-    const hasUnresolvedNames = /[a-z]/.test(expression);
-    if (hasUnresolvedNames) {
-      console.warn(`[FORMULA] Indicador(es) no encontrado(s) en: ${expression}`);
-      return 0;
-    }
+    // 3. Sanitización Estricta
+    const cleanExpression = expression.replace(/[a-z]/g, '0');
+    const finalExpression = cleanExpression.replace(/[^0-9\.\+\-\*\/\(\)\s]/g, '');
 
-    // Solo permitir números, operadores básicos y paréntesis
-    if (/[^0-9\.\+\-\*\/\(\)\s]/.test(expression)) {
-      console.warn(`[FORMULA] Caracteres no permitidos detectados: ${expression}`);
-      return 0;
-    }
+    if (!finalExpression || (finalExpression.trim() === "")) return 0;
 
-    // 4. Evaluación aritmética segura con protección contra división por cero
-     
-    const result = Number(eval(expression));
+    // 4. Evaluación segura
+    // eslint-disable-next-line no-eval
+    const result = Number(eval(finalExpression));
 
-    // Si el resultado es NaN o Infinity (división por cero), devolvemos 0
     if (isNaN(result) || !isFinite(result)) return 0;
-
     return result;
   } catch (e) {
-    console.error(`[FORMULA] Error crítico evaluando "${formula}":`, e);
+    console.warn(`[SHIELD] Error en fórmula "${formula}":`, e);
     return 0;
   }
 };
@@ -142,7 +176,7 @@ export const getStatusForPercentage = (
 ): ComplianceStatus => {
   if (!isActive) return "Neutral";
 
-  // 🛡️ REGLA v4.2.0: Si el periodo NO ha vencido (mes actual), semáforo temporal
+  // 🛡️ REGLA v9.1.0-PRO-FINAL-SHIELDED: Si el periodo NO ha vencido (mes actual), semáforo temporal
   if (!isClosedPeriod) return "InProgress";
 
   const onTrack = thresholds?.onTrack ?? 95;
@@ -162,34 +196,31 @@ export const getStatusForPercentage = (
  * - Si target === 0 y actual === 0 => 0% (sin datos)  ✅ (evita el 200%)
  */
 export const calculateMonthlyCompliancePercentage = (
-  actual: number,
-  target: number,
+  actual: number | null | undefined,
+  target: number | null | undefined,
   lowerIsBetter: boolean
 ): number => {
+  const isMissing = actual === null || actual === undefined || (actual as any) === '';
   const a = Number(actual ?? 0);
   const t = Number(target ?? 0);
 
-  // ✅ Caso "sin datos"
+  // 🛡️ REGLA v9.1.0-PRO-FINAL-SHIELDED (STRICT INTEGRITY):
+  // Si falta el avance (null/undefined) pero existe una meta, el cumplimiento es 0%
+  // para forzar la captura de información, sin importar el tipo de indicador.
+  if (isMissing && t > 0) return 0;
+
+  // ✅ Caso "sin datos" (ambos en 0 o vacíos)
   if (t === 0 && a === 0) return 0;
 
   if (t === 0) {
-    // v5.5.9.4-PRO+ • INTEGRITY GUARANTEED
-    // Si la meta es 0, solo tiene sentido para "lower is better":
-    // - si actual == 0 => perfecto; si no => 0
     if (lowerIsBetter) return a === 0 ? 100 : 0;
-    // Para "higher is better": si meta 0 y hay avance, consideramos 100; si no, 0
     return a > 0 ? 100 : 0;
   }
 
   if (!lowerIsBetter) {
-    // higher is better
     return (a / t) * 100;
   }
 
-  // lower is better:
-  // Si actual <= meta => 100 o más (mejor que meta)
-  // Si actual > meta => <100
-  // Usamos t/a cuando a>0, si a==0 entonces es excelente
   if (a === 0) return 100;
   return (t / a) * 100;
 };
@@ -291,7 +322,7 @@ export const getOverdueWarning = (
  * y porcentaje global con base en ese mes.
  */
 /**
- * 🚀 RESOLVER VALORES (v6.2.2): Calcula los valores finales de un indicador
+ * 🚀 RESOLVER VALORES (v9.1.0-PRO-FINAL-SHIELDED): Calcula los valores finales de un indicador
  * basándose en sus dependencias (Hijos o Fórmulas).
  * Esto es CRÍTICO para que la agregación use los valores calculados y no los ceros de la BD.
  */
@@ -312,14 +343,14 @@ export const resolveItemValues = (
 
   // Identificar si es compuesto o fórmula y si tenemos contexto
   if (item.indicatorType === 'compound' && item.componentIds && contextItems.length > 0) {
-    monthlyProgress = Array(12).fill(0);
-    monthlyGoals = Array(12).fill(0);
+    const nextVisited = new Set(visitedIds);
+    nextVisited.add(itemId);
 
     item.componentIds.forEach(compId => {
       const child = contextItems.find(it => String(it.id) === String(compId));
       if (child) {
-        // 🚀 RECURSIÓN REAL v7.8.2: Resolver el valor calculado del hijo (incluyendo su propia agregación semanal o composición)
-        const { monthlyProgress: childP, monthlyGoals: childG } = resolveItemValues(child, contextItems, year, visitedIds);
+        // 🚀 RECURSIÓN REAL v9.1.0-PRO-FINAL-SHIELDED: Resolver el valor calculado del hijo usando el stack actualizado
+        const { monthlyProgress: childP, monthlyGoals: childG } = resolveItemValues(child, contextItems, year, nextVisited);
 
         for (let i = 0; i < 12; i++) {
           monthlyProgress[i] = (monthlyProgress[i] || 0) + Number(childP[i] || 0);
@@ -331,18 +362,20 @@ export const resolveItemValues = (
     return { monthlyProgress, monthlyGoals };
   }
   else if (item.indicatorType === 'formula' && item.formula && contextItems.length > 0) {
-    // 🛡️ REGLA v6.2.4-Fix5: No persistir visitedIds entre meses
-    monthlyProgress = Array(12).fill(0).map((_, i) => evaluateFormula(item.formula!, contextItems, i, 'monthlyProgress', year, new Set([itemId])));
-    monthlyGoals = Array(12).fill(0).map((_, i) => evaluateFormula(item.formula!, contextItems, i, 'monthlyGoals', year, new Set([itemId])));
+    // 🛡️ REGLA v9.1.0-PRO-FINAL-SHIELDED: Mantener el stack trace actual al evaluar fórmulas para detectar recursión profunda
+    const nextVisited = new Set(visitedIds);
+    nextVisited.add(itemId);
+    monthlyProgress = Array(12).fill(0).map((_, i) => evaluateFormula(item.formula!, contextItems, i, 'monthlyProgress', year, nextVisited));
+    monthlyGoals = Array(12).fill(0).map((_, i) => evaluateFormula(item.formula!, contextItems, i, 'monthlyGoals', year, nextVisited));
   }
 
   // 🔄 AGREGACIÓN SEMANAL INTERNA
-  // 🛡️ REGLA v7.8.1 (COMPOUND SHIELD): No sobreescribir si ya fue calculado por fórmula o composición
+  // 🛡️ REGLA v9.1.0-PRO-FINAL-SHIELDED (COMPOUND SHIELD): No sobreescribir si ya fue calculado por fórmula o composición
   const isCalculated = item.indicatorType === 'compound' || item.indicatorType === 'formula';
 
   if (item.frequency === 'weekly' && !isCalculated) {
     const startDay = item.weekStart === 'Sun' ? 0 : 1;
-    // 🛡️ REGLA v7.5.2 (UNIVERSAL SUM): Usar helper centralizado
+    // 🛡️ REGLA v9.1.0-PRO-FINAL-SHIELDED (UNIVERSAL SUM): Usar helper centralizado
     const aggMode = isAccumulativeIndicator(item.indicator, item.type) ? 'sum' : 'average';
 
     monthlyProgress = aggregateWeeklyToMonthly(item.weeklyProgress || [], year, startDay, undefined, aggMode);
@@ -360,15 +393,15 @@ export const calculateCompliance = (
   allDashboardItems: DashboardItem[] = [],
   contextItems: DashboardItem[] = []
 ) => {
-  // 🛡️ REGLA v6.0.1: Contexto prioritario
+  // 🛡️ REGLA v9.1.0-PRO-FINAL-SHIELDED: Contexto prioritario
   const lookupContext = contextItems.length > 0 ? contextItems : allDashboardItems;
 
-  // 🚀 REGLA v6.2.2: Usar resolutor centralizado
+  // 🚀 REGLA v9.1.0-PRO-FINAL-SHIELDED: Usar resolutor centralizado
   let { monthlyProgress, monthlyGoals } = resolveItemValues(item, lookupContext, year);
 
   // 🛡️ REGLA v6.0.0: Recorte de semanas para 'weekly' en modo realTime
   // resolveItemValues devuelve todo el año. Aquí aplicamos el timeline 'cut' si es necesario.
-  // 🛡️ REGLA v7.8.3 (COMPOUND PROTECTION): No re-calcular si ya es un compuesto/fórmula
+  // 🛡️ REGLA v9.1.0-PRO-FINAL-SHIELDED (COMPOUND PROTECTION): No re-calcular si ya es un compuesto/fórmula
   const isCalculated = item.indicatorType === 'compound' || item.indicatorType === 'formula';
 
   if (item.frequency === 'weekly' && !isCalculated) {
@@ -379,7 +412,7 @@ export const calculateCompliance = (
       const maxWeekIdx = mode === 'realTime' ? (currentWeek - 1) : (currentWeek - 2);
 
       // Re-agregamos con el límite (es un poco redundante pero seguro para visualización exacta)
-      // 🛡️ REGLA v7.5.2 (UNIVERSAL SUM): Usar helper centralizado
+      // 🛡️ REGLA v9.1.0-PRO-FINAL-SHIELDED (UNIVERSAL SUM): Usar helper centralizado
       const aggMode = isAccumulativeIndicator(item.indicator, item.type) ? 'sum' : 'average';
 
       monthlyProgress = aggregateWeeklyToMonthly(item.weeklyProgress || [], year, startDay, maxWeekIdx, aggMode);
@@ -401,7 +434,7 @@ export const calculateCompliance = (
   const currentYear = new Date().getFullYear();
   const currentMonthIdx = new Date().getMonth();
 
-  // 🛡️ CLAMPING TEMPORAL (v2.2.3): El semáforo solo considera periodos VENCIDOS.
+  // 🛡️ CLAMPING TEMPORAL (v9.1.0-PRO-FINAL-SHIELDED): El semáforo solo considera periodos VENCIDOS.
   let limitIdx = 11; // Por defecto todo el año (para años pasados)
   if (year === currentYear) {
     if (mode === 'realTime') {
@@ -417,7 +450,7 @@ export const calculateCompliance = (
 
   const lastIdxWithData = findLastIndexWithData(monthlyProgress, monthlyGoals);
 
-  // 🛡️ REGLA v5.3.6 (FIX): Para años pasados, el índice evaluado es SIEMPRE Diciembre (11)
+  // 🛡️ REGLA v9.1.0-PRO-FINAL-SHIELDED (FIX): Para años pasados, el índice evaluado es SIEMPRE Diciembre (11)
   // independientemente del mes actual del sistema. Se previene el cap en el mes actual.
   let idx = 0;
   if (mode === 'definitive') {
@@ -431,7 +464,7 @@ export const calculateCompliance = (
       // Año actual
       idx = Math.min(lastIdxWithData >= 0 ? lastIdxWithData : 0, currentMonthIdx);
 
-      // 🛡️ AJUSTE v4.2.1: Si el periodo está abierto (mes actual) y no tiene datos reales aún, 
+      // 🛡️ AJUSTE v9.1.0-PRO-FINAL-SHIELDED: Si el periodo está abierto (mes actual) y no tiene datos reales aún, 
       // bajamos el índice al mes anterior para no castigar el acumulado con una meta sin avance.
       if (idx === currentMonthIdx && Number(monthlyProgress[idx] || 0) === 0 && Number(monthlyGoals[idx] || 0) !== 0) {
         idx = Math.max(0, idx - 1);
@@ -487,13 +520,13 @@ export const calculateCompliance = (
   const hasTarget = currentTarget !== 0 || currentProgress !== 0;
 
   // PERIODOS CERRADOS: Un periodo es cerrado si el índice es < al mes actual (o es año pasado)
-  // 🛡️ REGLA v5.4.0 (FIX BLUE LIGHTS): Para indicadores SEMANALES, como la agregación ya filtra
+  // 🛡️ REGLA v9.1.0-PRO-FINAL-SHIELDED (FIX BLUE LIGHTS): Para indicadores SEMANALES, como la agregación ya filtra
   // solo las semanas completadas (maxWeekIdx), el dato resultante es "definitive" para esas semanas.
   // Por lo tanto, consideramos el periodo "cerrado" para que muestre ROJO/VERDE en lugar de AZUL (InProgress).
   const isWeekly = item.frequency === 'weekly';
   const isClosedPeriod = (year < currentYear) ? true : (idx < currentMonthIdx || (isWeekly && mode === 'realTime'));
 
-  // 🛡️ REGLA v5.2.3: Si NO hay datos capturados (Meta=0 y Progreso=0), el estado es NEUTRAL (Gris), 
+  // 🛡️ REGLA v9.1.0-PRO-FINAL-SHIELDED: Si NO hay datos capturados (Meta=0 y Progreso=0), el estado es NEUTRAL (Gris), 
   // independientemente de si el periodo está abierto o cerrado.
   const complianceStatus = hasTarget
     ? getStatusForPercentage(overallPercentage, thresholds, true, isClosedPeriod)
@@ -509,7 +542,7 @@ export const calculateCompliance = (
 };
 
 /**
- * 🎯 CÁLCULO DE CAPTURA (v5.5.9.4 - ULTRA PRECISION)
+ * 🎯 CÁLCULO DE CAPTURA (v9.1.0-PRO-FINAL-SHIELDED - ULTRA PRECISION)
  * Audita si los indicadores tienen datos cargados para los periodos vencidos.
  * REGLA DE ORO: Un indicador (0,0) NO es captura, es un placeholder vacío.
  */
@@ -565,12 +598,17 @@ export const calculateCapturePct = (dashboard: any) => {
         goal = aggGoals[m];
       }
 
-      const isNull = val === null || val === undefined || val === "" || isNaN(Number(val));
+      const isNullVal = val === null || val === undefined || val === "" || isNaN(Number(val));
+      const isNullGoal = goal === null || goal === undefined || goal === "" || isNaN(Number(goal));
+      
       const isGoalZero = Number(goal || 0) === 0;
-      const isValZero = Number(val) === 0;
+      const isValZero = Number(val || 0) === 0;
 
-      // 4. Regla Estricta: Si es nulo o si es el default (Meta=0 y Real=0), NO se considera capturado
-      const isCaptured = !isNull && !(isGoalZero && isValZero);
+      // 4. 🛡️ REGLA v9.1.0-PRO-FINAL-SHIELDED: Captura Completa
+      // Se considera capturado SOLO si tiene tanto la meta como el avance.
+      // Si ambos son 0 o nulos, se considera "no configurado/no capturado".
+      // Si tiene meta pero no avance, es "captura incompleta" -> False.
+      const isCaptured = !isNullVal && !isNullGoal && !(isGoalZero && isValZero);
 
       if (isCaptured) {
         totalCapturedPoints++;
@@ -602,7 +640,7 @@ export const calculateDashboardWeightedScore = (
   let totalWeightFound = 0;
 
   items.forEach(item => {
-    // 🛡️ REGLA v6.0.1: Pasamos 'items' como contexto local y 'contextItems' como contexto extendido
+    // 🛡️ REGLA v9.1.0-PRO-FINAL-SHIELDED: Pasamos 'items' como contexto local y 'contextItems' como contexto extendido
     const { overallPercentage, isActive } = calculateCompliance(item, globalThresholds, year, mode, items, contextItems);
 
     if (!isActive) return;
@@ -612,7 +650,7 @@ export const calculateDashboardWeightedScore = (
     totalWeightFound += (item.weight || 0);
   });
 
-  // 🛡️ REGLA v6.1.2 (SHIELD FALLBACK): Si no hay pesos definidos (todos 0), 
+  // 🛡️ REGLA v9.1.0-PRO-FINAL-SHIELDED (SHIELD FALLBACK): Si no hay pesos definidos (todos 0), 
   // asumimos que todos valen lo mismo (1) para no mostrar un Fulfillment de 0%.
   if (totalWeightFound === 0) {
     items.forEach(item => {
@@ -644,7 +682,7 @@ export const calculateDashboardMonthlyScores = (
     let hasAnyData = false;
 
     items.forEach(item => {
-      // 🚀 REGLA v6.2.4-Fix5: Usar resolveItemValues para asegurar recursión en agregados mensuales
+      // 🚀 REGLA v9.1.0-PRO-FINAL-SHIELDED: Usar resolveItemValues para asegurar recursión en agregados mensuales
       const { monthlyProgress: resP, monthlyGoals: resG } = resolveItemValues(item, lookupContext, year);
 
       const p = Number(resP[m] ?? 0);

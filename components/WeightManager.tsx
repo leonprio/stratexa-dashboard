@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { DashboardItem } from '../types';
+import { formatNumberWithCommas } from '../utils/formatters';
 
 interface WeightManagerProps {
     key?: React.Key;
@@ -81,7 +82,7 @@ export const WeightManager = ({ items, onSave, onCancel, dashboards, activeDashb
 
                 <div className={`flex justify-between items-center mt-6 pt-4 border-t border-slate-700 font-bold ${totalWeight === 100 ? 'text-green-400' : 'text-red-400'}`}>
                     <span>Total</span>
-                    <span>{new Intl.NumberFormat('es-MX', { minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(totalWeight)}%</span>
+                    <span>{formatNumberWithCommas(totalWeight)}%</span>
                 </div>
                 {totalWeight !== 100 && (
                     <p className="text-xs text-red-400 text-center mt-1">El total debe ser 100% para poder guardar.</p>

@@ -51,7 +51,13 @@ interface ColumnMapping {
 
 type ImportStep = "upload" | "mapping" | "preview" | "importing" | "complete" | "json-preview";
 
-export const AdvancedDataImporter: React.FC<AdvancedDataImporterProps> = ({
+/**
+ * Componente AdvancedDataImporter.
+ * Proporciona una interfaz avanzada para importar y restaurar tableros masivamente
+ * a través de archivos Excel, CSV, o respaldos estructurados JSON.
+ * Optimizado con React.memo.
+ */
+export const AdvancedDataImporter: React.FC<AdvancedDataImporterProps> = React.memo(({
     dashboards,
     availableClients,
     selectedClientId,
@@ -885,4 +891,4 @@ export const AdvancedDataImporter: React.FC<AdvancedDataImporterProps> = ({
             </div>
         </div>
     );
-};
+});

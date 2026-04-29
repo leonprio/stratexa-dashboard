@@ -47,15 +47,22 @@ reportLines.push('');
 reportLines.push('## Verificación de Lógica (Manual Check)');
 const appPath = path.resolve(__dirname, '..', 'App.tsx');
 const importerPath = path.resolve(__dirname, '..', 'components/DataImporter.tsx');
+const editorPath = path.resolve(__dirname, '..', 'components/DataEditor.tsx');
+const loginPath = path.resolve(__dirname, '..', 'components/LoginScreen.tsx');
 
 if (fs.existsSync(appPath) && fs.existsSync(importerPath)) {
     const appContent = fs.readFileSync(appPath, 'utf-8');
     const importerContent = fs.readFileSync(importerPath, 'utf-8');
+    const editorContent = fs.existsSync(editorPath) ? fs.readFileSync(editorPath, 'utf-8') : '';
+    const loginContent = fs.existsSync(loginPath) ? fs.readFileSync(loginPath, 'utf-8') : '';
 
     const checks = [
         { name: 'Selected Year is Dynamic', pass: appContent.includes('new Date().getFullYear()') },
         { name: 'Importer validates Year', pass: importerContent.includes('selectedYear') && importerContent.includes('.year') },
-        { name: 'New Dashboards assign Year', pass: appContent.includes('year: selectedYear') }
+        { name: 'New Dashboards assign Year', pass: appContent.includes('year: selectedYear') },
+        { name: 'CRUD Nuclear Persistence', pass: editorContent.includes('onSave') && editorContent.includes('activityConfig') },
+        { name: 'Auto-Scroll delay 600ms', pass: editorContent.includes('600') && editorContent.includes('scrollIntoView') },
+        { name: 'Login Privacy (No Version)', pass: !loginContent.includes('VERSION_LABEL') && !loginContent.includes('v8.') }
     ];
 
     checks.forEach(check => {

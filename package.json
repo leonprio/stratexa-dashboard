@@ -1,23 +1,27 @@
 {
   "name": "stratexa-iapriori",
-  "private": true,
-  "version": "7.8.31",
+  "version": "9.2.2",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "predeploy": "node scripts/preDeployCheck.js",
+    "deploy:safe": "npm run predeploy && npm run build && firebase deploy --only hosting:tablero",
     "preview": "vite preview",
     "integrity": "node scripts/generateIntegrityReport.js",
     "test": "jest"
   },
   "dependencies": {
     "@types/file-saver": "^2.0.7",
+    "clsx": "^2.1.1",
     "exceljs": "^4.4.0",
     "file-saver": "^2.0.5",
     "firebase": "^12.0.0",
+    "lucide-react": "^0.447.0",
     "pptxgenjs": "^4.0.1",
     "react": "^19.1.0",
-    "react-dom": "^19.1.0"
+    "react-dom": "^19.1.0",
+    "tailwind-merge": "^2.5.2"
   },
   "devDependencies": {
     "@testing-library/jest-dom": "^6.9.1",

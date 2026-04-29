@@ -63,7 +63,7 @@ const itemsCollectionRef = (dashboardId: number | string) =>
  * la gestión de identidades híbridas en KPIs.
  * 
  * @namespace firebaseService
- * @version v7.8.28-UX-ELITE
+ * @version v9.1.0-PRO-FINAL-SHIELDED
  */
 export const firebaseService = {
     // -----------------------------
@@ -340,30 +340,80 @@ export const firebaseService = {
         return true;
     },
 
-    updateDashboardItems: async (dashboardId: number | string, items: DashboardItem[], overwrite: boolean = false) => {
+    updateDashboardItems: async (dashboardId: number | string, items: DashboardItem[], overwrite = false) => {
+        if (!dashboardId) throw new Error("ID de tablero requerido para guardado.");
         const itemsRef = collection(db, DASHBOARDS_COLLECTION, String(dashboardId), "items");
 
-        // 1. SOLO BORRAMOS si es un "overwrite" total (desde el módulo de gestión de KPIs)
-        if (overwrite) {
-            const existingSnap = await getDocs(itemsRef);
-            if (existingSnap.size > 0) {
-                const deleteBatch = writeBatch(db);
-                existingSnap.docs.forEach(d => deleteBatch.delete(d.ref));
-                await deleteBatch.commit();
+        try {
+            const mainBatch = writeBatch(db);
+            let opCount = 0;
+
+            if (overwrite) {
+                console.log(`🛡️ [PLATINUM-SHIELD] Iniciando sobreescritura atómica para tablero ${dashboardId}`);
+                const existingSnap = await getDocs(itemsRef);
+                
+                // 1. Marcar para eliminación previa
+                existingSnap.docs.forEach(d => {
+                    mainBatch.delete(d.ref);
+                    opCount++;
+                });
+                
+                // 2. Marcar para inserción nueva
+                items.forEach(it => {
+                    const itemRef = doc(db, DASHBOARDS_COLLECTION, String(dashboardId), "items", String(it.id));
+                    const cleanItem = JSON.parse(JSON.stringify(it));
+                    mainBatch.set(itemRef, cleanItem, { merge: false });
+                    opCount++;
+                });
+
+                if (opCount > 450) {
+                    console.warn(`[SHIELD] Límite de batch excedido (${opCount}). Ejecutando en modo Seguro Cascada.`);
+                    await mainBatch.commit();
+                    const secondBatch = writeBatch(db);
+                    items.forEach(it => {
+                        const itRef = doc(db, DASHBOARDS_COLLECTION, String(dashboardId), "items", String(it.id));
+                        secondBatch.set(itRef, it);
+                    });
+                    await secondBatch.commit();
+                } else {
+                    await mainBatch.commit();
+                }
+            } else {
+                // Modo Atómico Quirúrgico (v9.1.0-PRO-FINAL-SHIELDED)
+                // 🛡️ REGLA: Cada tablero es un "cajón" independiente. No hay límites globales, solo por tablero.
+                items.forEach(it => {
+                    const itemRef = doc(db, DASHBOARDS_COLLECTION, String(dashboardId), "items", String(it.id));
+                    const cleanItem = JSON.parse(JSON.stringify(it));
+                    const activities = cleanItem.activityConfig || {};
+                    
+                    // Extraer para guardado atómico y evitar sobreescritura de metadatos de ID
+                    delete cleanItem.activityConfig;
+                    delete cleanItem.id;
+
+                    // 1. Actualización de datos base (Metas, Avances, Unit)
+                    mainBatch.set(itemRef, cleanItem, { merge: true });
+
+                    // 2. Actualización atómica de actividades (dot-notation)
+                    const atomicActivities: any = {};
+                    Object.keys(activities).forEach(idx => {
+                        if (activities[idx] !== undefined) {
+                            atomicActivities[`activityConfig.${idx}`] = activities[idx];
+                        }
+                    });
+
+                    if (Object.keys(atomicActivities).length > 0) {
+                        mainBatch.update(itemRef, atomicActivities);
+                    }
+                });
+                
+                await mainBatch.commit();
+                console.log(`✅ [SHIELD] Guardado atómico completado para ${items.length} KPIs en el tablero ${dashboardId}`);
             }
+            return true;
+        } catch (error) {
+            console.error("🚨 [SHIELD] FALLO CRÍTICO en persistencia atómica:", error);
+            throw error;
         }
-
-        // 2. Guardar los indicadores proporcionados
-        const batch = writeBatch(db);
-        for (const item of items) {
-            const itemRef = doc(db, DASHBOARDS_COLLECTION, String(dashboardId), "items", String(item.id));
-
-            // 🛡️ SANITIZACIÓN ROBUSTA (v3.8.2): Evitar error de Firestore por campos undefined
-            const cleanItem = JSON.parse(JSON.stringify(item));
-            batch.set(itemRef, cleanItem); // No usamos merge para asegurar limpieza total por campo
-        }
-        await batch.commit();
-        return true;
     },
 
     getDashboardItems: async (dashboardId: number | string): Promise<DashboardItem[]> => {
