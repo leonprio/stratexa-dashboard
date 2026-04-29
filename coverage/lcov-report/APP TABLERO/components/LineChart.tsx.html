@@ -44,9 +44,9 @@
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">2.85% </span>
+                <span class="strong">4.22% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>2/70</span>
+                <span class='fraction'>3/71</span>
             </div>
         
             
@@ -250,7 +250,27 @@
 <a name='L185'></a><a href='#L185'>185</a>
 <a name='L186'></a><a href='#L186'>186</a>
 <a name='L187'></a><a href='#L187'>187</a>
-<a name='L188'></a><a href='#L188'>188</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">1x</span>
+<a name='L188'></a><a href='#L188'>188</a>
+<a name='L189'></a><a href='#L189'>189</a>
+<a name='L190'></a><a href='#L190'>190</a>
+<a name='L191'></a><a href='#L191'>191</a>
+<a name='L192'></a><a href='#L192'>192</a>
+<a name='L193'></a><a href='#L193'>193</a>
+<a name='L194'></a><a href='#L194'>194</a>
+<a name='L195'></a><a href='#L195'>195</a>
+<a name='L196'></a><a href='#L196'>196</a>
+<a name='L197'></a><a href='#L197'>197</a>
+<a name='L198'></a><a href='#L198'>198</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -439,6 +459,7 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">import React, { useMemo } from 'react';
 import { ComplianceStatus } from '../types';
+import { formatNumberWithCommas } from '../utils/formatters';
 &nbsp;
 interface LineChartProps {
   progressData: (number | null)[];
@@ -450,7 +471,16 @@ interface LineChartProps {
   frequency?: 'monthly' | 'weekly';
 }
 &nbsp;
-export const LineChart = <span class="fstat-no" title="function not covered" >({</span> progressData, goalData, unit: _unit, type, status, indicator = <span class="branch-0 cbranch-no" title="branch not covered" >'chart',</span> frequency = <span class="branch-0 cbranch-no" title="branch not covered" >'monthly' </span>}: LineChartProps) =&gt; {
+/**
+ * Componente LineChart
+ * 
+ * Visualiza el progreso semanal o mensual frente a la meta mediante un gráfico de líneas
+ * fluido con áreas de degradado Reactivas.
+ * 
+ * @param {LineChartProps} props - Propiedades para los datos y configuración del gráfico.
+ * @returns {JSX.Element} Gráfico SVG responsivo.
+ */
+export const LineChart: React.FC&lt;LineChartProps&gt; = React.memo(<span class="fstat-no" title="function not covered" >({</span> progressData, goalData, unit: _unit, type, status, indicator = <span class="branch-0 cbranch-no" title="branch not covered" >'chart',</span> frequency = <span class="branch-0 cbranch-no" title="branch not covered" >'monthly' </span>}) =&gt; {
   const isWeekly = <span class="cstat-no" title="statement not covered" >frequency === 'weekly';</span>
   const numPeriods = <span class="cstat-no" title="statement not covered" >progressData.length;</span>
 &nbsp;
@@ -555,7 +585,7 @@ export const LineChart = <span class="fstat-no" title="function not covered" >({
   const areaPath = <span class="cstat-no" title="statement not covered" >linePath &amp;&amp; validPlotData.length &gt; 0 ? `${linePath} L ${xScale(validPlotData[validPlotData.length - 1].index)} ${yScale(yMin)} L ${xScale(validPlotData[0].index)} ${yScale(yMin)} Z` : "";</span>
   const safeId = <span class="cstat-no" title="statement not covered" >indicator.replace(/[^a-zA-Z0-9]/g, '_');</span>
 &nbsp;
-  const formatNumber = <span class="cstat-no" title="statement not covered" ><span class="fstat-no" title="function not covered" >(n</span>um: number) =&gt; <span class="cstat-no" title="statement not covered" >new Intl.NumberFormat('en-US', { notation: 'compact', compactDisplay: 'short', maximumFractionDigits: 1 }).format(num);</span></span>
+  const formatNumber = <span class="cstat-no" title="statement not covered" ><span class="fstat-no" title="function not covered" >(n</span>um: number) =&gt; <span class="cstat-no" title="statement not covered" >formatNumberWithCommas(num);</span></span>
 &nbsp;
   // 🛡️ Labels a mostrar: Para semanas, mostramos solo hitos para no saturar
   // visibleLabels was unused and conditional
@@ -623,7 +653,7 @@ export const LineChart = <span class="fstat-no" title="function not covered" >({
       &lt;/svg&gt;
     &lt;/div&gt;
   );
-};
+});
 &nbsp;</pre></td></tr></table></pre>
 
                 <div class='push'></div><!-- for sticky footer -->
@@ -631,7 +661,7 @@ export const LineChart = <span class="fstat-no" title="function not covered" >({
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-03-22T22:30:11.403Z
+                at 2026-04-29T19:41:59.655Z
             </div>
         <script src="../../prettify.js"></script>
         <script>

@@ -23,16 +23,16 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">4.81% </span>
+                <span class="strong">5.37% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>9/187</span>
+                <span class='fraction'>10/186</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>0/243</span>
+                <span class='fraction'>0/228</span>
             </div>
         
             
@@ -44,9 +44,9 @@
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">4.76% </span>
+                <span class="strong">5.38% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>8/168</span>
+                <span class='fraction'>9/167</span>
             </div>
         
             
@@ -573,11 +573,7 @@
 <a name='L508'></a><a href='#L508'>508</a>
 <a name='L509'></a><a href='#L509'>509</a>
 <a name='L510'></a><a href='#L510'>510</a>
-<a name='L511'></a><a href='#L511'>511</a>
-<a name='L512'></a><a href='#L512'>512</a>
-<a name='L513'></a><a href='#L513'>513</a>
-<a name='L514'></a><a href='#L514'>514</a>
-<a name='L515'></a><a href='#L515'>515</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">1x</span>
+<a name='L511'></a><a href='#L511'>511</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
@@ -586,6 +582,8 @@
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -607,6 +605,7 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -773,9 +772,6 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -928,8 +924,6 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -952,8 +946,6 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -1100,6 +1092,7 @@ import { LineChart } from './LineChart';
 import { ActionPlan } from './ActionPlan';
 import { DataEditor } from './DataEditor';
 import { ActivityManager } from './ActivityManager';
+import { formatNumberWithCommas, parseFormattedNumber } from '../utils/formatters';
 &nbsp;
 interface CurrentPeriodFocusProps {
     item: DashboardItem;
@@ -1109,6 +1102,7 @@ interface CurrentPeriodFocusProps {
     canEdit: boolean;
     onClose: () =&gt; void;
     allDashboardItems?: DashboardItem[];
+    decimalPrecision?: 0 | 1 | 2;
 }
 &nbsp;
 export const CurrentPeriodFocus: React.FC&lt;CurrentPeriodFocusProps&gt; = <span class="fstat-no" title="function not covered" >({</span>
@@ -1118,7 +1112,8 @@ export const CurrentPeriodFocus: React.FC&lt;CurrentPeriodFocusProps&gt; = <span
     onUpdateItem,
     canEdit,
     onClose,
-    allDashboardItems = <span class="branch-0 cbranch-no" title="branch not covered" >[]</span>
+    allDashboardItems = <span class="branch-0 cbranch-no" title="branch not covered" >[],</span>
+    decimalPrecision = <span class="branch-0 cbranch-no" title="branch not covered" >2</span>
 }) =&gt; {
     // 🛡️ ACTIVE SHIELD: Blindaje contra ítems malformados
     const [localGoal, setLocalGoal] = <span class="cstat-no" title="statement not covered" >useState&lt;string&gt;('');</span>
@@ -1253,8 +1248,8 @@ export const CurrentPeriodFocus: React.FC&lt;CurrentPeriodFocusProps&gt; = <span
     const handleQuickSave = <span class="cstat-no" title="statement not covered" ><span class="fstat-no" title="function not covered" >async </span>() =&gt; {</span>
 <span class="cstat-no" title="statement not covered" >        <span class="missing-if-branch" title="if path not taken" >I</span>if (!canEdit || !item) <span class="cstat-no" title="statement not covered" >return;</span></span>
 <span class="cstat-no" title="statement not covered" >        setIsSaving(true);</span>
-        const newGoalVal = <span class="cstat-no" title="statement not covered" >localGoal === '' ? null : parseFloat(localGoal);</span>
-        const newActualVal = <span class="cstat-no" title="statement not covered" >localActual === '' ? null : parseFloat(localActual);</span>
+        const newGoalVal = <span class="cstat-no" title="statement not covered" >parseFormattedNumber(localGoal);</span>
+        const newActualVal = <span class="cstat-no" title="statement not covered" >parseFormattedNumber(localActual);</span>
         const updatedItem = <span class="cstat-no" title="statement not covered" >{ </span>
             ...item,
             isActivityMode: activityMode,
@@ -1286,15 +1281,12 @@ export const CurrentPeriodFocus: React.FC&lt;CurrentPeriodFocusProps&gt; = <span
     };
 &nbsp;
     const formatNumber = <span class="cstat-no" title="statement not covered" ><span class="fstat-no" title="function not covered" >(n</span>um: number) =&gt; {</span>
-<span class="cstat-no" title="statement not covered" >        return new Intl.NumberFormat('en-US', {</span>
-            minimumFractionDigits: 0,
-            maximumFractionDigits: 2
-        }).format(num);
+<span class="cstat-no" title="statement not covered" >        return formatNumberWithCommas(num, decimalPrecision);</span>
     };
 &nbsp;
 <span class="cstat-no" title="statement not covered" >    <span class="missing-if-branch" title="if path not taken" >I</span>if (!item) <span class="cstat-no" title="statement not covered" >return null;</span></span>
 &nbsp;
-    const gap = <span class="cstat-no" title="statement not covered" >(parseFloat(localActual) || 0) - (parseFloat(localGoal) || 0);</span>
+    const gap = <span class="cstat-no" title="statement not covered" >(parseFormattedNumber(localActual) || 0) - (parseFormattedNumber(localGoal) || 0);</span>
     const isPositiveGap = <span class="cstat-no" title="statement not covered" >item.goalType === 'minimize' ? gap &lt;= 0 : gap &gt;= 0;</span>
 &nbsp;
     const handlePrevPeriod = <span class="cstat-no" title="statement not covered" ><span class="fstat-no" title="function not covered" >() =</span>&gt; {</span>
@@ -1431,19 +1423,17 @@ export const CurrentPeriodFocus: React.FC&lt;CurrentPeriodFocusProps&gt; = <span
                                 &lt;div className={`bg-slate-950/40 border border-white/5 rounded-2xl p-3 transition-all ${canEdit &amp;&amp; !activityMode ? 'focus-within:border-cyan-500/50' : 'opacity-80 grayscale-[0.5]'}`}&gt;
                                     &lt;div className="flex justify-between items-center mb-1.5"&gt;
                                         &lt;span className="text-[9px] font-black text-slate-500 uppercase tracking-widest block"&gt;Meta ({unit})&lt;/span&gt;
-                                        &lt;span className="text-[10px] font-black text-cyan-400 tabular-nums"&gt;{localGoal !== '' ? formatNumber(parseFloat(localGoal)) : '0'}&lt;/span&gt;
+                                        &lt;span className="text-[10px] font-black text-cyan-400 tabular-nums"&gt;{localGoal !== '' ? formatNumberWithCommas(localGoal, decimalPrecision) : '0'}&lt;/span&gt;
                                     &lt;/div&gt;
                                     &lt;input
                                         type="text"
                                         inputMode="decimal"
-                                        value={isGoalFocused ? localGoal : (localGoal !== '' ? formatNumber(parseFloat(localGoal)) : '')}
+                                        value={isGoalFocused ? localGoal : formatNumberWithCommas(localGoal, decimalPrecision)}
                                         onFocus={<span class="fstat-no" title="function not covered" >() =</span>&gt; <span class="cstat-no" title="statement not covered" >setIsGoalFocused(true)}</span>
                                         onBlur={<span class="fstat-no" title="function not covered" >() =</span>&gt; <span class="cstat-no" title="statement not covered" >setIsGoalFocused(false)}</span>
                                         onChange={<span class="fstat-no" title="function not covered" >(e</span>) =&gt; {
-                                            const val = <span class="cstat-no" title="statement not covered" >e.target.value.replace(/,/g, '');</span>
-<span class="cstat-no" title="statement not covered" >                                            <span class="missing-if-branch" title="if path not taken" >I</span>if (!isNaN(parseFloat(val)) || val === "" || val === "-") {</span>
-<span class="cstat-no" title="statement not covered" >                                                setLocalGoal(val);</span>
-                                            }
+                                            const val = <span class="cstat-no" title="statement not covered" >e.target.value;</span>
+<span class="cstat-no" title="statement not covered" >                                            setLocalGoal(val);</span>
                                         }}
                                         id="goal-input"
                                         disabled={!canEdit || activityMode}
@@ -1455,19 +1445,17 @@ export const CurrentPeriodFocus: React.FC&lt;CurrentPeriodFocusProps&gt; = <span
                                 &lt;div className={`bg-slate-950/40 border border-white/5 rounded-2xl p-3 transition-all ${canEdit &amp;&amp; !activityMode ? 'focus-within:border-emerald-500/50' : 'opacity-80 grayscale-[0.5]'}`}&gt;
                                     &lt;div className="flex justify-between items-center mb-1.5"&gt;
                                         &lt;span className="text-[9px] font-black text-slate-500 uppercase tracking-widest block"&gt;Real ({unit})&lt;/span&gt;
-                                        &lt;span className="text-[10px] font-black text-emerald-400 tabular-nums"&gt;{localActual !== '' ? formatNumber(parseFloat(localActual)) : '0'}&lt;/span&gt;
+                                        &lt;span className="text-[10px] font-black text-emerald-400 tabular-nums"&gt;{localActual !== '' ? formatNumberWithCommas(localActual, decimalPrecision) : '0'}&lt;/span&gt;
                                     &lt;/div&gt;
                                     &lt;input
                                         type="text"
                                         inputMode="decimal"
-                                        value={isActualFocused ? localActual : (localActual !== '' ? formatNumber(parseFloat(localActual)) : '')}
+                                        value={isActualFocused ? localActual : formatNumberWithCommas(localActual, decimalPrecision)}
                                         onFocus={<span class="fstat-no" title="function not covered" >() =</span>&gt; <span class="cstat-no" title="statement not covered" >setIsActualFocused(true)}</span>
                                         onBlur={<span class="fstat-no" title="function not covered" >() =</span>&gt; <span class="cstat-no" title="statement not covered" >setIsActualFocused(false)}</span>
                                         onChange={<span class="fstat-no" title="function not covered" >(e</span>) =&gt; {
-                                            const val = <span class="cstat-no" title="statement not covered" >e.target.value.replace(/,/g, '');</span>
-<span class="cstat-no" title="statement not covered" >                                            <span class="missing-if-branch" title="if path not taken" >I</span>if (!isNaN(parseFloat(val)) || val === "" || val === "-") {</span>
-<span class="cstat-no" title="statement not covered" >                                                setLocalActual(val);</span>
-                                            }
+                                            const val = <span class="cstat-no" title="statement not covered" >e.target.value;</span>
+<span class="cstat-no" title="statement not covered" >                                            setLocalActual(val);</span>
                                         }}
                                         id="actual-input"
                                         disabled={!canEdit || activityMode}
@@ -1612,7 +1600,7 @@ export const CurrentPeriodFocus: React.FC&lt;CurrentPeriodFocusProps&gt; = <span
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-03-22T22:30:11.403Z
+                at 2026-04-29T19:41:59.655Z
             </div>
         <script src="../../prettify.js"></script>
         <script>
