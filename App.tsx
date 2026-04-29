@@ -53,7 +53,7 @@ export default function App() {
   const [user, setUser] = useState<FirebaseUser | null>(null);
   const [userProfile, setUserProfile] = useState<User | null>(null);
 // 🛡️ v9.2.2-CLEAN-UI: MOTOR DUAL, RECURSIÓN SOLUCIONADA, BLINDAJE ADMIN
-const VERSION_LABEL = "v9.2.2-CLEAN-UI";
+const VERSION_LABEL = "v9.2.2-STABLE-BLINDADO";
 const SHIELD_ID = "STX-2026-PRO-SHIELD-GLOBAL";
   const [activeAdminSection, setActiveAdminSection] = useState<AdminSection>("none");
   const [allUsers, setAllUsers] = useState<User[]>([]);
