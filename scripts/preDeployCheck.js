@@ -44,5 +44,41 @@ if (!appIdentityMatch) {
   process.exit(1);
 }
 
+// 3. Guardia de Seguridad Multiapp (BLOCK_DEPLOY_IF_SITE_MISMATCH)
+const firebaseConfigPath = path.resolve('firebase.json');
+const firebasercPath = path.resolve('.firebaserc');
+
+if (!fs.existsSync(firebaseConfigPath) || !fs.existsSync(firebasercPath)) {
+  console.error("🚨 ERROR CRÍTICO: Falta la configuración de Firebase en el entorno de trabajo.");
+  process.exit(1);
+}
+
+const firebaseJson = JSON.parse(fs.readFileSync(firebaseConfigPath, 'utf8'));
+const firebaserc = JSON.parse(fs.readFileSync(firebasercPath, 'utf8'));
+
+// Validar que el hosting target sea exactamente 'tablero' y apunte a 'build_output'
+const hostingConfig = firebaseJson.hosting;
+if (!hostingConfig || hostingConfig.target !== 'tablero' || hostingConfig.public !== 'build_output') {
+  console.error("🚨 ERROR [BLOCK_DEPLOY_IF_SITE_MISMATCH]: Estructura de Hosting ambigua o inválida.");
+  console.error("   Se esperaba target: 'tablero' y public: 'build_output'. Despliegue abortado para seguridad.");
+  process.exit(1);
+}
+
+// Validar que en .firebaserc el target 'tablero' apunte exclusivamente a 'prior-01'
+const activeProject = firebaserc.projects.default;
+const targetsConfig = firebaserc.targets;
+if (activeProject !== 'prior-01') {
+  console.error(`🚨 ERROR [BLOCK_DEPLOY_IF_SITE_MISMATCH]: Proyecto activo incorrecto (${activeProject}). Se requiere 'prior-01'.`);
+  process.exit(1);
+}
+
+const targetMapping = targetsConfig?.['prior-01']?.hosting?.tablero;
+if (!targetMapping || targetMapping.length !== 1 || targetMapping[0] !== 'prior-01') {
+  console.error("🚨 ERROR [BLOCK_DEPLOY_IF_SITE_MISMATCH]: Asociación cruzada de hosting detectada.");
+  console.error("   El target 'tablero' debe mapear única y exclusivamente a 'prior-01' en .firebaserc.");
+  process.exit(1);
+}
+
+console.log("✅ GUARDIA DE ASOCIACIÓN MULTIAPP: Validada (Sin discrepancias de targets/sitios).");
 console.log("✅ IDENTIDAD Y VERSIÓN VERIFICADAS. Blindaje de seguridad activo.");
 process.exit(0);

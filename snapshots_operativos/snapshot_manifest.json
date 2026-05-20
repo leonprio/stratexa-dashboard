@@ -1,0 +1,353 @@
+{
+  "timestamp": "2026-05-20T01:07:42.415Z",
+  "version_label": "9.2.3-STABLE-HARDLOCK",
+  "total_dashboards": 69,
+  "total_kpis": 618,
+  "dashboards_meta": [
+    {
+      "id": 1768429631789,
+      "year": 2026,
+      "kpis_count": 13
+    },
+    {
+      "id": 1768429631790,
+      "year": 2026,
+      "kpis_count": 13
+    },
+    {
+      "id": 1768429631791,
+      "year": 2026,
+      "kpis_count": 13
+    },
+    {
+      "id": 1768429631792,
+      "year": 2026,
+      "kpis_count": 13
+    },
+    {
+      "id": 1768429631793,
+      "year": 2026,
+      "kpis_count": 13
+    },
+    {
+      "id": 1768429631794,
+      "year": 2026,
+      "kpis_count": 13
+    },
+    {
+      "id": 1768429631795,
+      "year": 2026,
+      "kpis_count": 13
+    },
+    {
+      "id": 1768429631796,
+      "year": 2026,
+      "kpis_count": 13
+    },
+    {
+      "id": 1768429631797,
+      "year": 2026,
+      "kpis_count": 13
+    },
+    {
+      "id": 1768429631798,
+      "year": 2026,
+      "kpis_count": 13
+    },
+    {
+      "id": 1768429631799,
+      "year": 2026,
+      "kpis_count": 13
+    },
+    {
+      "id": 1768429631800,
+      "year": 2026,
+      "kpis_count": 13
+    },
+    {
+      "id": 1768429631801,
+      "year": 2026,
+      "kpis_count": 13
+    },
+    {
+      "id": 1768429631802,
+      "year": 2026,
+      "kpis_count": 13
+    },
+    {
+      "id": 1768503078010,
+      "year": 2026,
+      "kpis_count": 3
+    },
+    {
+      "id": 1768503078011,
+      "year": 2026,
+      "kpis_count": 6
+    },
+    {
+      "id": 1768503078012,
+      "year": 2026,
+      "kpis_count": 3
+    },
+    {
+      "id": 1768503078014,
+      "year": 2026,
+      "kpis_count": 8
+    },
+    {
+      "id": 1768503078016,
+      "year": 2026,
+      "kpis_count": 5
+    },
+    {
+      "id": 1768503078017,
+      "year": 2026,
+      "kpis_count": 5
+    },
+    {
+      "id": 1768503078018,
+      "year": 2026,
+      "kpis_count": 5
+    },
+    {
+      "id": 1768503078019,
+      "year": 2026,
+      "kpis_count": 5
+    },
+    {
+      "id": 1768503078020,
+      "year": 2026,
+      "kpis_count": 5
+    },
+    {
+      "id": 1768503078021,
+      "year": 2026,
+      "kpis_count": 5
+    },
+    {
+      "id": 1768503078022,
+      "year": 2026,
+      "kpis_count": 5
+    },
+    {
+      "id": 1768503078023,
+      "year": 2026,
+      "kpis_count": 5
+    },
+    {
+      "id": 1769440535341,
+      "year": 2025,
+      "kpis_count": 3
+    },
+    {
+      "id": 1769440535342,
+      "year": 2025,
+      "kpis_count": 3
+    },
+    {
+      "id": 1769440535343,
+      "year": 2025,
+      "kpis_count": 3
+    },
+    {
+      "id": 1769440535443,
+      "year": 2026,
+      "kpis_count": 11
+    },
+    {
+      "id": 2101,
+      "year": 2025,
+      "kpis_count": 14
+    },
+    {
+      "id": 2102,
+      "year": 2025,
+      "kpis_count": 14
+    },
+    {
+      "id": 2103,
+      "year": 2025,
+      "kpis_count": 14
+    },
+    {
+      "id": 2104,
+      "year": 2025,
+      "kpis_count": 14
+    },
+    {
+      "id": 2105,
+      "year": 2025,
+      "kpis_count": 14
+    },
+    {
+      "id": 2106,
+      "year": 2025,
+      "kpis_count": 14
+    },
+    {
+      "id": 2107,
+      "year": 2025,
+      "kpis_count": 14
+    },
+    {
+      "id": 2108,
+      "year": 2025,
+      "kpis_count": 14
+    },
+    {
+      "id": 2109,
+      "year": 2025,
+      "kpis_count": 14
+    },
+    {
+      "id": 2110,
+      "year": 2025,
+      "kpis_count": 14
+    },
+    {
+      "id": 2111,
+      "year": 2025,
+      "kpis_count": 14
+    },
+    {
+      "id": 2112,
+      "year": 2025,
+      "kpis_count": 14
+    },
+    {
+      "id": 2113,
+      "year": 2025,
+      "kpis_count": 14
+    },
+    {
+      "id": 2114,
+      "year": 2025,
+      "kpis_count": 14
+    },
+    {
+      "id": "GE_2025_1770307153492",
+      "year": 2025,
+      "kpis_count": 0
+    },
+    {
+      "id": "GE_2026_1771872572562",
+      "year": 2026,
+      "kpis_count": 1
+    },
+    {
+      "id": "GE_2026_1771973449193",
+      "year": 2026,
+      "kpis_count": 1
+    },
+    {
+      "id": "GE_2026_1771973478267",
+      "year": 2026,
+      "kpis_count": 1
+    },
+    {
+      "id": "GE_2026_1771973568182",
+      "year": 2026,
+      "kpis_count": 1
+    },
+    {
+      "id": "GE_2026_1771973633870",
+      "year": 2026,
+      "kpis_count": 3
+    },
+    {
+      "id": "IPS_2026_1769706810567",
+      "year": 2026,
+      "kpis_count": 10
+    },
+    {
+      "id": "IPS_2026_1769727168545",
+      "year": 2026,
+      "kpis_count": 10
+    },
+    {
+      "id": "IPS_2026_1769727446206",
+      "year": 2026,
+      "kpis_count": 10
+    },
+    {
+      "id": "IPS_2026_1769729278782",
+      "year": 2026,
+      "kpis_count": 10
+    },
+    {
+      "id": "IPS_2026_1769729393269",
+      "year": 2026,
+      "kpis_count": 10
+    },
+    {
+      "id": "IPS_2026_1769729404647",
+      "year": 2026,
+      "kpis_count": 10
+    },
+    {
+      "id": "IPS_2026_1769729411815",
+      "year": 2026,
+      "kpis_count": 10
+    },
+    {
+      "id": "IPS_2026_1769729421786",
+      "year": 2026,
+      "kpis_count": 10
+    },
+    {
+      "id": "IPS_2026_1769729427336",
+      "year": 2026,
+      "kpis_count": 10
+    },
+    {
+      "id": "IPS_2026_1769729434630",
+      "year": 2026,
+      "kpis_count": 10
+    },
+    {
+      "id": "IPS_2026_1769729445541",
+      "year": 2026,
+      "kpis_count": 10
+    },
+    {
+      "id": "IPS_2026_1769729453084",
+      "year": 2026,
+      "kpis_count": 10
+    },
+    {
+      "id": "IPS_2026_1769729462412",
+      "year": 2026,
+      "kpis_count": 10
+    },
+    {
+      "id": "IPS_2026_1769729469488",
+      "year": 2026,
+      "kpis_count": 10
+    },
+    {
+      "id": "IPS_2026_1778878034352",
+      "year": 2026,
+      "kpis_count": 0
+    },
+    {
+      "id": "NaN",
+      "year": 2025,
+      "kpis_count": 3
+    },
+    {
+      "id": "REGIONES_2026_1778878129040",
+      "year": 2026,
+      "kpis_count": 3
+    },
+    {
+      "id": "WELOVE_2025_1769567204878",
+      "year": 2025,
+      "kpis_count": 3
+    },
+    {
+      "id": "agg-GENERAL-2026",
+      "kpis_count": 4
+    }
+  ],
+  "integrity_status": "VERIFIED"
+}

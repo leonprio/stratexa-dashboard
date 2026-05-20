@@ -1,0 +1,35 @@
+{
+  "project_id": "prior-01",
+  "active_alias": "default",
+  "hosting_targets": [
+    {
+      "target_name": "tablero",
+      "hosting_site": "prior-01",
+      "default_url": "https://prior-01.web.app",
+      "custom_domains": [
+        "tablero.leonprior.com"
+      ],
+      "ssl_status": "ACTIVE",
+      "app_id": "1:568084253557:web:e5b7985513a4c21cd5213c",
+      "role": "Tablero Prior - Business Intelligence"
+    },
+    {
+      "target_name": "gobernanza",
+      "hosting_site": "gobernanzacpx",
+      "default_url": "https://gobernanzacpx.web.app",
+      "app_id": "1:568084253557:web:330e195f50cd8a30d5213c",
+      "role": "Gobernanza COPARMEX (Totalmente Aislado)"
+    }
+  ],
+  "associated_auxiliary_sites": [
+    {
+      "site_id": "activador",
+      "default_url": "https://activador.web.app"
+    },
+    {
+      "site_id": "vacips",
+      "default_url": "https://vacips.web.app"
+    }
+  ],
+  "hardening_active": true
+}

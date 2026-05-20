@@ -1,0 +1,15 @@
+{
+  "projects": {
+    "default": "prior-01"
+  },
+  "targets": {
+    "prior-01": {
+      "hosting": {
+        "tablero": [
+          "prior-01"
+        ]
+      }
+    }
+  },
+  "etags": {}
+}

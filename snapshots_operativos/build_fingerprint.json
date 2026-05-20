@@ -1,0 +1,26 @@
+{
+  "app_name": "stratexa-iapriori",
+  "app_version": "9.2.3",
+  "version_label": "9.2.3-STABLE-HARDLOCK",
+  "build_directory": "build_output",
+  "build_timestamp": "2026-05-13T12:04:00Z",
+  "fingerprints": {
+    "index.html": {
+      "size_bytes": 1120,
+      "title": "Tablero Prior - Business Intelligence"
+    },
+    "assets/index-DEWNL_Fi.css": {
+      "size_bytes": 3552,
+      "fingerprint": "DEWNL_Fi"
+    },
+    "assets/index-f_K_3uEt.js": {
+      "size_bytes": 2337501,
+      "fingerprint": "f_K_3uEt"
+    },
+    "assets/__vite-browser-external-BIHI7g3E.js": {
+      "size_bytes": 33,
+      "fingerprint": "BIHI7g3E"
+    }
+  },
+  "predeploy_compliance": "VERIFIED_BY_SCRIPTS"
+}

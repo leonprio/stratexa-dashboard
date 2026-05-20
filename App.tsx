@@ -42,7 +42,7 @@ type AdminSection = "none" | "users" | "thresholds" | "clients" | "indicators" |
  * Componente principal de la aplicación Stratexa Dashboard.
  * Gestiona el estado global de autenticación, carga de tableros, ruteo interno y administración.
  * 
- * @version v9.2.2-CLEAN-UI
+ * @version v9.2.3-CLEAN-UI
  * @architecture Critical Nuclear Shield (Atomic Isolation)
  * 
  * @returns {JSX.Element} El árbol de componentes de la aplicación.
@@ -52,8 +52,8 @@ export default function App() {
   const [_errorMsg, setErrorMsg] = useState<string>("");
   const [user, setUser] = useState<FirebaseUser | null>(null);
   const [userProfile, setUserProfile] = useState<User | null>(null);
-// 🛡️ v9.2.2-CLEAN-UI: MOTOR DUAL, RECURSIÓN SOLUCIONADA, BLINDAJE ADMIN
-const VERSION_LABEL = "v9.2.2-STABLE-BLINDADO";
+// 🛡️ v9.2.3-CLEAN-UI: MOTOR DUAL, RECURSIÓN SOLUCIONADA, BLINDAJE ADMIN
+const VERSION_LABEL = "v9.2.3-STABLE-BLINDADO";
 const SHIELD_ID = "STX-2026-PRO-SHIELD-GLOBAL";
   const [activeAdminSection, setActiveAdminSection] = useState<AdminSection>("none");
   const [allUsers, setAllUsers] = useState<User[]>([]);

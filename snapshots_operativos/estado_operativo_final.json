@@ -1,0 +1,58 @@
+{
+  "congelamiento_timestamp": "2026-05-20T01:21:00Z",
+  "app_name": "stratexa-iapriori",
+  "app_version": "9.2.3",
+  "version_label": "9.2.3-STABLE-HARDLOCK",
+  "ecosystem": {
+    "primary_project_id": "prior-01",
+    "primary_hosting_target": "tablero",
+    "primary_custom_domain": "https://tablero.leonprior.com",
+    "primary_web_app_url": "https://prior-01.web.app",
+    "ssl_status": "ACTIVE",
+    "associated_auxiliary_sites": [
+      {
+        "site_id": "activador",
+        "default_url": "https://activador.web.app"
+      },
+      {
+        "site_id": "vacips",
+        "default_url": "https://vacips.web.app"
+      }
+    ],
+    "governance_coparmex_isolation": {
+      "status": "TOTALMENTE_AISLADO_Y_BLINDADO",
+      "governance_hosting_site": "gobernanzacpx",
+      "governance_default_url": "https://gobernanzacpx.web.app",
+      "governance_version": "v18.13.8-MULTIAPP-HARDLOCK"
+    }
+  },
+  "database_audit": {
+    "firestore_source_project": "prior-01",
+    "target_root_collection": "tbl_dashboards",
+    "total_dashboards_extracted": 69,
+    "total_kpis_extracted": 618,
+    "integrity_validation": "VERIFIED"
+  },
+  "build_and_deploy_compliance": {
+    "package_json_version": "9.2.3",
+    "app_tsx_version": "9.2.3",
+    "index_html_title": "Tablero Prior - Business Intelligence",
+    "predeploy_check_status": "SUCCESS_PASSED",
+    "predeploy_compliance_script": "scripts/preDeployCheck.js",
+    "multiapp_deploy_guard": "BLOCK_DEPLOY_IF_SITE_MISMATCH_ACTIVE"
+  },
+  "recovery_package_metadata": {
+    "package_filename": "recovery_package_9.2.3_20260520.zip",
+    "package_path": "snapshots_operativos/recovery_package_9.2.3_20260520.zip",
+    "package_size_bytes": 99070,
+    "files_included": [
+      "dashboard_snapshot.json",
+      "snapshot_manifest.json",
+      "firebase_targets_snapshot.json",
+      "build_fingerprint.json",
+      "rollback_operativo.md"
+    ],
+    "rollback_viability_verified": true
+  },
+  "freeze_status": "HARDLOCKED_STABLE"
+}
