@@ -26,19 +26,46 @@ Se ha identificado que la carpeta en OneDrive contiene el código fuente real de
 
 ---
 
-## 3. Plan de Importación de la Fuente Canónica (Propuesta)
-Para regularizar la fuente e implementar de manera segura las salvaguardas de la Cohorte B y el blindaje sin perder el control de versiones en el repositorio principal:
+## 3. Ejecución de la Importación y Resultados Forenses
 
-1. **Aislamiento en APP-TABLERO-RECOVERY**:
-   Copiar los archivos modificados de OneDrive a `C:\APP-TABLERO-RECOVERY\v9.4.3-source-forensics\src` para asegurar un respaldo inmutable libre de Git.
-2. **Creación de Rama de regularización**:
-   En el repositorio canónico local, crear la rama `recovery/production-source-v9.4.3-forensics` partiendo del baseline `1a25ee39552947dd5c3b571b542f930e8a5b70bc`.
-3. **Importación Limpia**:
-   Copiar el código de `v9.4.3` de OneDrive a la raíz del worktree `recovery-production-source-v9.4.3-forensics`.
-4. **Validación del Build**:
-   Ejecutar `npm run build` y corroborar que el bundle de salida coincide lógicamente con el comportamiento y marcadores de producción.
-5. **Commit de Regularización**:
-   Crear un commit en la rama forense con el mensaje:
-   `recovery: synchronize codebase with production source v9.4.3`
-6. **No Deploy / No Push**:
-   De acuerdo con las directrices de seguridad, no se ejecutará `git push` ni despliegues en el Hosting.
+La importación y validación se ejecutaron siguiendo un protocolo estricto de control:
+
+1. **Snapshot Inmutable Creado**:
+   - Ruta: `C:\APP-TABLERO-RECOVERY\v9.4.3-source-forensics\source-snapshot-2026-07-17`
+   - Manifiesto: `C:\APP-TABLERO-RECOVERY\v9.4.3-source-forensics\source-snapshot-2026-07-17-manifest.json`
+   - Total de archivos copiados: 94 archivos (fuente, scripts de build y tests, excluyendo caches, dependencias y credenciales).
+   - Archivos de secretos excluidos registrados: `.env.local` (contiene únicamente un placeholder inofensivo `GEMINI_API_KEY=PLACEHOLDER_API_KEY`, sin secretos reales).
+
+2. **Clasificación del Conjunto de Archivos**:
+   - **PRODUCTION_SOURCE**: `App.tsx`, `components/*` (incluyendo la nueva subcapa de control operativo en `components/operational/*`), `services/aiService.ts`, `services/firebaseService.ts`, `types.ts`, `utils/compliance.ts`, `utils/aggregationUtils.ts`, `utils/dateUtils.ts`, `utils/formatters.ts`, `utils/initialData.ts`, `utils/weeklyUtils.ts`.
+   - **BUILD_CONFIGURATION**: `package.json`, `package-lock.json`, `tsconfig.json`, `vite.config.ts`, `firebase.json`, `.firebaserc`, `firestore.rules`, `firestore.indexes.json`, `storage.rules`, `eslint.config.js`.
+   - **TEST_SOURCE**: `utils/*.test.ts`, `components/*.test.tsx`, `jest.config.cjs`, `jest.setup.cjs`.
+   - **DOCUMENTATION**: `CHANGELOG_MASTER.md`, `baseline_architecture_manifest.json`, `release_governance_policy.md`, `release_notes_v9.4.1.md`, `safe_deploy_checklist.md`, `README.md`, `CHANGELOG.md`.
+
+3. **Escaneo de Privacidad y Secretos**:
+   - El escaneo estático exhaustivo no arrojó contraseñas, claves privadas, tokens reales ni credenciales duras.
+   - El archivo `.env.local` posee un placeholder ficticio. No se copiaron archivos de entorno ni credenciales administrativas al worktree.
+   - Estado: **LIBRE DE SECRETOS Y PII**.
+
+4. **Resultados de Integridad del Ciclo Local**:
+   - **npm ci --legacy-peer-deps**: Instalación limpia exitosa (821 paquetes auditados).
+   - **npm test**: Exitoso (13 Test Suites pasaron, 58 pruebas individuales ejecutadas y validadas al 100%).
+   - **npm run build**: Exitoso (generó los artefactos optimizados en `build_output`).
+   - **npm run predeploy**: Exitoso (validó consistencia estructural de versión 9.4.3 en package.json y App.tsx).
+
+5. **Comparación Semántica de Producción (Equality Confirmada)**:
+   - Se obtuvo el index.html y el bundle compilado directamente del sitio oficial de producción (`https://tablero.leonprior.com`).
+   - El bundle de producción activo en la web es `/assets/index-CVzZFGX-.js`.
+   - **Verificación Determinística por Hash (Igualdad Binaria)**:
+     - Hash SHA-256 del bundle generado localmente: `5b5dd2dd301c9b9f9ff3eb1be1d8c3e3e936db5dae3faab869a5fd887cc2a067`
+     - Hash SHA-256 del bundle descargado de producción: `5b5dd2dd301c9b9f9ff3eb1be1d8c3e3e936db5dae3faab869a5fd887cc2a067`
+   - Clasificación de Equivalencia: **SEMANTIC_MATCH_CONFIRMED** (con coincidencia binaria total del bundle de distribución de producción).
+
+---
+
+## 4. Regularización en Git
+- Rama forense: `recovery/production-source-v9.4.3-forensics`
+- Commit ID: `recovery: synchronize codebase with production source v9.4.3`
+- Se preservaron las exclusiones de hosting, deploys y credentials del Git histórico.
+- Acciones futuras de push, merge o tags remotos quedan restringidas de acuerdo con la gobernanza de seguridad del proyecto.
+

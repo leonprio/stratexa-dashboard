@@ -12,6 +12,10 @@ jest.mock('./ReportCenter', () => ({
     ReportCenter: () => React.createElement('div', { 'data-testid': 'report-center' }, 'Mock Report Center')
 }));
 
+jest.mock('../utils/ExecutiveOperationalExport', () => ({
+    exportToExecutiveExcelJS: jest.fn()
+}));
+
 const mockDashboard = {
     id: 1,
     title: 'Tablero de Prueba',

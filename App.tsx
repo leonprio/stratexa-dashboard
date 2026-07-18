@@ -16,6 +16,7 @@ import { AdvancedDataImporter } from "./components/AdvancedDataImporter";
 import { HelpCenter } from "./components/HelpCenter";
 import { MasterTrafficLight } from "./components/MasterTrafficLight";
 import { ClientSettings } from "./components/ClientSettings";
+import { ControlledImporter } from "./components/ControlledImporter";
 
 import {
   Dashboard as DashboardType,
@@ -42,7 +43,7 @@ type AdminSection = "none" | "users" | "thresholds" | "clients" | "indicators" |
  * Componente principal de la aplicación Stratexa Dashboard.
  * Gestiona el estado global de autenticación, carga de tableros, ruteo interno y administración.
  * 
- * @version v9.2.3-CLEAN-UI
+ * @version v9.4.1-STABLE-QA-HARDENING
  * @architecture Critical Nuclear Shield (Atomic Isolation)
  * 
  * @returns {JSX.Element} El árbol de componentes de la aplicación.
@@ -52,9 +53,9 @@ export default function App() {
   const [_errorMsg, setErrorMsg] = useState<string>("");
   const [user, setUser] = useState<FirebaseUser | null>(null);
   const [userProfile, setUserProfile] = useState<User | null>(null);
-// 🛡️ v9.2.3-CLEAN-UI: MOTOR DUAL, RECURSIÓN SOLUCIONADA, BLINDAJE ADMIN
-const VERSION_LABEL = "v9.2.3-STABLE-BLINDADO";
-const SHIELD_ID = "STX-2026-PRO-SHIELD-GLOBAL";
+// 🛡️ v9.4.3-STABLE-AI-FORENSIC-HARDENING: AI FORENSIC HARDENING & DETERMINISTIC SEMANTICS
+const VERSION_LABEL = "v9.4.3-STABLE-AI-FORENSIC-HARDENING";
+const SHIELD_ID = "GOLD MASTER";
   const [activeAdminSection, setActiveAdminSection] = useState<AdminSection>("none");
   const [allUsers, setAllUsers] = useState<User[]>([]);
 
@@ -2018,6 +2019,7 @@ Esto corregirá cualquier inconsistencia en colores (ej. Amarillo vs Rojo).`)) {
             handleUpdateSystemSettings={handleUpdateSystemSettings}
             setLoadingDashboards={setLoadingDashboards}
             allRawDashboards={allRawDashboards}
+            currentUser={userProfile || undefined}
           />
         )
       }
@@ -2068,13 +2070,10 @@ Esto corregirá cualquier inconsistencia en colores (ej. Amarillo vs Rojo).`)) {
 
       {
         activeAdminSection === "import" && (
-          <AdvancedDataImporter
+          <ControlledImporter
             dashboards={dashboards}
-            availableClients={availableClients}
             selectedClientId={selectedClientId === 'all' ? (availableClients[0] || 'IPS') : selectedClientId}
             selectedYear={selectedYear}
-            onClientChange={(c) => setSelectedClientId(c.trim().toUpperCase())}
-            onYearChange={(y) => setSelectedYear(y)}
             onImportComplete={() => {
               window.location.reload();
             }}
