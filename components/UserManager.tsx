@@ -285,7 +285,7 @@ const UserRow = React.memo(({ user, dashboards, isCurrentUser, isGlobalAdmin, on
                             <button
                                 onClick={() => onDelete(safeUser.id, safeUser.email)}
                                 className="w-8 h-8 flex items-center justify-center rounded-lg bg-rose-500/10 text-rose-400 hover:bg-rose-500 hover:text-white transition-all"
-                                title="Eliminar usuario"
+                                title="Desvincular del Tablero"
                             >
                                 <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
                                     <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm4 0a1 1 0 012 0v6a1 1 0 11-2 0V8z" clipRule="evenodd" />
@@ -424,23 +424,44 @@ export const UserManager = React.memo(({ users, dashboards, currentUser, activeC
             return;
         }
         setIsCreating(true);
-        try {
-            const existingUser = fullUserList.find(u => u.email.trim().toLowerCase() === newUserEmail.trim().toLowerCase());
-            let uid = "";
+        let createdUserInstance: any = null;
+        let stepState = 'VALIDATING_INPUT';
 
+        try {
+            // 1. CHECKING_HISTORICAL_PROFILE
+            stepState = 'CHECKING_HISTORICAL_PROFILE';
+            const emailToCheck = newUserEmail.trim().toLowerCase();
+            const existingUser = fullUserList.find(u => u.email.trim().toLowerCase() === emailToCheck);
+
+            // Importar validador de identidad de v9.4.4
+            const { validateUserIdentity } = await import('../utils/userIdentityIntegrity');
+
+            // 2. CREATING_AUTH
+            stepState = 'CREATING_AUTH';
+            let uid = "";
             if (existingUser) {
                 const choice = confirm(`El usuario "${newUserEmail}" ya existe en la base de datos global.\n\n- Pulsa ACEPTAR para vincular su cuenta actual a este cliente.\n- Pulsa CANCELAR para intentar crear un registro nuevo.`);
                 if (choice) {
                     uid = existingUser.id;
                 } else {
+                    // Si intenta crear una cuenta duplicada del mismo correo con UID distinto, el validador lo bloquea
+                    const validationErr = validateUserIdentity({ email: emailToCheck }, true);
+                    if (validationErr) {
+                        alert(`❌ [${validationErr.code}]: ${validationErr.message}`);
+                        throw new Error(validationErr.message);
+                    }
                     const result = await firebaseService.createAuthUser(newUserEmail.trim(), newUserPassword, newUserName.trim());
                     uid = result.uid;
+                    createdUserInstance = result.userInstance;
                 }
             } else {
                 const result = await firebaseService.createAuthUser(newUserEmail.trim(), newUserPassword, newUserName.trim());
                 uid = result.uid;
+                createdUserInstance = result.userInstance;
             }
 
+            // 3. CREATING_PROFILE
+            stepState = 'CREATING_PROFILE';
             const userToSave: User = {
                 id: uid,
                 name: newUserName.trim(),
@@ -455,12 +476,54 @@ export const UserManager = React.memo(({ users, dashboards, currentUser, activeC
                 superGroups: []
             };
 
+            // Validar identidad antes de persistir
+            const identityErr = validateUserIdentity({
+                authUid: uid,
+                documentId: uid,
+                profileId: userToSave.id,
+                email: userToSave.email,
+                globalRole: userToSave.globalRole,
+                clientId: userToSave.clientId
+            }, false);
+
+            if (identityErr) {
+                alert(`❌ [${identityErr.code}]: ${identityErr.message}`);
+                throw new Error(identityErr.message);
+            }
+
             await firebaseService.saveUser(userToSave);
+
+            // 4. VALIDATING_READBACK
+            stepState = 'VALIDATING_READBACK';
+            const readbackProfile = await firebaseService.getUser(uid);
+            if (!readbackProfile) {
+                throw new Error('PROFILE_MISSING');
+            }
+            if (readbackProfile.id !== uid || readbackProfile.email.trim().toLowerCase() !== emailToCheck) {
+                throw new Error('PROFILE_READBACK_MISMATCH');
+            }
+
+            // 5. SUCCESS
+            stepState = 'SUCCESS';
             setLocalUsers(prev => [...prev.filter(u => u.id !== uid), userToSave]);
             setNewUserName(''); setNewUserEmail(''); setNewUserPassword(''); setNewUserPasswordConfirm(''); setNewUserRole(''); setNewCanManageKPIs(false); setNewCanExportPPT(false);
             alert("✅ Usuario agregado con éxito.");
         } catch (error: any) {
-            alert("❌ Error: " + error.message);
+            console.error(`Error in state ${stepState}:`, error);
+
+            if (createdUserInstance && (stepState === 'CREATING_PROFILE' || stepState === 'VALIDATING_READBACK')) {
+                try {
+                    // Compensación segura intentando eliminar el usuario Auth creado
+                    stepState = 'COMPENSATING_AUTH_CREATION';
+                    await firebaseService.deleteAuthUserDirectly(createdUserInstance);
+                    alert(`❌ Fallo al guardar perfil: La creación de cuenta fue compensada y revertida.`);
+                } catch (compErr: any) {
+                    stepState = 'RECOVERY_REQUIRED';
+                    alert(`🚨 [RECOVERY_REQUIRED]: La cuenta de acceso fue creada, pero el perfil del Tablero no pudo confirmarse. No intentes crearla nuevamente. Requiere conciliación.`);
+                }
+            } else {
+                alert("❌ Error: " + error.message);
+            }
         } finally {
             setIsCreating(false);
         }
@@ -555,14 +618,14 @@ export const UserManager = React.memo(({ users, dashboards, currentUser, activeC
                                     onResetPassword={email => firebaseService.sendPasswordResetEmail(email)}
                                     onChangePassword={(id, email) => setPasswordChangeUser({ id, email })}
                                     onDelete={async (id, email) => {
-                                        if (confirm(`¿Eliminar permanentemente a ${email}?`)) {
+                                        if (confirm(`¿Desvincular a ${email} de este Tablero?\n\n⚠️ NOTA: Esto eliminará el perfil del Tablero en la base de datos (tbl_users). La credencial de Firebase Authentication continuará existiendo en el servidor Auth y deberá ser eliminada manualmente por un administrador si se desea revocar por completo.`)) {
                                             try {
                                                 await firebaseService.deleteUserFromFirestore(id);
                                                 setLocalUsers(prev => prev.filter(x => x.id !== id));
                                                 if (onUserDeleted) onUserDeleted(id);
-                                                alert(`✅ Usuario ${email} eliminado correctamente.`);
+                                                alert(`✅ Perfil de ${email} desvinculado del Tablero correctamente.`);
                                             } catch (err: any) {
-                                                alert(`❌ Error al eliminar: ${err.message}`);
+                                                alert(`❌ Error al desvincular: ${err.message}`);
                                             }
                                         }
                                     }}

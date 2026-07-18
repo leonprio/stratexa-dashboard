@@ -47,11 +47,23 @@ if (!appIdentityMatch) {
 // 3. Guardia de Seguridad Multiapp (BLOCK_DEPLOY_IF_SITE_MISMATCH)
 const firebaseConfigPath = path.resolve('firebase.json');
 const firebasercPath = path.resolve('.firebaserc');
+const firestoreRulesPath = path.resolve('firestore.rules');
 
-if (!fs.existsSync(firebaseConfigPath) || !fs.existsSync(firebasercPath)) {
-  console.error("🚨 ERROR CRÍTICO: Falta la configuración de Firebase en el entorno de trabajo.");
+if (!fs.existsSync(firebaseConfigPath) || !fs.existsSync(firebasercPath) || !fs.existsSync(firestoreRulesPath)) {
+  console.error("🚨 ERROR CRÍTICO: Falta la configuración de Firebase o Reglas en el entorno de trabajo.");
   process.exit(1);
 }
+
+// Validar que firestore.rules no contenga bypasses ni cuentas de prueba desestimadas en v9.4.4
+const rulesContent = fs.readFileSync(firestoreRulesPath, 'utf8');
+const bannedAccounts = ['admin-backup@prior.com', 'admin@test.com'];
+bannedAccounts.forEach(account => {
+  if (rulesContent.includes(account)) {
+    console.error(`🚨 ERROR CRÍTICO: Cuenta prohibida detectada en firestore.rules: ${account}`);
+    process.exit(1);
+  }
+});
+console.log("✅ REGLAS DE SEGURIDAD (firestore.rules): Verificadas sin cuentas bypass ni test.");
 
 const firebaseJson = JSON.parse(fs.readFileSync(firebaseConfigPath, 'utf8'));
 const firebaserc = JSON.parse(fs.readFileSync(firebasercPath, 'utf8'));

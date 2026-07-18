@@ -53,8 +53,8 @@ export default function App() {
   const [_errorMsg, setErrorMsg] = useState<string>("");
   const [user, setUser] = useState<FirebaseUser | null>(null);
   const [userProfile, setUserProfile] = useState<User | null>(null);
-// 🛡️ v9.4.3-STABLE-AI-FORENSIC-HARDENING: AI FORENSIC HARDENING & DETERMINISTIC SEMANTICS
-const VERSION_LABEL = "v9.4.3-STABLE-AI-FORENSIC-HARDENING";
+// 🛡️ v9.4.4-USER-IDENTITY-INTEGRITY-HARDENING: AI FORENSIC HARDENING & DETERMINISTIC SEMANTICS
+const VERSION_LABEL = "v9.4.4-USER-IDENTITY-INTEGRITY-HARDENING";
 const SHIELD_ID = "GOLD MASTER";
   const [activeAdminSection, setActiveAdminSection] = useState<AdminSection>("none");
   const [allUsers, setAllUsers] = useState<User[]>([]);
@@ -370,8 +370,7 @@ const SHIELD_ID = "GOLD MASTER";
         let prof: User | null = null;
         const normalizedEmail = (u.email || "").toLowerCase();
         const isAdminEmail = normalizedEmail.includes("leon@leonprior.com") ||
-          normalizedEmail.includes("leonprior@gmail.com") ||
-          normalizedEmail.includes("admin-backup");
+          normalizedEmail.includes("leonprior@gmail.com");
 
         if (profileSnap.exists()) {
           prof = profileSnap.data() as User;
@@ -412,16 +411,16 @@ const SHIELD_ID = "GOLD MASTER";
           setStatus("ready");
         } else {
           // 🛡️ NUCLEAR ISOLATION (v11.0.0): BLOQUEO DE ACCESO CRUZADO
-          // Si el usuario no tiene perfil en tbl_users y el Discovery falla, RECHAZAR.
-          console.error("🕵️ ALERTA DE SEGURIDAD: Intento de acceso desde otra burbuja (Gobernanza o Alternas).");
-          setErrorMsg("Acceso Denegado: Su cuenta no pertenece a la burbuja de Tablero.");
+          // Si el usuario no tiene perfil en tbl_users y el Discovery falla, RECHAZAR con error estructurado.
+          console.error("🕵️ ALERTA DE SEGURIDAD: Intento de acceso sin perfil vinculado en tbl_users.");
+          setErrorMsg("PERFIL_TABLERO_NO_VINCULADO: Su cuenta no está vinculada a ningún perfil en el Tablero.");
           setStatus("error");
           // Opcional: Cerrar sesión automática para limpiar el token
           setTimeout(() => signOut(auth), 3000);
         }
       } catch (err: any) {
         console.error("Error fetching profile:", err);
-        setErrorMsg("No se pudo cargar el perfil de usuario.");
+        setErrorMsg("PERFIL_TABLERO_DESALINEADO: No se pudo verificar la consistencia del perfil de usuario.");
         setStatus("error");
       }
     });

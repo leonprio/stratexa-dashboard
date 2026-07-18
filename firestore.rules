@@ -11,9 +11,7 @@ service cloud.firestore {
     function isSuperAdmin() {
       return request.auth != null && request.auth.token.email in [
         'leon@leonprior.com',
-        'leonprior@gmail.com',
-        'admin-backup@prior.com',
-        'admin@test.com'
+        'leonprior@gmail.com'
       ];
     }
 
