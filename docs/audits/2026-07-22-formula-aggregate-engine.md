@@ -1,18 +1,11 @@
-# Auditoría de Motor de Fórmulas e Indicadores Compuestos (v9.4.5)
+# Auditoría de Motor de Fórmulas e Indicadores Compuestos (v9.4.6)
 
-## 1. Causa Raíz Comprobada
+## 1. Causa Raíz Comprobada y Solución de ReferenceError
 
-### Caso de Referencia Auditado
-- **Cliente**: LVP | **Tablero**: Capacidades (2026)
-- **Indicador ID 2** ("Compromisos Acordados"): Avance = 6, Meta = 8
-- **Indicador ID 3** ("Compromisos cerrados con evidencia"): Avance = 3, Meta = 4
-- **Indicador ID 4** ("% Compromisos estratégicos"): FÓRMULA `{id:3}/{id:2}`
-
-### Mecanismo del Fallo Identificado (100% vs 50%)
-1. La función `evaluateFormula` en `utils/compliance.ts` evalúa la expresión `{id:3}/{id:2}` sobre dos arreglos de las fuentes: `monthlyProgress` y `monthlyGoals`.
-2. Al evaluar `field = 'monthlyProgress'`, calcula $3 / 6 = 0.5$ (50%).
-3. Sin embargo, al evaluar `field = 'monthlyGoals'` sobre las fuentes de metas, calculaba $4 / 8 = 0.5$.
-4. Al calcular el porcentaje de cumplimiento en `calculateCompliance` ($avance / meta \times 100$), se realizaba $\frac{0.5}{0.5} \times 100 = 100\%$, mostrando `1` (100%) en el indicador derivado en lugar del 50% / 62.5% de cumplimiento contra su meta real de negocio.
+### Causa del ReferenceError: gap is not defined
+- **Ubicación**: [components/CurrentPeriodFocus.tsx](file:///C:/APP-TABLERO-WORKTREES/fix-formula-engine-composite-indicators-v9.4.6/components/CurrentPeriodFocus.tsx).
+- **Fallo**: En refactorizaciones previas de deshabilitación de inputs, se evaluaba `isPositiveGap` haciendo referencia a la variable `gap` antes de que `const gap` fuera instanciada en la función del componente.
+- **Solución Aplicada**: Se declaró explícitamente `const gap = (parseFormattedNumber(localActual) || 0) - (parseFormattedNumber(localGoal) || 0);` antes de su dereferenciación en `isPositiveGap`, resolviendo permanentemente la excepción en todos los indicadores (SIMPLE, FÓRMULA y AGREGADO).
 
 ---
 

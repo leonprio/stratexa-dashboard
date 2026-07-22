@@ -203,6 +203,7 @@ export const CurrentPeriodFocus: React.FC<CurrentPeriodFocusProps> = ({
 
     const isCalculated = item.indicatorType === 'formula' || item.indicatorType === 'compound';
     const effectiveCanEdit = canEdit && !isCalculated;
+    const gap = (parseFormattedNumber(localActual) || 0) - (parseFormattedNumber(localGoal) || 0);
     const isPositiveGap = item.goalType === 'minimize' ? gap <= 0 : gap >= 0;
 
     const handlePrevPeriod = () => {

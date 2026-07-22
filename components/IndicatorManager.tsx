@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { DashboardItem } from '../types';
 import { FormulaBuilder } from './FormulaBuilder';
+import { AggregateBuilder } from './AggregateBuilder';
 
 type EditableIndicator = Omit<DashboardItem, 'id'> & { id: number | string };
 
@@ -102,6 +103,7 @@ export const IndicatorManager = React.memo(({ initialItems, onSaveChanges, onCan
     const [applyGlobally, setApplyGlobally] = useState(false);
     const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
     const [editingFormulaItemId, setEditingFormulaItemId] = useState<number | string | null>(null);
+    const [editingAggregateItemId, setEditingAggregateItemId] = useState<number | string | null>(null);
 
     const handleRestoreFactory = () => {
         if (!defaultItems) return;
@@ -294,15 +296,30 @@ export const IndicatorManager = React.memo(({ initialItems, onSaveChanges, onCan
                                             </select>
 
                                             {item.indicatorType === 'compound' && (
-                                                <>
-                                                    <CompoundIdsInput
-                                                        value={item.componentIds || []}
-                                                        onChange={(ids) => handleInputChange(item.id, 'componentIds', ids)}
-                                                    />
-                                                    <div className="text-[8px] text-amber-400/80 bg-amber-500/10 p-1 rounded border border-amber-500/20 mt-1">
-                                                        <b>AGREGADO:</b> Consolida indicadores equivalentes de áreas o tableros hijos.
+                                                <div className="flex flex-col gap-1">
+                                                    <div className="flex items-center justify-between bg-amber-950/40 border border-amber-500/30 p-1.5 rounded-md">
+                                                        <span className="text-[9px] font-mono text-amber-300 font-bold truncate max-w-[110px]">
+                                                            {item.componentIds?.length ? `${item.componentIds.length} fuentes` : '(0 fuentes)'}
+                                                        </span>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setEditingAggregateItemId(item.id)}
+                                                            className="px-2 py-1 bg-amber-600 hover:bg-amber-500 text-white rounded text-[8px] font-black uppercase tracking-wider transition-all"
+                                                        >
+                                                            Configurar
+                                                        </button>
                                                     </div>
-                                                </>
+                                                    
+                                                    {editingAggregateItemId === item.id && (
+                                                        <AggregateBuilder
+                                                            currentItem={item}
+                                                            allItems={items}
+                                                            onChangeComponentIds={(ids) => handleInputChange(item.id, 'componentIds', ids)}
+                                                            onChangeType={(t) => handleInputChange(item.id, 'type', t)}
+                                                            onClose={() => setEditingAggregateItemId(null)}
+                                                        />
+                                                    )}
+                                                </div>
                                             )}
 
                                             {item.indicatorType === 'formula' && (
