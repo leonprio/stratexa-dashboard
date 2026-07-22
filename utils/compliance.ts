@@ -361,11 +361,20 @@ export const resolveItemValues = (
     return { monthlyProgress, monthlyGoals };
   }
   else if (item.indicatorType === 'formula' && item.formula && contextItems.length > 0) {
-    // 🛡️ REGLA v9.1.0-PRO-FINAL-SHIELDED: Mantener el stack trace actual al evaluar fórmulas para detectar recursión profunda
+    // 🛡️ REGLA v9.4.7 (DERIVED FORMULA CONTRACT):
+    // 1. Calcular el avance derivado mes a mes aplicando la fórmula a los avances de las fuentes.
     const nextVisited = new Set(visitedIds);
     nextVisited.add(itemId);
     monthlyProgress = Array(12).fill(0).map((_, i) => evaluateFormula(item.formula!, contextItems, i, 'monthlyProgress', year, nextVisited));
-    monthlyGoals = Array(12).fill(0).map((_, i) => evaluateFormula(item.formula!, contextItems, i, 'monthlyGoals', year, nextVisited));
+    
+    // 2. Determinar la meta derivada mes a mes:
+    // Si goalMode es expresamente 'EXPLICIT_TARGET', respetar las metas configuradas.
+    // De lo contrario (DERIVED_FROM_SOURCES por defecto), evaluar la fórmula sobre las metas fuente.
+    if ((item as any).goalMode === 'EXPLICIT_TARGET') {
+      monthlyGoals = [...((item as any).monthlyGoals || [])];
+    } else {
+      monthlyGoals = Array(12).fill(0).map((_, i) => evaluateFormula(item.formula!, contextItems, i, 'monthlyGoals', year, nextVisited));
+    }
   }
 
   // 🔄 AGREGACIÓN SEMANAL INTERNA
@@ -478,6 +487,28 @@ export const calculateCompliance = (
     // Año futuro o sin periodos válidos
     currentProgress = 0;
     currentTarget = 0;
+  } else if (item.indicatorType === 'formula' && item.formula && lookupContext.length > 0) {
+    // 🛡️ REGLA v9.4.11 (FORMULA_ON_CUMULATED_SOURCES YTD CONTRACT):
+    // Para indicadores FÓRMULA, el YTD calcula el avance acumulado y la meta acumulada evaluando la fórmula
+    // sobre los acumulados de las fuentes desde el inicio de año hasta el corte.
+    const cumulatedItems = lookupContext.map(it => {
+      const { monthlyProgress: mP, monthlyGoals: mG } = resolveItemValues(it, lookupContext, year);
+      const cumP = mP.slice(0, idx + 1).reduce((sum, v) => sum + Number(v || 0), 0);
+      const cumG = mG.slice(0, idx + 1).reduce((sum, v) => sum + Number(v || 0), 0);
+      return {
+        ...it,
+        monthlyProgress: Array(12).fill(cumP),
+        monthlyGoals: Array(12).fill(cumG),
+      };
+    });
+
+    currentProgress = evaluateFormula(item.formula, cumulatedItems, 0, 'monthlyProgress', year);
+    if ((item as any).goalMode === 'EXPLICIT_TARGET') {
+      currentProgress = Number(monthlyProgress[idx] || 0);
+      currentTarget = Number(monthlyGoals[idx] || 0);
+    } else {
+      currentTarget = evaluateFormula(item.formula, cumulatedItems, 0, 'monthlyGoals', year);
+    }
   } else if (isAccumulative) {
     // ➕ SUMATORIA: Sumar desde enero hasta el índice límite
     for (let i = 0; i <= idx; i++) {
@@ -509,11 +540,20 @@ export const calculateCompliance = (
     }
   }
 
-  const overallPercentage = calculateMonthlyCompliancePercentage(
+  let overallPercentage = calculateMonthlyCompliancePercentage(
     currentProgress,
     currentTarget,
     lowerIsBetter
   );
+
+  // 🛡️ REGLA v9.4.9 (RESULT_IS_COMPLIANCE CONTRACT):
+  // Si el indicador es FÓRMULA y su modo de salida es RESULT_IS_COMPLIANCE (por defecto),
+  // el avance derivado ya representa el porcentaje de cumplimiento. Se evita el doble cálculo (50% / 50% = 100%).
+  if (item.indicatorType === 'formula' && item.formulaOutputMode !== 'VALUE_VS_TARGET') {
+    const rawVal = Number(currentProgress || 0);
+    // Si el valor es <= 1.0 (ej. 0.5), convertir a 50%. Si ya viene en 50, conservarlo.
+    overallPercentage = rawVal <= 1.0 ? Math.round(rawVal * 100) : rawVal;
+  }
 
   // Determinar si el indicador está "activo" este mes (tiene meta capturada)
   const hasTarget = currentTarget !== 0 || currentProgress !== 0;

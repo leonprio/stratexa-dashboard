@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { DashboardItem } from '../types';
+import { FormulaBuilder } from './FormulaBuilder';
+import { AggregateBuilder } from './AggregateBuilder';
 
 type EditableIndicator = Omit<DashboardItem, 'id'> & { id: number | string };
 
@@ -100,6 +102,8 @@ export const IndicatorManager = React.memo(({ initialItems, onSaveChanges, onCan
 
     const [applyGlobally, setApplyGlobally] = useState(false);
     const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+    const [editingFormulaItemId, setEditingFormulaItemId] = useState<number | string | null>(null);
+    const [editingAggregateItemId, setEditingAggregateItemId] = useState<number | string | null>(null);
 
     const handleRestoreFactory = () => {
         if (!defaultItems) return;
@@ -267,10 +271,16 @@ export const IndicatorManager = React.memo(({ initialItems, onSaveChanges, onCan
                                         </select>
                                     </td>
                                     <td className="p-2">
-                                        <select aria-label="Tipo de cálculo" value={item.type} onChange={(e) => handleInputChange(item.id, 'type', e.target.value)} className="w-full bg-slate-700 border border-slate-600 rounded-md p-2 text-white text-sm focus:ring-2 focus:ring-cyan-500 outline-none h-[42px]">
-                                            <option value="accumulative">Sumar</option>
-                                            <option value="average">Promediar</option>
-                                        </select>
+                                        {item.indicatorType === 'formula' ? (
+                                            <div className="w-full bg-slate-900 border border-indigo-500/30 rounded-md p-2 text-indigo-300 font-bold text-[9px] uppercase text-center h-[42px] flex items-center justify-center">
+                                                Fórmula
+                                            </div>
+                                        ) : (
+                                            <select aria-label="Tipo de cálculo" value={item.type} onChange={(e) => handleInputChange(item.id, 'type', e.target.value)} className="w-full bg-slate-700 border border-slate-600 rounded-md p-2 text-white text-sm focus:ring-2 focus:ring-cyan-500 outline-none h-[42px]">
+                                                <option value="accumulative">Sumar</option>
+                                                <option value="average">Promediar</option>
+                                            </select>
+                                        )}
                                     </td>
                                     <td className="p-2">
                                         <select aria-label="Frecuencia" value={item.frequency || 'monthly'} onChange={(e) => handleInputChange(item.id, 'frequency', e.target.value)} className="w-full bg-slate-700 border border-slate-600 rounded-md p-2 text-cyan-400 font-bold text-sm focus:ring-2 focus:ring-cyan-500 outline-none h-[42px]">
@@ -292,20 +302,58 @@ export const IndicatorManager = React.memo(({ initialItems, onSaveChanges, onCan
                                             </select>
 
                                             {item.indicatorType === 'compound' && (
-                                                <CompoundIdsInput
-                                                    value={item.componentIds || []}
-                                                    onChange={(ids) => handleInputChange(item.id, 'componentIds', ids)}
-                                                />
+                                                <div className="flex flex-col gap-1">
+                                                    <div className="flex items-center justify-between bg-amber-950/40 border border-amber-500/30 p-1.5 rounded-md">
+                                                        <span className="text-[9px] font-mono text-amber-300 font-bold truncate max-w-[110px]">
+                                                            {item.componentIds?.length ? `${item.componentIds.length} fuentes` : '(0 fuentes)'}
+                                                        </span>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setEditingAggregateItemId(item.id)}
+                                                            className="px-2 py-1 bg-amber-600 hover:bg-amber-500 text-white rounded text-[8px] font-black uppercase tracking-wider transition-all"
+                                                        >
+                                                            Configurar
+                                                        </button>
+                                                    </div>
+                                                    
+                                                    {editingAggregateItemId === item.id && (
+                                                        <AggregateBuilder
+                                                            currentItem={item}
+                                                            allItems={items}
+                                                            onChangeComponentIds={(ids) => handleInputChange(item.id, 'componentIds', ids)}
+                                                            onChangeType={(t) => handleInputChange(item.id, 'type', t)}
+                                                            onClose={() => setEditingAggregateItemId(null)}
+                                                        />
+                                                    )}
+                                                </div>
                                             )}
 
                                             {item.indicatorType === 'formula' && (
-                                                <input
-                                                    type="text"
-                                                    placeholder="{101} + {102} ó bajas / altas"
-                                                    value={item.formula || ''}
-                                                    onChange={(e) => handleInputChange(item.id, 'formula', e.target.value)}
-                                                    className="w-full bg-slate-950 border border-indigo-500/30 rounded px-2 py-1 text-[9px] text-indigo-200 placeholder:text-indigo-500/30 shadow-[0_0_10px_rgba(99,102,241,0.1)] focus:border-indigo-500 outline-none transition-all"
-                                                />
+                                                <div className="flex flex-col gap-1">
+                                                    <div className="flex items-center justify-between bg-indigo-950/40 border border-indigo-500/30 p-1.5 rounded-md">
+                                                        <span className="text-[9px] font-mono text-indigo-300 font-bold truncate max-w-[110px]" title={item.formula || 'Sin fórmula'}>
+                                                            {item.formula || '(Sin fórmula)'}
+                                                        </span>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setEditingFormulaItemId(item.id)}
+                                                            className="px-2 py-1 bg-indigo-600 hover:bg-indigo-500 text-white rounded text-[8px] font-black uppercase tracking-wider transition-all"
+                                                        >
+                                                            Configurar
+                                                        </button>
+                                                    </div>
+                                                    
+                                                    {editingFormulaItemId === item.id && (
+                                                        <FormulaBuilder
+                                                            currentItem={item}
+                                                            allItems={items}
+                                                            onChangeFormula={(f) => handleInputChange(item.id, 'formula', f)}
+                                                            onChangeGoalMode={(gm) => handleInputChange(item.id, 'goalMode', gm)}
+                                                            onChangeFormulaOutputMode={(m) => handleInputChange(item.id, 'formulaOutputMode', m)}
+                                                            onClose={() => setEditingFormulaItemId(null)}
+                                                        />
+                                                    )}
+                                                </div>
                                             )}
                                         </div>
                                     </td>

@@ -1,13 +1,13 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { DashboardItem, ComplianceThresholds } from '../types';
-import { calculateCompliance, findLastIndexWithData } from '../utils/compliance';
+import { calculateCompliance, findLastIndexWithData, resolveItemValues } from '../utils/compliance';
 import { getWeekNumber, getYearWeekMapping } from '../utils/weeklyUtils';
 import { ProgressBar } from './ProgressBar';
 import { LineChart } from './LineChart';
 import { ActionPlan } from './ActionPlan';
 import { DataEditor } from './DataEditor';
 import { ActivityManager } from './ActivityManager';
-import { formatNumberWithCommas, parseFormattedNumber } from '../utils/formatters';
+import { formatNumberWithCommas, parseFormattedNumber, formatIndicatorValue } from '../utils/formatters';
 
 interface CurrentPeriodFocusProps {
     item: DashboardItem;
@@ -117,11 +117,22 @@ export const CurrentPeriodFocus: React.FC<CurrentPeriodFocusProps> = ({
 
     useEffect(() => {
         if (!item) return;
-        const goal = isWeekly ? item.weeklyGoals?.[currentIdx] : item.monthlyGoals?.[currentIdx];
-        const actual = isWeekly ? item.weeklyProgress?.[currentIdx] : item.monthlyProgress?.[currentIdx];
+        const isCalculatedItem = item.indicatorType === 'formula' || item.indicatorType === 'compound';
+        
+        let goal: any = null;
+        let actual: any = null;
+
+        if (isCalculatedItem && allDashboardItems.length > 0) {
+            const { monthlyProgress: mP, monthlyGoals: mG } = resolveItemValues(item, allDashboardItems, year);
+            goal = mG[currentIdx];
+            actual = mP[currentIdx];
+        } else {
+            goal = isWeekly ? item.weeklyGoals?.[currentIdx] : item.monthlyGoals?.[currentIdx];
+            actual = isWeekly ? item.weeklyProgress?.[currentIdx] : item.monthlyProgress?.[currentIdx];
+        }
+
         const note = (isWeekly ? item.weeklyNotes?.[currentIdx] : item.monthlyNotes?.[currentIdx]) || '';
 
-        // Solo actualizar si los valores son realmente diferentes para no interrumpir la edición local incipiente
         const strGoal = goal !== null && goal !== undefined ? goal.toString() : '';
         const strActual = actual !== null && actual !== undefined ? actual.toString() : '';
         
@@ -131,14 +142,24 @@ export const CurrentPeriodFocus: React.FC<CurrentPeriodFocusProps> = ({
             setLocalNote(note);
         }
         
-        // Sincronizar el modo de actividad
         if (item.isActivityMode !== undefined) {
           setActivityMode(item.isActivityMode);
         }
-    }, [item, currentIdx, isWeekly]);
+    }, [item, currentIdx, isWeekly, allDashboardItems, year]);
 
     const chartData = useMemo(() => {
         if (!item) return { progress: [], goals: [] };
+        const isCalculatedItem = item.indicatorType === 'formula' || item.indicatorType === 'compound';
+
+        let resolvedP = monthlyProgress;
+        let resolvedG = monthlyGoals;
+
+        if (isCalculatedItem && allDashboardItems.length > 0) {
+            const res = resolveItemValues(item, allDashboardItems, year);
+            resolvedP = res.monthlyProgress;
+            resolvedG = res.monthlyGoals;
+        }
+
         let limitIdx = -1;
         if (isPastYear) {
             limitIdx = isWeekly ? 52 : 11;
@@ -146,7 +167,7 @@ export const CurrentPeriodFocus: React.FC<CurrentPeriodFocusProps> = ({
             const idxNow = isWeekly 
                 ? getWeekNumber(new Date(), weekStart === 'Sun' ? 0 : 1) - 1 
                 : new Date().getMonth();
-            limitIdx = Math.max(idxNow - 1, currentIdx); // Mostrar hasta el periodo que el usuario está consultando
+            limitIdx = Math.max(idxNow - 1, currentIdx);
         }
 
         if (isWeekly) {
@@ -154,8 +175,8 @@ export const CurrentPeriodFocus: React.FC<CurrentPeriodFocusProps> = ({
             const goals = (weeklyGoals || []).slice(0, limitIdx + 1);
             return { progress: prog.map(v => (v !== null && v !== undefined) ? v : null), goals: goals.map(v => (v !== null && v !== undefined) ? v : null) };
         } else {
-            const prog = (monthlyProgress || []).slice(0, limitIdx + 1);
-            const goals = (monthlyGoals || []).slice(0, limitIdx + 1);
+            const prog = (resolvedP || []).slice(0, limitIdx + 1);
+            const goals = (resolvedG || []).slice(0, limitIdx + 1);
             return { progress: prog.map(v => (v !== null && v !== undefined) ? v : null), goals: goals.map(v => (v !== null && v !== undefined) ? v : null) };
         }
     }, [monthlyProgress, monthlyGoals, weeklyProgress, weeklyGoals, isWeekly, year, currentYear, isPastYear, currentIdx, item, weekStart]);
@@ -199,8 +220,18 @@ export const CurrentPeriodFocus: React.FC<CurrentPeriodFocusProps> = ({
         return formatNumberWithCommas(num, decimalPrecision);
     };
 
+    useEffect(() => {
+        const el = document.getElementById('gestion-detallada-focus');
+        const container = el?.closest('.overflow-y-auto') || el?.parentElement;
+        if (el && container && container !== document.body && container !== document.documentElement) {
+            container.scrollTop = 0;
+        }
+    }, [item.id]);
+
     if (!item) return null;
 
+    const isCalculated = item.indicatorType === 'formula' || item.indicatorType === 'compound';
+    const effectiveCanEdit = canEdit && !isCalculated;
     const gap = (parseFormattedNumber(localActual) || 0) - (parseFormattedNumber(localGoal) || 0);
     const isPositiveGap = item.goalType === 'minimize' ? gap <= 0 : gap >= 0;
 
@@ -216,7 +247,7 @@ export const CurrentPeriodFocus: React.FC<CurrentPeriodFocusProps> = ({
 
     return (
         <div id="gestion-detallada-focus" className="relative bg-slate-900/40 backdrop-blur-3xl border border-cyan-500/40 rounded-[2.5rem] p-4 md:p-6 animate-in zoom-in-95 duration-500 z-10 scroll-mt-24">
-            <div className="relative flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-8">
+            <div className="sticky top-16 z-30 bg-slate-950/95 backdrop-blur-md p-4 rounded-3xl border border-slate-800 shadow-2xl flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-8">
                 <div className="flex-1 w-full">
                     <div className="flex flex-wrap items-center gap-3 mb-4">
                         {/* Period Selector UX001 Compliant */}
@@ -287,7 +318,7 @@ export const CurrentPeriodFocus: React.FC<CurrentPeriodFocusProps> = ({
                         VISTA ANUAL
                     </button>
 
-                    {canEdit && (
+                    {effectiveCanEdit && (
                         <button
                             onClick={handleQuickSave}
                             disabled={isSaving}
@@ -321,6 +352,7 @@ export const CurrentPeriodFocus: React.FC<CurrentPeriodFocusProps> = ({
                 <div className="animate-in fade-in slide-in-from-top-4">
                     <DataEditor
                         item={item}
+                        allDashboardItems={allDashboardItems}
                         year={year}
                         canEdit={canEdit}
                         onCancel={() => setIsFullEditMode(false)}
@@ -338,12 +370,12 @@ export const CurrentPeriodFocus: React.FC<CurrentPeriodFocusProps> = ({
                                 <div className={`bg-slate-950/40 border border-white/5 rounded-2xl p-3 transition-all ${canEdit && !activityMode ? 'focus-within:border-cyan-500/50' : 'opacity-80 grayscale-[0.5]'}`}>
                                     <div className="flex justify-between items-center mb-1.5">
                                         <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest block">Meta ({unit})</span>
-                                        <span className="text-[10px] font-black text-cyan-400 tabular-nums">{localGoal !== '' ? formatNumberWithCommas(localGoal, decimalPrecision) : '0'}</span>
+                                        <span className="text-[10px] font-black text-cyan-400 tabular-nums">{localGoal !== '' ? formatIndicatorValue(localGoal, unit, decimalPrecision, item.indicatorType === 'formula') : 'SIN DATOS'}</span>
                                     </div>
                                     <input
                                         type="text"
                                         inputMode="decimal"
-                                        value={isGoalFocused ? localGoal : formatNumberWithCommas(localGoal, decimalPrecision)}
+                                        value={isGoalFocused ? localGoal : formatIndicatorValue(localGoal, unit, decimalPrecision, item.indicatorType === 'formula')}
                                         onFocus={() => setIsGoalFocused(true)}
                                         onBlur={() => setIsGoalFocused(false)}
                                         onChange={(e) => {
@@ -351,21 +383,22 @@ export const CurrentPeriodFocus: React.FC<CurrentPeriodFocusProps> = ({
                                             setLocalGoal(val);
                                         }}
                                         id="goal-input"
-                                        disabled={!canEdit || activityMode}
+                                        disabled={!effectiveCanEdit || activityMode}
                                         className="w-full bg-transparent text-2xl font-black text-white tabular-nums outline-none disabled:opacity-50"
                                         placeholder="0.00"
                                     />
                                      {activityMode && <span className="text-[8px] font-black text-indigo-400 uppercase tracking-widest mt-1 block">Cálculo Automático (Elementos)</span>}
+                                     {isCalculated && <span className="text-[8px] font-black text-indigo-400 uppercase tracking-widest mt-1 block">⚡ MODO: AUTOMÁTICO — CALCULADO DESDE INDICADORES FUENTE</span>}
                                 </div>
-                                <div className={`bg-slate-950/40 border border-white/5 rounded-2xl p-3 transition-all ${canEdit && !activityMode ? 'focus-within:border-emerald-500/50' : 'opacity-80 grayscale-[0.5]'}`}>
+                                <div className={`bg-slate-950/40 border border-white/5 rounded-2xl p-3 transition-all ${effectiveCanEdit && !activityMode ? 'focus-within:border-emerald-500/50' : 'opacity-80 grayscale-[0.5]'}`}>
                                     <div className="flex justify-between items-center mb-1.5">
                                         <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest block">Real ({unit})</span>
-                                        <span className="text-[10px] font-black text-emerald-400 tabular-nums">{localActual !== '' ? formatNumberWithCommas(localActual, decimalPrecision) : '0'}</span>
+                                        <span className="text-[10px] font-black text-emerald-400 tabular-nums">{localActual !== '' ? formatIndicatorValue(localActual, unit, decimalPrecision, item.indicatorType === 'formula') : 'SIN DATOS'}</span>
                                     </div>
                                     <input
                                         type="text"
                                         inputMode="decimal"
-                                        value={isActualFocused ? localActual : formatNumberWithCommas(localActual, decimalPrecision)}
+                                        value={isActualFocused ? localActual : formatIndicatorValue(localActual, unit, decimalPrecision, item.indicatorType === 'formula')}
                                         onFocus={() => setIsActualFocused(true)}
                                         onBlur={() => setIsActualFocused(false)}
                                         onChange={(e) => {
@@ -373,11 +406,12 @@ export const CurrentPeriodFocus: React.FC<CurrentPeriodFocusProps> = ({
                                             setLocalActual(val);
                                         }}
                                         id="actual-input"
-                                        disabled={!canEdit || activityMode}
+                                        disabled={!effectiveCanEdit || activityMode}
                                         className="w-full bg-transparent text-2xl font-black text-white tabular-nums outline-none disabled:cursor-not-allowed"
                                         placeholder="0.00"
                                     />
                                      {activityMode && <span className="text-[8px] font-black text-indigo-400 uppercase tracking-widest mt-1 block">Sincronizado con Elementos</span>}
+                                     {isCalculated && <span className="text-[8px] font-black text-indigo-400 uppercase tracking-widest mt-1 block">⚡ MODO: AUTOMÁTICO</span>}
                                 </div>
                             </div>
 
@@ -394,18 +428,18 @@ export const CurrentPeriodFocus: React.FC<CurrentPeriodFocusProps> = ({
                                 </button>
                             )}
 
-                            <div className={`bg-slate-950/40 border border-white/5 rounded-2xl p-3 ${!canEdit && 'opacity-80'}`}>
+                            <div className={`bg-slate-950/40 border border-white/5 rounded-2xl p-3 ${(!canEdit || isCalculated) && 'opacity-80'}`}>
                                 <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1.5 block">Observaciones</span>
                                 <textarea
                                     value={localNote}
                                     onChange={(e) => setLocalNote(e.target.value)}
-                                    disabled={!canEdit}
+                                    disabled={!canEdit || isCalculated}
                                     className="w-full bg-transparent text-slate-300 text-sm italic outline-none min-h-[40px] resize-none disabled:cursor-not-allowed"
-                                    placeholder={canEdit ? "Observaciones del periodo..." : "Sin comentarios."}
+                                    placeholder={isCalculated ? "Observaciones derivadas automáticamente." : (canEdit ? "Observaciones del periodo..." : "Sin comentarios.")}
                                 />
                             </div>
 
-                            {canEdit && (
+                            {effectiveCanEdit && (
                                 <button
                                     onClick={handleQuickSave}
                                     disabled={isSaving}
@@ -431,7 +465,7 @@ export const CurrentPeriodFocus: React.FC<CurrentPeriodFocusProps> = ({
                                 <div className="flex flex-col items-end">
                                     <span className="text-[9px] font-black uppercase tracking-widest text-slate-500 mb-1">Brecha Actual</span>
                                     <span className={`text-lg font-black ${isPositiveGap ? 'text-emerald-400' : 'text-rose-400'}`}>
-                                        {isPositiveGap ? '▲' : '▼'} {formatNumber(Math.abs(gap))} {unit}
+                                        {isPositiveGap ? '▲' : '▼'} {isCalculated ? `${(Math.abs(gap) * 100).toFixed(1)} pp` : `${formatNumber(Math.abs(gap))} ${unit}`}
                                     </span>
                                 </div>
                             </div>

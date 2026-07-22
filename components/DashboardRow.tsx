@@ -7,7 +7,7 @@ import { DataEditor } from './DataEditor';
 import { ActionPlan } from './ActionPlan';
 import { SummaryDetails } from './SummaryDetails';
 import { calculateCompliance, findLastIndexWithData, getMissingMonthsWarning, getOverdueWarning, calculateOperationalMetrics } from '../utils/compliance';
-import { formatNumberWithCommas } from '../utils/formatters';
+import { formatNumberWithCommas, formatIndicatorValue } from '../utils/formatters';
 
 interface DashboardRowProps {
   item: DashboardItem;
@@ -116,10 +116,7 @@ export const DashboardRow: React.FC<DashboardRowProps> = React.memo(({ item, onU
           <div className="flex flex-col items-end">
             <div className="flex items-baseline gap-1">
               <span className="text-2xl font-black text-white tabular-nums tracking-tighter">
-                {formatNumber(currentProgress)}
-              </span>
-              <span className="text-[8px] font-bold text-slate-600 uppercase tracking-widest leading-none">
-                {unit}
+                {formatIndicatorValue(currentProgress, unit, 1, item.indicatorType === 'formula')}
               </span>
             </div>
             <span className={`text-[10px] font-black tabular-nums leading-none tracking-widest ${complianceStatus === 'OnTrack' ? 'text-emerald-400' : complianceStatus === 'AtRisk' ? 'text-amber-400' : complianceStatus === 'InProgress' ? 'text-sky-400' : complianceStatus === 'Neutral' ? 'text-slate-500' : 'text-rose-400'}`}>
@@ -225,20 +222,24 @@ export const DashboardRow: React.FC<DashboardRowProps> = React.memo(({ item, onU
         <div className="flex-grow flex flex-col justify-end mt-8">
           <div className="flex justify-between items-end gap-6">
             <div className="flex flex-col">
-              <span className="text-[10px] text-slate-500 uppercase font-black tracking-[0.2em] mb-2 opacity-80">Rendimiento Real</span>
+              <div className="flex items-center gap-1.5 mb-2">
+                <span className="text-[10px] text-slate-500 uppercase font-black tracking-[0.2em] opacity-80">
+                  {item.type === 'average' || item.indicatorType === 'formula' ? 'ACUMULADO A JUN' : 'SUMA A JUN'}
+                </span>
+              </div>
               <div className="flex items-baseline gap-2">
                 <span className="text-4xl sm:text-5xl font-black text-white tabular-nums tracking-tighter">
-                  {formatNumber(currentProgress)}
+                  {formatIndicatorValue(currentProgress, unit, 1, item.indicatorType === 'formula')}
                 </span>
-                <span className="text-xs font-bold text-slate-500 uppercase tracking-widest italic">{unit}</span>
               </div>
             </div>
 
             <div className="flex flex-col items-end">
               <span className="text-[10px] text-slate-500 uppercase font-black tracking-[0.2em] mb-2 opacity-80">Objetivo</span>
               <div className="flex items-baseline gap-1.5 bg-white/5 px-3 py-1.5 rounded-xl border border-white/5">
-                <span className="text-xl font-black text-slate-300 tabular-nums">{formatNumber(currentTarget)}</span>
-                <span className="text-[9px] font-bold text-slate-600 uppercase tracking-wider">{unit}</span>
+                <span className="text-xl font-black text-slate-300 tabular-nums">
+                  {formatIndicatorValue(currentTarget, unit, decimalPrecision, item.indicatorType === 'formula')}
+                </span>
               </div>
             </div>
           </div>

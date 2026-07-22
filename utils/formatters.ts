@@ -66,6 +66,45 @@ export const formatNumberWithCommas = (value: number | string | null | undefined
 };
 
 /**
+ * 🛡️ FORMATEADOR CENTRAL DE VALORES (v9.4.10)
+ * Convierte un valor raw (ej. 0.5) al texto de presentación según la unidad del indicador.
+ * Si la unidad es '%', multiplica rawValue por 100 ANTES de aplicar la precisión decimal y sufijar '%'.
+ */
+export const formatIndicatorValue = (
+    rawValue: number | null | undefined,
+    unit?: string,
+    precision: number = 2,
+    isDerivedFormula: boolean = false
+): string => {
+    if (rawValue === null || rawValue === undefined || !Number.isFinite(Number(rawValue))) {
+        return "SIN DATOS";
+    }
+
+    const num = Number(rawValue);
+    const trimmedUnit = (unit || "").trim();
+    const isPercentage = trimmedUnit === "%";
+
+    // Si es una fórmula derivada con unidad %, el valor raw (0.5) representa una razón normalizada que debe escalarse a (50.0%)
+    if (isPercentage && (isDerivedFormula || (num > 0 && num <= 1.0))) {
+        const scaled = num * 100;
+        return `${scaled.toLocaleString('en-US', {
+            minimumFractionDigits: precision,
+            maximumFractionDigits: precision
+        })}%`;
+    }
+
+    // Para valores no porcentuales mayores que 0 y menores que 1 (ej. 0.5 sin %)
+    const effectivePrecision = (!isPercentage && num > 0 && num < 1 && precision === 0) ? 1 : precision;
+
+    const formatted = num.toLocaleString('en-US', {
+        minimumFractionDigits: effectivePrecision,
+        maximumFractionDigits: effectivePrecision
+    });
+
+    return isPercentage ? `${formatted}%` : (trimmedUnit ? `${formatted} ${trimmedUnit}` : formatted);
+};
+
+/**
  * Parses a string value with thousands separators back to a number.
  */
 export const parseFormattedNumber = (value: string): number | null => {
