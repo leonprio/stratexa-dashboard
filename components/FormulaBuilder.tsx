@@ -6,12 +6,14 @@ interface FormulaBuilderProps {
   currentItem: DashboardItem | (Omit<DashboardItem, 'id'> & { id: number | string });
   allItems: (DashboardItem | (Omit<DashboardItem, 'id'> & { id: number | string }))[];
   onChangeFormula: (formula: string) => void;
+  onClose: () => void;
 }
 
 export const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
   currentItem,
   allItems,
   onChangeFormula,
+  onClose,
 }) => {
   const [isAdvancedMode, setIsAdvancedMode] = useState(false);
   const [draggedIndicatorId, setDraggedIndicatorId] = useState<string | null>(null);
@@ -22,7 +24,6 @@ export const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
   }, [allItems, currentItem.id]);
 
   // Parsear la expresión actual si coincide con {idA}/{idB}, {idA}+{idB}, etc.
-  // Soporta formato {id:X} y {X}
   const parsedExpression = useMemo(() => {
     const raw = currentItem.formula || '';
     const regex = /^\s*\{(?:id:)?([\w-]+)\}\s*([\/\*\+\-])\s*\{(?:id:)?([\w-]+)\}\s*$/;
@@ -46,8 +47,8 @@ export const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
   const [operandA, setOperandA] = useState<string>(parsedExpression.operandA);
   const [operator, setOperator] = useState<string>(parsedExpression.operator || '/');
   const [operandB, setOperandB] = useState<string>(parsedExpression.operandB);
+  const [draftFormula, setDraftFormula] = useState<string>(currentItem.formula || '');
 
-  // Sincronizar cuando cambia la fórmula externa si no estamos en avanzado
   React.useEffect(() => {
     if (parsedExpression.isSimpleBinary) {
       setOperandA(parsedExpression.operandA);
@@ -56,29 +57,29 @@ export const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
     }
   }, [parsedExpression]);
 
-  // Función para actualizar la fórmula generada
+  // Función interna para sincronizar el borrador de la fórmula
   const updateFormulaString = (opA: string, op: string, opB: string) => {
     if (!opA && !opB) {
-      onChangeFormula('');
+      setDraftFormula('');
       return;
     }
     if (opA && opB) {
-      onChangeFormula(`{id:${opA}}${op}{id:${opB}}`);
+      setDraftFormula(`{id:${opA}}${op}{id:${opB}}`);
     } else if (opA) {
-      onChangeFormula(`{id:${opA}}`);
+      setDraftFormula(`{id:${opA}}`);
     } else {
-      onChangeFormula(`{id:${opB}}`);
+      setDraftFormula(`{id:${opB}}`);
     }
   };
 
   const handleSelectOperandA = (id: string) => {
-    if (id === String(currentItem.id)) return; // No autorreferencia
+    if (id === String(currentItem.id)) return;
     setOperandA(id);
     updateFormulaString(id, operator, operandB);
   };
 
   const handleSelectOperandB = (id: string) => {
-    if (id === String(currentItem.id)) return; // No autorreferencia
+    if (id === String(currentItem.id)) return;
     setOperandB(id);
     updateFormulaString(operandA, operator, id);
   };
@@ -96,6 +97,15 @@ export const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
   const handleClearB = () => {
     setOperandB('');
     updateFormulaString(operandA, operator, '');
+  };
+
+  const handleApply = () => {
+    onChangeFormula(draftFormula);
+    onClose();
+  };
+
+  const handleCancel = () => {
+    onClose();
   };
 
   // Drag and Drop handlers
@@ -126,8 +136,8 @@ export const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
     e.preventDefault();
   };
 
-  // Vista Previa en tiempo real para el mes 5 (o mes actual)
-  const previewMonthIdx = 5; // Junio por defecto de LVP
+  // Vista Previa numérico en tiempo real (Junio / mes 5)
+  const previewMonthIdx = 5;
   const itemA = allItems.find(it => String(it.id) === String(operandA));
   const itemB = allItems.find(it => String(it.id) === String(operandB));
 
@@ -135,16 +145,16 @@ export const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
   const valB = itemB ? (itemB.monthlyProgress?.[previewMonthIdx] ?? 0) : 0;
 
   const derivedValue = useMemo(() => {
-    if (!currentItem.formula) return 0;
-    return evaluateFormula(currentItem.formula, allItems as DashboardItem[], previewMonthIdx, 'monthlyProgress');
-  }, [currentItem.formula, allItems]);
+    if (!draftFormula) return 0;
+    return evaluateFormula(draftFormula, allItems as DashboardItem[], previewMonthIdx, 'monthlyProgress');
+  }, [draftFormula, allItems]);
 
   const derivedGoal = useMemo(() => {
-    if (!currentItem.formula) return 0;
+    if (!draftFormula) return 0;
     const hasExplicit = (currentItem.monthlyGoals || []).some((g: any) => Number(g || 0) > 0);
     if (hasExplicit) return currentItem.monthlyGoals?.[previewMonthIdx] ?? 0;
-    return evaluateFormula(currentItem.formula, allItems as DashboardItem[], previewMonthIdx, 'monthlyGoals');
-  }, [currentItem.formula, currentItem.monthlyGoals, allItems]);
+    return evaluateFormula(draftFormula, allItems as DashboardItem[], previewMonthIdx, 'monthlyGoals');
+  }, [draftFormula, currentItem.monthlyGoals, allItems]);
 
   const derivedCompliancePct = useMemo(() => {
     if (Number(derivedGoal) === 0) return 0;
@@ -154,200 +164,265 @@ export const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
   const isZeroDenominator = operator === '/' && Number(valB) === 0 && Boolean(operandB);
 
   return (
-    <div className="flex flex-col gap-3 p-3 bg-slate-950/80 border border-indigo-500/30 rounded-xl shadow-xl">
-      {/* HEADER & TOGGLE MODO AVANZADO */}
-      <div className="flex justify-between items-center border-b border-slate-800 pb-2">
-        <div className="flex items-center gap-2">
-          <span className="text-xs">⚡</span>
-          <span className="text-[10px] font-black text-indigo-400 uppercase tracking-wider">
-            Constructor de Fórmulas
-          </span>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-200">
+      <div className="bg-slate-900 border border-cyan-500/40 rounded-3xl w-full max-w-[800px] max-h-[90vh] overflow-y-auto shadow-2xl flex flex-col p-6 text-slate-100">
+        
+        {/* HEADER DEL MODAL DE FÓRMULAS */}
+        <div className="flex justify-between items-center border-b border-slate-800 pb-4 mb-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-indigo-500/10 border border-indigo-500/30 flex items-center justify-center text-xl text-indigo-400 font-bold">
+              ⚡
+            </div>
+            <div className="flex flex-col">
+              <h3 className="text-lg font-black uppercase text-white tracking-tight">
+                Editor de Fórmulas Compuestas
+              </h3>
+              <span className="text-xs text-indigo-400 font-medium">
+                Configurando para: <strong className="text-white">{currentItem.indicator}</strong> (#{currentItem.id})
+              </span>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={handleCancel}
+            className="w-9 h-9 flex items-center justify-center rounded-xl bg-slate-800 hover:bg-rose-500/20 text-slate-400 hover:text-rose-400 border border-slate-700 transition-all font-bold"
+            title="Cerrar modal"
+          >
+            ✕
+          </button>
         </div>
-        <button
-          type="button"
-          onClick={() => setIsAdvancedMode(!isAdvancedMode)}
-          className="text-[9px] text-slate-400 hover:text-indigo-300 underline font-semibold transition-colors"
-        >
-          {isAdvancedMode ? '← Usar Constructor Guiado' : 'Modo Avanzado (Texto)'}
-        </button>
-      </div>
 
-      {!isAdvancedMode ? (
-        <>
-          {/* AYUDA CONTEXTUAL FORMULA vs AGREGADO */}
-          <div className="bg-indigo-950/40 border border-indigo-500/20 p-2 rounded-lg text-[9px] text-indigo-200">
-            <span className="font-bold text-indigo-400">💡 FÓRMULA:</span> Combina dos indicadores del tablero mediante una operación matemática (ej. cerrados ÷ acordados).
-          </div>
-
-          {/* SLOTS DE ARRASTRE Y SELECCIÓN */}
-          <div className="grid grid-cols-1 sm:grid-cols-7 gap-2 items-center">
-            {/* OPERANDO A (Numerador) */}
-            <div
-              onDrop={handleDropSlotA}
-              onDragOver={handleDragOver}
-              className={`sm:col-span-3 p-2.5 rounded-lg border flex flex-col gap-1.5 transition-all ${operandA ? 'bg-slate-900 border-indigo-500/50' : 'bg-slate-950/50 border-dashed border-slate-700'}`}
-            >
-              <div className="flex justify-between items-center text-[9px] font-bold text-slate-400">
-                <span>OPERANDO A {operator === '/' ? '(Numerador)' : ''}</span>
-                {operandA && (
-                  <button type="button" onClick={handleClearA} className="text-rose-400 hover:text-rose-300 font-bold">
-                    ✕
+        {/* MODO CONSTRUCTOR GUIADO PASO A PASO */}
+        {!isAdvancedMode ? (
+          <div className="flex flex-col gap-6">
+            
+            {/* SECCIÓN 1: OPERACIÓN */}
+            <div className="bg-slate-950/60 border border-slate-800 p-4 rounded-2xl flex flex-col gap-2">
+              <span className="text-xs font-black text-cyan-400 uppercase tracking-widest">
+                1. ¿Qué operación matemática necesitas?
+              </span>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                {[
+                  { op: '/', label: '÷ Dividir (Razón / Porcentaje)', desc: 'Numerador ÷ Denominador' },
+                  { op: '*', label: '× Multiplicar', desc: 'Operando A × Operando B' },
+                  { op: '+', label: '+ Sumar', desc: 'Operando A + Operando B' },
+                  { op: '-', label: '− Restar', desc: 'Operando A − Operando B' },
+                ].map(({ op, label, desc }) => (
+                  <button
+                    key={op}
+                    type="button"
+                    onClick={() => handleSelectOperator(op)}
+                    className={`p-3 rounded-xl border text-left flex flex-col transition-all ${operator === op ? 'bg-indigo-600/30 border-indigo-400 text-white shadow-lg' : 'bg-slate-900 border-slate-800 text-slate-400 hover:border-slate-700'}`}
+                  >
+                    <span className="font-bold text-xs">{label}</span>
+                    <span className="text-[10px] text-slate-500 mt-0.5">{desc}</span>
                   </button>
-                )}
-              </div>
-              
-              <select
-                aria-label="Seleccionar Indicador Operando A"
-                value={operandA}
-                onChange={(e) => handleSelectOperandA(e.target.value)}
-                className="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1 text-[10px] text-white outline-none focus:border-indigo-500"
-              >
-                <option value="">-- Arrastra o Selecciona KPI --</option>
-                {availableItems.map(it => (
-                  <option key={it.id} value={it.id}>
-                    {it.indicator} (Val: {it.monthlyProgress?.[previewMonthIdx] ?? 0})
-                  </option>
                 ))}
-              </select>
-
-              {itemA && (
-                <div className="text-[9px] text-indigo-300 font-semibold truncate">
-                  KPI #{itemA.id}: {itemA.indicator}
-                </div>
-              )}
-            </div>
-
-            {/* OPERADOR */}
-            <div className="sm:col-span-1 flex justify-center">
-              <select
-                aria-label="Seleccionar Operador Matemático"
-                value={operator}
-                onChange={(e) => handleSelectOperator(e.target.value)}
-                className="bg-indigo-600 border border-indigo-400 text-white font-black text-xs rounded-lg px-2 py-1.5 outline-none cursor-pointer hover:bg-indigo-500 shadow-md text-center"
-              >
-                <option value="/">÷ (División)</option>
-                <option value="*">× (Multiplicación)</option>
-                <option value="+">+ (Suma)</option>
-                <option value="-">− (Resta)</option>
-              </select>
-            </div>
-
-            {/* OPERANDO B (Denominador) */}
-            <div
-              onDrop={handleDropSlotB}
-              onDragOver={handleDragOver}
-              className={`sm:col-span-3 p-2.5 rounded-lg border flex flex-col gap-1.5 transition-all ${operandB ? 'bg-slate-900 border-indigo-500/50' : 'bg-slate-950/50 border-dashed border-slate-700'}`}
-            >
-              <div className="flex justify-between items-center text-[9px] font-bold text-slate-400">
-                <span>OPERANDO B {operator === '/' ? '(Denominador)' : ''}</span>
-                {operandB && (
-                  <button type="button" onClick={handleClearB} className="text-rose-400 hover:text-rose-300 font-bold">
-                    ✕
-                  </button>
-                )}
               </div>
-
-              <select
-                aria-label="Seleccionar Indicador Operando B"
-                value={operandB}
-                onChange={(e) => handleSelectOperandB(e.target.value)}
-                className="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1 text-[10px] text-white outline-none focus:border-indigo-500"
-              >
-                <option value="">-- Arrastra o Selecciona KPI --</option>
-                {availableItems.map(it => (
-                  <option key={it.id} value={it.id}>
-                    {it.indicator} (Val: {it.monthlyProgress?.[previewMonthIdx] ?? 0})
-                  </option>
-                ))}
-              </select>
-
-              {itemB && (
-                <div className="text-[9px] text-indigo-300 font-semibold truncate">
-                  KPI #{itemB.id}: {itemB.indicator}
-                </div>
-              )}
             </div>
-          </div>
 
-          {/* BIBLIOTECA LATERAL DE INDICADORES PARA ARRASTRE */}
-          <div className="mt-1">
-            <span className="text-[8px] font-bold text-slate-400 uppercase tracking-widest block mb-1">
-              Indicadores disponibles para arrastrar (Drag & Drop):
-            </span>
-            <div className="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto pr-1">
-              {availableItems.map(it => (
+            {/* SECCIÓN 2: SELECCIÓN DE OPERANDOS */}
+            <div className="bg-slate-950/60 border border-slate-800 p-4 rounded-2xl flex flex-col gap-3">
+              <span className="text-xs font-black text-cyan-400 uppercase tracking-widest">
+                2. Selecciona los indicadores involucrados
+              </span>
+
+              <div className="grid grid-cols-1 sm:grid-cols-7 gap-3 items-center">
+                {/* OPERANDO A */}
                 <div
-                  key={it.id}
-                  draggable
-                  onDragStart={(e) => handleDragStart(e, it.id)}
-                  className="bg-slate-900 hover:bg-indigo-900/40 border border-slate-700 hover:border-indigo-400/60 rounded px-2 py-1 text-[9px] text-slate-200 cursor-grab active:cursor-grabbing flex items-center gap-1.5 transition-all"
-                  title="Arrastra este indicador al Operando A u Operando B"
+                  onDrop={handleDropSlotA}
+                  onDragOver={handleDragOver}
+                  className={`sm:col-span-3 p-3.5 rounded-xl border flex flex-col gap-2 transition-all ${operandA ? 'bg-slate-900 border-indigo-500/60 shadow-md' : 'bg-slate-950 border-dashed border-slate-700'}`}
                 >
-                  <span className="text-slate-500">::</span>
-                  <span className="font-bold text-cyan-400">#{it.id}</span>
-                  <span className="truncate max-w-[120px]">{it.indicator}</span>
+                  <div className="flex justify-between items-center text-xs font-bold text-slate-300">
+                    <span>{operator === '/' ? 'Numerador (Indicador A)' : 'Operando A'}</span>
+                    {operandA && (
+                      <button type="button" onClick={handleClearA} className="text-rose-400 hover:text-rose-300 text-xs font-bold">
+                        Limpiar ✕
+                      </button>
+                    )}
+                  </div>
+                  
+                  <select
+                    aria-label="Seleccionar Indicador A"
+                    value={operandA}
+                    onChange={(e) => handleSelectOperandA(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-xs text-white outline-none focus:border-cyan-500"
+                  >
+                    <option value="">-- Selecciona Indicador A --</option>
+                    {availableItems.map(it => (
+                      <option key={it.id} value={it.id}>
+                        #{it.id} - {it.indicator} (Avance: {it.monthlyProgress?.[previewMonthIdx] ?? 0})
+                      </option>
+                    ))}
+                  </select>
+
+                  {itemA && (
+                    <div className="text-xs text-cyan-300 font-semibold bg-cyan-500/10 p-2 rounded-lg border border-cyan-500/20 truncate">
+                      ✓ Seleccionado: #{itemA.id} {itemA.indicator}
+                    </div>
+                  )}
                 </div>
-              ))}
-            </div>
-          </div>
 
-          {/* VISTA PREVIA EN TIEMPO REAL */}
-          <div className="mt-1 p-2 rounded-lg bg-slate-900 border border-slate-800 flex flex-wrap justify-between items-center gap-2">
-            <div className="flex flex-col gap-0.5">
-              <span className="text-[8px] text-slate-500 uppercase font-black tracking-wider">Fórmula Expresada</span>
-              <code className="text-[10px] text-cyan-300 font-mono font-bold">
-                {currentItem.formula || '(Sin fórmula definida)'}
-              </code>
-            </div>
+                {/* OPERADOR SIMBOL */}
+                <div className="sm:col-span-1 flex items-center justify-center">
+                  <span className="w-10 h-10 rounded-2xl bg-indigo-600 border border-indigo-400 text-white font-black text-lg flex items-center justify-center shadow-lg">
+                    {operator === '*' ? '×' : operator === '/' ? '÷' : operator === '+' ? '+' : '−'}
+                  </span>
+                </div>
 
-            <div className="flex items-center gap-4 text-right">
-              {isZeroDenominator ? (
-                <span className="text-[10px] font-bold text-amber-400 bg-amber-400/10 px-2 py-0.5 rounded border border-amber-400/20">
-                  ⚠️ SIN_DATOS (Denominador 0)
+                {/* OPERANDO B */}
+                <div
+                  onDrop={handleDropSlotB}
+                  onDragOver={handleDragOver}
+                  className={`sm:col-span-3 p-3.5 rounded-xl border flex flex-col gap-2 transition-all ${operandB ? 'bg-slate-900 border-indigo-500/60 shadow-md' : 'bg-slate-950 border-dashed border-slate-700'}`}
+                >
+                  <div className="flex justify-between items-center text-xs font-bold text-slate-300">
+                    <span>{operator === '/' ? 'Denominador (Indicador B)' : 'Operando B'}</span>
+                    {operandB && (
+                      <button type="button" onClick={handleClearB} className="text-rose-400 hover:text-rose-300 text-xs font-bold">
+                        Limpiar ✕
+                      </button>
+                    )}
+                  </div>
+
+                  <select
+                    aria-label="Seleccionar Indicador B"
+                    value={operandB}
+                    onChange={(e) => handleSelectOperandB(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-xs text-white outline-none focus:border-cyan-500"
+                  >
+                    <option value="">-- Selecciona Indicador B --</option>
+                    {availableItems.map(it => (
+                      <option key={it.id} value={it.id}>
+                        #{it.id} - {it.indicator} (Avance: {it.monthlyProgress?.[previewMonthIdx] ?? 0})
+                      </option>
+                    ))}
+                  </select>
+
+                  {itemB && (
+                    <div className="text-xs text-cyan-300 font-semibold bg-cyan-500/10 p-2 rounded-lg border border-cyan-500/20 truncate">
+                      ✓ Seleccionado: #{itemB.id} {itemB.indicator}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* OPCIONAL: BIBLIOTECA DRAG AND DROP */}
+              <div className="mt-2 border-t border-slate-800 pt-2">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
+                  Opcional: Arrastra un indicador directamente (Drag & Drop)
                 </span>
-              ) : (
-                <>
-                  <div className="flex flex-col">
-                    <span className="text-[8px] text-slate-500 uppercase font-bold">Avance Derivado</span>
-                    <span className="text-xs font-black text-white">
-                      {derivedValue} {currentItem.unit || '%'}
-                    </span>
-                  </div>
-                  <div className="flex flex-col">
-                    <span className="text-[8px] text-slate-500 uppercase font-bold">Meta</span>
-                    <span className="text-xs font-black text-slate-300">
-                      {derivedGoal} {currentItem.unit || '%'}
-                    </span>
-                  </div>
-                  <div className="flex flex-col">
-                    <span className="text-[8px] text-slate-500 uppercase font-bold">Cumplimiento</span>
-                    <span className="text-xs font-black text-emerald-400">
-                      {derivedCompliancePct}%
-                    </span>
-                  </div>
-                </>
-              )}
+                <div className="flex flex-wrap gap-2 max-h-24 overflow-y-auto p-1">
+                  {availableItems.map(it => (
+                    <div
+                      key={it.id}
+                      draggable
+                      onDragStart={(e) => handleDragStart(e, it.id)}
+                      className="bg-slate-900 hover:bg-indigo-950 border border-slate-700 hover:border-indigo-500/50 rounded-lg px-2.5 py-1 text-xs text-slate-200 cursor-grab flex items-center gap-2"
+                    >
+                      <span className="text-slate-500 font-mono">::</span>
+                      <span className="font-bold text-cyan-400">#{it.id}</span>
+                      <span className="truncate max-w-[150px]">{it.indicator}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* SECCIÓN 3: RESULTADO Y VISTA PREVIA */}
+            <div className="bg-slate-950/60 border border-slate-800 p-4 rounded-2xl flex flex-col gap-3">
+              <span className="text-xs font-black text-cyan-400 uppercase tracking-widest">
+                3. Revisa la vista previa del cálculo resultante
+              </span>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div className="bg-slate-900 p-3 rounded-xl border border-slate-800 flex flex-col">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase">Avance Derivado</span>
+                  <span className="text-xl font-black text-white mt-1">
+                    {derivedValue} {currentItem.unit || '%'}
+                  </span>
+                </div>
+
+                <div className="bg-slate-900 p-3 rounded-xl border border-slate-800 flex flex-col">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase">Meta Derivada</span>
+                  <span className="text-xl font-black text-slate-300 mt-1">
+                    {derivedGoal} {currentItem.unit || '%'}
+                  </span>
+                </div>
+
+                <div className="bg-slate-900 p-3 rounded-xl border border-slate-800 flex flex-col">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase">Cumplimiento Resultante</span>
+                  <span className={`text-xl font-black mt-1 ${isZeroDenominator ? 'text-amber-400' : 'text-emerald-400'}`}>
+                    {isZeroDenominator ? 'SIN_DATOS (Denominador 0)' : `${derivedCompliancePct}%`}
+                  </span>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between bg-slate-900 p-2.5 rounded-xl border border-slate-800">
+                <span className="text-xs text-slate-400 font-bold">Fórmula resultante:</span>
+                <code className="text-xs text-cyan-300 font-mono font-bold bg-slate-950 px-2 py-1 rounded border border-cyan-500/20">
+                  {draftFormula || '(Sin expresión)'}
+                </code>
+              </div>
+            </div>
+
+            {/* BOTÓN MODO AVANZADO */}
+            <div className="text-right">
+              <button
+                type="button"
+                onClick={() => setIsAdvancedMode(true)}
+                className="text-xs text-indigo-400 hover:text-indigo-300 underline font-semibold"
+              >
+                ¿Necesitas escribir expresiones complejas? Usar Modo Avanzado (Texto)
+              </button>
             </div>
           </div>
-        </>
-      ) : (
-        /* MODO AVANZADO TEXTUAL */
-        <div className="flex flex-col gap-1.5">
-          <label className="text-[9px] font-bold text-slate-400 uppercase">
-            Expresión matemática directa:
-          </label>
-          <input
-            type="text"
-            placeholder="{id:101} / {id:102}"
-            value={currentItem.formula || ''}
-            onChange={(e) => onChangeFormula(e.target.value)}
-            className="w-full bg-slate-950 border border-indigo-500/40 rounded px-2.5 py-1.5 text-xs text-indigo-200 font-mono outline-none focus:border-indigo-400"
-          />
-          <span className="text-[8px] text-slate-500">
-            Sintaxis permitida: <code>&#123;id:101&#125; / &#123;id:102&#125;</code> ó nombres naturales de indicadores.
-          </span>
+        ) : (
+          /* MODO AVANZADO TEXTUAL */
+          <div className="flex flex-col gap-4 py-4">
+            <label className="text-xs font-bold text-slate-300 uppercase">
+              Expresión aritmética directa:
+            </label>
+            <input
+              type="text"
+              placeholder="{id:101} / {id:102}"
+              value={draftFormula}
+              onChange={(e) => setDraftFormula(e.target.value)}
+              className="w-full bg-slate-950 border border-indigo-500/50 rounded-xl p-3 text-sm text-indigo-200 font-mono outline-none focus:border-indigo-400"
+            />
+            <span className="text-xs text-slate-400">
+              Sintaxis permitida: <code>&#123;id:101&#125; / &#123;id:102&#125;</code> o referencias por nombre.
+            </span>
+            <button
+              type="button"
+              onClick={() => setIsAdvancedMode(false)}
+              className="text-xs text-indigo-400 hover:text-indigo-300 underline font-semibold self-start mt-2"
+            >
+              ← Volver al Constructor Guiado
+            </button>
+          </div>
+        )}
+
+        {/* FOOTER DEL MODAL CON CANCELAR Y APLICAR */}
+        <div className="flex justify-end gap-3 border-t border-slate-800 pt-4 mt-6">
+          <button
+            type="button"
+            onClick={handleCancel}
+            className="px-5 py-2.5 rounded-xl border border-slate-700 bg-slate-800 text-slate-300 hover:bg-slate-700 text-xs font-bold uppercase transition-all"
+          >
+            Cancelar
+          </button>
+          <button
+            type="button"
+            onClick={handleApply}
+            className="px-6 py-2.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-black uppercase tracking-wider transition-all shadow-lg hover:scale-[1.02]"
+          >
+            Aplicar Fórmula
+          </button>
         </div>
-      )}
+
+      </div>
     </div>
   );
 };

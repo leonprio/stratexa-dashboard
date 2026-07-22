@@ -101,6 +101,7 @@ export const IndicatorManager = React.memo(({ initialItems, onSaveChanges, onCan
 
     const [applyGlobally, setApplyGlobally] = useState(false);
     const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+    const [editingFormulaItemId, setEditingFormulaItemId] = useState<number | string | null>(null);
 
     const handleRestoreFactory = () => {
         if (!defaultItems) return;
@@ -305,11 +306,29 @@ export const IndicatorManager = React.memo(({ initialItems, onSaveChanges, onCan
                                             )}
 
                                             {item.indicatorType === 'formula' && (
-                                                <FormulaBuilder
-                                                    currentItem={item}
-                                                    allItems={items}
-                                                    onChangeFormula={(f) => handleInputChange(item.id, 'formula', f)}
-                                                />
+                                                <div className="flex flex-col gap-1">
+                                                    <div className="flex items-center justify-between bg-indigo-950/40 border border-indigo-500/30 p-1.5 rounded-md">
+                                                        <span className="text-[9px] font-mono text-indigo-300 font-bold truncate max-w-[110px]" title={item.formula || 'Sin fórmula'}>
+                                                            {item.formula || '(Sin fórmula)'}
+                                                        </span>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setEditingFormulaItemId(item.id)}
+                                                            className="px-2 py-1 bg-indigo-600 hover:bg-indigo-500 text-white rounded text-[8px] font-black uppercase tracking-wider transition-all"
+                                                        >
+                                                            Configurar
+                                                        </button>
+                                                    </div>
+                                                    
+                                                    {editingFormulaItemId === item.id && (
+                                                        <FormulaBuilder
+                                                            currentItem={item}
+                                                            allItems={items}
+                                                            onChangeFormula={(f) => handleInputChange(item.id, 'formula', f)}
+                                                            onClose={() => setEditingFormulaItemId(null)}
+                                                        />
+                                                    )}
+                                                </div>
                                             )}
                                         </div>
                                     </td>
