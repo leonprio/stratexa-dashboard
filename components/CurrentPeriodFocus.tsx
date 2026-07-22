@@ -7,7 +7,7 @@ import { LineChart } from './LineChart';
 import { ActionPlan } from './ActionPlan';
 import { DataEditor } from './DataEditor';
 import { ActivityManager } from './ActivityManager';
-import { formatNumberWithCommas, parseFormattedNumber } from '../utils/formatters';
+import { formatNumberWithCommas, parseFormattedNumber, formatIndicatorValue } from '../utils/formatters';
 
 interface CurrentPeriodFocusProps {
     item: DashboardItem;
@@ -323,6 +323,7 @@ export const CurrentPeriodFocus: React.FC<CurrentPeriodFocusProps> = ({
                 <div className="animate-in fade-in slide-in-from-top-4">
                     <DataEditor
                         item={item}
+                        allDashboardItems={allDashboardItems}
                         year={year}
                         canEdit={canEdit}
                         onCancel={() => setIsFullEditMode(false)}
@@ -340,12 +341,12 @@ export const CurrentPeriodFocus: React.FC<CurrentPeriodFocusProps> = ({
                                 <div className={`bg-slate-950/40 border border-white/5 rounded-2xl p-3 transition-all ${canEdit && !activityMode ? 'focus-within:border-cyan-500/50' : 'opacity-80 grayscale-[0.5]'}`}>
                                     <div className="flex justify-between items-center mb-1.5">
                                         <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest block">Meta ({unit})</span>
-                                        <span className="text-[10px] font-black text-cyan-400 tabular-nums">{localGoal !== '' ? formatNumberWithCommas(localGoal, decimalPrecision) : '0'}</span>
+                                        <span className="text-[10px] font-black text-cyan-400 tabular-nums">{localGoal !== '' ? formatIndicatorValue(localGoal, unit, decimalPrecision, item.indicatorType === 'formula') : 'SIN DATOS'}</span>
                                     </div>
                                     <input
                                         type="text"
                                         inputMode="decimal"
-                                        value={isGoalFocused ? localGoal : formatNumberWithCommas(localGoal, decimalPrecision)}
+                                        value={isGoalFocused ? localGoal : formatIndicatorValue(localGoal, unit, decimalPrecision, item.indicatorType === 'formula')}
                                         onFocus={() => setIsGoalFocused(true)}
                                         onBlur={() => setIsGoalFocused(false)}
                                         onChange={(e) => {
@@ -363,12 +364,12 @@ export const CurrentPeriodFocus: React.FC<CurrentPeriodFocusProps> = ({
                                 <div className={`bg-slate-950/40 border border-white/5 rounded-2xl p-3 transition-all ${effectiveCanEdit && !activityMode ? 'focus-within:border-emerald-500/50' : 'opacity-80 grayscale-[0.5]'}`}>
                                     <div className="flex justify-between items-center mb-1.5">
                                         <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest block">Real ({unit})</span>
-                                        <span className="text-[10px] font-black text-emerald-400 tabular-nums">{localActual !== '' ? formatNumberWithCommas(localActual, decimalPrecision) : '0'}</span>
+                                        <span className="text-[10px] font-black text-emerald-400 tabular-nums">{localActual !== '' ? formatIndicatorValue(localActual, unit, decimalPrecision, item.indicatorType === 'formula') : 'SIN DATOS'}</span>
                                     </div>
                                     <input
                                         type="text"
                                         inputMode="decimal"
-                                        value={isActualFocused ? localActual : formatNumberWithCommas(localActual, decimalPrecision)}
+                                        value={isActualFocused ? localActual : formatIndicatorValue(localActual, unit, decimalPrecision, item.indicatorType === 'formula')}
                                         onFocus={() => setIsActualFocused(true)}
                                         onBlur={() => setIsActualFocused(false)}
                                         onChange={(e) => {

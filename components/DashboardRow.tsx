@@ -7,7 +7,7 @@ import { DataEditor } from './DataEditor';
 import { ActionPlan } from './ActionPlan';
 import { SummaryDetails } from './SummaryDetails';
 import { calculateCompliance, findLastIndexWithData, getMissingMonthsWarning, getOverdueWarning, calculateOperationalMetrics } from '../utils/compliance';
-import { formatNumberWithCommas } from '../utils/formatters';
+import { formatNumberWithCommas, formatIndicatorValue } from '../utils/formatters';
 
 interface DashboardRowProps {
   item: DashboardItem;
@@ -228,17 +228,17 @@ export const DashboardRow: React.FC<DashboardRowProps> = React.memo(({ item, onU
               <span className="text-[10px] text-slate-500 uppercase font-black tracking-[0.2em] mb-2 opacity-80">Rendimiento Real</span>
               <div className="flex items-baseline gap-2">
                 <span className="text-4xl sm:text-5xl font-black text-white tabular-nums tracking-tighter">
-                  {formatNumber(currentProgress)}
+                  {formatIndicatorValue(currentProgress, unit, decimalPrecision, item.indicatorType === 'formula')}
                 </span>
-                <span className="text-xs font-bold text-slate-500 uppercase tracking-widest italic">{unit}</span>
               </div>
             </div>
 
             <div className="flex flex-col items-end">
               <span className="text-[10px] text-slate-500 uppercase font-black tracking-[0.2em] mb-2 opacity-80">Objetivo</span>
               <div className="flex items-baseline gap-1.5 bg-white/5 px-3 py-1.5 rounded-xl border border-white/5">
-                <span className="text-xl font-black text-slate-300 tabular-nums">{formatNumber(currentTarget)}</span>
-                <span className="text-[9px] font-bold text-slate-600 uppercase tracking-wider">{unit}</span>
+                <span className="text-xl font-black text-slate-300 tabular-nums">
+                  {formatIndicatorValue(currentTarget, unit, decimalPrecision, item.indicatorType === 'formula')}
+                </span>
               </div>
             </div>
           </div>

@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { DashboardItem } from '../types';
 import { evaluateFormula } from '../utils/compliance';
+import { formatIndicatorValue } from '../utils/formatters';
 
 interface FormulaBuilderProps {
   currentItem: DashboardItem | (Omit<DashboardItem, 'id'> & { id: number | string });
@@ -412,21 +413,21 @@ export const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
                 <div className="bg-slate-900 p-3 rounded-xl border border-slate-800 flex flex-col">
                   <span className="text-[10px] font-bold text-slate-400 uppercase">Avance Derivado</span>
                   <span className="text-xl font-black text-white mt-1">
-                    {derivedValue} {currentItem.unit || '%'}
+                    {formatIndicatorValue(derivedValue, currentItem.unit || '%', 2, true)}
                   </span>
                 </div>
 
                 <div className="bg-slate-900 p-3 rounded-xl border border-slate-800 flex flex-col">
                   <span className="text-[10px] font-bold text-slate-400 uppercase">Meta Derivada</span>
                   <span className="text-xl font-black text-slate-300 mt-1">
-                    {derivedGoal} {currentItem.unit || '%'}
+                    {formatIndicatorValue(derivedGoal, currentItem.unit || '%', 2, true)}
                   </span>
                 </div>
 
                 <div className="bg-slate-900 p-3 rounded-xl border border-slate-800 flex flex-col">
                   <span className="text-[10px] font-bold text-slate-400 uppercase">Cumplimiento Resultante</span>
                   <span className={`text-xl font-black mt-1 ${isZeroDenominator ? 'text-amber-400' : 'text-emerald-400'}`}>
-                    {isZeroDenominator ? 'SIN_DATOS (Denominador 0)' : `${derivedCompliancePct}%`}
+                    {isZeroDenominator ? 'SIN DATOS (Denominador 0)' : `${derivedCompliancePct.toFixed(2)}%`}
                   </span>
                 </div>
               </div>
