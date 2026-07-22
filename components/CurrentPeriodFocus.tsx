@@ -117,11 +117,22 @@ export const CurrentPeriodFocus: React.FC<CurrentPeriodFocusProps> = ({
 
     useEffect(() => {
         if (!item) return;
-        const goal = isWeekly ? item.weeklyGoals?.[currentIdx] : item.monthlyGoals?.[currentIdx];
-        const actual = isWeekly ? item.weeklyProgress?.[currentIdx] : item.monthlyProgress?.[currentIdx];
+        const isCalculatedItem = item.indicatorType === 'formula' || item.indicatorType === 'compound';
+        
+        let goal: any = null;
+        let actual: any = null;
+
+        if (isCalculatedItem && allDashboardItems.length > 0) {
+            const { monthlyProgress: mP, monthlyGoals: mG } = resolveItemValues(item, allDashboardItems, year);
+            goal = mG[currentIdx];
+            actual = mP[currentIdx];
+        } else {
+            goal = isWeekly ? item.weeklyGoals?.[currentIdx] : item.monthlyGoals?.[currentIdx];
+            actual = isWeekly ? item.weeklyProgress?.[currentIdx] : item.monthlyProgress?.[currentIdx];
+        }
+
         const note = (isWeekly ? item.weeklyNotes?.[currentIdx] : item.monthlyNotes?.[currentIdx]) || '';
 
-        // Solo actualizar si los valores son realmente diferentes para no interrumpir la edición local incipiente
         const strGoal = goal !== null && goal !== undefined ? goal.toString() : '';
         const strActual = actual !== null && actual !== undefined ? actual.toString() : '';
         
@@ -131,14 +142,24 @@ export const CurrentPeriodFocus: React.FC<CurrentPeriodFocusProps> = ({
             setLocalNote(note);
         }
         
-        // Sincronizar el modo de actividad
         if (item.isActivityMode !== undefined) {
           setActivityMode(item.isActivityMode);
         }
-    }, [item, currentIdx, isWeekly]);
+    }, [item, currentIdx, isWeekly, allDashboardItems, year]);
 
     const chartData = useMemo(() => {
         if (!item) return { progress: [], goals: [] };
+        const isCalculatedItem = item.indicatorType === 'formula' || item.indicatorType === 'compound';
+
+        let resolvedP = monthlyProgress;
+        let resolvedG = monthlyGoals;
+
+        if (isCalculatedItem && allDashboardItems.length > 0) {
+            const res = resolveItemValues(item, allDashboardItems, year);
+            resolvedP = res.monthlyProgress;
+            resolvedG = res.monthlyGoals;
+        }
+
         let limitIdx = -1;
         if (isPastYear) {
             limitIdx = isWeekly ? 52 : 11;
@@ -146,7 +167,7 @@ export const CurrentPeriodFocus: React.FC<CurrentPeriodFocusProps> = ({
             const idxNow = isWeekly 
                 ? getWeekNumber(new Date(), weekStart === 'Sun' ? 0 : 1) - 1 
                 : new Date().getMonth();
-            limitIdx = Math.max(idxNow - 1, currentIdx); // Mostrar hasta el periodo que el usuario está consultando
+            limitIdx = Math.max(idxNow - 1, currentIdx);
         }
 
         if (isWeekly) {
@@ -154,8 +175,8 @@ export const CurrentPeriodFocus: React.FC<CurrentPeriodFocusProps> = ({
             const goals = (weeklyGoals || []).slice(0, limitIdx + 1);
             return { progress: prog.map(v => (v !== null && v !== undefined) ? v : null), goals: goals.map(v => (v !== null && v !== undefined) ? v : null) };
         } else {
-            const prog = (monthlyProgress || []).slice(0, limitIdx + 1);
-            const goals = (monthlyGoals || []).slice(0, limitIdx + 1);
+            const prog = (resolvedP || []).slice(0, limitIdx + 1);
+            const goals = (resolvedG || []).slice(0, limitIdx + 1);
             return { progress: prog.map(v => (v !== null && v !== undefined) ? v : null), goals: goals.map(v => (v !== null && v !== undefined) ? v : null) };
         }
     }, [monthlyProgress, monthlyGoals, weeklyProgress, weeklyGoals, isWeekly, year, currentYear, isPastYear, currentIdx, item, weekStart]);
@@ -225,7 +246,7 @@ export const CurrentPeriodFocus: React.FC<CurrentPeriodFocusProps> = ({
 
     return (
         <div id="gestion-detallada-focus" className="relative bg-slate-900/40 backdrop-blur-3xl border border-cyan-500/40 rounded-[2.5rem] p-4 md:p-6 animate-in zoom-in-95 duration-500 z-10 scroll-mt-24">
-            <div className="sticky top-0 z-20 bg-slate-950/90 backdrop-blur-md p-4 rounded-3xl border border-slate-800 shadow-xl flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-8">
+            <div className="sticky top-16 z-30 bg-slate-950/95 backdrop-blur-md p-4 rounded-3xl border border-slate-800 shadow-2xl flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-8">
                 <div className="flex-1 w-full">
                     <div className="flex flex-wrap items-center gap-3 mb-4">
                         {/* Period Selector UX001 Compliant */}
@@ -296,7 +317,7 @@ export const CurrentPeriodFocus: React.FC<CurrentPeriodFocusProps> = ({
                         VISTA ANUAL
                     </button>
 
-                    {canEdit && (
+                    {effectiveCanEdit && (
                         <button
                             onClick={handleQuickSave}
                             disabled={isSaving}
@@ -417,7 +438,7 @@ export const CurrentPeriodFocus: React.FC<CurrentPeriodFocusProps> = ({
                                 />
                             </div>
 
-                            {canEdit && (
+                            {effectiveCanEdit && (
                                 <button
                                     onClick={handleQuickSave}
                                     disabled={isSaving}
@@ -443,7 +464,7 @@ export const CurrentPeriodFocus: React.FC<CurrentPeriodFocusProps> = ({
                                 <div className="flex flex-col items-end">
                                     <span className="text-[9px] font-black uppercase tracking-widest text-slate-500 mb-1">Brecha Actual</span>
                                     <span className={`text-lg font-black ${isPositiveGap ? 'text-emerald-400' : 'text-rose-400'}`}>
-                                        {isPositiveGap ? '▲' : '▼'} {formatNumber(Math.abs(gap))} {unit}
+                                        {isPositiveGap ? '▲' : '▼'} {isCalculated ? `${(Math.abs(gap) * 100).toFixed(1)} pp` : `${formatNumber(Math.abs(gap))} ${unit}`}
                                     </span>
                                 </div>
                             </div>

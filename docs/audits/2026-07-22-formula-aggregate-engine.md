@@ -1,24 +1,22 @@
-# Auditoría de Motor de Fórmulas e Indicadores Compuestos (v9.4.11)
+# Auditoría de Motor de Fórmulas e Indicadores Compuestos (v9.4.12)
 
-## 1. Cierre Final YTD y Navegación de Indicadores (v9.4.11)
+## 1. Corrección de Rutas de Vista Restantes (v9.4.12)
 
-### Contrato YTD en Tarjetas Principales (`FORMULA_ON_CUMULATED_SOURCES`)
-- **Periodo Vencido Límite**: En Julio 2026, el corte evaluado es **Junio 2026**.
-- **Regla Evaluativa**: Para indicadores de tipo FÓRMULA con división/razón, el acumulado YTD calcula primero la suma de avances y la suma de metas de las fuentes desde el inicio del año hasta el corte (Junio), y evalúa la fórmula sobre dichos acumulados:
-  - **Suma Avance Fuente #3 (Cerrados)**: $3$
-  - **Suma Avance Fuente #2 (Acordados)**: $6$
-  - **Avance YTD Derivado**: $3 / 6 = 0.5 \rightarrow 50.0\%$.
-  - **Suma Meta Fuente #3 (Cerrados)**: $4$
-  - **Suma Meta Fuente #2 (Acordados)**: $8$
-  - **Meta YTD Derivada**: $4 / 8 = 0.5 \rightarrow 50.0\%$.
-- **Formato Visual**: La tarjeta principal despliega el valor a **1 decimal** (`50.0%`) acompañado de la etiqueta explicativa **`ACUMULADO A JUN`**.
+### Bypasses Identificados y Corregidos
+1. **Ficha de Detalle ([CurrentPeriodFocus.tsx](file:///C:/APP-TABLERO-WORKTREES/fix-formula-engine-composite-indicators-v9.4.12/components/CurrentPeriodFocus.tsx))**:
+   - **Bypass**: Leía metas y progresos legacy desde `item.monthlyGoals` / `item.monthlyProgress` estáticos, ignorando los valores resueltos dinámicamente por la fórmula.
+   - **Solución**: Se conectó a `resolveItemValues(item, allDashboardItems, year)`. Para Junio 2026, muestra **Meta `50.00%`**, **Real `50.00%`**, **Cumplimiento `50%`** y **Brecha `0.0 pp`**.
+   - **Línea de Tendencia**: Alimenta el gráfico histórico mediante la serie mensual derivada resuelta.
+   - **Acciones de Guardado**: Se ocultó el botón `GUARDAR MES` reemplazando `canEdit` por `effectiveCanEdit` para evitar persistencia manual en indicadores automáticos.
+   - **Navegación Sticky**: Se configuró la barra del modal con `sticky top-16 z-30`, manteniéndola visible debajo de la barra de navegación principal.
 
 ---
 
-## 2. Navegación, Foco y Encabezado Sticky
-- **Scroll Interno y Restitución**:
-  - Al abrir o alternar cualquier indicador (`CurrentPeriodFocus`), el contenedor enfoca la parte superior (`block: 'start'`).
-  - El encabezado del modal se volvió `sticky top-0 z-20` con fondo opaco y backdrop blur, garantizando que el título, periodo consultado, botón **VISTA ANUAL** y botón **CERRAR** permanezcan visibles en todo momento durante el desplazamiento vertical.
+## 2. Resultados Validados para LVP / Capacidades / Junio 2026
+- **Tarjeta Principal**: Muestra **`50.0%`** (1 decimal) con etiqueta **`ACUMULADO A JUN`**.
+- **Ficha de Detalle**: Meta **`50.00%`**, Real **`50.00%`**, Cumplimiento **`50%`**, Brecha **`0.0 pp`**.
+- **Vista Anual**: Meta **`50.00%`**, Avance **`50.00%`** en junio.
+- **Acciones**: Solo disponibles **VISTA ANUAL** y **CERRAR**.
 
 ---
 

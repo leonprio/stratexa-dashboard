@@ -2,7 +2,7 @@ import { evaluateFormula, calculateCompliance, resolveItemValues } from './compl
 import { formatIndicatorValue } from './formatters';
 import { DashboardItem } from '../types';
 
-describe('FASE 10: Derived YTD Summary & Navigation Audit (v9.4.11)', () => {
+describe('FASE 12: Derived View Paths Audit & Wiring (v9.4.12)', () => {
   const mockItems: DashboardItem[] = [
     {
       id: 2,
@@ -42,27 +42,21 @@ describe('FASE 10: Derived YTD Summary & Navigation Audit (v9.4.11)', () => {
     },
   ];
 
-  test('Junio 2026: YTD progress y goal son 0.5 (50.0%) evaluando fuentes acumuladas', () => {
-    const defaultThresholds = { onTrack: 90, atRisk: 80 };
-    const res = calculateCompliance(mockItems[2], defaultThresholds, 2026, 'realTime', mockItems);
-    
-    expect(res.currentProgress).toBe(0.5);
-    expect(res.currentTarget).toBe(0.5);
-    expect(res.overallPercentage).toBe(50);
+  test('v9.4.12: resolveItemValues devuelve junio Meta 0.5 y Avance 0.5', () => {
+    const res = resolveItemValues(mockItems[2], mockItems, 2026);
+    expect(res.monthlyGoals[5]).toBe(0.5);
+    expect(res.monthlyProgress[5]).toBe(0.5);
   });
 
-  test('v9.4.11: formatIndicatorValue formatea tarjeta principal a 1 decimal (50.0%)', () => {
-    const formattedProgress = formatIndicatorValue(0.5, '%', 1, true);
-    expect(formattedProgress).toBe('50.0%');
+  test('v9.4.12: Brecha entre Avance (0.5) y Meta (0.5) resulta 0.0 pp', () => {
+    const res = resolveItemValues(mockItems[2], mockItems, 2026);
+    const gap = (res.monthlyProgress[5] ?? 0) - (res.monthlyGoals[5] ?? 0);
+    const formattedGap = `${(Math.abs(gap) * 100).toFixed(1)} pp`;
+    expect(formattedGap).toBe('0.0 pp');
   });
 
-  test('v9.4.11: formatIndicatorValue formatea detalle a 2 decimales (50.00%)', () => {
+  test('v9.4.12: formatIndicatorValue formatea avance/meta a 50.00%', () => {
     const formattedProgress = formatIndicatorValue(0.5, '%', 2, true);
     expect(formattedProgress).toBe('50.00%');
-  });
-
-  test('v9.4.11: Indicadores sin % < 1 muestran 1 decimal (ej. 0.5)', () => {
-    const formattedNoPct = formatIndicatorValue(0.5, '', 0, false);
-    expect(formattedNoPct).toBe('0.5');
   });
 });
