@@ -1,0 +1,76 @@
+{
+  "systemName": "Stratexa Dashboard IPS",
+  "version": "v9.4.3-STABLE-AI-FORENSIC-HARDENING",
+  "frozenTimestamp": "2026-05-22T22:20:00Z",
+  "environment": "Production-STABLE",
+  "architectureManifest": {
+    "coreComponents": [
+      {
+        "name": "App.tsx",
+        "path": "App.tsx",
+        "purpose": "Estructura principal de autenticación, ruteo y estado global del tablero.",
+        "sizeBytes": 108581
+      },
+      {
+        "name": "ClientSettings.tsx",
+        "path": "components/ClientSettings.tsx",
+        "purpose": "Panel de configuración institucional y administración de exportaciones diferenciales y checkpoints manuales.",
+        "sizeBytes": 35026
+      },
+      {
+        "name": "ControlledImporter.tsx",
+        "path": "components/ControlledImporter.tsx",
+        "purpose": "Pipeline seguro de carga en Sandbox, validación celular de diffs, auto-backup triple y upsert quirúrgico.",
+        "sizeBytes": 32694
+      },
+      {
+        "name": "enterpriseRecoveryUtils.ts",
+        "path": "utils/enterpriseRecoveryUtils.ts",
+        "purpose": "Motor criptográfico de firmas, checksum FNV-1a de 32 bits, exportación binaria XLSX (ExcelJS) y parser de Sandbox.",
+        "sizeBytes": 19662
+      }
+    ],
+    "engines": [
+      {
+        "name": "Operational Control Engine",
+        "path": "utils/operationalControl.ts",
+        "purpose": "Semáforos, ponderaciones y cálculo del Real Operational Score de indicadores."
+      },
+      {
+        "name": "Alerts Engine",
+        "path": "utils/operationalAlerts.ts",
+        "purpose": "Detección de anomalías operativas y desvíos crónicos."
+      },
+      {
+        "name": "History Engine",
+        "path": "utils/operationalHistory.ts",
+        "purpose": "Bitácoras forenses de cambios y logs históricos de carga de metas y avances."
+      }
+    ],
+    "dependencyMap": {
+      "exceljs": "^4.4.0",
+      "firebase": "^10.0.0",
+      "react": "^18.2.0",
+      "typescript": "^5.0.0",
+      "vite": "^7.3.1"
+    },
+    "bundleMetrics": {
+      "indexHtmlSize": "1.12 kB",
+      "indexCssSize": "3.55 kB",
+      "mainJsSize": "2,424.47 kB",
+      "totalModulesTransformed": 1647,
+      "buildTimeSeconds": 19.32
+    },
+    "changeGovernance": {
+      "noRegressionPolicy": "PROHIBIDO realizar refactorizaciones globales o modificaciones estéticas sobre semáforos, control operativo, alerts o history.",
+      "moduleIsolation": "Cualquier cambio futuro debe encapsularse quirúrgicamente en submódulos independientes sin modificar el core consolidado.",
+      "recoveryMandatory": "Toda importación de planillas de metas o avances debe ejecutar de forma obligatoria el triple auto-backup de salvaguarda física (Baseline, Recovery y Manifiesto) y crear un checkpoint en localStorage.",
+      "safeDeployChecklist": [
+        "1. Ejecutar npm run build para verificar cero errores de tsc.",
+        "2. Validar Sandbox con firma digital exportSignature válida.",
+        "3. Comprobar compatibilidad móvil conforme a Regla #UX001 en los 4 dispositivos.",
+        "4. Verificar no regresión en cálculo de Real Operational Score y semáforos."
+      ]
+    }
+  }
+}

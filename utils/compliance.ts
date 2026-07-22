@@ -1,5 +1,4 @@
-// utils/compliance.ts
-import type { DashboardItem, ComplianceThresholds } from "../types";
+import type { DashboardItem, ComplianceThresholds, OperationalMetrics } from "../types";
 import { aggregateWeeklyToMonthly, getWeekNumber } from "./weeklyUtils";
 
 // Si en tu proyecto ComplianceStatus es un enum/string union en types,
@@ -715,3 +714,220 @@ export const calculateDashboardMonthlyScores = (
 
   return scores;
 };
+
+/**
+ * Normaliza un periodo (número o string) a un índice de mes en base 0 (0-11).
+ * Soporta números del 1-12 (base 1), 0-11 (base 0) o strings de meses abreviados en español o inglés (ej. "MAY", "ENE").
+ */
+export const parsePeriodToIndex = (period: any): number => {
+  if (period === undefined || period === null) return 0;
+  if (typeof period === 'number') {
+    if (period >= 1 && period <= 12) {
+      return period - 1;
+    }
+    return Math.max(0, Math.min(11, period));
+  }
+  if (typeof period === 'string') {
+    const clean = period.trim().toUpperCase();
+    const months = [
+      "ENE", "FEB", "MAR", "ABR", "MAY", "JUN",
+      "JUL", "AGO", "SEP", "OCT", "NOV", "DIC",
+      "JAN", "FEB", "MAR", "APR", "MAY", "JUN",
+      "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"
+    ];
+    const index = months.indexOf(clean);
+    if (index !== -1) {
+      return index % 12;
+    }
+    const num = parseInt(clean, 10);
+    if (!isNaN(num)) {
+      return Math.max(0, Math.min(11, num - 1));
+    }
+  }
+  return 0;
+};
+
+/**
+ * 🌟 MOTOR DERIVADO Y ENCAPSULADO PARA CÁLCULO DE MÉTRICAS OPERATIVAS (v18.0.0-OPERATIONAL-METRICS)
+ * Calcula de forma independiente el desempeño de captura, meses esperados y el cumplimiento operativo real.
+ */
+export const calculateOperationalMetrics = (
+  item: DashboardItem,
+  globalThresholds: ComplianceThresholds,
+  year: number = new Date().getFullYear(),
+  mode: 'realTime' | 'definitive' = 'realTime',
+  contextItems: DashboardItem[] = []
+): OperationalMetrics => {
+  const shielded = shieldItem(item);
+  
+  // 1. Resolver los valores reales de metas y avances (soporte para compuestos, fórmulas y semanales)
+  const { monthlyProgress, monthlyGoals } = resolveItemValues(shielded, contextItems, year);
+
+  // 2. Obtener el índice de inicio operativo
+  const startPeriodIdx = parsePeriodToIndex((shielded as any).operationalStartPeriod ?? 0);
+
+  // 3. Determinar el límite del periodo a evaluar (limitIdx)
+  const currentYear = new Date().getFullYear();
+  const currentMonthIdx = new Date().getMonth();
+
+  let limitIdx = 11;
+  if (year === currentYear) {
+    if (mode === 'realTime') {
+      limitIdx = currentMonthIdx;
+    } else {
+      limitIdx = currentMonthIdx - 1;
+    }
+  } else if (year > currentYear) {
+    limitIdx = -1;
+  }
+
+  // 4. Calcular periodos esperados
+  const expectedPeriods = Math.max(0, limitIdx - startPeriodIdx + 1);
+
+  let capturedPeriods = 0;
+  const missingPeriodsList: number[] = [];
+
+  for (let m = startPeriodIdx; m <= limitIdx; m++) {
+    const val = monthlyProgress[m];
+    const goal = monthlyGoals[m];
+
+    const isNullVal = val === null || val === undefined || val === "" || isNaN(Number(val));
+    const isNullGoal = goal === null || goal === undefined || goal === "" || isNaN(Number(goal));
+    
+    const isGoalZero = Number(goal || 0) === 0;
+    const isValZero = Number(val || 0) === 0;
+
+    const isCaptured = !isNullVal && !isNullGoal && !(isGoalZero && isValZero);
+
+    if (isCaptured) {
+      capturedPeriods++;
+    } else {
+      missingPeriodsList.push(m);
+    }
+  }
+
+  const missingPeriods = expectedPeriods - capturedPeriods;
+  const captureRate = expectedPeriods > 0 ? (capturedPeriods / expectedPeriods) * 100 : 100;
+
+  // 5. Calcular performanceScore tradicional (acotado a meses capturados)
+  const itemForPerformance = {
+    ...shielded,
+    monthlyGoals: shielded.monthlyGoals.map((g, m) => {
+      const isExpected = m >= startPeriodIdx && m <= limitIdx;
+      if (!isExpected) return g;
+
+      const val = monthlyProgress[m];
+      const isNullVal = val === null || val === undefined || val === "" || isNaN(Number(val));
+      const isNullGoal = g === null || g === undefined || g === "" || isNaN(Number(g));
+      const isGoalZero = Number(g || 0) === 0;
+      const isValZero = Number(val || 0) === 0;
+      const isCaptured = !isNullVal && !isNullGoal && !(isGoalZero && isValZero);
+
+      return isCaptured ? g : null;
+    })
+  };
+  const traditional = calculateCompliance(itemForPerformance, globalThresholds, year, mode, [], contextItems);
+  const performanceScore = traditional.overallPercentage;
+  const performanceStatus = traditional.complianceStatus;
+
+  // 6. Calcular realOperationalScore (meses vencidos no capturados como 0% de cumplimiento)
+  const isAccumulative = isAccumulativeIndicator(shielded.indicator, shielded.type);
+  const lowerIsBetter = shielded.goalType === 'minimize' || (shielded as any).type === 'minimize' || (shielded as any).type === 'lower' || (shielded as any).type === 'min';
+
+  let realOperationalScore = 0;
+
+  if (expectedPeriods === 0) {
+    realOperationalScore = performanceScore;
+  } else if (isAccumulative) {
+    let sumProgress = 0;
+    let sumTarget = 0;
+
+    for (let m = startPeriodIdx; m <= limitIdx; m++) {
+      const val = monthlyProgress[m];
+      const goal = monthlyGoals[m];
+
+      const isNullVal = val === null || val === undefined || val === "" || isNaN(Number(val));
+      const isNullGoal = goal === null || goal === undefined || goal === "" || isNaN(Number(goal));
+      const isGoalZero = Number(goal || 0) === 0;
+      const isValZero = Number(val || 0) === 0;
+      const isCaptured = !isNullVal && !isNullGoal && !(isGoalZero && isValZero);
+
+      if (isCaptured) {
+        sumProgress += Number(val ?? 0);
+      }
+      sumTarget += Number(goal ?? 0);
+    }
+
+    realOperationalScore = calculateMonthlyCompliancePercentage(sumProgress, sumTarget, lowerIsBetter);
+  } else {
+    let sumCompliance = 0;
+
+    for (let m = startPeriodIdx; m <= limitIdx; m++) {
+      const val = monthlyProgress[m];
+      const goal = monthlyGoals[m];
+
+      const isNullVal = val === null || val === undefined || val === "" || isNaN(Number(val));
+      const isNullGoal = goal === null || goal === undefined || goal === "" || isNaN(Number(goal));
+      const isGoalZero = Number(goal || 0) === 0;
+      const isValZero = Number(val || 0) === 0;
+      const isCaptured = !isNullVal && !isNullGoal && !(isGoalZero && isValZero);
+
+      if (isCaptured) {
+        sumCompliance += calculateMonthlyCompliancePercentage(val, goal, lowerIsBetter);
+      } else {
+        sumCompliance += 0;
+      }
+    }
+
+    realOperationalScore = sumCompliance / expectedPeriods;
+  }
+
+  realOperationalScore = Math.max(0, Math.min(200, realOperationalScore));
+
+  // 7. Calcular stalenessDays (atraso de captura)
+  let stalenessDays = 0;
+  if (missingPeriodsList.length > 0) {
+    const oldestMissingMonth = missingPeriodsList[0];
+    const today = new Date();
+    const endOfMissingMonth = new Date(year, oldestMissingMonth + 1, 0);
+    const diffTime = today.getTime() - endOfMissingMonth.getTime();
+    stalenessDays = Math.max(0, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
+  }
+
+  // 8. Semáforos
+  const thresholds: ComplianceThresholds = (shielded as any).thresholds ?? globalThresholds;
+  const captureStatus = getStatusForPercentage(captureRate, thresholds, true, true);
+  const operationalStatus = getStatusForPercentage(realOperationalScore, thresholds, true, true);
+
+  return {
+    expectedPeriods,
+    capturedPeriods,
+    missingPeriods,
+    captureRate,
+    performanceScore,
+    realOperationalScore,
+    stalenessDays,
+    performanceStatus,
+    captureStatus,
+    operationalStatus
+  };
+};
+
+/**
+ * 🌟 ADJUNTA MÉTRICAS OPERATIVAS DE FORMA INMUTABLE
+ * Retorna un nuevo DashboardItem con la propiedad operationalMetrics calculada de forma segura.
+ */
+export const attachOperationalMetrics = (
+  item: DashboardItem,
+  globalThresholds: ComplianceThresholds,
+  year: number = new Date().getFullYear(),
+  mode: 'realTime' | 'definitive' = 'realTime',
+  contextItems: DashboardItem[] = []
+): DashboardItem => {
+  const metrics = calculateOperationalMetrics(item, globalThresholds, year, mode, contextItems);
+  return {
+    ...item,
+    operationalMetrics: metrics
+  };
+};
+

@@ -6,7 +6,7 @@ import { LineChart } from './LineChart';
 import { DataEditor } from './DataEditor';
 import { ActionPlan } from './ActionPlan';
 import { SummaryDetails } from './SummaryDetails';
-import { calculateCompliance, findLastIndexWithData, getMissingMonthsWarning, getOverdueWarning } from '../utils/compliance';
+import { calculateCompliance, findLastIndexWithData, getMissingMonthsWarning, getOverdueWarning, calculateOperationalMetrics } from '../utils/compliance';
 import { formatNumberWithCommas } from '../utils/formatters';
 
 interface DashboardRowProps {
@@ -46,6 +46,11 @@ export const DashboardRow: React.FC<DashboardRowProps> = React.memo(({ item, onU
   const { currentProgress, currentTarget, overallPercentage, complianceStatus } = useMemo(() => {
     if (!item || !item.indicator) return { currentProgress: 0, currentTarget: 0, overallPercentage: 0, complianceStatus: 'Neutral' };
     return calculateCompliance(item, globalThresholds, year, 'realTime', allDashboardItems);
+  }, [item, globalThresholds, year, allDashboardItems]);
+
+  const operationalMetrics = useMemo(() => {
+    if (!item || !item.indicator) return null;
+    return calculateOperationalMetrics(item, globalThresholds, year, 'realTime', allDashboardItems);
   }, [item, globalThresholds, year, allDashboardItems]);
 
   const missingDataWarning = useMemo(() => {
@@ -240,6 +245,48 @@ export const DashboardRow: React.FC<DashboardRowProps> = React.memo(({ item, onU
 
           <div className="mt-8 space-y-4">
             <ProgressBar percentage={overallPercentage} status={complianceStatus as any} />
+            
+            {/* Sublayer de métricas operativas secundarias (no invasivo, v18.0.0-OPERATIONAL-METRICS) */}
+            {operationalMetrics && (
+              <div className="flex flex-wrap gap-2 mt-2 pt-1 border-t border-white/5">
+                <div className="flex items-center gap-1.5 bg-slate-950/40 px-2 py-0.5 rounded-md border border-white/5" title="Desempeño sobre meses capturados">
+                  <span className="w-1.5 h-1.5 rounded-full bg-cyan-400" />
+                  <span className="text-[9px] font-black text-slate-300 tracking-tight uppercase">
+                    {Math.round(operationalMetrics.performanceScore)}% KPI
+                  </span>
+                </div>
+                <div className="flex items-center gap-1.5 bg-slate-950/40 px-2 py-0.5 rounded-md border border-white/5" title="Porcentaje de periodos capturados de los vencidos esperados">
+                  <span className={`w-1.5 h-1.5 rounded-full ${
+                    operationalMetrics.captureStatus === 'OnTrack' ? 'bg-emerald-400' :
+                    operationalMetrics.captureStatus === 'AtRisk' ? 'bg-amber-400' :
+                    operationalMetrics.captureStatus === 'InProgress' ? 'bg-sky-400' :
+                    operationalMetrics.captureStatus === 'Neutral' ? 'bg-slate-500' : 'bg-rose-400'
+                  }`} />
+                  <span className="text-[9px] font-black text-slate-300 tracking-tight uppercase">
+                    {Math.round(operationalMetrics.captureRate)}% CAPTURA
+                  </span>
+                </div>
+                <div className="flex items-center gap-1.5 bg-slate-950/40 px-2 py-0.5 rounded-md border border-white/5" title="Cumplimiento real considerando meses vencidos sin captura como 0%">
+                  <span className={`w-1.5 h-1.5 rounded-full ${
+                    operationalMetrics.operationalStatus === 'OnTrack' ? 'bg-emerald-400' :
+                    operationalMetrics.operationalStatus === 'AtRisk' ? 'bg-amber-400' :
+                    operationalMetrics.operationalStatus === 'InProgress' ? 'bg-sky-400' :
+                    operationalMetrics.operationalStatus === 'Neutral' ? 'bg-slate-500' : 'bg-rose-400'
+                  }`} />
+                  <span className="text-[9px] font-black text-slate-300 tracking-tight uppercase">
+                    {Math.round(operationalMetrics.realOperationalScore)}% REAL
+                  </span>
+                </div>
+                {operationalMetrics.stalenessDays > 0 && (
+                  <div className="flex items-center gap-1.5 bg-rose-500/10 px-2 py-0.5 rounded-md border border-rose-500/20" title="Días de atraso en captura">
+                    <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse" />
+                    <span className="text-[9px] font-black text-rose-400 tracking-tight uppercase">
+                      {operationalMetrics.stalenessDays} DÍAS ATRASO
+                    </span>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </div>

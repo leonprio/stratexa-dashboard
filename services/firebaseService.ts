@@ -95,7 +95,7 @@ export const firebaseService = {
 
     createAuthUser: async (email: string, password: string, name: string) => {
         const { initializeApp } = await import("firebase/app");
-        const { getAuth, createUserWithEmailAndPassword, updateProfile, signOut } = await import("firebase/auth");
+        const { getAuth, createUserWithEmailAndPassword, updateProfile, signOut, deleteUser } = await import("firebase/auth");
         const { firebaseConfig } = await import("../firebase");
 
         const secondaryApp = initializeApp(firebaseConfig, "SecondaryAuth");
@@ -106,9 +106,20 @@ export const firebaseService = {
             await updateProfile(credential.user, { displayName: name });
             const uid = credential.user.uid;
             await signOut(secondaryAuth);
-            return { uid };
+            return { uid, userInstance: credential.user };
         } finally {
             // cleanup is handled by firebase
+        }
+    },
+
+    deleteAuthUserDirectly: async (userInstance: any) => {
+        const { deleteUser } = await import("firebase/auth");
+        try {
+            await deleteUser(userInstance);
+            return true;
+        } catch (err) {
+            console.error("Compensatory deletion failed:", err);
+            throw err;
         }
     },
 

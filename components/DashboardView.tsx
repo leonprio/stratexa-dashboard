@@ -13,9 +13,10 @@ import { DashboardMetadataModal } from "./DashboardMetadataModal";
 import { PowerPointExportModal } from "./PowerPointExportModal";
 import { calculateDashboardWeightedScore, getStatusForPercentage, calculateCapturePct } from "../utils/compliance";
 import { ReportCenter } from "./ReportCenter";
-
 import { CurrentPeriodFocus } from "./CurrentPeriodFocus";
 import { exportDashboardToExcel } from '../utils/exportUtils';
+import { exportToExecutiveExcelJS } from '../utils/ExecutiveOperationalExport';
+import { OperationalControlCenter } from "./operational/OperationalControlCenter";
 
 interface DashboardViewProps {
   dashboard: DashboardType;
@@ -84,7 +85,7 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(({
   }, [allDashboards, safeItems]);
 
   const [selectedItemId, setSelectedItemId] = useState<number | string | null>(null);
-  const [activeView, setActiveView] = useState<"dashboard" | "reports">("dashboard");
+  const [activeView, setActiveView] = useState<"dashboard" | "reports" | "control">("dashboard");
 
   const isAggregate = (typeof dashboard.id === 'string' && dashboard.id.startsWith('agg-')) || dashboard.id === -1 || dashboard.isAggregate === true;
 
@@ -186,6 +187,50 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(({
     }
   };
 
+  const [isExportingExcel, setIsExportingExcel] = useState(false);
+
+  const canExportExecutive = useMemo(() => {
+    if (isGlobalAdmin) return true;
+    if (isDirector) {
+      const allowedGroups = new Set<string>();
+      if (currentUser?.group) allowedGroups.add(currentUser.group.trim().toUpperCase());
+      if (currentUser?.subGroups) currentUser.subGroups.forEach(g => allowedGroups.add(g.trim().toUpperCase()));
+      if (currentUser?.superGroups) currentUser.superGroups.forEach(g => allowedGroups.add(g.trim().toUpperCase()));
+      
+      const dGroup = (dashboard.group || "").trim().toUpperCase();
+      return allowedGroups.has(dGroup);
+    }
+    const hasDirectAccess = userRole !== null;
+    const isAreaMatching = currentUser?.group && dashboard.area && dashboard.area.trim().toUpperCase() === currentUser.group.trim().toUpperCase();
+    return hasDirectAccess || isAreaMatching;
+  }, [isGlobalAdmin, isDirector, dashboard, currentUser, userRole]);
+
+  const handleExportExecutiveExcelJS = async () => {
+    try {
+      setIsExportingExcel(true);
+      const buffer = await exportToExecutiveExcelJS(
+        allDashboards.length > 0 ? allDashboards : [dashboard],
+        currentUser || null,
+        dashboard.clientId || "IPS",
+        year || new Date().getFullYear()
+      );
+
+      const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `reporte_ejecutivo_${dashboard.clientId || "IPS"}_${year || new Date().getFullYear()}_${new Date().toISOString().split('T')[0]}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (err: any) {
+      alert("❌ Error al generar el reporte operativo ejecutivo: " + err.message);
+    } finally {
+      setIsExportingExcel(false);
+    }
+  };
+
   const handleTogglePrecision = () => {
     // Ciclo: 0 -> 1 -> 2 -> 0
     setLocalDecimalPrecision(prev => (prev === 0 ? 1 : prev === 1 ? 2 : 0));
@@ -283,6 +328,17 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(({
               </button>
             )}
 
+            {canExportExecutive && (
+              <button
+                onClick={handleExportExecutiveExcelJS}
+                disabled={isExportingExcel}
+                className="flex items-center gap-2 bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 disabled:from-slate-700 disabled:to-slate-800 text-white px-3 py-2 rounded-xl text-[8px] font-black uppercase tracking-widest transition-all shadow-lg active:scale-95 border border-white/10"
+              >
+                <span>{isExportingExcel ? '⏳ ...' : '📗'}</span>
+                <span>{isExportingExcel ? 'Exportando' : 'Exportar Excel'}</span>
+              </button>
+            )}
+
             {/* PRECISION TOGGLE */}
             <button
               onClick={handleTogglePrecision}
@@ -295,15 +351,24 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(({
             <div className="flex bg-slate-900/95 p-0.5 rounded-xl border border-white/10 shadow-2xl backdrop-blur-xl">
               <button
                 onClick={() => setActiveView("dashboard")}
+                aria-label="Ver Tablero de Indicadores"
                 className={`px-4 sm:px-6 py-2 rounded-xl text-[9px] font-extrabold uppercase tracking-widest transition-all duration-500 flex items-center gap-2 ${activeView === 'dashboard' ? 'bg-cyan-600 text-white shadow-[0_0_20px_rgba(8,145,178,0.5)]' : 'text-slate-500 hover:text-slate-300 hover:bg-white/5'}`}
               >
                 <span>📊</span> <span className="hidden sm:inline">Tablero</span>
               </button>
               <button
                 onClick={() => setActiveView("reports")}
+                aria-label="Ver Centro de Reportes"
                 className={`px-4 sm:px-6 py-2 rounded-xl text-[9px] font-extrabold uppercase tracking-widest transition-all duration-500 flex items-center gap-2 ${activeView === 'reports' ? 'bg-indigo-600 text-white shadow-[0_0_20px_rgba(79,70,229,0.5)]' : 'text-slate-500 hover:text-slate-300 hover:bg-white/5'}`}
               >
                 <span>📑</span> <span className="hidden sm:inline">Reporte</span>
+              </button>
+              <button
+                onClick={() => setActiveView("control")}
+                aria-label="Ver Control Operativo"
+                className={`px-4 sm:px-6 py-2 rounded-xl text-[9px] font-extrabold uppercase tracking-widest transition-all duration-500 flex items-center gap-2 min-h-[44px] ${activeView === 'control' ? 'bg-emerald-600 text-white shadow-[0_0_20px_rgba(16,185,129,0.5)]' : 'text-slate-500 hover:text-slate-300 hover:bg-white/5'}`}
+              >
+                <span>⚙️</span> <span className="hidden sm:inline">Control</span>
               </button>
             </div>
 
@@ -377,7 +442,7 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(({
           allContextItems={allContextItems}
           isGlobalAdmin={isGlobalAdmin}
         />
-      ) : (
+      ) : activeView === 'reports' ? (
         <ReportCenter
           items={safeItems}
           thresholds={activeThresholds}
@@ -390,6 +455,13 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(({
             setSelectedItemId(id);
             setActiveView("dashboard");
           }}
+        />
+      ) : (
+        <OperationalControlCenter
+          dashboards={allDashboards}
+          currentDashboard={dashboard}
+          globalThresholds={activeThresholds}
+          year={year || 2026}
         />
       )}
 
