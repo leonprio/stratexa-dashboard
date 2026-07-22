@@ -487,6 +487,28 @@ export const calculateCompliance = (
     // Año futuro o sin periodos válidos
     currentProgress = 0;
     currentTarget = 0;
+  } else if (item.indicatorType === 'formula' && item.formula && lookupContext.length > 0) {
+    // 🛡️ REGLA v9.4.11 (FORMULA_ON_CUMULATED_SOURCES YTD CONTRACT):
+    // Para indicadores FÓRMULA, el YTD calcula el avance acumulado y la meta acumulada evaluando la fórmula
+    // sobre los acumulados de las fuentes desde el inicio de año hasta el corte.
+    const cumulatedItems = lookupContext.map(it => {
+      const { monthlyProgress: mP, monthlyGoals: mG } = resolveItemValues(it, lookupContext, year);
+      const cumP = mP.slice(0, idx + 1).reduce((sum, v) => sum + Number(v || 0), 0);
+      const cumG = mG.slice(0, idx + 1).reduce((sum, v) => sum + Number(v || 0), 0);
+      return {
+        ...it,
+        monthlyProgress: Array(12).fill(cumP),
+        monthlyGoals: Array(12).fill(cumG),
+      };
+    });
+
+    currentProgress = evaluateFormula(item.formula, cumulatedItems, 0, 'monthlyProgress', year);
+    if ((item as any).goalMode === 'EXPLICIT_TARGET') {
+      currentProgress = Number(monthlyProgress[idx] || 0);
+      currentTarget = Number(monthlyGoals[idx] || 0);
+    } else {
+      currentTarget = evaluateFormula(item.formula, cumulatedItems, 0, 'monthlyGoals', year);
+    }
   } else if (isAccumulative) {
     // ➕ SUMATORIA: Sumar desde enero hasta el índice límite
     for (let i = 0; i <= idx; i++) {

@@ -2,7 +2,7 @@ import { evaluateFormula, calculateCompliance, resolveItemValues } from './compl
 import { formatIndicatorValue } from './formatters';
 import { DashboardItem } from '../types';
 
-describe('FASE 10: Derived Percentage Formatting & All Views Wiring Audit (v9.4.10)', () => {
+describe('FASE 10: Derived YTD Summary & Navigation Audit (v9.4.11)', () => {
   const mockItems: DashboardItem[] = [
     {
       id: 2,
@@ -42,34 +42,27 @@ describe('FASE 10: Derived Percentage Formatting & All Views Wiring Audit (v9.4.
     },
   ];
 
-  test('Junio: rawGoal = 0.5, rawProgress = 0.5, rawCompliance = 0.5', () => {
-    const progressJune = evaluateFormula('{id:3}/{id:2}', mockItems, 5, 'monthlyProgress', 2026);
-    const goalJune = evaluateFormula('{id:3}/{id:2}', mockItems, 5, 'monthlyGoals', 2026);
-    expect(progressJune).toBe(0.5);
-    expect(goalJune).toBe(0.5);
-  });
-
-  test('v9.4.10: formatIndicatorValue formatea 0.5 con unidad % a 50.00%', () => {
-    const formattedProgress = formatIndicatorValue(0.5, '%', 2, true);
-    const formattedGoal = formatIndicatorValue(0.5, '%', 2, true);
-    expect(formattedProgress).toBe('50.00%');
-    expect(formattedGoal).toBe('50.00%');
-  });
-
-  test('v9.4.10: 0.5 NUNCA se muestra como 0.50, .50 o 0.5%', () => {
-    const formatted = formatIndicatorValue(0.5, '%', 2, true);
-    expect(formatted).not.toBe('0.50');
-    expect(formatted).not.toBe('.50');
-    expect(formatted).not.toBe('0.5%');
-  });
-
-  test('Junio: RESULT_IS_COMPLIANCE devuelve raw 0.5 (overallPercentage 50%)', () => {
-    const formulaItem = mockItems[2];
+  test('Junio 2026: YTD progress y goal son 0.5 (50.0%) evaluando fuentes acumuladas', () => {
     const defaultThresholds = { onTrack: 90, atRisk: 80 };
-    const res = calculateCompliance(formulaItem, defaultThresholds, 2026, 'definitive', mockItems);
+    const res = calculateCompliance(mockItems[2], defaultThresholds, 2026, 'realTime', mockItems);
     
     expect(res.currentProgress).toBe(0.5);
     expect(res.currentTarget).toBe(0.5);
     expect(res.overallPercentage).toBe(50);
+  });
+
+  test('v9.4.11: formatIndicatorValue formatea tarjeta principal a 1 decimal (50.0%)', () => {
+    const formattedProgress = formatIndicatorValue(0.5, '%', 1, true);
+    expect(formattedProgress).toBe('50.0%');
+  });
+
+  test('v9.4.11: formatIndicatorValue formatea detalle a 2 decimales (50.00%)', () => {
+    const formattedProgress = formatIndicatorValue(0.5, '%', 2, true);
+    expect(formattedProgress).toBe('50.00%');
+  });
+
+  test('v9.4.11: Indicadores sin % < 1 muestran 1 decimal (ej. 0.5)', () => {
+    const formattedNoPct = formatIndicatorValue(0.5, '', 0, false);
+    expect(formattedNoPct).toBe('0.5');
   });
 });

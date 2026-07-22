@@ -225,10 +225,14 @@ export const DashboardRow: React.FC<DashboardRowProps> = React.memo(({ item, onU
         <div className="flex-grow flex flex-col justify-end mt-8">
           <div className="flex justify-between items-end gap-6">
             <div className="flex flex-col">
-              <span className="text-[10px] text-slate-500 uppercase font-black tracking-[0.2em] mb-2 opacity-80">Rendimiento Real</span>
+              <div className="flex items-center gap-1.5 mb-2">
+                <span className="text-[10px] text-slate-500 uppercase font-black tracking-[0.2em] opacity-80">
+                  {item.type === 'average' || item.indicatorType === 'formula' ? 'ACUMULADO A JUN' : 'SUMA A JUN'}
+                </span>
+              </div>
               <div className="flex items-baseline gap-2">
                 <span className="text-4xl sm:text-5xl font-black text-white tabular-nums tracking-tighter">
-                  {formatIndicatorValue(currentProgress, unit, decimalPrecision, item.indicatorType === 'formula')}
+                  {formatIndicatorValue(currentProgress, unit, 1, item.indicatorType === 'formula')}
                 </span>
               </div>
             </div>

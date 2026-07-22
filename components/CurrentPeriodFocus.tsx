@@ -199,6 +199,13 @@ export const CurrentPeriodFocus: React.FC<CurrentPeriodFocusProps> = ({
         return formatNumberWithCommas(num, decimalPrecision);
     };
 
+    useEffect(() => {
+        const el = document.getElementById('gestion-detallada-focus');
+        if (el) {
+            el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+    }, [item.id]);
+
     if (!item) return null;
 
     const isCalculated = item.indicatorType === 'formula' || item.indicatorType === 'compound';
@@ -218,7 +225,7 @@ export const CurrentPeriodFocus: React.FC<CurrentPeriodFocusProps> = ({
 
     return (
         <div id="gestion-detallada-focus" className="relative bg-slate-900/40 backdrop-blur-3xl border border-cyan-500/40 rounded-[2.5rem] p-4 md:p-6 animate-in zoom-in-95 duration-500 z-10 scroll-mt-24">
-            <div className="relative flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-8">
+            <div className="sticky top-0 z-20 bg-slate-950/90 backdrop-blur-md p-4 rounded-3xl border border-slate-800 shadow-xl flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-8">
                 <div className="flex-1 w-full">
                     <div className="flex flex-wrap items-center gap-3 mb-4">
                         {/* Period Selector UX001 Compliant */}

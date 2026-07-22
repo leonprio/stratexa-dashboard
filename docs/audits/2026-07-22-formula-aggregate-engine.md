@@ -1,23 +1,24 @@
-# Auditoría de Motor de Fórmulas e Indicadores Compuestos (v9.4.10)
+# Auditoría de Motor de Fórmulas e Indicadores Compuestos (v9.4.11)
 
-## 1. Causa de 0.50 y Solución de Formateo Central (v9.4.10)
+## 1. Cierre Final YTD y Navegación de Indicadores (v9.4.11)
 
-### Causa Raíz Comprobada
-- El motor de fórmulas retorna internamente un valor raw de `0.5` para representar una razón normalizada (50%).
-- En la capa de presentación previa, se aplicaba `formatNumberWithCommas` directamente sobre el número raw `0.5`, resultando en el texto `0.50` acompañado de la unidad `%` externa, en lugar de escalar el porcentaje.
-
-### Formateador Central `formatIndicatorValue`
-1. **Implementación Pura**: Creado e integrado en [utils/formatters.ts](file:///C:/APP-TABLERO-WORKTREES/fix-formula-engine-composite-indicators-v9.4.10/utils/formatters.ts).
-2. **Contrato Porcentual**: Si `unit === '%'` y el indicador es una fórmula derivada o el valor raw es $\le 1.0$, `formatIndicatorValue` multiplica $0.5 \times 100 = 50$, aplica los decimales configurados (`minimumFractionDigits: 2`) y sufija el símbolo `%`.
-3. **Resultado**: Renderiza `50.00%` en todas las pantallas. Nunca muestra `0.50`, `.50` o `0.5%`.
+### Contrato YTD en Tarjetas Principales (`FORMULA_ON_CUMULATED_SOURCES`)
+- **Periodo Vencido Límite**: En Julio 2026, el corte evaluado es **Junio 2026**.
+- **Regla Evaluativa**: Para indicadores de tipo FÓRMULA con división/razón, el acumulado YTD calcula primero la suma de avances y la suma de metas de las fuentes desde el inicio del año hasta el corte (Junio), y evalúa la fórmula sobre dichos acumulados:
+  - **Suma Avance Fuente #3 (Cerrados)**: $3$
+  - **Suma Avance Fuente #2 (Acordados)**: $6$
+  - **Avance YTD Derivado**: $3 / 6 = 0.5 \rightarrow 50.0\%$.
+  - **Suma Meta Fuente #3 (Cerrados)**: $4$
+  - **Suma Meta Fuente #2 (Acordados)**: $8$
+  - **Meta YTD Derivada**: $4 / 8 = 0.5 \rightarrow 50.0\%$.
+- **Formato Visual**: La tarjeta principal despliega el valor a **1 decimal** (`50.0%`) acompañado de la etiqueta explicativa **`ACUMULADO A JUN`**.
 
 ---
 
-## 2. Conexión Homogénea en Todas las Vistas
-- **Tarjeta Principal ([DashboardRow.tsx](file:///C:/APP-TABLERO-WORKTREES/fix-formula-engine-composite-indicators-v9.4.10/components/DashboardRow.tsx))**: Muestra Rendimiento Real `50.00%` y Objetivo `50.00%`.
-- **Constructor de Fórmulas ([FormulaBuilder.tsx](file:///C:/APP-TABLERO-WORKTREES/fix-formula-engine-composite-indicators-v9.4.10/components/FormulaBuilder.tsx))**: Muestra Avance Derivado `50.00%`, Meta Derivada `50.00%` y Cumplimiento Resultante `50.00%`.
-- **Ficha de Detalle ([CurrentPeriodFocus.tsx](file:///C:/APP-TABLERO-WORKTREES/fix-formula-engine-composite-indicators-v9.4.10/components/CurrentPeriodFocus.tsx))**: Muestra Meta `50.00%` y Real `50.00%`.
-- **Vista Anual ([DataEditor.tsx](file:///C:/APP-TABLERO-WORKTREES/fix-formula-engine-composite-indicators-v9.4.10/components/DataEditor.tsx))**: Junio muestra Meta Mensual `50.00%` y Avance Real `50.00%`, consumiendo el resolvedor dinámico `resolveItemValues` en lugar de arreglos estáticos.
+## 2. Navegación, Foco y Encabezado Sticky
+- **Scroll Interno y Restitución**:
+  - Al abrir o alternar cualquier indicador (`CurrentPeriodFocus`), el contenedor enfoca la parte superior (`block: 'start'`).
+  - El encabezado del modal se volvió `sticky top-0 z-20` con fondo opaco y backdrop blur, garantizando que el título, periodo consultado, botón **VISTA ANUAL** y botón **CERRAR** permanezcan visibles en todo momento durante el desplazamiento vertical.
 
 ---
 

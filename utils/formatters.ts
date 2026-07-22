@@ -84,8 +84,8 @@ export const formatIndicatorValue = (
     const trimmedUnit = (unit || "").trim();
     const isPercentage = trimmedUnit === "%";
 
-    // Si es una fórmula derivada con unidad %, el valor raw (0.5) representa una razón normalizada que debe escalarse a (50.00%)
-    if (isPercentage && (isDerivedFormula || num <= 1.0)) {
+    // Si es una fórmula derivada con unidad %, el valor raw (0.5) representa una razón normalizada que debe escalarse a (50.0%)
+    if (isPercentage && (isDerivedFormula || (num > 0 && num <= 1.0))) {
         const scaled = num * 100;
         return `${scaled.toLocaleString('en-US', {
             minimumFractionDigits: precision,
@@ -93,10 +93,12 @@ export const formatIndicatorValue = (
         })}%`;
     }
 
-    // Para valores que ya traen sufijo % explícito pero num ya escalado o unidad vacía/otra
+    // Para valores no porcentuales mayores que 0 y menores que 1 (ej. 0.5 sin %)
+    const effectivePrecision = (!isPercentage && num > 0 && num < 1 && precision === 0) ? 1 : precision;
+
     const formatted = num.toLocaleString('en-US', {
-        minimumFractionDigits: precision,
-        maximumFractionDigits: precision
+        minimumFractionDigits: effectivePrecision,
+        maximumFractionDigits: effectivePrecision
     });
 
     return isPercentage ? `${formatted}%` : (trimmedUnit ? `${formatted} ${trimmedUnit}` : formatted);
