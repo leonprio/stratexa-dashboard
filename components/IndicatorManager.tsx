@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { DashboardItem } from '../types';
+import { FormulaBuilder } from './FormulaBuilder';
 
 type EditableIndicator = Omit<DashboardItem, 'id'> & { id: number | string };
 
@@ -292,19 +293,22 @@ export const IndicatorManager = React.memo(({ initialItems, onSaveChanges, onCan
                                             </select>
 
                                             {item.indicatorType === 'compound' && (
-                                                <CompoundIdsInput
-                                                    value={item.componentIds || []}
-                                                    onChange={(ids) => handleInputChange(item.id, 'componentIds', ids)}
-                                                />
+                                                <>
+                                                    <CompoundIdsInput
+                                                        value={item.componentIds || []}
+                                                        onChange={(ids) => handleInputChange(item.id, 'componentIds', ids)}
+                                                    />
+                                                    <div className="text-[8px] text-amber-400/80 bg-amber-500/10 p-1 rounded border border-amber-500/20 mt-1">
+                                                        <b>AGREGADO:</b> Consolida indicadores equivalentes de áreas o tableros hijos.
+                                                    </div>
+                                                </>
                                             )}
 
                                             {item.indicatorType === 'formula' && (
-                                                <input
-                                                    type="text"
-                                                    placeholder="{101} + {102} ó bajas / altas"
-                                                    value={item.formula || ''}
-                                                    onChange={(e) => handleInputChange(item.id, 'formula', e.target.value)}
-                                                    className="w-full bg-slate-950 border border-indigo-500/30 rounded px-2 py-1 text-[9px] text-indigo-200 placeholder:text-indigo-500/30 shadow-[0_0_10px_rgba(99,102,241,0.1)] focus:border-indigo-500 outline-none transition-all"
+                                                <FormulaBuilder
+                                                    currentItem={item}
+                                                    allItems={items}
+                                                    onChangeFormula={(f) => handleInputChange(item.id, 'formula', f)}
                                                 />
                                             )}
                                         </div>

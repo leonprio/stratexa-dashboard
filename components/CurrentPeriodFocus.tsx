@@ -201,7 +201,8 @@ export const CurrentPeriodFocus: React.FC<CurrentPeriodFocusProps> = ({
 
     if (!item) return null;
 
-    const gap = (parseFormattedNumber(localActual) || 0) - (parseFormattedNumber(localGoal) || 0);
+    const isCalculated = item.indicatorType === 'formula' || item.indicatorType === 'compound';
+    const effectiveCanEdit = canEdit && !isCalculated;
     const isPositiveGap = item.goalType === 'minimize' ? gap <= 0 : gap >= 0;
 
     const handlePrevPeriod = () => {
@@ -351,13 +352,14 @@ export const CurrentPeriodFocus: React.FC<CurrentPeriodFocusProps> = ({
                                             setLocalGoal(val);
                                         }}
                                         id="goal-input"
-                                        disabled={!canEdit || activityMode}
+                                        disabled={!effectiveCanEdit || activityMode}
                                         className="w-full bg-transparent text-2xl font-black text-white tabular-nums outline-none disabled:opacity-50"
                                         placeholder="0.00"
                                     />
                                      {activityMode && <span className="text-[8px] font-black text-indigo-400 uppercase tracking-widest mt-1 block">Cálculo Automático (Elementos)</span>}
+                                     {isCalculated && <span className="text-[8px] font-black text-indigo-400 uppercase tracking-widest mt-1 block">⚡ CALCULADO AUTOMÁTICAMENTE</span>}
                                 </div>
-                                <div className={`bg-slate-950/40 border border-white/5 rounded-2xl p-3 transition-all ${canEdit && !activityMode ? 'focus-within:border-emerald-500/50' : 'opacity-80 grayscale-[0.5]'}`}>
+                                <div className={`bg-slate-950/40 border border-white/5 rounded-2xl p-3 transition-all ${effectiveCanEdit && !activityMode ? 'focus-within:border-emerald-500/50' : 'opacity-80 grayscale-[0.5]'}`}>
                                     <div className="flex justify-between items-center mb-1.5">
                                         <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest block">Real ({unit})</span>
                                         <span className="text-[10px] font-black text-emerald-400 tabular-nums">{localActual !== '' ? formatNumberWithCommas(localActual, decimalPrecision) : '0'}</span>
@@ -373,7 +375,7 @@ export const CurrentPeriodFocus: React.FC<CurrentPeriodFocusProps> = ({
                                             setLocalActual(val);
                                         }}
                                         id="actual-input"
-                                        disabled={!canEdit || activityMode}
+                                        disabled={!effectiveCanEdit || activityMode}
                                         className="w-full bg-transparent text-2xl font-black text-white tabular-nums outline-none disabled:cursor-not-allowed"
                                         placeholder="0.00"
                                     />
