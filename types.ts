@@ -75,6 +75,7 @@ export interface DashboardItem {
   indicatorType?: 'simple' | 'compound' | 'formula';
   componentIds?: (number | string)[]; // IDs de otros indicadores que alimentan este (para compound/formula)
   formula?: string; // Ecuación aritmética: e.g. "({id:101} + {id:102}) / 2"
+  goalMode?: 'DERIVED_FROM_SOURCES' | 'EXPLICIT_TARGET'; // 🛡️ v9.4.7: Modo de meta para fórmula
   alertThreshold?: number; // 🔔 FIX v6.1.9
   alertUnit?: string; // 🔔 FIX v6.1.9
 

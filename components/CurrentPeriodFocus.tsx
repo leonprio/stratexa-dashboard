@@ -358,7 +358,7 @@ export const CurrentPeriodFocus: React.FC<CurrentPeriodFocusProps> = ({
                                         placeholder="0.00"
                                     />
                                      {activityMode && <span className="text-[8px] font-black text-indigo-400 uppercase tracking-widest mt-1 block">Cálculo Automático (Elementos)</span>}
-                                     {isCalculated && <span className="text-[8px] font-black text-indigo-400 uppercase tracking-widest mt-1 block">⚡ CALCULADO AUTOMÁTICAMENTE</span>}
+                                     {isCalculated && <span className="text-[8px] font-black text-indigo-400 uppercase tracking-widest mt-1 block">⚡ MODO: AUTOMÁTICO — CALCULADO DESDE INDICADORES FUENTE</span>}
                                 </div>
                                 <div className={`bg-slate-950/40 border border-white/5 rounded-2xl p-3 transition-all ${effectiveCanEdit && !activityMode ? 'focus-within:border-emerald-500/50' : 'opacity-80 grayscale-[0.5]'}`}>
                                     <div className="flex justify-between items-center mb-1.5">
@@ -381,6 +381,7 @@ export const CurrentPeriodFocus: React.FC<CurrentPeriodFocusProps> = ({
                                         placeholder="0.00"
                                     />
                                      {activityMode && <span className="text-[8px] font-black text-indigo-400 uppercase tracking-widest mt-1 block">Sincronizado con Elementos</span>}
+                                     {isCalculated && <span className="text-[8px] font-black text-indigo-400 uppercase tracking-widest mt-1 block">⚡ MODO: AUTOMÁTICO</span>}
                                 </div>
                             </div>
 
@@ -397,14 +398,14 @@ export const CurrentPeriodFocus: React.FC<CurrentPeriodFocusProps> = ({
                                 </button>
                             )}
 
-                            <div className={`bg-slate-950/40 border border-white/5 rounded-2xl p-3 ${!canEdit && 'opacity-80'}`}>
+                            <div className={`bg-slate-950/40 border border-white/5 rounded-2xl p-3 ${(!canEdit || isCalculated) && 'opacity-80'}`}>
                                 <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1.5 block">Observaciones</span>
                                 <textarea
                                     value={localNote}
                                     onChange={(e) => setLocalNote(e.target.value)}
-                                    disabled={!canEdit}
+                                    disabled={!canEdit || isCalculated}
                                     className="w-full bg-transparent text-slate-300 text-sm italic outline-none min-h-[40px] resize-none disabled:cursor-not-allowed"
-                                    placeholder={canEdit ? "Observaciones del periodo..." : "Sin comentarios."}
+                                    placeholder={isCalculated ? "Observaciones derivadas automáticamente." : (canEdit ? "Observaciones del periodo..." : "Sin comentarios.")}
                                 />
                             </div>
 

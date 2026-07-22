@@ -361,16 +361,18 @@ export const resolveItemValues = (
     return { monthlyProgress, monthlyGoals };
   }
   else if (item.indicatorType === 'formula' && item.formula && contextItems.length > 0) {
-    // 🛡️ REGLA v9.4.5 (FORMULA CONTRACT):
-    // Calcular el avance derivado mes a mes aplicando la fórmula a los avances de las fuentes.
+    // 🛡️ REGLA v9.4.7 (DERIVED FORMULA CONTRACT):
+    // 1. Calcular el avance derivado mes a mes aplicando la fórmula a los avances de las fuentes.
     const nextVisited = new Set(visitedIds);
     nextVisited.add(itemId);
     monthlyProgress = Array(12).fill(0).map((_, i) => evaluateFormula(item.formula!, contextItems, i, 'monthlyProgress', year, nextVisited));
     
-    // Si el usuario configuró metas explícitas para este indicador (ej. 80% = 0.8 en un mes), respetarlas.
-    // Solo si no hay ninguna meta configurada (> 0), se evalúa la fórmula sobre las metas fuente.
-    const hasExplicitGoals = ((item as any).monthlyGoals || []).some((g: any) => Number(g || 0) > 0);
-    if (!hasExplicitGoals) {
+    // 2. Determinar la meta derivada mes a mes:
+    // Si goalMode es expresamente 'EXPLICIT_TARGET', respetar las metas configuradas.
+    // De lo contrario (DERIVED_FROM_SOURCES por defecto), evaluar la fórmula sobre las metas fuente.
+    if ((item as any).goalMode === 'EXPLICIT_TARGET') {
+      monthlyGoals = [...((item as any).monthlyGoals || [])];
+    } else {
       monthlyGoals = Array(12).fill(0).map((_, i) => evaluateFormula(item.formula!, contextItems, i, 'monthlyGoals', year, nextVisited));
     }
   }

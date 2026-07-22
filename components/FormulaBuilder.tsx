@@ -6,6 +6,7 @@ interface FormulaBuilderProps {
   currentItem: DashboardItem | (Omit<DashboardItem, 'id'> & { id: number | string });
   allItems: (DashboardItem | (Omit<DashboardItem, 'id'> & { id: number | string }))[];
   onChangeFormula: (formula: string) => void;
+  onChangeGoalMode?: (goalMode: 'DERIVED_FROM_SOURCES' | 'EXPLICIT_TARGET') => void;
   onClose: () => void;
 }
 
@@ -48,6 +49,9 @@ export const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
   const [operator, setOperator] = useState<string>(parsedExpression.operator || '/');
   const [operandB, setOperandB] = useState<string>(parsedExpression.operandB);
   const [draftFormula, setDraftFormula] = useState<string>(currentItem.formula || '');
+  const [goalMode, setGoalMode] = useState<'DERIVED_FROM_SOURCES' | 'EXPLICIT_TARGET'>(
+    (currentItem as any).goalMode || 'DERIVED_FROM_SOURCES'
+  );
 
   React.useEffect(() => {
     if (parsedExpression.isSimpleBinary) {
@@ -101,6 +105,9 @@ export const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
 
   const handleApply = () => {
     onChangeFormula(draftFormula);
+    if (onChangeGoalMode) {
+      onChangeGoalMode(goalMode);
+    }
     onClose();
   };
 
@@ -151,10 +158,11 @@ export const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
 
   const derivedGoal = useMemo(() => {
     if (!draftFormula) return 0;
-    const hasExplicit = (currentItem.monthlyGoals || []).some((g: any) => Number(g || 0) > 0);
-    if (hasExplicit) return currentItem.monthlyGoals?.[previewMonthIdx] ?? 0;
+    if (goalMode === 'EXPLICIT_TARGET') {
+      return currentItem.monthlyGoals?.[previewMonthIdx] ?? 0;
+    }
     return evaluateFormula(draftFormula, allItems as DashboardItem[], previewMonthIdx, 'monthlyGoals');
-  }, [draftFormula, currentItem.monthlyGoals, allItems]);
+  }, [draftFormula, goalMode, currentItem.monthlyGoals, allItems]);
 
   const derivedCompliancePct = useMemo(() => {
     if (Number(derivedGoal) === 0) return 0;
@@ -218,6 +226,32 @@ export const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
                     <span className="text-[10px] text-slate-500 mt-0.5">{desc}</span>
                   </button>
                 ))}
+              </div>
+            </div>
+
+            {/* SECCIÓN 1.5: MODO DE META */}
+            <div className="bg-slate-950/60 border border-slate-800 p-4 rounded-2xl flex flex-col gap-2">
+              <span className="text-xs font-black text-cyan-400 uppercase tracking-widest">
+                1.5. Selección del Modo de Meta
+              </span>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => setGoalMode('DERIVED_FROM_SOURCES')}
+                  className={`p-3 rounded-xl border text-left flex flex-col transition-all ${goalMode === 'DERIVED_FROM_SOURCES' ? 'bg-indigo-600/30 border-indigo-400 text-white shadow-lg' : 'bg-slate-900 border-slate-800 text-slate-400 hover:border-slate-700'}`}
+                >
+                  <span className="font-bold text-xs uppercase">⚡ Meta Derivada de las Fuentes</span>
+                  <span className="text-[10px] text-slate-500 mt-1">Aplica la misma fórmula a las metas de los indicadores fuente (ej. Meta 4 ÷ Meta 8 = 50%).</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setGoalMode('EXPLICIT_TARGET')}
+                  className={`p-3 rounded-xl border text-left flex flex-col transition-all ${goalMode === 'EXPLICIT_TARGET' ? 'bg-indigo-600/30 border-indigo-400 text-white shadow-lg' : 'bg-slate-900 border-slate-800 text-slate-400 hover:border-slate-700'}`}
+                >
+                  <span className="font-bold text-xs uppercase">🎯 Meta Independiente Explicita</span>
+                  <span className="text-[10px] text-slate-500 mt-1">El usuario define expresamente un valor de meta fijo e independiente.</span>
+                </button>
               </div>
             </div>
 

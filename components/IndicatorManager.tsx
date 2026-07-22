@@ -271,10 +271,16 @@ export const IndicatorManager = React.memo(({ initialItems, onSaveChanges, onCan
                                         </select>
                                     </td>
                                     <td className="p-2">
-                                        <select aria-label="Tipo de cálculo" value={item.type} onChange={(e) => handleInputChange(item.id, 'type', e.target.value)} className="w-full bg-slate-700 border border-slate-600 rounded-md p-2 text-white text-sm focus:ring-2 focus:ring-cyan-500 outline-none h-[42px]">
-                                            <option value="accumulative">Sumar</option>
-                                            <option value="average">Promediar</option>
-                                        </select>
+                                        {item.indicatorType === 'formula' ? (
+                                            <div className="w-full bg-slate-900 border border-indigo-500/30 rounded-md p-2 text-indigo-300 font-bold text-[9px] uppercase text-center h-[42px] flex items-center justify-center">
+                                                Fórmula
+                                            </div>
+                                        ) : (
+                                            <select aria-label="Tipo de cálculo" value={item.type} onChange={(e) => handleInputChange(item.id, 'type', e.target.value)} className="w-full bg-slate-700 border border-slate-600 rounded-md p-2 text-white text-sm focus:ring-2 focus:ring-cyan-500 outline-none h-[42px]">
+                                                <option value="accumulative">Sumar</option>
+                                                <option value="average">Promediar</option>
+                                            </select>
+                                        )}
                                     </td>
                                     <td className="p-2">
                                         <select aria-label="Frecuencia" value={item.frequency || 'monthly'} onChange={(e) => handleInputChange(item.id, 'frequency', e.target.value)} className="w-full bg-slate-700 border border-slate-600 rounded-md p-2 text-cyan-400 font-bold text-sm focus:ring-2 focus:ring-cyan-500 outline-none h-[42px]">
@@ -342,6 +348,7 @@ export const IndicatorManager = React.memo(({ initialItems, onSaveChanges, onCan
                                                             currentItem={item}
                                                             allItems={items}
                                                             onChangeFormula={(f) => handleInputChange(item.id, 'formula', f)}
+                                                            onChangeGoalMode={(gm) => handleInputChange(item.id, 'goalMode', gm)}
                                                             onClose={() => setEditingFormulaItemId(null)}
                                                         />
                                                     )}

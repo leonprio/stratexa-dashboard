@@ -25,10 +25,19 @@ export const AggregateBuilder: React.FC<AggregateBuilderProps> = ({
     currentItem.type === 'accumulative' ? 'accumulative' : 'average'
   );
 
-  // Excluir autorreferencia
+  // Excluir autorreferencia y filtrar fuentes conceptualmente compatibles (misma unidad o normalizada)
   const availableItems = useMemo(() => {
-    return allItems.filter(it => String(it.id) !== String(currentItem.id));
-  }, [allItems, currentItem.id]);
+    const targetUnit = (currentItem.unit || '').trim().toLowerCase();
+    return allItems.filter(it => {
+      if (String(it.id) === String(currentItem.id)) return false;
+      const unit = (it.unit || '').trim().toLowerCase();
+      // Si el destino tiene unidad definida, requerir compatibilidad de unidad
+      if (targetUnit && unit) {
+        return unit === targetUnit;
+      }
+      return true;
+    });
+  }, [allItems, currentItem.id, currentItem.unit]);
 
   const toggleSelectId = (id: string) => {
     if (selectedIds.includes(id)) {

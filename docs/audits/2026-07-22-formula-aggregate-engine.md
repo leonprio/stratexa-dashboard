@@ -1,11 +1,18 @@
-# Auditoría de Motor de Fórmulas e Indicadores Compuestos (v9.4.6)
+# Auditoría de Motor de Fórmulas e Indicadores Compuestos (v9.4.7)
 
-## 1. Causa Raíz Comprobada y Solución de ReferenceError
+## 1. Regla Matemática y Contrato de Metas Derivadas
 
-### Causa del ReferenceError: gap is not defined
-- **Ubicación**: [components/CurrentPeriodFocus.tsx](file:///C:/APP-TABLERO-WORKTREES/fix-formula-engine-composite-indicators-v9.4.6/components/CurrentPeriodFocus.tsx).
-- **Fallo**: En refactorizaciones previas de deshabilitación de inputs, se evaluaba `isPositiveGap` haciendo referencia a la variable `gap` antes de que `const gap` fuera instanciada en la función del componente.
-- **Solución Aplicada**: Se declaró explícitamente `const gap = (parseFormattedNumber(localActual) || 0) - (parseFormattedNumber(localGoal) || 0);` antes de su dereferenciación en `isPositiveGap`, resolviendo permanentemente la excepción en todos los indicadores (SIMPLE, FÓRMULA y AGREGADO).
+### Caso de Referencia Auditado (LVP / Capacidades / 2026)
+- **Indicador ID 2** ("Compromisos Acordados"): Meta = 8, Avance = 6 (Junio)
+- **Indicador ID 3** ("Compromisos cerrados con evidencia"): Meta = 4, Avance = 3 (Junio)
+- **Indicador ID 4** ("% Compromisos estratégicos"): FÓRMULA `{id:3}/{id:2}`
+
+### Contrato Evaluativo Mes a Mes
+1. **Avance Derivado**: `formulaProgress(month)` = $\{id:3\} / \{id:2\} = 3 / 6 = 0.5 \rightarrow 50\%$.
+2. **Meta Derivada (`DERIVED_FROM_SOURCES`)**: `formulaGoal(month)` = $\{id:3\} / \{id:2\} = 4 / 8 = 0.5 \rightarrow 50\%$.
+3. **Cumplimiento Resultante**: `formulaCompliance(month)` = $\frac{0.5}{0.5} = 1.0 \rightarrow 100\%$.
+4. **Origen del Valor Legacy `0.80`**: El valor estático `0.8` previamente configurado en la base de datos se ignora por completo cuando `goalMode === 'DERIVED_FROM_SOURCES'` (modo por defecto de las fórmulas), garantizando que las metas se calculen dinámicamente mes a mes desde las fuentes.
+5. **Modo Read-Only**: En `CurrentPeriodFocus`, el indicador derivado presenta la insignia `⚡ MODO: AUTOMÁTICO — CALCULADO DESDE INDICADORES FUENTE` y mantiene deshabilitados los controles de avance, meta y observaciones para impedir la sobreescritura manual.
 
 ---
 
