@@ -1,18 +1,25 @@
-# Auditoría de Motor de Fórmulas e Indicadores Compuestos (v9.4.7)
+# Auditoría de Motor de Fórmulas e Indicadores Compuestos (v9.4.8)
 
-## 1. Regla Matemática y Contrato de Metas Derivadas
+## 1. Cierre Final de Puerta de Release Gate (v9.4.8)
 
-### Caso de Referencia Auditado (LVP / Capacidades / 2026)
-- **Indicador ID 2** ("Compromisos Acordados"): Meta = 8, Avance = 6 (Junio)
-- **Indicador ID 3** ("Compromisos cerrados con evidencia"): Meta = 4, Avance = 3 (Junio)
-- **Indicador ID 4** ("% Compromisos estratégicos"): FÓRMULA `{id:3}/{id:2}`
+### Reglas de Equivalencia y Filtro Jerárquico en AGREGADO
+1. **Regla de No-Superposición de Conceptos**: Compartir únicamente la unidad de medida (ej. `%` o vacía) no autoriza la agregación entre indicadores conceptualmente distintos.
+2. **Jerarquía de Equivalencia**:
+   - **Prioridad 1**: `semanticKey` idéntico si está presente.
+   - **Prioridad 2**: `parentDefinitionId` idéntico si está presente.
+   - **Prioridad 3**: Nombre del indicador normalizado idéntico Y Unidad de medida normalizada idéntica.
+3. **Comportamiento en Caso LVP (Tablero Capacidades)**:
+   - Indicador #2 (*Compromisos acordados*) e Indicador #3 (*Compromisos cerrados con evidencia*) quedan recíprocamente excluidos para agregación por ser conceptos distintos.
+   - Al intentar configurar AGREGADO en un KPI sin copias equivalentes en otras áreas/nodos, la interfaz muestra el banner explicativo: `⚠️ NO HAY FUENTES COMPATIBLES PARA ESTE INDICADOR` y deshabilita el botón **Aplicar Agregado**.
 
-### Contrato Evaluativo Mes a Mes
-1. **Avance Derivado**: `formulaProgress(month)` = $\{id:3\} / \{id:2\} = 3 / 6 = 0.5 \rightarrow 50\%$.
-2. **Meta Derivada (`DERIVED_FROM_SOURCES`)**: `formulaGoal(month)` = $\{id:3\} / \{id:2\} = 4 / 8 = 0.5 \rightarrow 50\%$.
-3. **Cumplimiento Resultante**: `formulaCompliance(month)` = $\frac{0.5}{0.5} = 1.0 \rightarrow 100\%$.
-4. **Origen del Valor Legacy `0.80`**: El valor estático `0.8` previamente configurado en la base de datos se ignora por completo cuando `goalMode === 'DERIVED_FROM_SOURCES'` (modo por defecto de las fórmulas), garantizando que las metas se calculen dinámicamente mes a mes desde las fuentes.
-5. **Modo Read-Only**: En `CurrentPeriodFocus`, el indicador derivado presenta la insignia `⚡ MODO: AUTOMÁTICO — CALCULADO DESDE INDICADORES FUENTE` y mantiene deshabilitados los controles de avance, meta y observaciones para impedir la sobreescritura manual.
+---
+
+## 2. Resultado Numérico en Caso de Referencia (FÓRMULA)
+- **Indicador 4 (% Compromisos estratégicos cumplidos)**:
+  - **Avance Derivado**: $3 / 6 = 0.5 \rightarrow 50\%$.
+  - **Meta Derivada**: $4 / 8 = 0.5 \rightarrow 50\%$.
+  - **Cumplimiento Resultante**: $100\%$.
+  - **Estado**: MODO AUTOMÁTICO y deshabilitación completa de edición manual.
 
 ---
 

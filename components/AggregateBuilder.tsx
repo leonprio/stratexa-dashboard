@@ -25,19 +25,41 @@ export const AggregateBuilder: React.FC<AggregateBuilderProps> = ({
     currentItem.type === 'accumulative' ? 'accumulative' : 'average'
   );
 
-  // Excluir autorreferencia y filtrar fuentes conceptualmente compatibles (misma unidad o normalizada)
+  // Excluir autorreferencia y filtrar fuentes conceptualmente equivalentes (v9.4.8)
   const availableItems = useMemo(() => {
-    const targetUnit = (currentItem.unit || '').trim().toLowerCase();
+    const normalize = (str?: string) =>
+      (str || '')
+        .trim()
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/\s+/g, " ");
+
+    const targetSemanticKey = currentItem.semanticKey;
+    const targetParentDefId = currentItem.parentDefinitionId;
+    const targetNameNorm = normalize(currentItem.indicator);
+    const targetUnitNorm = normalize(currentItem.unit);
+
     return allItems.filter(it => {
       if (String(it.id) === String(currentItem.id)) return false;
-      const unit = (it.unit || '').trim().toLowerCase();
-      // Si el destino tiene unidad definida, requerir compatibilidad de unidad
-      if (targetUnit && unit) {
-        return unit === targetUnit;
+
+      // 1. Criterio 1: semanticKey idéntico si existe
+      if (targetSemanticKey && it.semanticKey) {
+        return it.semanticKey === targetSemanticKey;
       }
-      return true;
+
+      // 2. Criterio 2: parentDefinitionId idéntico si existe
+      if (targetParentDefId && it.parentDefinitionId) {
+        return it.parentDefinitionId === targetParentDefId;
+      }
+
+      // 3. Criterio 3: Nombre normalizado idéntico Y Unidad idéntica
+      const nameNorm = normalize(it.indicator);
+      const unitNorm = normalize(it.unit);
+
+      return nameNorm === targetNameNorm && unitNorm === targetUnitNorm;
     });
-  }, [allItems, currentItem.id, currentItem.unit]);
+  }, [allItems, currentItem.id, currentItem.indicator, currentItem.unit, currentItem.semanticKey, currentItem.parentDefinitionId]);
 
   const toggleSelectId = (id: string) => {
     if (selectedIds.includes(id)) {
@@ -153,7 +175,12 @@ export const AggregateBuilder: React.FC<AggregateBuilderProps> = ({
 
           <div className="grid grid-cols-1 gap-2 max-h-56 overflow-y-auto pr-1">
             {availableItems.length === 0 ? (
-              <span className="text-xs text-slate-500 italic p-2">No hay otros indicadores en este tablero.</span>
+              <div className="text-xs text-amber-300 font-bold bg-amber-500/10 border border-amber-500/30 rounded-xl p-4 text-center">
+                ⚠️ NO HAY FUENTES COMPATIBLES PARA ESTE INDICADOR.
+                <span className="block text-[10px] text-slate-400 font-normal mt-1">
+                  (Para agregación se requieren indicadores equivalentes con el mismo nombre y unidad, o asociadas por semanticKey).
+                </span>
+              </div>
             ) : (
               availableItems.map(it => {
                 const isSelected = selectedIds.includes(String(it.id));
@@ -227,7 +254,8 @@ export const AggregateBuilder: React.FC<AggregateBuilderProps> = ({
           <button
             type="button"
             onClick={handleApply}
-            className="px-6 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-500 text-white text-xs font-black uppercase tracking-wider transition-all shadow-lg hover:scale-[1.02]"
+            disabled={selectedIds.length === 0}
+            className="px-6 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-500 disabled:bg-slate-800 disabled:text-slate-600 disabled:cursor-not-allowed text-white text-xs font-black uppercase tracking-wider transition-all shadow-lg hover:scale-[1.02]"
           >
             Aplicar Agregado
           </button>

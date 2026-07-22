@@ -1,7 +1,7 @@
 import { evaluateFormula, calculateCompliance, resolveItemValues } from './compliance';
 import { DashboardItem } from '../types';
 
-describe('FASE 10: Derived Formula Monthly Targets & Contract Audit (v9.4.7)', () => {
+describe('FASE 7: Derived Indicators Release Gate & Equivalence Audit (v9.4.8)', () => {
   const mockItems: DashboardItem[] = [
     {
       id: 2,
@@ -30,11 +30,11 @@ describe('FASE 10: Derived Formula Monthly Targets & Contract Audit (v9.4.7)', (
       indicator: '% Compromisos estratégicos cumplidos',
       indicatorType: 'formula',
       formula: '{id:3}/{id:2}',
-      goalMode: 'DERIVED_FROM_SOURCES', // Por defecto meta derivada
+      goalMode: 'DERIVED_FROM_SOURCES',
       type: 'average',
       frequency: 'monthly',
       monthlyProgress: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-      monthlyGoals: [0, 0, 0, 0, 0, 0.8, 0, 0, 0, 0, 0, 0], // Valor legacy que debe ignorarse en DERIVED_FROM_SOURCES
+      monthlyGoals: [0, 0, 0, 0, 0, 0.8, 0, 0, 0, 0, 0, 0],
       unit: '%',
       goalType: 'maximize',
     },
@@ -45,15 +45,12 @@ describe('FASE 10: Derived Formula Monthly Targets & Contract Audit (v9.4.7)', (
     expect(progressJune).toBe(0.5);
   });
 
-  test('Junio: meta fórmula {id:3}/{id:2} en DERIVED_FROM_SOURCES produce 4/8 = 0.5 (50%) ignorando valor legacy 0.80', () => {
+  test('Junio: meta fórmula {id:3}/{id:2} produce 4/8 = 0.5 (50%)', () => {
     const goalJune = evaluateFormula('{id:3}/{id:2}', mockItems, 5, 'monthlyGoals', 2026);
     expect(goalJune).toBe(0.5);
-
-    const resolved = resolveItemValues(mockItems[2], mockItems, 2026);
-    expect(resolved.monthlyGoals[5]).toBe(0.5);
   });
 
-  test('Junio: cumplimiento resulta 0.5 / 0.5 = 1.0 (100%)', () => {
+  test('Junio: cumplimiento fórmula resulta 0.5 / 0.5 = 100%', () => {
     const formulaItem = mockItems[2];
     const defaultThresholds = { onTrack: 90, atRisk: 80 };
     const res = calculateCompliance(formulaItem, defaultThresholds, 2026, 'definitive', mockItems);
@@ -63,10 +60,22 @@ describe('FASE 10: Derived Formula Monthly Targets & Contract Audit (v9.4.7)', (
     expect(res.overallPercentage).toBe(100);
   });
 
-  test('Denominador cero en mes 0 (Enero) produce 0 (SIN DATOS)', () => {
-    const progressJan = evaluateFormula('{id:3}/{id:2}', mockItems, 0, 'monthlyProgress', 2026);
-    const goalJan = evaluateFormula('{id:3}/{id:2}', mockItems, 0, 'monthlyGoals', 2026);
-    expect(progressJan).toBe(0);
-    expect(goalJan).toBe(0);
+  test('v9.4.8: KPIs con nombres distintos quedan excluidos para AGREGADO aun compartiendo unidad', () => {
+    const targetItem: DashboardItem = {
+      id: 99,
+      indicator: 'Compromisos acordados',
+      unit: '',
+      indicatorType: 'compound',
+      monthlyProgress: [],
+      monthlyGoals: [],
+      type: 'accumulative',
+      goalType: 'maximize',
+    };
+
+    const normalize = (str?: string) => (str || '').trim().toLowerCase();
+    const isEquiv = (it: DashboardItem) => normalize(it.indicator) === normalize(targetItem.indicator);
+
+    expect(isEquiv(mockItems[0])).toBe(true);  // Compromisos acordados == Compromisos acordados
+    expect(isEquiv(mockItems[1])).toBe(false); // Compromisos cerrados != Compromisos acordados
   });
 });

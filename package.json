@@ -1,6 +1,6 @@
 {
   "name": "stratexa-iapriori",
-  "version": "9.4.7",
+  "version": "9.4.8",
   "type": "module",
   "scripts": {
     "dev": "vite",
