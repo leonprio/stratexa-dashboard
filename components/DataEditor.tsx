@@ -250,20 +250,20 @@ export const DataEditor: React.FC<DataEditorProps> = React.memo(({ item, allDash
     };
   }, [year, item.weekStart]);
 
-    // 🚀 AUTO-SCROLL v8.7.2: Navegar automáticamente al periodo actual
+    // 🚀 POSICIONAMIENTO CONTROLADO VISTA ANUAL (v9.4.14): Evitar el desplazamientode la página de fondo global
     useEffect(() => {
-    const targetId = isWeekly ? `week-card-${currentPeriod.weekIdx}` : `month-card-${currentPeriod.monthIdx}`;
-    const timer = setTimeout(() => {
-      const el = document.getElementById(targetId);
-      if (el) {
-        console.log(`🎯 [SCROLL] Navegando a ${targetId}`);
-        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      } else {
-        console.warn(`⚠️ [SCROLL] No se encontró el elemento ${targetId}`);
-      }
-    }, 600); // Delay robusto
-    return () => clearTimeout(timer);
-  }, [currentPeriod.isCurrentYear, currentPeriod.weekIdx, currentPeriod.monthIdx, isWeekly]);
+      if (!currentPeriod.isCurrentYear) return;
+      const targetId = isWeekly ? `week-card-${currentPeriod.weekIdx}` : `month-card-${currentPeriod.monthIdx}`;
+      const timer = setTimeout(() => {
+        const el = document.getElementById(targetId);
+        const container = el?.closest('.overflow-y-auto') || el?.parentElement;
+        if (el && container && container !== document.body && container !== document.documentElement) {
+          const targetTop = el.offsetTop - 80;
+          container.scrollTop = Math.max(0, targetTop);
+        }
+      }, 100);
+      return () => clearTimeout(timer);
+    }, [currentPeriod.isCurrentYear, currentPeriod.weekIdx, currentPeriod.monthIdx, isWeekly]);
 
   return (
     <div className="bg-slate-900/40 border border-white/10 rounded-xl p-4">

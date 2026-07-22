@@ -222,8 +222,9 @@ export const CurrentPeriodFocus: React.FC<CurrentPeriodFocusProps> = ({
 
     useEffect(() => {
         const el = document.getElementById('gestion-detallada-focus');
-        if (el) {
-            el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        const container = el?.closest('.overflow-y-auto') || el?.parentElement;
+        if (el && container && container !== document.body && container !== document.documentElement) {
+            container.scrollTop = 0;
         }
     }, [item.id]);
 

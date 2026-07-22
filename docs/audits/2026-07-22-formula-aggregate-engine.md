@@ -1,24 +1,19 @@
-# Auditoría de Motor de Fórmulas e Indicadores Compuestos (v9.4.13)
+# Auditoría de Motor de Fórmulas e Indicadores Compuestos (v9.4.14)
 
-## 1. Hotfix Runtime y Formateo de Tarjeta (v9.4.13)
+## 1. Posicionamiento Controlado de Vista Anual (v9.4.14)
 
-### Causa Raíz de Defectos y Correcciones
-1. **ReferenceError: `resolveItemValues is not defined`**:
-   - **Causa**: Falta de importación explícita de `resolveItemValues` desde `../utils/compliance` en `CurrentPeriodFocus.tsx`.
-   - **Solución**: Se añadió la importación limpia y explícita. Se creó la suite de prueba unitaria de renderizado real [components/CurrentPeriodFocus.test.tsx](file:///C:/APP-TABLERO-WORKTREES/fix-formula-engine-composite-indicators-v9.4.13/components/CurrentPeriodFocus.test.tsx) comprobando la apertura sin errores.
-2. **Valor `1%` en Tarjeta Compacta**:
-   - **Causa**: La vista compacta de `DashboardRow.tsx` utilizaba `formatNumber(currentProgress)`, pasando `0.5` por un formateador entero con `decimalPrecision: 0`, redondeando `0.5` a `1%`.
-   - **Solución**: Se sustituyó por `formatIndicatorValue(currentProgress, unit, 1, item.indicatorType === 'formula')`, garantizando que renderice **`50.0%`**.
-3. **Servidor Preview en Puerto Estricto**:
-   - **Solución**: Ejecutado con `--strictPort` en el puerto **4173** exclusivamente (`http://127.0.0.1:4173`).
+### Defecto y Solución Comprobada
+- **Defecto**: Al abrir Vista Anual para el año actual (2026), la llamada a `el.scrollIntoView({ behavior: 'smooth', block: 'start' })` sobre la tarjeta del mes actual provocaba que el viewport global de la ventana se desplazara hasta el fondo del documento.
+- **Solución**: Se eliminó `scrollIntoView` global y se reemplazó por un cálculo de posicionamiento restringido al contenedor interno de scroll (`container.scrollTop = Math.max(0, targetTop)`), previniendo cualquier desplazamiento de la página de fondo.
+- **Visualización**: Para 2026, la vista anual posiciona la tarjeta del mes actual (**JULIO**) justo debajo del encabezado sticky top-16. Para años distintos a 2026, la vista inicia desde **ENERO** (`scrollTop = 0`).
 
 ---
 
-## 2. Resultados Validados para LVP / Capacidades / Junio 2026
-- **Tarjeta Principal**: Muestra **`50.0%`** (1 decimal) con etiqueta **`ACUMULADO A JUN`**.
+## 2. Garantía de No Regresión Funcional
+- **Tarjeta Principal**: **`50.0%`** (1 decimal) con etiqueta **`ACUMULADO A JUN`**.
 - **Ficha de Detalle**: Meta **`50.00%`**, Real **`50.00%`**, Cumplimiento **`50%`**, Brecha **`0.0 pp`**.
 - **Vista Anual**: Meta **`50.00%`**, Avance **`50.00%`** en junio.
-- **Acciones Disponibles**: Exclusivamente **VISTA ANUAL** y **CERRAR**. Sin botones de guardado para derivados.
+- **Acciones**: Solo disponibles **VISTA ANUAL** y **CERRAR**. Sin botones de guardado para derivados.
 
 ---
 
