@@ -1,14 +1,16 @@
-# Auditoría de Motor de Fórmulas e Indicadores Compuestos (v9.4.12)
+# Auditoría de Motor de Fórmulas e Indicadores Compuestos (v9.4.13)
 
-## 1. Corrección de Rutas de Vista Restantes (v9.4.12)
+## 1. Hotfix Runtime y Formateo de Tarjeta (v9.4.13)
 
-### Bypasses Identificados y Corregidos
-1. **Ficha de Detalle ([CurrentPeriodFocus.tsx](file:///C:/APP-TABLERO-WORKTREES/fix-formula-engine-composite-indicators-v9.4.12/components/CurrentPeriodFocus.tsx))**:
-   - **Bypass**: Leía metas y progresos legacy desde `item.monthlyGoals` / `item.monthlyProgress` estáticos, ignorando los valores resueltos dinámicamente por la fórmula.
-   - **Solución**: Se conectó a `resolveItemValues(item, allDashboardItems, year)`. Para Junio 2026, muestra **Meta `50.00%`**, **Real `50.00%`**, **Cumplimiento `50%`** y **Brecha `0.0 pp`**.
-   - **Línea de Tendencia**: Alimenta el gráfico histórico mediante la serie mensual derivada resuelta.
-   - **Acciones de Guardado**: Se ocultó el botón `GUARDAR MES` reemplazando `canEdit` por `effectiveCanEdit` para evitar persistencia manual en indicadores automáticos.
-   - **Navegación Sticky**: Se configuró la barra del modal con `sticky top-16 z-30`, manteniéndola visible debajo de la barra de navegación principal.
+### Causa Raíz de Defectos y Correcciones
+1. **ReferenceError: `resolveItemValues is not defined`**:
+   - **Causa**: Falta de importación explícita de `resolveItemValues` desde `../utils/compliance` en `CurrentPeriodFocus.tsx`.
+   - **Solución**: Se añadió la importación limpia y explícita. Se creó la suite de prueba unitaria de renderizado real [components/CurrentPeriodFocus.test.tsx](file:///C:/APP-TABLERO-WORKTREES/fix-formula-engine-composite-indicators-v9.4.13/components/CurrentPeriodFocus.test.tsx) comprobando la apertura sin errores.
+2. **Valor `1%` en Tarjeta Compacta**:
+   - **Causa**: La vista compacta de `DashboardRow.tsx` utilizaba `formatNumber(currentProgress)`, pasando `0.5` por un formateador entero con `decimalPrecision: 0`, redondeando `0.5` a `1%`.
+   - **Solución**: Se sustituyó por `formatIndicatorValue(currentProgress, unit, 1, item.indicatorType === 'formula')`, garantizando que renderice **`50.0%`**.
+3. **Servidor Preview en Puerto Estricto**:
+   - **Solución**: Ejecutado con `--strictPort` en el puerto **4173** exclusivamente (`http://127.0.0.1:4173`).
 
 ---
 
@@ -16,7 +18,7 @@
 - **Tarjeta Principal**: Muestra **`50.0%`** (1 decimal) con etiqueta **`ACUMULADO A JUN`**.
 - **Ficha de Detalle**: Meta **`50.00%`**, Real **`50.00%`**, Cumplimiento **`50%`**, Brecha **`0.0 pp`**.
 - **Vista Anual**: Meta **`50.00%`**, Avance **`50.00%`** en junio.
-- **Acciones**: Solo disponibles **VISTA ANUAL** y **CERRAR**.
+- **Acciones Disponibles**: Exclusivamente **VISTA ANUAL** y **CERRAR**. Sin botones de guardado para derivados.
 
 ---
 

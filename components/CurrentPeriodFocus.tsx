@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { DashboardItem, ComplianceThresholds } from '../types';
-import { calculateCompliance, findLastIndexWithData } from '../utils/compliance';
+import { calculateCompliance, findLastIndexWithData, resolveItemValues } from '../utils/compliance';
 import { getWeekNumber, getYearWeekMapping } from '../utils/weeklyUtils';
 import { ProgressBar } from './ProgressBar';
 import { LineChart } from './LineChart';

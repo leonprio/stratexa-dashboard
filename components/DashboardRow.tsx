@@ -116,10 +116,7 @@ export const DashboardRow: React.FC<DashboardRowProps> = React.memo(({ item, onU
           <div className="flex flex-col items-end">
             <div className="flex items-baseline gap-1">
               <span className="text-2xl font-black text-white tabular-nums tracking-tighter">
-                {formatNumber(currentProgress)}
-              </span>
-              <span className="text-[8px] font-bold text-slate-600 uppercase tracking-widest leading-none">
-                {unit}
+                {formatIndicatorValue(currentProgress, unit, 1, item.indicatorType === 'formula')}
               </span>
             </div>
             <span className={`text-[10px] font-black tabular-nums leading-none tracking-widest ${complianceStatus === 'OnTrack' ? 'text-emerald-400' : complianceStatus === 'AtRisk' ? 'text-amber-400' : complianceStatus === 'InProgress' ? 'text-sky-400' : complianceStatus === 'Neutral' ? 'text-slate-500' : 'text-rose-400'}`}>
