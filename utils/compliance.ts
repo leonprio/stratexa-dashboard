@@ -518,11 +518,20 @@ export const calculateCompliance = (
     }
   }
 
-  const overallPercentage = calculateMonthlyCompliancePercentage(
+  let overallPercentage = calculateMonthlyCompliancePercentage(
     currentProgress,
     currentTarget,
     lowerIsBetter
   );
+
+  // 🛡️ REGLA v9.4.9 (RESULT_IS_COMPLIANCE CONTRACT):
+  // Si el indicador es FÓRMULA y su modo de salida es RESULT_IS_COMPLIANCE (por defecto),
+  // el avance derivado ya representa el porcentaje de cumplimiento. Se evita el doble cálculo (50% / 50% = 100%).
+  if (item.indicatorType === 'formula' && item.formulaOutputMode !== 'VALUE_VS_TARGET') {
+    const rawVal = Number(currentProgress || 0);
+    // Si el valor es <= 1.0 (ej. 0.5), convertir a 50%. Si ya viene en 50, conservarlo.
+    overallPercentage = rawVal <= 1.0 ? Math.round(rawVal * 100) : rawVal;
+  }
 
   // Determinar si el indicador está "activo" este mes (tiene meta capturada)
   const hasTarget = currentTarget !== 0 || currentProgress !== 0;

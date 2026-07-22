@@ -55,8 +55,11 @@ export const DataEditor: React.FC<DataEditorProps> = React.memo(({ item, onSave,
     const startDayNumeric = item.weekStart === 'Sun' ? 0 : 1;
     return getYearWeekMapping(year, startDayNumeric);
   }, [isWeekly, year, item.weekStart]);
+  const isCalculated = item.indicatorType === 'formula' || item.indicatorType === 'compound';
+  const effectiveCanEdit = canEdit && !isCalculated;
 
   const setGoalAt = (idx: number, val: string) => {
+    if (isCalculated) return;
     const n = parseFormattedNumber(val) ?? 0;
     setMonthlyGoals((prev) => {
       const copy = [...prev];
@@ -66,6 +69,7 @@ export const DataEditor: React.FC<DataEditorProps> = React.memo(({ item, onSave,
   };
 
   const setProgressAt = (idx: number, val: string) => {
+    if (isCalculated) return;
     const n = parseFormattedNumber(val) ?? 0;
     setMonthlyProgress((prev) => {
       const copy = [...prev];
@@ -75,6 +79,7 @@ export const DataEditor: React.FC<DataEditorProps> = React.memo(({ item, onSave,
   };
 
   const setNoteAt = (idx: number, val: string) => {
+    if (isCalculated) return;
     setMonthlyNotes((prev) => {
       const copy = [...prev];
       copy[idx] = val;
@@ -83,6 +88,7 @@ export const DataEditor: React.FC<DataEditorProps> = React.memo(({ item, onSave,
   };
 
   const setWeeklyNoteAt = (idx: number, val: string) => {
+    if (isCalculated) return;
     setWeeklyNotes((prev) => {
       const copy = [...prev];
       copy[idx] = val;
@@ -93,6 +99,7 @@ export const DataEditor: React.FC<DataEditorProps> = React.memo(({ item, onSave,
   const [isSaving, setIsSaving] = useState(false);
 
   const handleSave = async () => {
+    if (isCalculated) return;
     setIsSaving(true);
     try {
       // 🛡️ Simulación de espera para feedback visual y permitir que el estado se propague
@@ -113,6 +120,7 @@ export const DataEditor: React.FC<DataEditorProps> = React.memo(({ item, onSave,
   };
 
   const setWeeklyVal = (field: 'goals' | 'progress', idx: number, val: string) => {
+    if (isCalculated) return;
     const n = parseFormattedNumber(val);
     const setter = field === 'goals' ? setWeeklyGoals : setWeeklyProgress;
     setter(prev => {
@@ -126,6 +134,7 @@ export const DataEditor: React.FC<DataEditorProps> = React.memo(({ item, onSave,
   const recognitionRef = useRef<any>(null);
 
   const startDictation = (idx: number, isWeeklyVar: boolean = false) => {
+    if (isCalculated) return;
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
 
     if (!SpeechRecognition) {
@@ -205,6 +214,7 @@ export const DataEditor: React.FC<DataEditorProps> = React.memo(({ item, onSave,
   const [activeActivityPeriod, setActiveActivityPeriod] = useState<number | null>(null);
 
   const calculateFromActivities = useCallback((periodIdx: number, newActivities?: any[]) => {
+    if (isCalculated) return;
     const raw = newActivities || activityConfig[periodIdx];
     const activities = Array.isArray(raw) ? raw : (raw ? Object.values(raw) : []);
     const totalGoal = activities.reduce((sum: number, a: any) => sum + (Number(a.targetCount) || 0), 0) as number;
@@ -217,9 +227,7 @@ export const DataEditor: React.FC<DataEditorProps> = React.memo(({ item, onSave,
       setMonthlyGoals(prev => { const c = [...prev]; c[periodIdx] = totalGoal; return c; });
       setMonthlyProgress(prev => { const c = [...prev]; c[periodIdx] = totalReal; return c; });
     }
-  }, [activityConfig, isWeekly]);
-
-  // handleCopyActivitiesToNext was unused
+  }, [activityConfig, isWeekly, isCalculated]);
 
   const currentPeriod = useMemo(() => {
     const today = new Date();
@@ -259,7 +267,9 @@ export const DataEditor: React.FC<DataEditorProps> = React.memo(({ item, onSave,
             Año {year}
           </span>
           <button 
+            disabled={isCalculated}
             onClick={() => {
+              if (isCalculated) return;
               const newVal = !isActivityMode;
               setIsActivityMode(newVal);
               // 🛡️ nuclear save: incluir config actual para que App.tsx no la borre
@@ -268,9 +278,9 @@ export const DataEditor: React.FC<DataEditorProps> = React.memo(({ item, onSave,
                 activityConfig: activityConfig
               }, true);
             }}
-            className={`ml-2 px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest transition-all ${isActivityMode ? 'bg-cyan-500 text-slate-950 ring-4 ring-cyan-500/20 shadow-lg shadow-cyan-500/40' : 'bg-slate-800 text-slate-400 border border-white/5 hover:bg-slate-700 hover:text-white'}`}
+            className={`ml-2 px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest transition-all ${isCalculated ? 'bg-indigo-950/80 text-indigo-400 border border-indigo-500/40' : (isActivityMode ? 'bg-cyan-500 text-slate-950 ring-4 ring-cyan-500/20 shadow-lg shadow-cyan-500/40' : 'bg-slate-800 text-slate-400 border border-white/5 hover:bg-slate-700 hover:text-white')}`}
           >
-            MODO: {isActivityMode ? 'ACTIVIDADES' : 'MANUAL'}
+            MODO: {isCalculated ? 'AUTOMÁTICO (DERIVADO)' : (isActivityMode ? 'ACTIVIDADES' : 'MANUAL')}
           </button>
         </div>
         <div className="flex gap-2">
@@ -279,18 +289,20 @@ export const DataEditor: React.FC<DataEditorProps> = React.memo(({ item, onSave,
             className="px-3 py-2 rounded-lg bg-slate-700 hover:bg-slate-600 font-bold"
             disabled={isSaving}
           >
-            Cancelar
+            {isCalculated ? 'Cerrar' : 'Cancelar'}
           </button>
-          <button
-            onClick={handleSave}
-            disabled={!canEdit || isSaving}
-            className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 uppercase tracking-widest text-[11px] transition-all hover:scale-105 active:scale-95"
-            aria-label="Confirmar y subir datos permanentemente"
-          >
-            {isSaving && <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" aria-hidden="true" />}
-            <span aria-hidden="true">💾</span>
-            {isSaving ? "GUARDANDO..." : "GUARDAR CAMBIOS"}
-          </button>
+          {!isCalculated && (
+            <button
+              onClick={handleSave}
+              disabled={!effectiveCanEdit || isSaving}
+              className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 uppercase tracking-widest text-[11px] transition-all hover:scale-105 active:scale-95"
+              aria-label="Confirmar y subir datos permanentemente"
+            >
+              {isSaving && <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" aria-hidden="true" />}
+              <span aria-hidden="true">💾</span>
+              {isSaving ? "GUARDANDO..." : "GUARDAR CAMBIOS"}
+            </button>
+          )}
         </div>
       </div>
 
@@ -336,7 +348,7 @@ export const DataEditor: React.FC<DataEditorProps> = React.memo(({ item, onSave,
                       onBlur={() => setFocusedInputId(null)}
                       onChange={(e) => setGoalAt(idx, e.target.value)}
                       className="w-full bg-slate-950/50 border border-white/5 rounded-xl p-2.5 text-white text-sm font-black focus:ring-1 focus:ring-cyan-500 transition-all text-center placeholder:text-slate-800 tabular-nums"
-                      disabled={!canEdit || isActivityMode}
+                      disabled={!effectiveCanEdit || isActivityMode}
                     />
                   </div>
                   <div className="space-y-1">
@@ -348,8 +360,8 @@ export const DataEditor: React.FC<DataEditorProps> = React.memo(({ item, onSave,
                       onFocus={() => setFocusedInputId(`m-actual-${idx}`)}
                       onBlur={() => setFocusedInputId(null)}
                       onChange={(e) => setProgressAt(idx, e.target.value)}
-                      className="w-full bg-slate-950/50 border border-white/5 rounded-xl p-2.5 text-white text-sm font-black focus:ring-1 focus:ring-emerald-500 transition-all text-center placeholder:text-slate-800 tabular-nums"
-                      disabled={!canEdit || isActivityMode}
+                      className="w-full bg-slate-950/50 border border-white/5 rounded-xl p-2.5 text-white text-sm font-black focus:ring-1 focus:ring-emerald-500 transition-all text-center placeholder:text-slate-800 tabular-nums disabled:cursor-not-allowed"
+                      disabled={!effectiveCanEdit || isActivityMode}
                     />
                   </div>
                 </div>
@@ -371,9 +383,9 @@ export const DataEditor: React.FC<DataEditorProps> = React.memo(({ item, onSave,
                   <textarea
                     value={monthlyNotes[idx] ?? ""}
                     onChange={(e) => setNoteAt(idx, e.target.value)}
-                    className="w-full bg-slate-950/30 border border-white/5 rounded-xl p-2.5 text-slate-400 text-[10px] min-h-[50px] focus:ring-1 focus:ring-slate-500 outline-none transition-all resize-none italic"
-                    placeholder={isDictating === idx ? "Escuchando..." : "Detalle de variación..."}
-                    disabled={!canEdit}
+                    className="w-full bg-slate-950/30 border border-white/5 rounded-xl p-2.5 text-slate-400 text-[10px] min-h-[50px] focus:ring-1 focus:ring-slate-500 outline-none transition-all resize-none italic disabled:cursor-not-allowed"
+                    placeholder={isCalculated ? "Observaciones derivadas automáticamente." : (canEdit ? "Observaciones del periodo..." : "Sin comentarios.")}
+                    disabled={!effectiveCanEdit}
                   />
                 </div>
               </div>

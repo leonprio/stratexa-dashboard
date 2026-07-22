@@ -7,6 +7,7 @@ interface FormulaBuilderProps {
   allItems: (DashboardItem | (Omit<DashboardItem, 'id'> & { id: number | string }))[];
   onChangeFormula: (formula: string) => void;
   onChangeGoalMode?: (goalMode: 'DERIVED_FROM_SOURCES' | 'EXPLICIT_TARGET') => void;
+  onChangeFormulaOutputMode?: (mode: 'RESULT_IS_COMPLIANCE' | 'VALUE_VS_TARGET') => void;
   onClose: () => void;
 }
 
@@ -51,6 +52,9 @@ export const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
   const [draftFormula, setDraftFormula] = useState<string>(currentItem.formula || '');
   const [goalMode, setGoalMode] = useState<'DERIVED_FROM_SOURCES' | 'EXPLICIT_TARGET'>(
     (currentItem as any).goalMode || 'DERIVED_FROM_SOURCES'
+  );
+  const [formulaOutputMode, setFormulaOutputMode] = useState<'RESULT_IS_COMPLIANCE' | 'VALUE_VS_TARGET'>(
+    (currentItem as any).formulaOutputMode || 'RESULT_IS_COMPLIANCE'
   );
 
   React.useEffect(() => {
@@ -107,6 +111,9 @@ export const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
     onChangeFormula(draftFormula);
     if (onChangeGoalMode) {
       onChangeGoalMode(goalMode);
+    }
+    if (onChangeFormulaOutputMode) {
+      onChangeFormulaOutputMode(formulaOutputMode);
     }
     onClose();
   };
@@ -165,9 +172,13 @@ export const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
   }, [draftFormula, goalMode, currentItem.monthlyGoals, allItems]);
 
   const derivedCompliancePct = useMemo(() => {
+    if (formulaOutputMode === 'RESULT_IS_COMPLIANCE') {
+      const val = Number(derivedValue || 0);
+      return val <= 1.0 ? Math.round(val * 100) : Math.round(val);
+    }
     if (Number(derivedGoal) === 0) return 0;
     return Math.round((Number(derivedValue) / Number(derivedGoal)) * 100);
-  }, [derivedValue, derivedGoal]);
+  }, [derivedValue, derivedGoal, formulaOutputMode]);
 
   const isZeroDenominator = operator === '/' && Number(valB) === 0 && Boolean(operandB);
 
@@ -229,29 +240,56 @@ export const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
               </div>
             </div>
 
-            {/* SECCIÓN 1.5: MODO DE META */}
-            <div className="bg-slate-950/60 border border-slate-800 p-4 rounded-2xl flex flex-col gap-2">
-              <span className="text-xs font-black text-cyan-400 uppercase tracking-widest">
-                1.5. Selección del Modo de Meta
-              </span>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <button
-                  type="button"
-                  onClick={() => setGoalMode('DERIVED_FROM_SOURCES')}
-                  className={`p-3 rounded-xl border text-left flex flex-col transition-all ${goalMode === 'DERIVED_FROM_SOURCES' ? 'bg-indigo-600/30 border-indigo-400 text-white shadow-lg' : 'bg-slate-900 border-slate-800 text-slate-400 hover:border-slate-700'}`}
-                >
-                  <span className="font-bold text-xs uppercase">⚡ Meta Derivada de las Fuentes</span>
-                  <span className="text-[10px] text-slate-500 mt-1">Aplica la misma fórmula a las metas de los indicadores fuente (ej. Meta 4 ÷ Meta 8 = 50%).</span>
-                </button>
+            {/* SECCIÓN 1.5: MODO DE META Y RESULTADO */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="bg-slate-950/60 border border-slate-800 p-4 rounded-2xl flex flex-col gap-2">
+                <span className="text-xs font-black text-cyan-400 uppercase tracking-widest">
+                  1.5. Modo de Meta
+                </span>
+                <div className="flex flex-col gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setGoalMode('DERIVED_FROM_SOURCES')}
+                    className={`p-3 rounded-xl border text-left flex flex-col transition-all ${goalMode === 'DERIVED_FROM_SOURCES' ? 'bg-indigo-600/30 border-indigo-400 text-white shadow-lg' : 'bg-slate-900 border-slate-800 text-slate-400 hover:border-slate-700'}`}
+                  >
+                    <span className="font-bold text-xs uppercase">⚡ Meta Derivada de Fuentes</span>
+                    <span className="text-[10px] text-slate-500 mt-1">Aplica la fórmula a las metas fuente (ej. 4 ÷ 8 = 50%).</span>
+                  </button>
 
-                <button
-                  type="button"
-                  onClick={() => setGoalMode('EXPLICIT_TARGET')}
-                  className={`p-3 rounded-xl border text-left flex flex-col transition-all ${goalMode === 'EXPLICIT_TARGET' ? 'bg-indigo-600/30 border-indigo-400 text-white shadow-lg' : 'bg-slate-900 border-slate-800 text-slate-400 hover:border-slate-700'}`}
-                >
-                  <span className="font-bold text-xs uppercase">🎯 Meta Independiente Explicita</span>
-                  <span className="text-[10px] text-slate-500 mt-1">El usuario define expresamente un valor de meta fijo e independiente.</span>
-                </button>
+                  <button
+                    type="button"
+                    onClick={() => setGoalMode('EXPLICIT_TARGET')}
+                    className={`p-3 rounded-xl border text-left flex flex-col transition-all ${goalMode === 'EXPLICIT_TARGET' ? 'bg-indigo-600/30 border-indigo-400 text-white shadow-lg' : 'bg-slate-900 border-slate-800 text-slate-400 hover:border-slate-700'}`}
+                  >
+                    <span className="font-bold text-xs uppercase">🎯 Meta Independiente Explicita</span>
+                    <span className="text-[10px] text-slate-500 mt-1">Meta fija definida manualmente.</span>
+                  </button>
+                </div>
+              </div>
+
+              <div className="bg-slate-950/60 border border-slate-800 p-4 rounded-2xl flex flex-col gap-2">
+                <span className="text-xs font-black text-cyan-400 uppercase tracking-widest">
+                  1.6. Modo de Salida
+                </span>
+                <div className="flex flex-col gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setFormulaOutputMode('RESULT_IS_COMPLIANCE')}
+                    className={`p-3 rounded-xl border text-left flex flex-col transition-all ${formulaOutputMode === 'RESULT_IS_COMPLIANCE' ? 'bg-indigo-600/30 border-indigo-400 text-white shadow-lg' : 'bg-slate-900 border-slate-800 text-slate-400 hover:border-slate-700'}`}
+                  >
+                    <span className="font-bold text-xs uppercase">🏆 Resultado Es El Cumplimiento</span>
+                    <span className="text-[10px] text-slate-500 mt-1">El resultado es el % de cumplimiento final (ej. 50%).</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setFormulaOutputMode('VALUE_VS_TARGET')}
+                    className={`p-3 rounded-xl border text-left flex flex-col transition-all ${formulaOutputMode === 'VALUE_VS_TARGET' ? 'bg-indigo-600/30 border-indigo-400 text-white shadow-lg' : 'bg-slate-900 border-slate-800 text-slate-400 hover:border-slate-700'}`}
+                  >
+                    <span className="font-bold text-xs uppercase">📊 Valor A Comparar Vs Meta</span>
+                    <span className="text-[10px] text-slate-500 mt-1">El resultado es un valor a comparar contra meta.</span>
+                  </button>
+                </div>
               </div>
             </div>
 

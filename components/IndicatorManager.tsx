@@ -349,6 +349,7 @@ export const IndicatorManager = React.memo(({ initialItems, onSaveChanges, onCan
                                                             allItems={items}
                                                             onChangeFormula={(f) => handleInputChange(item.id, 'formula', f)}
                                                             onChangeGoalMode={(gm) => handleInputChange(item.id, 'goalMode', gm)}
+                                                            onChangeFormulaOutputMode={(m) => handleInputChange(item.id, 'formulaOutputMode', m)}
                                                             onClose={() => setEditingFormulaItemId(null)}
                                                         />
                                                     )}

@@ -1,25 +1,24 @@
-# Auditoría de Motor de Fórmulas e Indicadores Compuestos (v9.4.8)
+# Auditoría de Motor de Fórmulas e Indicadores Compuestos (v9.4.9)
 
-## 1. Cierre Final de Puerta de Release Gate (v9.4.8)
+## 1. Causa del Cumplimiento Incorrecto de 100% y Solución (v9.4.9)
 
-### Reglas de Equivalencia y Filtro Jerárquico en AGREGADO
-1. **Regla de No-Superposición de Conceptos**: Compartir únicamente la unidad de medida (ej. `%` o vacía) no autoriza la agregación entre indicadores conceptualmente distintos.
-2. **Jerarquía de Equivalencia**:
-   - **Prioridad 1**: `semanticKey` idéntico si está presente.
-   - **Prioridad 2**: `parentDefinitionId` idéntico si está presente.
-   - **Prioridad 3**: Nombre del indicador normalizado idéntico Y Unidad de medida normalizada idéntica.
-3. **Comportamiento en Caso LVP (Tablero Capacidades)**:
-   - Indicador #2 (*Compromisos acordados*) e Indicador #3 (*Compromisos cerrados con evidencia*) quedan recíprocamente excluidos para agregación por ser conceptos distintos.
-   - Al intentar configurar AGREGADO en un KPI sin copias equivalentes en otras áreas/nodos, la interfaz muestra el banner explicativo: `⚠️ NO HAY FUENTES COMPATIBLES PARA ESTE INDICADOR` y deshabilita el botón **Aplicar Agregado**.
+### Causa Raíz Comprobada
+- En versiones previas, la función `calculateCompliance` evaluaba `overallPercentage` dividiendo `currentProgress` entre `currentTarget`.
+- Para el indicador 4 (`% Compromisos estratégicos cumplidos`), el avance derivado de Junio era `0.5` (50%) y la meta derivada era `0.5` (50%). Al realizar $0.5 / 0.5$, el resultado era `1.0` ($100\%$), creando un **doble porcentaje de cumplimiento**.
+
+### Contrato RESULT_IS_COMPLIANCE
+1. **Modo de Salida `RESULT_IS_COMPLIANCE`**: Se configuró por defecto en `types.ts` y `FormulaBuilder.tsx` para indicar que el resultado de la fórmula ya representa el porcentaje de cumplimiento.
+2. **Evaluación de Cumplimiento**: En `calculateCompliance` (`utils/compliance.ts`), cuando `indicatorType === 'formula'` y `formulaOutputMode !== 'VALUE_VS_TARGET'`, `overallPercentage` toma directamente el valor derivado ($50\%$), evitando la división redundante.
+3. **Modo `VALUE_VS_TARGET`**: Se mantiene reservado para fórmulas cuyo resultado es un valor absoluto (ej. número de entregables) que requiera compararse contra una meta.
 
 ---
 
-## 2. Resultado Numérico en Caso de Referencia (FÓRMULA)
-- **Indicador 4 (% Compromisos estratégicos cumplidos)**:
-  - **Avance Derivado**: $3 / 6 = 0.5 \rightarrow 50\%$.
-  - **Meta Derivada**: $4 / 8 = 0.5 \rightarrow 50\%$.
-  - **Cumplimiento Resultante**: $100\%$.
-  - **Estado**: MODO AUTOMÁTICO y deshabilitación completa de edición manual.
+## 2. Bloqueo Real de Captura y Read-Only Universal
+- **DataEditor ([DataEditor.tsx](file:///C:/APP-TABLERO-WORKTREES/fix-formula-engine-composite-indicators-v9.4.9/components/DataEditor.tsx))**:
+  - Para indicadores `formula` o `compound`, todos los setters (`setGoalAt`, `setProgressAt`, `setNoteAt`, `handleSave`) retornan inmediatamente sin alterar el estado.
+  - Los inputs de Meta Mensual, Avance Real y Textarea de Análisis presentan los atributos `disabled` y clase CSS `disabled:cursor-not-allowed`.
+  - El botón **GUARDAR CAMBIOS** se oculta por completo cuando el indicador es derivado, reemplazando las opciones por **Cerrar**.
+  - La insignia de modo se muestra de forma permanente como `MODO: AUTOMÁTICO (DERIVADO)`.
 
 ---
 
