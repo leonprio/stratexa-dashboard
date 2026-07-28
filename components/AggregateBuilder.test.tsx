@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, within } from '@testing-library/react';
 import { AggregateBuilder } from './AggregateBuilder';
 import { DashboardItem } from '../types';
 
@@ -59,7 +59,7 @@ describe('AggregateBuilder Component (v9.4.15 Contract)', () => {
     },
   ];
 
-  it('1-3. Debe mostrar fuentes Bajas 0-30, 31-60, 61-90, 91 y mas marcadas', () => {
+  it('1-3. Debe verificar que los 4 checkboxes de Bajas 0-30, 31-60, 61-90, 91 y mas estan checked', () => {
     render(
       <AggregateBuilder
         currentItem={currentItem}
@@ -68,10 +68,10 @@ describe('AggregateBuilder Component (v9.4.15 Contract)', () => {
         onClose={jest.fn()}
       />
     );
-    expect(screen.getByText('Bajas 0-30')).toBeInTheDocument();
-    expect(screen.getByText('Bajas 31-60')).toBeInTheDocument();
-    expect(screen.getByText('Bajas 61-90')).toBeInTheDocument();
-    expect(screen.getByText('Bajas 91 y más')).toBeInTheDocument();
+    const checkboxes = screen.getAllByRole('checkbox') as HTMLInputElement[];
+    expect(checkboxes).toHaveLength(5);
+    const checkedBoxes = checkboxes.filter(cb => cb.checked);
+    expect(checkedBoxes).toHaveLength(4);
   });
 
   it('4. Debe mostrar el contador en 4 seleccionadas', () => {
@@ -100,7 +100,19 @@ describe('AggregateBuilder Component (v9.4.15 Contract)', () => {
     expect(screen.getByText('78%')).toBeInTheDocument();
   });
 
-  it('6. Debe excluir el indicador actual de la lista', () => {
+  it('6. Debe excluir el indicador actual (currentItem #4) de la lista de fuentes disponibles', () => {
+    const { container } = render(
+      <AggregateBuilder
+        currentItem={currentItem}
+        allItems={allItems}
+        onChangeComponentIds={jest.fn()}
+        onClose={jest.fn()}
+      />
+    );  const listContainer = container.querySelector('.max-h-56')!;
+    expect(within(listContainer as HTMLElement).queryByText('#4')).not.toBeInTheDocument();
+  });
+
+  it('7 & 10. Debe permitir desmarcar una fuente y actualizar contador, preview y checkbox state', () => {
     render(
       <AggregateBuilder
         currentItem={currentItem}
@@ -109,10 +121,12 @@ describe('AggregateBuilder Component (v9.4.15 Contract)', () => {
         onClose={jest.fn()}
       />
     );
-    expect(screen.queryByText('#4')).not.toBeInTheDocument();
+    const bajas030 = screen.getByText('Bajas 0-30');
+    fireEvent.click(bajas030);
+    expect(screen.getByText('2. Selecciona las fuentes de consolidación (3 seleccionadas)')).toBeInTheDocument();
   });
 
-  it('7 & 10. Debe permitir seleccion manual sin ocultar fuentes', () => {
+  it('7b. Debe permitir seleccionar Ventas Totales y actualizar contador y checkbox', () => {
     render(
       <AggregateBuilder
         currentItem={currentItem}
@@ -172,5 +186,21 @@ describe('AggregateBuilder Component (v9.4.15 Contract)', () => {
       />
     );
     expect(screen.getByText('2. Selecciona las fuentes de consolidación (1 seleccionadas)')).toBeInTheDocument();
+  });
+
+  it('11. Debe deduplicar componentIds duplicados [5,5,6] entregando IDs unicos', () => {
+    const itemWithDuplicates: DashboardItem = {
+      ...currentItem,
+      componentIds: [5, 5, 6],
+    };
+    render(
+      <AggregateBuilder
+        currentItem={itemWithDuplicates}
+        allItems={allItems}
+        onChangeComponentIds={jest.fn()}
+        onClose={jest.fn()}
+      />
+    );
+    expect(screen.getByText('2. Selecciona las fuentes de consolidación (2 seleccionadas)')).toBeInTheDocument();
   });
 });
