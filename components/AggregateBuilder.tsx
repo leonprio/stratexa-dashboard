@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { DashboardItem } from '../types';
 
 interface AggregateBuilderProps {
@@ -16,17 +16,39 @@ export const AggregateBuilder: React.FC<AggregateBuilderProps> = ({
   onChangeType,
   onClose,
 }) => {
-  const currentIds = useMemo(() => {
+  // persistedSourceIds derivado sin modificar currentItem.componentIds
+  const persistedSourceIds = useMemo(() => {
     return (currentItem.componentIds || []).map(id => String(id));
   }, [currentItem.componentIds]);
 
-  const [selectedIds, setSelectedIds] = useState<string[]>(currentIds);
+  const [selectedIds, setSelectedIds] = useState<string[]>(persistedSourceIds);
   const [strategy, setStrategy] = useState<'accumulative' | 'average'>(
     currentItem.type === 'accumulative' ? 'accumulative' : 'average'
   );
 
-  // Excluir autorreferencia y filtrar fuentes conceptualmente equivalentes (v9.4.8)
+  // Resincronizar selectedIds cuando cambien currentItem.id, currentItem.componentIds o allItems
+  useEffect(() => {
+    setSelectedIds((currentItem.componentIds || []).map(id => String(id)));
+  }, [currentItem.id, currentItem.componentIds, allItems]);
+
+  // availableItems: Todos los items del mismo dashboard excepto el indicador actual (impidiendo autorreferencia)
   const availableItems = useMemo(() => {
+    return allItems.filter(it => String(it.id) !== String(currentItem.id));
+  }, [allItems, currentItem.id]);
+
+  // orphanedSourceIds: IDs persistidos que no existen en allItems
+  const orphanedSourceIds = useMemo(() => {
+    const availableIdSet = new Set(availableItems.map(it => String(it.id)));
+    return selectedIds.filter(id => !availableIdSet.has(id));
+  }, [selectedIds, availableItems]);
+
+  // validSelectedItems: Únicamente availableItems cuyos IDs estén presentes en selectedIds
+  const validSelectedItems = useMemo(() => {
+    return availableItems.filter(it => selectedIds.includes(String(it.id)));
+  }, [availableItems, selectedIds]);
+
+  // Helper para sugerencias/ordenamiento por equivalencia semántica
+  const isSuggestedItem = useMemo(() => {
     const normalize = (str?: string) =>
       (str || '')
         .trim()
@@ -40,26 +62,38 @@ export const AggregateBuilder: React.FC<AggregateBuilderProps> = ({
     const targetNameNorm = normalize(currentItem.indicator);
     const targetUnitNorm = normalize(currentItem.unit);
 
-    return allItems.filter(it => {
-      if (String(it.id) === String(currentItem.id)) return false;
-
-      // 1. Criterio 1: semanticKey idéntico si existe
+    return (it: typeof availableItems[0]) => {
       if (targetSemanticKey && it.semanticKey) {
         return it.semanticKey === targetSemanticKey;
       }
-
-      // 2. Criterio 2: parentDefinitionId idéntico si existe
       if (targetParentDefId && it.parentDefinitionId) {
         return it.parentDefinitionId === targetParentDefId;
       }
-
-      // 3. Criterio 3: Nombre normalizado idéntico Y Unidad idéntica
       const nameNorm = normalize(it.indicator);
       const unitNorm = normalize(it.unit);
-
       return nameNorm === targetNameNorm && unitNorm === targetUnitNorm;
+    };
+  }, [currentItem.indicator, currentItem.unit, currentItem.semanticKey, currentItem.parentDefinitionId]);
+
+  // Ordenamiento visual:
+  // 1. Fuentes seleccionadas
+  // 2. Fuentes sugeridas por semanticKey / parentDefinitionId / nombre+unidad
+  // 3. Demás disponibles en orden original
+  const sortedAvailableItems = useMemo(() => {
+    return [...availableItems].sort((a, b) => {
+      const aSelected = selectedIds.includes(String(a.id));
+      const bSelected = selectedIds.includes(String(b.id));
+      if (aSelected && !bSelected) return -1;
+      if (!aSelected && bSelected) return 1;
+
+      const aSuggested = isSuggestedItem(a);
+      const bSuggested = isSuggestedItem(b);
+      if (aSuggested && !bSuggested) return -1;
+      if (!aSuggested && bSuggested) return 1;
+
+      return 0;
     });
-  }, [allItems, currentItem.id, currentItem.indicator, currentItem.unit, currentItem.semanticKey, currentItem.parentDefinitionId]);
+  }, [availableItems, selectedIds, isSuggestedItem]);
 
   const toggleSelectId = (id: string) => {
     if (selectedIds.includes(id)) {
@@ -70,40 +104,35 @@ export const AggregateBuilder: React.FC<AggregateBuilderProps> = ({
   };
 
   const handleApply = () => {
-    // Conservar tipos originales (number o string)
-    const originalTypes = selectedIds.map(idStr => {
-      const found = availableItems.find(it => String(it.id) === idStr);
-      return found ? found.id : idStr;
-    });
-    onChangeComponentIds(originalTypes);
+    // Al aplicar, enviar sólo los IDs de validSelectedItems conservando tipo original
+    const validIds = validSelectedItems.map(item => item.id);
+    onChangeComponentIds(validIds);
     if (onChangeType) {
       onChangeType(strategy);
     }
     onClose();
   };
 
-  // Cálculo de vista previa de consolidación (mes 5 / Junio)
+  // Vista previa calculada exclusivamente con validSelectedItems (mes 5 / Junio)
   const previewMonthIdx = 5;
-  const selectedItems = useMemo(() => {
-    return availableItems.filter(it => selectedIds.includes(String(it.id)));
-  }, [availableItems, selectedIds]);
-
   const previewProgress = useMemo(() => {
-    if (selectedItems.length === 0) return 0;
-    const sum = selectedItems.reduce((acc, it) => acc + Number(it.monthlyProgress?.[previewMonthIdx] || 0), 0);
-    return strategy === 'accumulative' ? sum : Math.round((sum / selectedItems.length) * 10) / 10;
-  }, [selectedItems, strategy]);
+    if (validSelectedItems.length === 0) return 0;
+    const sum = validSelectedItems.reduce((acc, it) => acc + Number(it.monthlyProgress?.[previewMonthIdx] || 0), 0);
+    return strategy === 'accumulative' ? sum : Math.round((sum / validSelectedItems.length) * 10) / 10;
+  }, [validSelectedItems, strategy]);
 
   const previewGoal = useMemo(() => {
-    if (selectedItems.length === 0) return 0;
-    const sum = selectedItems.reduce((acc, it) => acc + Number(it.monthlyGoals?.[previewMonthIdx] || 0), 0);
-    return strategy === 'accumulative' ? sum : Math.round((sum / selectedItems.length) * 10) / 10;
-  }, [selectedItems, strategy]);
+    if (validSelectedItems.length === 0) return 0;
+    const sum = validSelectedItems.reduce((acc, it) => acc + Number(it.monthlyGoals?.[previewMonthIdx] || 0), 0);
+    return strategy === 'accumulative' ? sum : Math.round((sum / validSelectedItems.length) * 10) / 10;
+  }, [validSelectedItems, strategy]);
 
   const previewCompliancePct = useMemo(() => {
     if (previewGoal === 0) return 0;
     return Math.round((previewProgress / previewGoal) * 100);
   }, [previewProgress, previewGoal]);
+
+  const isApplyDisabled = validSelectedItems.length === 0 || orphanedSourceIds.length > 0;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-200">
@@ -136,8 +165,21 @@ export const AggregateBuilder: React.FC<AggregateBuilderProps> = ({
 
         {/* AYUDA CONTEXTUAL */}
         <div className="bg-amber-950/40 border border-amber-500/20 p-3 rounded-2xl text-xs text-amber-200 mb-6">
-          <strong className="text-amber-400">💡 AGREGADO:</strong> Consolida indicadores idénticos o equivalentes desde áreas, regiones o tableros hijos. Calcula los avances por separado y las metas por separado.
+          <strong className="text-amber-400">💡 AGREGADO:</strong> Consolida indicadores desde el mismo tablero. Calcula los avances por separado y las metas por separado.
         </div>
+
+        {/* ADVERTENCIA DE FUENTES HUÉRFANAS */}
+        {orphanedSourceIds.length > 0 && (
+          <div className="bg-rose-950/60 border border-rose-500/40 p-4 rounded-2xl text-xs text-rose-200 mb-6 flex flex-col gap-1">
+            <strong className="text-rose-400 font-bold">⚠️ FUENTES HUÉRFANAS DETECTADAS:</strong>
+            <span>
+              Los siguientes IDs de fuentes configuradas no existen en este tablero: {orphanedSourceIds.join(', ')}.
+            </span>
+            <span className="text-[11px] text-rose-300/80 mt-1">
+              Deseleccione o resuelva estas referencias antes de aplicar la configuración.
+            </span>
+          </div>
+        )}
 
         {/* SECCIÓN 1: ESTRATEGIA DE AGREGACIÓN */}
         <div className="bg-slate-950/60 border border-slate-800 p-4 rounded-2xl flex flex-col gap-3 mb-6">
@@ -169,21 +211,19 @@ export const AggregateBuilder: React.FC<AggregateBuilderProps> = ({
         <div className="bg-slate-950/60 border border-slate-800 p-4 rounded-2xl flex flex-col gap-3 mb-6">
           <div className="flex justify-between items-center">
             <span className="text-xs font-black text-amber-400 uppercase tracking-widest">
-              2. Selecciona las fuentes de consolidación ({selectedIds.length} seleccionadas)
+              2. Selecciona las fuentes de consolidación ({validSelectedItems.length} seleccionadas)
             </span>
           </div>
 
           <div className="grid grid-cols-1 gap-2 max-h-56 overflow-y-auto pr-1">
-            {availableItems.length === 0 ? (
+            {sortedAvailableItems.length === 0 ? (
               <div className="text-xs text-amber-300 font-bold bg-amber-500/10 border border-amber-500/30 rounded-xl p-4 text-center">
-                ⚠️ NO HAY FUENTES COMPATIBLES PARA ESTE INDICADOR.
-                <span className="block text-[10px] text-slate-400 font-normal mt-1">
-                  (Para agregación se requieren indicadores equivalentes con el mismo nombre y unidad, o asociadas por semanticKey).
-                </span>
+                ⚠️ NO HAY OTROS INDICADORES DISPONIBLES EN ESTE TABLERO.
               </div>
             ) : (
-              availableItems.map(it => {
+              sortedAvailableItems.map(it => {
                 const isSelected = selectedIds.includes(String(it.id));
+                const suggested = isSuggestedItem(it);
                 return (
                   <div
                     key={it.id}
@@ -194,11 +234,19 @@ export const AggregateBuilder: React.FC<AggregateBuilderProps> = ({
                       <input
                         type="checkbox"
                         checked={isSelected}
-                        onChange={() => {}} // Manejado por onClick del contenedor
+                        onChange={() => {}}
                         className="w-4 h-4 accent-amber-500 rounded cursor-pointer"
                       />
                       <span className="font-bold text-xs text-cyan-400">#{it.id}</span>
                       <span className="text-xs font-medium">{it.indicator}</span>
+                      {it.unit && (
+                        <span className="text-[10px] text-slate-500 font-mono">({it.unit})</span>
+                      )}
+                      {suggested && (
+                        <span className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                          Sugerido
+                        </span>
+                      )}
                     </div>
 
                     <div className="flex items-center gap-3 text-xs font-mono">
@@ -254,7 +302,7 @@ export const AggregateBuilder: React.FC<AggregateBuilderProps> = ({
           <button
             type="button"
             onClick={handleApply}
-            disabled={selectedIds.length === 0}
+            disabled={isApplyDisabled}
             className="px-6 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-500 disabled:bg-slate-800 disabled:text-slate-600 disabled:cursor-not-allowed text-white text-xs font-black uppercase tracking-wider transition-all shadow-lg hover:scale-[1.02]"
           >
             Aplicar Agregado
