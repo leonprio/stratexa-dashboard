@@ -16,9 +16,9 @@ export const AggregateBuilder: React.FC<AggregateBuilderProps> = ({
   onChangeType,
   onClose,
 }) => {
-  // persistedSourceIds derivado sin modificar currentItem.componentIds
+  // persistedSourceIds derivado sin modificar currentItem.componentIds, asegurando deduplicación estable
   const persistedSourceIds = useMemo(() => {
-    return (currentItem.componentIds || []).map(id => String(id));
+    return Array.from(new Set((currentItem.componentIds || []).map(id => String(id))));
   }, [currentItem.componentIds]);
 
   const [selectedIds, setSelectedIds] = useState<string[]>(persistedSourceIds);
@@ -28,7 +28,7 @@ export const AggregateBuilder: React.FC<AggregateBuilderProps> = ({
 
   // Resincronizar selectedIds cuando cambien currentItem.id, currentItem.componentIds o allItems
   useEffect(() => {
-    setSelectedIds((currentItem.componentIds || []).map(id => String(id)));
+    setSelectedIds(Array.from(new Set((currentItem.componentIds || []).map(id => String(id)))));
   }, [currentItem.id, currentItem.componentIds, allItems]);
 
   // availableItems: Todos los items del mismo dashboard excepto el indicador actual (impidiendo autorreferencia)
