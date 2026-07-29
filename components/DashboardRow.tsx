@@ -7,7 +7,7 @@ import { DataEditor } from './DataEditor';
 import { ActionPlan } from './ActionPlan';
 import { SummaryDetails } from './SummaryDetails';
 import { calculateCompliance, findLastIndexWithData, getMissingMonthsWarning, getOverdueWarning, calculateOperationalMetrics } from '../utils/compliance';
-import { formatNumberWithCommas, formatIndicatorValue } from '../utils/formatters';
+import { formatNumberWithCommas, formatIndicatorValue, getCleanIndicatorName } from '../utils/formatters';
 
 interface DashboardRowProps {
   item: DashboardItem;
@@ -95,8 +95,26 @@ export const DashboardRow: React.FC<DashboardRowProps> = React.memo(({ item, onU
 
   const { indicator, unit, weight, monthlyProgress, monthlyGoals, type } = item;
 
+  const getFormattedValueAndUnit = (val: number | null | undefined, unitStr?: string) => {
+    const trimmed = (unitStr || '').trim();
+    if (val === null || val === undefined || Number.isNaN(Number(val)) || !Number.isFinite(Number(val))) {
+      return { formattedValue: 'SIN DATOS', unitText: '' };
+    }
+    if (trimmed === '%') {
+      return {
+        formattedValue: formatIndicatorValue(val, '%', decimalPrecision, item.indicatorType === 'formula'),
+        unitText: ''
+      };
+    }
+    return {
+      formattedValue: formatIndicatorValue(val, '', decimalPrecision, item.indicatorType === 'formula'),
+      unitText: trimmed
+    };
+  };
+
   // Handle Compact Layout Rendering
   if (layout === 'compact' && !isExpanded) {
+    const { formattedValue: compactVal, unitText: compactUnit } = getFormattedValueAndUnit(currentProgress, unit);
     return (
       <div
         onClick={(e) => { e.stopPropagation(); onSelect?.(); setIsExpanded(true); }}
@@ -107,17 +125,26 @@ export const DashboardRow: React.FC<DashboardRowProps> = React.memo(({ item, onU
             <span className="w-1.5 h-1.5 rounded-full bg-cyan-500/50" />
             <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest">KPI</span>
           </div>
-          <h4 className="text-xs font-black text-white uppercase tracking-tight line-clamp-1 group-hover:text-cyan-400 transition-colors">
-            {indicator}
+          <h4
+            title={indicator}
+            aria-label={indicator}
+            className="kpi-card-title-compact font-black text-white uppercase tracking-tight group-hover:text-cyan-400 transition-colors"
+          >
+            {getCleanIndicatorName(indicator)}
           </h4>
         </div>
 
         <div className="flex items-center gap-6 flex-shrink-0">
           <div className="flex flex-col items-end">
-            <div className="flex items-baseline gap-1">
+            <div className="flex items-baseline gap-1.5 justify-end flex-wrap">
               <span className="text-2xl font-black text-white tabular-nums tracking-tighter">
-                {formatIndicatorValue(currentProgress, unit, 1, item.indicatorType === 'formula')}
+                {compactVal}
               </span>
+              {compactUnit && (
+                <span className="kpi-unit-compact">
+                  {compactUnit}
+                </span>
+              )}
             </div>
             <span className={`text-[10px] font-black tabular-nums leading-none tracking-widest ${complianceStatus === 'OnTrack' ? 'text-emerald-400' : complianceStatus === 'AtRisk' ? 'text-amber-400' : complianceStatus === 'InProgress' ? 'text-sky-400' : complianceStatus === 'Neutral' ? 'text-slate-500' : 'text-rose-400'}`}>
               {Math.round(overallPercentage)}%
@@ -179,6 +206,9 @@ export const DashboardRow: React.FC<DashboardRowProps> = React.memo(({ item, onU
   // Como un ascensor que tiene llave maestra: el Admin SIEMPRE puede subir a cualquier piso.
   const canEdit = isGlobalAdmin || (userRoleForDashboard === DashboardRole.Editor && !isAggregate);
 
+  const { formattedValue: normalProgressVal, unitText: normalProgressUnit } = getFormattedValueAndUnit(currentProgress, unit);
+  const { formattedValue: normalTargetVal, unitText: normalTargetUnit } = getFormattedValueAndUnit(currentTarget, unit);
+
   return (
     <div
       ref={rowRef}
@@ -200,8 +230,11 @@ export const DashboardRow: React.FC<DashboardRowProps> = React.memo(({ item, onU
                 </div>
               )}
             </div>
-            <h3 className="font-black text-white text-xl sm:text-2xl uppercase tracking-tight leading-[1.05] hover:text-cyan-400 transition-colors line-clamp-2">
-              {indicator}
+            <h3
+              title={indicator}
+              className="kpi-card-title-normal font-black text-white uppercase tracking-tight hover:text-cyan-400 transition-colors min-w-0"
+            >
+              {getCleanIndicatorName(indicator)}
             </h3>
           </div>
           <div className="flex-shrink-0 flex items-center gap-3">
@@ -219,27 +252,37 @@ export const DashboardRow: React.FC<DashboardRowProps> = React.memo(({ item, onU
           </div>
         </div>
 
-        <div className="flex-grow flex flex-col justify-end mt-8">
-          <div className="flex justify-between items-end gap-6">
-            <div className="flex flex-col">
-              <div className="flex items-center gap-1.5 mb-2">
+        <div className="flex-grow flex flex-col justify-end mt-4">
+          <div className="flex justify-between items-end gap-3 min-w-0">
+            <div className="flex flex-col min-w-0 flex-1">
+              <div className="flex items-center gap-1.5 mb-1">
                 <span className="text-[10px] text-slate-500 uppercase font-black tracking-[0.2em] opacity-80">
                   {item.type === 'average' || item.indicatorType === 'formula' ? 'ACUMULADO A JUN' : 'SUMA A JUN'}
                 </span>
               </div>
-              <div className="flex items-baseline gap-2">
-                <span className="text-4xl sm:text-5xl font-black text-white tabular-nums tracking-tighter">
-                  {formatIndicatorValue(currentProgress, unit, 1, item.indicatorType === 'formula')}
+              <div className="flex items-baseline gap-2 min-w-0 flex-wrap">
+                <span className="kpi-value-normal font-black text-white tabular-nums tracking-tighter">
+                  {normalProgressVal}
                 </span>
+                {normalProgressUnit && (
+                  <span className="kpi-unit-normal">
+                    {normalProgressUnit}
+                  </span>
+                )}
               </div>
             </div>
 
-            <div className="flex flex-col items-end">
+            <div className="flex flex-col items-end min-w-0 max-w-[45%] flex-shrink-0">
               <span className="text-[10px] text-slate-500 uppercase font-black tracking-[0.2em] mb-2 opacity-80">Objetivo</span>
-              <div className="flex items-baseline gap-1.5 bg-white/5 px-3 py-1.5 rounded-xl border border-white/5">
+              <div className="kpi-target-box">
                 <span className="text-xl font-black text-slate-300 tabular-nums">
-                  {formatIndicatorValue(currentTarget, unit, decimalPrecision, item.indicatorType === 'formula')}
+                  {normalTargetVal}
                 </span>
+                {normalTargetUnit && (
+                  <span className="kpi-unit-normal">
+                    {normalTargetUnit}
+                  </span>
+                )}
               </div>
             </div>
           </div>

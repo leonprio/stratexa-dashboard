@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { Dashboard as DashboardType, SystemSettings, User } from '../types';
 import { normalizeGroupName } from '../utils/formatters';
-import { calculateCapture } from './DashboardTabs';
+import { calculateDashboardWeightedScore, calculateCaptureMetrics, hasApplicableGoals } from '../utils/compliance';
 
 // ─────────────────────────────────────────────────────
 // 🏗️ HierarchySidebar v7.4.0 – UNIVERSAL CORE
@@ -31,7 +31,9 @@ interface TreeNode {
     id: string;
     label: string;
     level: 'supergroup' | 'group' | 'dashboard';
+    compliancePct: number;
     capturePct: number;
+    hasGoals: boolean;
     count: number;
     children: TreeNode[];
     dashboardId?: number | string;
@@ -50,11 +52,21 @@ const ChevronIcon = ({ isOpen }: { isOpen: boolean }) => (
     </div>
 );
 
-const CaptureBar = ({ pct }: { pct: number }) => {
-    const color = pct >= 100 ? 'bg-emerald-500' : pct > 50 ? 'bg-amber-500' : 'bg-rose-500';
-    const textColor = pct >= 100 ? 'text-emerald-400' : pct > 50 ? 'text-amber-400' : 'text-rose-400';
+const ComplianceBar: React.FC<{ pct: number; hasGoals: boolean; capturePct: number }> = ({ pct, hasGoals, capturePct }) => {
+    if (!hasGoals) {
+        return (
+            <div className="flex items-center gap-1.5 w-full">
+                <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest">
+                    SIN META
+                </span>
+            </div>
+        );
+    }
+
+    const color = pct >= 95 ? 'bg-emerald-500' : pct >= 85 ? 'bg-amber-500' : 'bg-rose-500';
+    const textColor = pct >= 95 ? 'text-emerald-400' : pct >= 85 ? 'text-amber-400' : 'text-rose-400';
     return (
-        <div className="flex items-center gap-1.5 w-full">
+        <div className="flex items-center gap-1.5 w-full" title={`Captura: ${Math.round(capturePct)}%`}>
             <div className="flex-grow h-1 bg-slate-900 rounded-full overflow-hidden">
                 <div className={`h-full ${color} transition-all duration-700`} style={{ width: `${Math.min(pct, 100)}%` }} />
             </div>
@@ -195,7 +207,14 @@ const HierarchySidebar: React.FC<HierarchySidebarProps> = React.memo(({
             u.subGroups && u.subGroups.length > 0
         );
 
-        const buildGroupChildren = (sgName: string): { node: TreeNode; dashCount: number; avgCap: number } | null => {
+        const getMetricsForItems = (items: any[]) => {
+            const hasGoals = hasApplicableGoals(items);
+            const compliancePct = calculateDashboardWeightedScore(items, settings?.thresholds || { onTrack: 95, atRisk: 85 }, new Date().getFullYear());
+            const capturePct = calculateCaptureMetrics(items, new Date().getFullYear()).capturePct;
+            return { hasGoals, compliancePct, capturePct };
+        };
+
+        const buildGroupChildren = (sgName: string): { node: TreeNode; dashCount: number; groupItems: any[] } | null => {
             const sgNorm = normalizeGroupName(sgName);
             assignedGroups.add(sgNorm);
             if (hasVisibilityFilter && !visibleGroupsNorm.has(sgNorm)) return null;
@@ -206,27 +225,34 @@ const HierarchySidebar: React.FC<HierarchySidebarProps> = React.memo(({
             
             [...groupDashboards].sort((a, b) => ((a as any).orderNumber || 0) - ((b as any).orderNumber || 0))
                 .forEach(d => {
+                    const dItems = d.items || [];
+                    const m = getMetricsForItems(dItems);
                     dashChildren.push({
                         id: `d-${String(d.id)}`, label: d.title, level: 'dashboard',
-                        capturePct: calculateCapture(d), count: 1, children: [],
+                        compliancePct: m.compliancePct, capturePct: m.capturePct, hasGoals: m.hasGoals,
+                        count: 1, children: [],
                         dashboardId: d.id, isAggregate: false
                     });
                 });
-            const avgCap = groupDashboards.length > 0
-                ? groupDashboards.reduce((acc, d) => acc + calculateCapture(d), 0) / groupDashboards.length : 0;
+
+            const groupAllItems = groupDashboards.flatMap(d => d.items || []);
+            const gMetrics = getMetricsForItems(groupAllItems);
 
             return {
                 node: { 
                     id: `g-${sgNorm}`, 
                     label: sgName.trim().toUpperCase(), 
                     level: 'group', 
-                    capturePct: groupAgg ? calculateCapture(groupAgg) : avgCap, 
+                    compliancePct: gMetrics.compliancePct,
+                    capturePct: gMetrics.capturePct,
+                    hasGoals: gMetrics.hasGoals,
                     count: groupDashboards.length, 
                     children: dashChildren,
                     dashboardId: groupAgg?.id,
                     isAggregate: !!groupAgg
                 },
-                dashCount: groupDashboards.length, avgCap
+                dashCount: groupDashboards.length,
+                groupItems: groupAllItems
             };
         };
 
@@ -237,16 +263,18 @@ const HierarchySidebar: React.FC<HierarchySidebarProps> = React.memo(({
                 return; // 🛡️ v7.8.18: Si tiene filtro (es decir, no es Admin ni SuperDirector), no se envuelve en SuperGrupos. Sus grupos caerán en 'orphans' (raíz).
             }
             const groupChildren: TreeNode[] = [];
-            let totalDash = 0, totalCap = 0, capCount = 0;
+            let totalDash = 0;
+            const sdAllItems: any[] = [];
             (sd.subGroups || []).forEach(sgName => {
                 const result = buildGroupChildren(sgName);
                 if (!result) return;
                 groupChildren.push(result.node);
                 totalDash += result.dashCount;
-                totalCap += result.avgCap;
-                capCount++;
+                sdAllItems.push(...result.groupItems);
             });
             if (groupChildren.length === 0) return;
+
+            const sdMetrics = getMetricsForItems(sdAllItems);
 
             const sdAgg = dashboards.find(d => {
                 const dId = String(d.id);
@@ -267,7 +295,9 @@ const HierarchySidebar: React.FC<HierarchySidebarProps> = React.memo(({
                 id: `sg-${sdNorm}`,
                 label: sdTitle,
                 level: 'supergroup',
-                capturePct: sdAgg ? ((sdAgg as any).capturePct || calculateCapture(sdAgg)) : (capCount > 0 ? totalCap / capCount : 0),
+                compliancePct: sdMetrics.compliancePct,
+                capturePct: sdMetrics.capturePct,
+                hasGoals: sdMetrics.hasGoals,
                 count: totalDash,
                 children: groupChildren,
                 dashboardId: sdAgg?.id,
@@ -299,11 +329,15 @@ const HierarchySidebar: React.FC<HierarchySidebarProps> = React.memo(({
         const hasSpecificSuperDirectorAccess = superDirectors.length > 0;
 
         if (globalAgg && isGlobalAdmin && !hasSpecificSuperDirectorAccess && realDashboards.length > 1 && availableAreas.length > 1) {
+            const globalItems = realDashboards.flatMap(d => d.items || []);
+            const globalMetrics = getMetricsForItems(globalItems);
             nodes.unshift({
                 id: 'sg-GLOBAL-GENERAL',
                 label: `★ CONSOLIDADO DIRECTIVO GLOBAL`,
                 level: 'supergroup',
-                capturePct: calculateCapture(globalAgg),
+                compliancePct: globalMetrics.compliancePct,
+                capturePct: globalMetrics.capturePct,
+                hasGoals: globalMetrics.hasGoals,
                 count: realDashboards.length,
                 children: [],
                 dashboardId: globalAgg.id
@@ -312,10 +346,10 @@ const HierarchySidebar: React.FC<HierarchySidebarProps> = React.memo(({
 
         nodes.push(...orphans);
         return nodes;
-    }, [dashboards, areaFilteredDashboards, allUsers, userProfile, isGlobalAdmin, isDirector, clientNorm, selectedArea, realDashboards.length]);
+    }, [dashboards, areaFilteredDashboards, allUsers, userProfile, isGlobalAdmin, isDirector, clientNorm, selectedArea, realDashboards.length, settings]);
 
     // 🛡️ REGLA v7.8.16: Sincronización de expansión NO DESTRUCTIVA
-    // ADVERTENCIA: No añadir dependencias que no sean estrictamente necesarias.
+    // ADVERTENCIA: No añadir dependencias que no sean strictly necesarias.
     // Este efecto solo debe dispararse cuando cambia el dashboard seleccionado
     // para asegurar que el nodo correspondiente sea visible sin cerrar los demás.
     useEffect(() => {
@@ -448,7 +482,7 @@ const TreeNodeRenderer: React.FC<TreeNodeRendererProps> = ({ node, depth, expand
                         <span className="w-2.5 h-2.5 rounded-full bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.4)]" />
                         <div className="flex-grow min-w-0 text-left">
                             <div className={`text-[11px] font-black uppercase tracking-[0.1em] truncate ${isSelected ? 'text-rose-300' : 'text-rose-400/90'}`}>{node.label}</div>
-                            <div className="mt-1"><CaptureBar pct={node.capturePct} /></div>
+                            <div className="mt-1"><ComplianceBar pct={node.compliancePct} hasGoals={node.hasGoals} capturePct={node.capturePct} /></div>
                         </div>
                     </button>
                 </div>
@@ -466,7 +500,7 @@ const TreeNodeRenderer: React.FC<TreeNodeRendererProps> = ({ node, depth, expand
                         <span className="w-2 h-2 rounded-full bg-cyan-500/70" />
                         <div className="flex-grow min-w-0">
                             <div className={`text-[10px] font-black uppercase tracking-[0.06em] truncate ${isSelected ? 'text-cyan-400' : 'text-slate-300'}`}>{node.label}</div>
-                            <div className="mt-0.5"><CaptureBar pct={node.capturePct} /></div>
+                            <div className="mt-0.5"><ComplianceBar pct={node.compliancePct} hasGoals={node.hasGoals} capturePct={node.capturePct} /></div>
                         </div>
                     </button>
                 </div>
@@ -480,7 +514,7 @@ const TreeNodeRenderer: React.FC<TreeNodeRendererProps> = ({ node, depth, expand
             <span className={`w-1.5 h-1.5 rounded-full ${node.isAggregate ? 'bg-amber-500 shadow-[0_0_4px_rgba(245,158,11,0.4)]' : isSelected ? 'bg-cyan-400' : 'bg-slate-600'}`} />
             <div className="flex-grow min-w-0">
                 <div className={`text-[10px] truncate ${node.isAggregate ? 'text-amber-300 font-extrabold uppercase' : isSelected ? 'text-white font-bold' : 'text-slate-400 font-semibold'}`}>{node.label}</div>
-                {typeof node.capturePct === 'number' && <div className="mt-0.5"><CaptureBar pct={node.capturePct} /></div>}
+                {typeof node.compliancePct === 'number' && <div className="mt-0.5"><ComplianceBar pct={node.compliancePct} hasGoals={node.hasGoals} capturePct={node.capturePct} /></div>}
             </div>
         </button>
     );

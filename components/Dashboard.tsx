@@ -49,10 +49,13 @@ export const Dashboard: React.FC<DashboardProps> = React.memo(({
     return list.filter(item => item.id !== selectedItemId);
   }, [data, selectedItemId]);
 
+  // Grid responsivo que respeta el ancho real del contenedor (descontando sidebar)
+  // auto-fit + minmax: en contenedor de 1000px → 3 cols; en 700px → 2 cols; en <320px → 1 col
+  // Contrato controlado de columnas mediante Container Queries en index.css
   const gridClasses =
     layout === "compact"
-      ? "grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 gap-2 pt-0"
-      : "grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-3 items-start";
+      ? "kpi-grid-compact gap-2 pt-0"
+      : "kpi-grid-normal gap-3 items-start";
 
   const emptyMessage = useMemo(() => {
     return year
