@@ -1,4 +1,4 @@
-import { calculateDashboardMonthlyScores, resolveItemValues, calculateOperationalMetrics, attachOperationalMetrics, calculateCapturePct } from "./compliance";
+import { calculateDashboardMonthlyScores, resolveItemValues, calculateOperationalMetrics, attachOperationalMetrics, calculateCapturePct, calculateCaptureMetrics, hasApplicableGoals } from "./compliance";
 import { DashboardItem } from "../types";
 
 describe("compliance.ts - Recursion & Aggregation", () => {
@@ -258,6 +258,53 @@ describe("calculateCapturePct — Regla de Inicio por Primera Meta (Part B)", ()
 
         const pct = calculateCapturePct(dashboard);
         expect(pct).toBe(100);
+    });
+});
+
+describe("calculateCaptureMetrics & hasApplicableGoals — Semántica Canónica v9.4.17", () => {
+    test("Captura Global se pondera por suma total de puntos elegibles (no promedio simple de áreas)", () => {
+        const areaA_Item: DashboardItem = {
+            id: "kpi-a",
+            indicator: "KPI Area A",
+            monthlyProgress: [10, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            monthlyGoals: [10, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], // 1 punto elegible en año 2025, 1 capturado
+            goalType: "maximize"
+        } as any;
+
+        const areaB_Item: DashboardItem = {
+            id: "kpi-b",
+            indicator: "KPI Area B",
+            monthlyProgress: [10, 10, 10, 10, 10, 0, 0, 0, 0, 0, 0, 0],
+            monthlyGoals: [10, 10, 10, 10, 10, 10, 10, 10, 10, 0, 0, 0], // 9 puntos elegibles en año 2025, 5 capturados
+            goalType: "maximize"
+        } as any;
+
+        // Captura ponderada: (1 + 5) / (1 + 9) = 6 / 10 = 60%
+        // Promedio simple (incorrecto): (100% + 55.56%) / 2 = 77.78%
+        const metrics = calculateCaptureMetrics([areaA_Item, areaB_Item], 2025);
+        expect(metrics.totalCapturablePoints).toBe(10);
+        expect(metrics.totalCapturedPoints).toBe(6);
+        expect(metrics.capturePct).toBe(60);
+    });
+
+    test("hasApplicableGoals detecta correctamente la presencia o ausencia de metas efectivas", () => {
+        const itemWithGoals: DashboardItem = {
+            id: "kpi-meta",
+            indicator: "Con Meta",
+            monthlyGoals: [0, 0, 100, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            goalType: "maximize"
+        } as any;
+
+        const itemWithoutGoals: DashboardItem = {
+            id: "kpi-sin-meta",
+            indicator: "Sin Meta",
+            monthlyGoals: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            goalType: "maximize"
+        } as any;
+
+        expect(hasApplicableGoals([itemWithGoals])).toBe(true);
+        expect(hasApplicableGoals([itemWithoutGoals])).toBe(false);
+        expect(hasApplicableGoals([])).toBe(false);
     });
 });
 

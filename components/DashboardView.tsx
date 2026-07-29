@@ -11,7 +11,7 @@ import { aiService, AIAnalysisResult } from "../services/aiService";
 import { AIAnalysisModal } from "./AIAnalysisModal";
 import { DashboardMetadataModal } from "./DashboardMetadataModal";
 import { PowerPointExportModal } from "./PowerPointExportModal";
-import { calculateDashboardWeightedScore, getStatusForPercentage, calculateCapturePct } from "../utils/compliance";
+import { calculateDashboardWeightedScore, getStatusForPercentage, calculateCapturePct, hasApplicableGoals } from "../utils/compliance";
 import { ReportCenter } from "./ReportCenter";
 import { CurrentPeriodFocus } from "./CurrentPeriodFocus";
 import { exportDashboardToExcel } from '../utils/exportUtils';
@@ -236,6 +236,10 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(({
     setLocalDecimalPrecision(prev => (prev === 0 ? 1 : prev === 1 ? 2 : 0));
   };
 
+  const hasGoals = useMemo(() => {
+    return hasApplicableGoals(safeItems);
+  }, [safeItems]);
+
   return (
     <div key={(dashboard as any).id} className="space-y-4 animate-in fade-in duration-700 fill-mode-both">
       {/* HEADER SECTION */}
@@ -288,11 +292,19 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(({
           <div className="flex items-center gap-3 glass-panel px-4 py-1.5 rounded-xl shadow-xl border border-white/5">
             <div className="flex flex-col items-end">
               <span className="text-[8px] sm:text-[9px] font-black text-slate-500 uppercase tracking-widest leading-none mb-1">Cumplimiento Global</span>
-              <span className={`text-2xl sm:text-3xl font-black tabular-nums leading-none ${totalStatus === 'OnTrack' ? 'text-emerald-400' : totalStatus === 'AtRisk' ? 'text-amber-400' : 'text-rose-400'}`}>
-                {Math.round(totalScore)}%
-              </span>
+              {hasGoals ? (
+                <span className={`text-2xl sm:text-3xl font-black tabular-nums leading-none ${totalStatus === 'OnTrack' ? 'text-emerald-400' : totalStatus === 'AtRisk' ? 'text-amber-400' : 'text-rose-400'}`}>
+                  {Math.round(totalScore)}%
+                </span>
+              ) : (
+                <span className="text-sm sm:text-base font-black text-slate-400 uppercase tracking-wider leading-none">
+                  SIN META
+                </span>
+              )}
             </div>
-            <div className={`w-5 h-5 sm:w-6 sm:h-6 rounded-full border-2 border-slate-950/50 ${totalStatus === 'OnTrack' ? 'bg-emerald-500' : totalStatus === 'AtRisk' ? 'bg-amber-500' : 'bg-rose-500'}`} />
+            {hasGoals && (
+              <div className={`w-5 h-5 sm:w-6 sm:h-6 rounded-full border-2 border-slate-950/50 ${totalStatus === 'OnTrack' ? 'bg-emerald-500' : totalStatus === 'AtRisk' ? 'bg-amber-500' : 'bg-rose-500'}`} />
+            )}
           </div>
 
           {/* CAPTURA BADGE */}

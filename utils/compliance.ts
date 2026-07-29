@@ -581,38 +581,54 @@ export const calculateCompliance = (
 };
 
 /**
- * 🎯 CÁLCULO DE CAPTURA (v9.1.0-PRO-FINAL-SHIELDED - ULTRA PRECISION)
- * Audita si los indicadores tienen datos cargados para los periodos vencidos.
- * REGLA DE ORO: Un indicador (0,0) NO es captura, es un placeholder vacío.
+ * 🎯 AUDITORÍA DE METAS APLICABLES (v9.4.17)
+ * Verifica si un conjunto de DashboardItems contiene al menos un KPI con meta válida configurada.
  */
-export const calculateCapturePct = (dashboard: any) => {
-  const items = dashboard.items || [];
-  if (items.length === 0) return 100;
+export const hasApplicableGoals = (items: DashboardItem[]): boolean => {
+  if (!items || items.length === 0) return false;
+  return items.some(item => {
+    if (item.isAggregate) return false;
+    const isMinimize = item.goalType === 'minimize' || (item as any).type === 'minimize' || (item as any).type === 'lower' || (item as any).type === 'min';
+    const goals = item.monthlyGoals || [];
+    return goals.some((g: any) => g !== null && g !== undefined && g !== "" && !isNaN(Number(g)) && (isMinimize ? true : Number(g) > 0));
+  });
+};
+
+/**
+ * 🎯 CÁLCULO PONDERADO CANÓNICO DE CAPTURA (v9.4.17)
+ * Cuenta los puntos periodo-KPI capturados elegibles sobre el total de puntos elegibles.
+ */
+export const calculateCaptureMetrics = (
+  items: DashboardItem[],
+  year: number = new Date().getFullYear()
+): { totalCapturedPoints: number; totalCapturablePoints: number; capturePct: number } => {
+  if (!items || items.length === 0) {
+    return { totalCapturedPoints: 0, totalCapturablePoints: 0, capturePct: 100 };
+  }
 
   const now = new Date();
   const curMonth = now.getMonth();
   const curYear = now.getFullYear();
-  const dYear = dashboard.year || curYear;
 
-  if (dYear > curYear) return 100;
+  if (year > curYear) {
+    return { totalCapturedPoints: 0, totalCapturablePoints: 0, capturePct: 100 };
+  }
 
-  const isPastYear = dYear < curYear;
-  if (!isPastYear && curMonth === 0) return 100; // Nada que auditar en Enero del año actual
+  const isPastYear = year < curYear;
+  if (!isPastYear && curMonth === 0) {
+    return { totalCapturedPoints: 0, totalCapturablePoints: 0, capturePct: 100 };
+  }
 
-  // 1. EL PERÍODO VENCIDO SIEMPRE ES EL ÚLTIMO MES CALENDARIO CERRADO
   const targetMonthIdx = isPastYear ? 11 : curMonth - 1;
 
   let totalCapturablePoints = 0;
   let totalCapturedPoints = 0;
 
-  items.forEach((item: any) => {
-    // Solo contar items base (ignoramos agregados o calculados por sistema)
+  items.forEach((item: DashboardItem) => {
     if (item.isAggregate || item.indicatorType === 'compound' || item.indicatorType === 'formula') return;
 
     const isWeekly = item.frequency === 'weekly';
-    const isMinimize = item.goalType === 'minimize' || item.type === 'minimize' || item.type === 'lower' || item.type === 'min';
-
-    // 2. EXCLUIR KPIs SIN META: El denominador inicia en el primer periodo con meta efectiva (Part B)
+    const isMinimize = item.goalType === 'minimize' || (item as any).type === 'minimize' || (item as any).type === 'lower' || (item as any).type === 'min';
     const hasValidGoal = (g: any) => g !== null && g !== undefined && g !== "" && !isNaN(Number(g)) && (isMinimize ? true : Number(g) > 0);
 
     let goals: any[] = item.monthlyGoals || [];
@@ -621,49 +637,54 @@ export const calculateCapturePct = (dashboard: any) => {
     if (isWeekly) {
       const startDay = item.weekStart === 'Sun' ? 0 : 1;
       const aggMode = item.type === 'accumulative' ? 'sum' : 'average';
-      progress = aggregateWeeklyToMonthly(item.weeklyProgress || [], dYear, startDay, undefined, aggMode);
-      goals = aggregateWeeklyToMonthly(item.weeklyGoals || [], dYear, startDay, undefined, aggMode);
+      progress = aggregateWeeklyToMonthly(item.weeklyProgress || [], year, startDay, undefined, aggMode);
+      goals = aggregateWeeklyToMonthly(item.weeklyGoals || [], year, startDay, undefined, aggMode);
     }
 
     const firstGoalIdx = goals.findIndex(hasValidGoal);
 
-    if (firstGoalIdx === -1) {
-      return; // No se cuenta en absoluto, es un KPI sin meta en todo el ciclo
+    let startIdx = 0;
+    if ((item as any).operationalStartPeriod !== undefined && (item as any).operationalStartPeriod !== null) {
+      startIdx = parsePeriodToIndex((item as any).operationalStartPeriod);
+    } else {
+      if (firstGoalIdx === -1) return;
+      startIdx = firstGoalIdx;
     }
 
-    // 3. Evaluar la captura mes por mes DESDE el inicio de obligación/meta (firstGoalIdx) hasta el mes vencido
-    const startIdx = Math.max(0, firstGoalIdx);
+    startIdx = Math.max(0, startIdx);
     for (let m = startIdx; m <= targetMonthIdx; m++) {
       let val = progress[m];
       let goal = goals[m];
 
       const isNullVal = val === null || val === undefined || val === "" || isNaN(Number(val));
       const isNullGoal = goal === null || goal === undefined || goal === "" || isNaN(Number(goal));
-      
       const isGoalZero = Number(goal || 0) === 0;
       const isValZero = Number(val || 0) === 0;
 
       const hasGoalOrVal = (!isNullGoal && !isGoalZero) || (!isNullVal && !isValZero);
-      if (!hasGoalOrVal) {
-        continue; // Periodo sin meta ni avance en este mes (no es obligación capturable)
-      }
+      if (!hasGoalOrVal) continue;
 
       totalCapturablePoints++;
 
-      // 4. Se considera capturado si se capturó el avance para la meta existente
       const isCaptured = !isNullVal && !isValZero;
-
       if (isCaptured) {
         totalCapturedPoints++;
       }
     }
   });
 
-  // Si después del filtro no quedaron puntos capturables, el tablero está al 100% (no debe nada)
-  if (totalCapturablePoints === 0) return 100;
+  if (totalCapturablePoints === 0) {
+    return { totalCapturedPoints: 0, totalCapturablePoints: 0, capturePct: 100 };
+  }
 
-  const pct = (totalCapturedPoints / totalCapturablePoints) * 100;
-  return Math.min(100, Math.round(pct));
+  const pct = Math.min(100, Math.round((totalCapturedPoints / totalCapturablePoints) * 100));
+  return { totalCapturedPoints, totalCapturablePoints, capturePct: pct };
+};
+
+export const calculateCapturePct = (dashboard: any) => {
+  const items = dashboard?.items || [];
+  const year = dashboard?.year || new Date().getFullYear();
+  return calculateCaptureMetrics(items, year).capturePct;
 };
 
 /**

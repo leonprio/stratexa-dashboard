@@ -53,8 +53,8 @@ export default function App() {
   const [_errorMsg, setErrorMsg] = useState<string>("");
   const [user, setUser] = useState<FirebaseUser | null>(null);
   const [userProfile, setUserProfile] = useState<User | null>(null);
-// 🛡️ v9.4.16-RESPONSIVE-KPI-DECIMALS: RESPONSIVE KPI GRID & DECIMAL PRECISION FIX
-const VERSION_LABEL = "v9.4.16-RESPONSIVE-KPI-DECIMALS";
+// 🛡️ v9.4.17-CAPTURE-COMPLIANCE-SEMANTICS: SEMÁNTICA CANÓNICA DE CAPTURA Y CUMPLIMIENTO
+const VERSION_LABEL = "v9.4.17-CAPTURE-COMPLIANCE-SEMANTICS";
 const SHIELD_ID = "GOLD MASTER";
   const [activeAdminSection, setActiveAdminSection] = useState<AdminSection>("none");
   const [allUsers, setAllUsers] = useState<User[]>([]);

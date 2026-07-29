@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Dashboard as DashboardType, SystemSettings } from "../types";
 import { normalizeGroupName } from "../utils/formatters";
-import { calculateCapturePct } from "../utils/compliance";
+import { calculateDashboardWeightedScore, calculateCaptureMetrics, calculateCapturePct, hasApplicableGoals } from "../utils/compliance";
 
 type LayoutMode = "grid" | "compact";
 
@@ -179,34 +179,42 @@ const DashboardTabsComponent: React.FC<DashboardTabsProps> = ({
       const belongsToSintesis = isGlobalRoot || normG === normMain;
       const targetKey = belongsToSintesis ? "SINTESIS" : normG;
 
+      const dItems = d.items || [];
+      const dHasGoals = hasApplicableGoals(dItems);
+      const dCompliancePct = calculateDashboardWeightedScore(dItems, settings?.thresholds || { onTrack: 95, atRisk: 85 }, d.year || new Date().getFullYear());
+      const dCapturePct = calculateCaptureMetrics(dItems, d.year || new Date().getFullYear()).capturePct;
+
+      const dCopy = { ...d };
+      (dCopy as any)._compliancePct = dCompliancePct;
+      (dCopy as any)._capturePct = dCapturePct;
+      (dCopy as any)._hasGoals = dHasGoals;
+
       if (map.has(targetKey)) {
-        const dCopy = { ...d };
-        (dCopy as any)._capturePct = calculateCapture(dCopy);
         map.get(targetKey)!.items.push(dCopy);
-        // Guardamos el supergrupo original (ya capitalizado) para el grupo
         if (!map.get(targetKey)!.superGroup && dSuperNorm) {
           map.get(targetKey)!.superGroup = dSuperNorm;
         }
       } else {
         const normGen = normalizeGroupName("GENERAL");
         if (!map.has(normGen)) map.set(normGen, { officialName: "GENERAL", items: [], superGroup: dSuperNorm });
-        const dCopy = { ...d };
-        (dCopy as any)._capturePct = calculateCapture(dCopy);
         map.get(normGen)!.items.push(dCopy);
       }
     });
 
     return Array.from(map.entries())
       .map(([normG, data]) => {
-        const avgCapture = data.items.length > 0
-          ? data.items.reduce((acc, d) => acc + ((d as any)._capturePct || 0), 0) / data.items.length
-          : 0;
+        const groupAllItems = data.items.flatMap(it => it.items || []);
+        const gHasGoals = hasApplicableGoals(groupAllItems);
+        const gCompliancePct = calculateDashboardWeightedScore(groupAllItems, settings?.thresholds || { onTrack: 95, atRisk: 85 }, new Date().getFullYear());
+        const gCaptureMetrics = calculateCaptureMetrics(groupAllItems, new Date().getFullYear());
 
         return {
           label: data.officialName,
           originalLabel: data.officialName,
           normalizedLabel: normG,
-          capturePct: avgCapture,
+          compliancePct: gCompliancePct,
+          capturePct: gCaptureMetrics.capturePct,
+          hasGoals: gHasGoals,
           superGroup: data.superGroup,
           items: data.items.sort((a, b) => {
             const aIsAgg = typeof a.id === 'string' && a.id.startsWith('agg-');
@@ -223,7 +231,7 @@ const DashboardTabsComponent: React.FC<DashboardTabsProps> = ({
         if (b.normalizedLabel === "SINTESIS") return 1;
         return a.label.localeCompare(b.label);
       });
-  }, [dashboards, allowedGroups, isMeSuperDirector, isGlobalAdmin, mainLabel]); // added mainLabel dep
+  }, [dashboards, allowedGroups, isMeSuperDirector, isGlobalAdmin, mainLabel, settings]); // added mainLabel dep
 
   const activeGroupItems = useMemo(() => {
     const normSelected = normalizeGroupName(selectedGroup);
@@ -401,14 +409,25 @@ const DashboardTabsComponent: React.FC<DashboardTabsProps> = ({
                             {g.items.length}
                           </span>
                         </div>
-                        <div className="flex items-center gap-2 mt-1">
-                          <div className="w-12 h-1 bg-slate-950 rounded-full overflow-hidden">
-                            <div className="h-full bg-cyan-500/40" style={{ width: `${g.capturePct}%` }}></div>
+                        {(g as any).hasGoals ? (
+                          <div className="flex items-center gap-2 mt-1" title={`Captura: ${Math.round((g as any).capturePct || 0)}%`}>
+                            <div className="w-12 h-1 bg-slate-950 rounded-full overflow-hidden">
+                              <div
+                                className={`h-full transition-all duration-500 ${(g as any).compliancePct >= 95 ? 'bg-emerald-500' : (g as any).compliancePct >= 85 ? 'bg-amber-500' : 'bg-rose-500'}`}
+                                style={{ width: `${Math.min(100, Math.round((g as any).compliancePct || 0))}%` }}
+                              />
+                            </div>
+                            <span className={`text-[8px] font-black tracking-widest ${(g as any).compliancePct >= 95 ? 'text-emerald-400' : (g as any).compliancePct >= 85 ? 'text-amber-400' : 'text-rose-400'}`}>
+                              {Math.round((g as any).compliancePct || 0)}%
+                            </span>
                           </div>
-                          <span className="text-[8px] font-black text-cyan-500/70">
-                            CAPTURA: {Math.round(g.capturePct || 0)}%
-                          </span>
-                        </div>
+                        ) : (
+                          <div className="flex items-center gap-2 mt-1">
+                            <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest">
+                              SIN META
+                            </span>
+                          </div>
+                        )}
                       </div>
                     </button>
                   );
@@ -506,16 +525,22 @@ const DashboardTabsComponent: React.FC<DashboardTabsProps> = ({
                       <span className="text-[13px] font-black uppercase tracking-tight truncate max-w-[200px]">
                         {dashboard.title}
                       </span>
-                      {(dashboard as any)._capturePct !== undefined && (
-                        <div className="flex items-center gap-3 mt-4 w-full px-3 py-2 bg-black/40 rounded-2xl border border-white/5 shadow-inner">
+                      {(dashboard as any)._hasGoals ? (
+                        <div className="flex items-center gap-3 mt-4 w-full px-3 py-2 bg-black/40 rounded-2xl border border-white/5 shadow-inner" title={`Captura: ${Math.round((dashboard as any)._capturePct || 0)}%`}>
                           <div className="h-1.5 flex-grow bg-slate-900 rounded-full overflow-hidden">
                             <div
-                              className={`h-full transition-all duration-1000 ${(dashboard as any)._capturePct >= 100 ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]' : (dashboard as any)._capturePct > 50 ? 'bg-amber-500 shadow-[0_0_10px_rgba(245,158,11,0.5)]' : 'bg-rose-500 shadow-[0_0_10px_rgba(244,63,94,0.5)]'}`}
-                              style={{ width: `${(dashboard as any)._capturePct}%` }}
+                              className={`h-full transition-all duration-1000 ${(dashboard as any)._compliancePct >= 95 ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]' : (dashboard as any)._compliancePct >= 85 ? 'bg-amber-500 shadow-[0_0_10px_rgba(245,158,11,0.5)]' : 'bg-rose-500 shadow-[0_0_10px_rgba(244,63,94,0.5)]'}`}
+                              style={{ width: `${Math.min(100, Math.round((dashboard as any)._compliancePct || 0))}%` }}
                             />
                           </div>
-                          <span className={`text-[10px] font-black tracking-widest min-w-[35px] text-right ${(dashboard as any)._capturePct >= 100 ? 'text-emerald-400' : (dashboard as any)._capturePct > 50 ? 'text-amber-400' : 'text-rose-400'}`}>
-                            {Math.round((dashboard as any)._capturePct)}%
+                          <span className={`text-[10px] font-black tracking-widest min-w-[35px] text-right ${(dashboard as any)._compliancePct >= 95 ? 'text-emerald-400' : (dashboard as any)._compliancePct >= 85 ? 'text-amber-400' : 'text-rose-400'}`}>
+                            {Math.round((dashboard as any)._compliancePct || 0)}%
+                          </span>
+                        </div>
+                      ) : (
+                        <div className="flex items-center justify-between mt-4 w-full px-3 py-2 bg-black/40 rounded-2xl border border-white/5 shadow-inner">
+                          <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">
+                            SIN META
                           </span>
                         </div>
                       )}
