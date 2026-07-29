@@ -1,4 +1,4 @@
-import { calculateDashboardMonthlyScores, resolveItemValues, calculateOperationalMetrics, attachOperationalMetrics } from "./compliance";
+import { calculateDashboardMonthlyScores, resolveItemValues, calculateOperationalMetrics, attachOperationalMetrics, calculateCapturePct } from "./compliance";
 import { DashboardItem } from "../types";
 
 describe("compliance.ts - Recursion & Aggregation", () => {
@@ -189,6 +189,75 @@ describe("calculateOperationalMetrics - Modelo Operativo Semáforo KPI (v18.0.0-
         expect(attached.operationalMetrics?.realOperationalScore).toBe(43.5);
 
         spy.mockRestore();
+    });
+});
+
+describe("calculateCapturePct — Regla de Inicio por Primera Meta (Part B)", () => {
+    test("Caso 1: Meta inicia en junio (mes 5). Evaluando agosto (mes 7) en año cerrado -> 2 de 3 meses capturados es 67%, no 2 de 8 (25%)", () => {
+        const item: DashboardItem = {
+            id: "kpi-junio",
+            indicator: "Indicador desde Junio",
+            monthlyProgress: [0, 0, 0, 0, 0, 10, 10, 0, 0, 0, 0, 0],
+            monthlyGoals: [0, 0, 0, 0, 0, 10, 10, 10, 0, 0, 0, 0], // Metas solo en Jun, Jul, Ago
+            goalType: "maximize"
+        } as any;
+
+        const dashboard = {
+            year: 2025, // Año pasado (targetMonthIdx = 11)
+            items: [item]
+        };
+
+        // En año pasado (2025), evalúa todos los meses de la meta (Jun, Jul, Ago -> 3 meses capturables)
+        // Capturados: Jun (10/10), Jul (10/10). Ago tiene meta (10) pero avance (0) -> 2 capturados
+        const pct = calculateCapturePct(dashboard);
+        expect(pct).toBe(67); // 2/3 * 100 = 66.67% -> Math.round = 67%
+    });
+
+    test("Caso 2: Sin meta en periodos previos (Ene-May) -> No penaliza el % de captura", () => {
+        const mockDate = new Date("2026-07-15T11:00:00Z"); // Julio 2026, targetMonthIdx = 5 (Junio)
+        const OriginalDate = global.Date;
+        const spy = jest.spyOn(global, "Date").mockImplementation((...args) => {
+            if (args.length > 0) return new (OriginalDate as any)(...args);
+            return mockDate;
+        });
+
+        const item: DashboardItem = {
+            id: "kpi-junio-2026",
+            indicator: "Metas desde Junio",
+            monthlyProgress: [0, 0, 0, 0, 0, 10, 0, 0, 0, 0, 0, 0],
+            monthlyGoals: [0, 0, 0, 0, 0, 10, 10, 10, 0, 0, 0, 0],
+            goalType: "maximize"
+        } as any;
+
+        const dashboard = {
+            year: 2026,
+            items: [item]
+        };
+
+        // Mes vencido: Junio (index 5). firstGoalIdx = 5.
+        // Capturables hasta Junio: 1 periodo (Junio). Capturado: 1 (Junio 10/10).
+        const pct = calculateCapturePct(dashboard);
+        expect(pct).toBe(100);
+
+        spy.mockRestore();
+    });
+
+    test("Caso 3: Sin metas en todo el año -> Fallback no punitivo a 100%", () => {
+        const item: DashboardItem = {
+            id: "kpi-sin-meta",
+            indicator: "Indicador Informativo",
+            monthlyProgress: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            monthlyGoals: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            goalType: "maximize"
+        } as any;
+
+        const dashboard = {
+            year: 2026,
+            items: [item]
+        };
+
+        const pct = calculateCapturePct(dashboard);
+        expect(pct).toBe(100);
     });
 });
 

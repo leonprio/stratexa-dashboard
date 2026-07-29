@@ -612,30 +612,30 @@ export const calculateCapturePct = (dashboard: any) => {
     const isWeekly = item.frequency === 'weekly';
     const isMinimize = item.goalType === 'minimize' || item.type === 'minimize' || item.type === 'lower' || item.type === 'min';
 
-    // 2. EXCLUIR KPIs SIN META: "Tiene al menos una META configurada para el año"
-    const hasAnyGoalThisYear = isWeekly
-      ? (item.weeklyGoals || []).some((g: any) => g !== null && g !== undefined && g !== "" && (isMinimize ? true : Number(g) > 0))
-      : (item.monthlyGoals || []).some((g: any) => g !== null && g !== undefined && g !== "" && (isMinimize ? true : Number(g) > 0));
+    // 2. EXCLUIR KPIs SIN META: El denominador inicia en el primer periodo con meta efectiva (Part B)
+    const hasValidGoal = (g: any) => g !== null && g !== undefined && g !== "" && !isNaN(Number(g)) && (isMinimize ? true : Number(g) > 0);
 
-    if (!hasAnyGoalThisYear) {
-      return; // No se cuenta en absoluto, es un KPI sin meta
+    let goals: any[] = item.monthlyGoals || [];
+    let progress: any[] = item.monthlyProgress || [];
+
+    if (isWeekly) {
+      const startDay = item.weekStart === 'Sun' ? 0 : 1;
+      const aggMode = item.type === 'accumulative' ? 'sum' : 'average';
+      progress = aggregateWeeklyToMonthly(item.weeklyProgress || [], dYear, startDay, undefined, aggMode);
+      goals = aggregateWeeklyToMonthly(item.weeklyGoals || [], dYear, startDay, undefined, aggMode);
     }
 
-    // 3. Evaluar la captura mes por mes hasta el mes vencido
-    for (let m = 0; m <= targetMonthIdx; m++) {
-      totalCapturablePoints++;
+    const firstGoalIdx = goals.findIndex(hasValidGoal);
 
-      let val = item.monthlyProgress?.[m];
-      let goal = item.monthlyGoals?.[m];
+    if (firstGoalIdx === -1) {
+      return; // No se cuenta en absoluto, es un KPI sin meta en todo el ciclo
+    }
 
-      if (isWeekly) {
-        const startDay = item.weekStart === 'Sun' ? 0 : 1;
-        const aggMode = item.type === 'accumulative' ? 'sum' : 'average';
-        const aggProgress = aggregateWeeklyToMonthly(item.weeklyProgress || [], dYear, startDay, undefined, aggMode);
-        const aggGoals = aggregateWeeklyToMonthly(item.weeklyGoals || [], dYear, startDay, undefined, aggMode);
-        val = aggProgress[m];
-        goal = aggGoals[m];
-      }
+    // 3. Evaluar la captura mes por mes DESDE el inicio de obligación/meta (firstGoalIdx) hasta el mes vencido
+    const startIdx = Math.max(0, firstGoalIdx);
+    for (let m = startIdx; m <= targetMonthIdx; m++) {
+      let val = progress[m];
+      let goal = goals[m];
 
       const isNullVal = val === null || val === undefined || val === "" || isNaN(Number(val));
       const isNullGoal = goal === null || goal === undefined || goal === "" || isNaN(Number(goal));
@@ -643,11 +643,15 @@ export const calculateCapturePct = (dashboard: any) => {
       const isGoalZero = Number(goal || 0) === 0;
       const isValZero = Number(val || 0) === 0;
 
-      // 4. 🛡️ REGLA v9.1.0-PRO-FINAL-SHIELDED: Captura Completa
-      // Se considera capturado SOLO si tiene tanto la meta como el avance.
-      // Si ambos son 0 o nulos, se considera "no configurado/no capturado".
-      // Si tiene meta pero no avance, es "captura incompleta" -> False.
-      const isCaptured = !isNullVal && !isNullGoal && !(isGoalZero && isValZero);
+      const hasGoalOrVal = (!isNullGoal && !isGoalZero) || (!isNullVal && !isValZero);
+      if (!hasGoalOrVal) {
+        continue; // Periodo sin meta ni avance en este mes (no es obligación capturable)
+      }
+
+      totalCapturablePoints++;
+
+      // 4. Se considera capturado si se capturó el avance para la meta existente
+      const isCaptured = !isNullVal && !isValZero;
 
       if (isCaptured) {
         totalCapturedPoints++;
@@ -803,8 +807,17 @@ export const calculateOperationalMetrics = (
   // 1. Resolver los valores reales de metas y avances (soporte para compuestos, fórmulas y semanales)
   const { monthlyProgress, monthlyGoals } = resolveItemValues(shielded, contextItems, year);
 
-  // 2. Obtener el índice de inicio operativo
-  const startPeriodIdx = parsePeriodToIndex((shielded as any).operationalStartPeriod ?? 0);
+  // 2. Obtener el índice de inicio operativo (Part B: inicio por primer periodo con meta efectiva)
+  const isMinimize = shielded.goalType === 'minimize' || (shielded as any).type === 'minimize' || (shielded as any).type === 'lower' || (shielded as any).type === 'min';
+  const hasValidGoal = (g: any) => g !== null && g !== undefined && g !== "" && !isNaN(Number(g)) && (isMinimize ? true : Number(g) > 0);
+  const firstGoalIdx = monthlyGoals.findIndex(hasValidGoal);
+
+  let startPeriodIdx = 0;
+  if ((shielded as any).operationalStartPeriod !== undefined && (shielded as any).operationalStartPeriod !== null) {
+    startPeriodIdx = parsePeriodToIndex((shielded as any).operationalStartPeriod);
+  } else {
+    startPeriodIdx = firstGoalIdx >= 0 ? firstGoalIdx : 0;
+  }
 
   // 3. Determinar el límite del periodo a evaluar (limitIdx)
   const currentYear = new Date().getFullYear();

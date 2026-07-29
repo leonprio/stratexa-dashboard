@@ -283,7 +283,7 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(({
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center justify-center sm:justify-end gap-2 sm:gap-4 w-full lg:w-auto">
+        <div className="flex flex-wrap items-center justify-start lg:justify-end gap-2 w-full lg:w-auto">
           {/* CUMPLIMIENTO GLOBAL BADGE */}
           <div className="flex items-center gap-3 glass-panel px-4 py-1.5 rounded-xl shadow-xl border border-white/5">
             <div className="flex flex-col items-end">
@@ -426,22 +426,24 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(({
 
       {/* MAIN CONTENT VIEW */}
       {activeView === 'dashboard' ? (
-        <Dashboard
-          key={`dashboard-${(dashboard as any).id}`}
-          data={safeItems}
-          onUpdateItem={onUpdateItem}
-          globalThresholds={activeThresholds}
-          userRoleForDashboard={userRole}
-          layout={layout}
-          year={year}
-          allDashboards={allDashboards}
-          isAggregate={isAggregate}
-          selectedItemId={selectedItemId}
-          onSelectItem={setSelectedItemId}
-          decimalPrecision={localDecimalPrecision}
-          allContextItems={allContextItems}
-          isGlobalAdmin={isGlobalAdmin}
-        />
+        <div className="dashboard-container-query">
+          <Dashboard
+            key={`dashboard-${(dashboard as any).id}`}
+            data={safeItems}
+            onUpdateItem={onUpdateItem}
+            globalThresholds={activeThresholds}
+            userRoleForDashboard={userRole}
+            layout={layout}
+            year={year}
+            allDashboards={allDashboards}
+            isAggregate={isAggregate}
+            selectedItemId={selectedItemId}
+            onSelectItem={setSelectedItemId}
+            decimalPrecision={localDecimalPrecision}
+            allContextItems={allContextItems}
+            isGlobalAdmin={isGlobalAdmin}
+          />
+        </div>
       ) : activeView === 'reports' ? (
         <ReportCenter
           items={safeItems}

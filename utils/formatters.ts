@@ -66,9 +66,17 @@ export const formatNumberWithCommas = (value: number | string | null | undefined
 };
 
 /**
- * 🛡️ FORMATEADOR CENTRAL DE VALORES (v9.4.10)
- * Convierte un valor raw (ej. 0.5) al texto de presentación según la unidad del indicador.
- * Si la unidad es '%', multiplica rawValue por 100 ANTES de aplicar la precisión decimal y sufijar '%'.
+ * 🛡️ FORMATEADOR CENTRAL DE VALORES (v9.4.16)
+ * Convierte un valor raw al texto de presentación según la unidad del indicador.
+ *
+ * Contrato decimal:
+ * - null | undefined | NaN | Infinity → "SIN DATOS"
+ * - isPercentage && (isDerived || 0 < val ≤ 1) → escalar ×100, aplicar precision
+ * - 0 < |val| < 1 → effectivePrecision = max(1, precision); eliminar cero inicial (.8, -.8)
+ * - val === 0 → formatear con precision elegida
+ * - |val| >= 1 → formatear con precision
+ *
+ * Si la unidad es '%', multiplica rawValue×100 ANTES de aplicar precisión decimal.
  */
 export const formatIndicatorValue = (
     rawValue: number | null | undefined,
@@ -76,15 +84,14 @@ export const formatIndicatorValue = (
     precision: number = 2,
     isDerivedFormula: boolean = false
 ): string => {
-    if (rawValue === null || rawValue === undefined || !Number.isFinite(Number(rawValue))) {
-        return "SIN DATOS";
-    }
-
+    if (rawValue === null || rawValue === undefined) return "SIN DATOS";
     const num = Number(rawValue);
+    if (!Number.isFinite(num) || Number.isNaN(num)) return "SIN DATOS";
+
     const trimmedUnit = (unit || "").trim();
     const isPercentage = trimmedUnit === "%";
 
-    // Si es una fórmula derivada con unidad %, el valor raw (0.5) representa una razón normalizada que debe escalarse a (50.0%)
+    // Porcentajes: escalar ×100 cuando el valor raw es una razón normalizada
     if (isPercentage && (isDerivedFormula || (num > 0 && num <= 1.0))) {
         const scaled = num * 100;
         return `${scaled.toLocaleString('en-US', {
@@ -93,12 +100,26 @@ export const formatIndicatorValue = (
         })}%`;
     }
 
-    // Para valores no porcentuales mayores que 0 y menores que 1 (ej. 0.5 sin %)
-    const effectivePrecision = (!isPercentage && num > 0 && num < 1 && precision === 0) ? 1 : precision;
+    const absNum = Math.abs(num);
 
+    // Valores finitos no nulos con |val| < 1: mínimo 1 decimal y sin cero inicial
+    if (num !== 0 && absNum < 1) {
+        const effectivePrecision = Math.max(1, precision);
+        // Formateamos el valor absoluto y reponemos el signo manualmente para eliminar el "0" inicial
+        const absFormatted = absNum.toLocaleString('en-US', {
+            minimumFractionDigits: effectivePrecision,
+            maximumFractionDigits: effectivePrecision
+        });
+        // absFormatted será "0.8" → quitamos el "0" inicial → ".8"
+        const withoutLeadingZero = absFormatted.replace(/^0\./, '.');
+        const signed = num < 0 ? `-${withoutLeadingZero}` : withoutLeadingZero;
+        return isPercentage ? `${signed}%` : (trimmedUnit ? `${signed} ${trimmedUnit}` : signed);
+    }
+
+    // Valores |val| >= 1 o val === 0
     const formatted = num.toLocaleString('en-US', {
-        minimumFractionDigits: effectivePrecision,
-        maximumFractionDigits: effectivePrecision
+        minimumFractionDigits: precision,
+        maximumFractionDigits: precision
     });
 
     return isPercentage ? `${formatted}%` : (trimmedUnit ? `${formatted} ${trimmedUnit}` : formatted);
@@ -112,4 +133,15 @@ export const parseFormattedNumber = (value: string): number | null => {
     const clean = value.replace(/,/g, '');
     const num = parseFloat(clean);
     return isNaN(num) ? null : num;
+};
+
+/**
+ * 🏷️ LIMPIEZA DE ETIQUETA VISIBLE DEL INDICADOR (Part A)
+ * Remueve sufijos de categoría entre paréntesis al final del string en las tarjetas principales del tablero
+ * (ej. "(SOSTENIBILIDAD)", "(CAPACIDADES)", "(PROCESOS)", "(IMPACTO Y VALOR)").
+ * Preserva paréntesis legítimos de unidades o código técnico.
+ */
+export const getCleanIndicatorName = (name: string | null | undefined): string => {
+    if (!name) return "";
+    return name.replace(/\s*\((SOSTENIBILIDAD|CAPACIDADES|PROCESOS|IMPACTO\s+Y\s+VALOR|IMPACTO|VALOR|ESTRATEGIA|FINANCIERO|OPERACIONAL|CALIDAD|APRENDIZAJE|RESULTADOS)\)$/i, "").trim();
 };
