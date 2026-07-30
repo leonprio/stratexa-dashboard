@@ -13,7 +13,7 @@ interface CurrentPeriodFocusProps {
     item: DashboardItem;
     globalThresholds: ComplianceThresholds;
     year?: number;
-    onUpdateItem: (updatedItem: DashboardItem) => void;
+    onUpdateItem: (updatedItem: DashboardItem) => Promise<void> | void;
     canEdit: boolean;
     onClose: () => void;
     allDashboardItems?: DashboardItem[];
@@ -184,36 +184,42 @@ export const CurrentPeriodFocus: React.FC<CurrentPeriodFocusProps> = ({
     const handleQuickSave = async () => {
         if (!canEdit || !item) return;
         setIsSaving(true);
-        const newGoalVal = parseFormattedNumber(localGoal);
-        const newActualVal = parseFormattedNumber(localActual);
-        const updatedItem = { 
-            ...item,
-            isActivityMode: activityMode,
-            activityConfig: item.activityConfig || {}
-        };
-        if (isWeekly) {
-            const newGoals = [...(weeklyGoals || Array(53).fill(null))];
-            const newProgress = [...(weeklyProgress || Array(53).fill(null))];
-            const newNotes = [...(weeklyNotes || Array(53).fill(""))];
-            newGoals[currentIdx] = newGoalVal;
-            newProgress[currentIdx] = newActualVal;
-            newNotes[currentIdx] = localNote;
-            updatedItem.weeklyGoals = newGoals;
-            updatedItem.weeklyProgress = newProgress;
-            updatedItem.weeklyNotes = newNotes;
-        } else {
-            const newGoals = [...monthlyGoals];
-            const newProgress = [...monthlyProgress];
-            const newNotes = [...(monthlyNotes || Array(12).fill(""))];
-            newGoals[currentIdx] = newGoalVal;
-            newProgress[currentIdx] = newActualVal;
-            newNotes[currentIdx] = localNote;
-            updatedItem.monthlyGoals = newGoals;
-            updatedItem.monthlyProgress = newProgress;
-            updatedItem.monthlyNotes = newNotes;
+        try {
+            const newGoalVal = parseFormattedNumber(localGoal);
+            const newActualVal = parseFormattedNumber(localActual);
+            const updatedItem = {
+                ...item,
+                isActivityMode: activityMode,
+                activityConfig: item.activityConfig || {}
+            };
+            if (isWeekly) {
+                const newGoals = [...(weeklyGoals || Array(53).fill(null))];
+                const newProgress = [...(weeklyProgress || Array(53).fill(null))];
+                const newNotes = [...(weeklyNotes || Array(53).fill(""))];
+                newGoals[currentIdx] = newGoalVal;
+                newProgress[currentIdx] = newActualVal;
+                newNotes[currentIdx] = localNote;
+                updatedItem.weeklyGoals = newGoals;
+                updatedItem.weeklyProgress = newProgress;
+                updatedItem.weeklyNotes = newNotes;
+            } else {
+                const newGoals = [...monthlyGoals];
+                const newProgress = [...monthlyProgress];
+                const newNotes = [...(monthlyNotes || Array(12).fill(""))];
+                newGoals[currentIdx] = newGoalVal;
+                newProgress[currentIdx] = newActualVal;
+                newNotes[currentIdx] = localNote;
+                updatedItem.monthlyGoals = newGoals;
+                updatedItem.monthlyProgress = newProgress;
+                updatedItem.monthlyNotes = newNotes;
+            }
+            await onUpdateItem(updatedItem);
+            onClose();
+        } catch (err) {
+            console.error("Error al guardar periodo:", err);
+        } finally {
+            setIsSaving(false);
         }
-        onUpdateItem(updatedItem);
-        setTimeout(() => setIsSaving(false), 800);
     };
 
     const formatNumber = (num: number) => {
@@ -356,9 +362,13 @@ export const CurrentPeriodFocus: React.FC<CurrentPeriodFocusProps> = ({
                         year={year}
                         canEdit={canEdit}
                         onCancel={() => setIsFullEditMode(false)}
-                        onSave={(data, autoSave) => {
-                            onUpdateItem({ ...item, ...data });
-                            if (!autoSave) setIsFullEditMode(false);
+                        onSave={async (data, autoSave) => {
+                            const updated = { ...item, ...data };
+                            await onUpdateItem(updated);
+                            if (!autoSave) {
+                                setIsFullEditMode(false);
+                                onClose();
+                            }
                         }}
                     />
                 </div>

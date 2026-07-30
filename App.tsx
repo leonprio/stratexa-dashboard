@@ -53,8 +53,8 @@ export default function App() {
   const [_errorMsg, setErrorMsg] = useState<string>("");
   const [user, setUser] = useState<FirebaseUser | null>(null);
   const [userProfile, setUserProfile] = useState<User | null>(null);
-// 🛡️ v9.4.17-CAPTURE-COMPLIANCE-SEMANTICS: SEMÁNTICA CANÓNICA DE CAPTURA Y CUMPLIMIENTO
-const VERSION_LABEL = "v9.4.17-CAPTURE-COMPLIANCE-SEMANTICS";
+// 🛡️ v9.4.18-INDICATOR-SCROLL-UX: SCROLL UX INTEGRITY HARDENING
+const VERSION_LABEL = "v9.4.18-INDICATOR-SCROLL-UX";
 const SHIELD_ID = "GOLD MASTER";
   const [activeAdminSection, setActiveAdminSection] = useState<AdminSection>("none");
   const [allUsers, setAllUsers] = useState<User[]>([]);
@@ -1172,6 +1172,7 @@ const SHIELD_ID = "GOLD MASTER";
         console.log("✅ [CRUD] Propagación completada exitosamente.");
       } catch (err) {
         console.error("❌ [CRUD] Fallo en propagación:", err);
+        throw err;
       }
     } else {
       // Flujo normal: Tablero Real
@@ -1206,6 +1207,7 @@ const SHIELD_ID = "GOLD MASTER";
       } catch (err) {
         console.error("❌ [SAVE] Error persisting item update:", err);
         alert("⚠️ Error al guardar en el servidor. Verifique su conexión.");
+        throw err;
       }
     }
 
