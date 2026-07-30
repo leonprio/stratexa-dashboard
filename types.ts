@@ -92,6 +92,12 @@ export interface DashboardItem {
       completedCount: number;
     }[];
   };
+
+  // 🛡️ CAMPOS OPERATIVOS Y OPCIONALES COMPATIBILIDAD
+  operationalMetrics?: any;
+  operationalStartPeriod?: any;
+  responsible?: string;
+  progress?: any;
 }
 
 /**
@@ -153,4 +159,7 @@ export interface User {
   subGroups?: string[]; // Para "Grupos de Grupos" (v2.3.0) (ej: ["Dir Norte", "Dir Sur"])
   superGroups?: string[]; // 🏢 NIVEL 4: Grupos de Grupos permitidos (v7.2.1)
   group?: string; // Legacy fallback
+  area?: string;
 }
+
+export type OperationalMetrics = any;

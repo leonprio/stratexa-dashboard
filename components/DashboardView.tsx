@@ -17,10 +17,11 @@ import { CurrentPeriodFocus } from "./CurrentPeriodFocus";
 import { exportDashboardToExcel } from '../utils/exportUtils';
 import { exportToExecutiveExcelJS } from '../utils/ExecutiveOperationalExport';
 import { OperationalControlCenter } from "./operational/OperationalControlCenter";
+import { scrollToTop, scrollToElementBelowHeader, scheduleScroll } from "../utils/scrollUtils";
 
 interface DashboardViewProps {
   dashboard: DashboardType;
-  onUpdateItem: (item: DashboardItem) => void;
+  onUpdateItem: (item: DashboardItem) => Promise<void> | void;
   userRole: DashboardRole | null;
   isGlobalAdmin: boolean;
   currentUser: User;
@@ -47,7 +48,7 @@ interface DashboardViewProps {
  * Proporciona visualización de KPIs, análisis de IA, herramientas de exportación y gestión de metadatos.
  * 
  * @component
- * @version v9.2.2-CLEAN-UI
+ * @version v9.4.18-INDICATOR-SCROLL-UX
  */
 export const DashboardView: React.FC<DashboardViewProps> = React.memo(({
   dashboard,
@@ -115,7 +116,12 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(({
     return safeItems.find((it) => it.id === selectedItemId) || null;
   }, [selectedItemId, safeItems]);
 
-  const handleCloseFocus = useCallback(() => setSelectedItemId(null), []);
+  const handleCloseFocus = useCallback(() => {
+    setSelectedItemId(null);
+    scheduleScroll(() => {
+      scrollToTop();
+    });
+  }, []);
 
   const displayTitle = useMemo(() => {
     const t = (dashboard as any).title || "";
@@ -128,15 +134,12 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(({
     return t;
   }, [dashboard, isAggregate]);
 
-  // 🛡️ UX AUTO-SCROLL (v7.8.35-UX): Desplazar la vista al abrir la gestión detallada
+  // 🛡️ UX AUTO-SCROLL (v9.4.18-INDICATOR-SCROLL-UX): Desplazar la vista al abrir o cambiar de indicador debajo del header
   useEffect(() => {
     if (selectedItemId) {
-      setTimeout(() => {
-        const el = document.getElementById('gestion-detallada-focus');
-        if (el) {
-          el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }
-      }, 150); // Delay para asegurar renderizado de transición
+      scheduleScroll(() => {
+        scrollToElementBelowHeader('gestion-detallada-focus');
+      });
     }
   }, [selectedItemId]);
 

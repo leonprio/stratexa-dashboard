@@ -8,7 +8,7 @@ import { resolveItemValues } from "../utils/compliance";
 interface DataEditorProps {
   item: DashboardItem;
   allDashboardItems?: DashboardItem[];
-  onSave: (data: Partial<DashboardItem>, autoSave?: boolean) => void;
+  onSave: (data: Partial<DashboardItem>, autoSave?: boolean) => Promise<void> | void;
   onCancel: () => void;
   canEdit: boolean;
   year?: number;
@@ -109,9 +109,7 @@ export const DataEditor: React.FC<DataEditorProps> = React.memo(({ item, allDash
     if (isCalculated) return;
     setIsSaving(true);
     try {
-      // 🛡️ Simulación de espera para feedback visual y permitir que el estado se propague
-      await new Promise(resolve => setTimeout(resolve, 500));
-      onSave({
+      await onSave({
         monthlyGoals,
         monthlyProgress,
         weeklyGoals,
