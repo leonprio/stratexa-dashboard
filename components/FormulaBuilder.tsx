@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { DashboardItem } from '../types';
 import { evaluateFormula } from '../utils/compliance';
 import { formatIndicatorValue } from '../utils/formatters';
@@ -200,9 +201,11 @@ export const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
 
   const isZeroDenominator = operator === '/' && Number(valB) === 0 && Boolean(operandB);
 
-  return (
+  // 🛡️ FIX v9.4.20 (PORTAL MODAL): Montar sobre document.body para escapar el stacking
+  // context del IndicatorManager. Misma causa que AggregateBuilder.
+  const modalContent = (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-200"
+      className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-200"
       onClick={handleCancel}
     >
       <div
@@ -521,4 +524,7 @@ export const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
       </div>
     </div>
   );
+
+  if (typeof document === 'undefined') return null;
+  return createPortal(modalContent, document.body);
 };
