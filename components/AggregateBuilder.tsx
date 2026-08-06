@@ -31,6 +31,23 @@ export const AggregateBuilder: React.FC<AggregateBuilderProps> = ({
     setSelectedIds(Array.from(new Set((currentItem.componentIds || []).map(id => String(id)))));
   }, [currentItem.id, currentItem.componentIds, allItems]);
 
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        e.stopPropagation();
+        onClose();
+      }
+    };
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    window.addEventListener('keydown', handleKeyDown, true);
+    return () => {
+      document.body.style.overflow = originalOverflow;
+      window.removeEventListener('keydown', handleKeyDown, true);
+    };
+  }, [onClose]);
+
   // availableItems: Todos los items del mismo dashboard excepto el indicador actual (impidiendo autorreferencia)
   const availableItems = useMemo(() => {
     return allItems.filter(it => String(it.id) !== String(currentItem.id));
@@ -135,8 +152,14 @@ export const AggregateBuilder: React.FC<AggregateBuilderProps> = ({
   const isApplyDisabled = validSelectedItems.length === 0 || orphanedSourceIds.length > 0;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-200">
-      <div className="bg-slate-900 border border-amber-500/40 rounded-3xl w-full max-w-[800px] max-h-[90vh] overflow-y-auto shadow-2xl flex flex-col p-6 text-slate-100">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-200"
+      onClick={onClose}
+    >
+      <div
+        className="bg-slate-900 border border-amber-500/40 rounded-3xl w-full max-w-[800px] max-h-[90vh] overflow-y-auto shadow-2xl flex flex-col p-6 text-slate-100"
+        onClick={(e) => e.stopPropagation()}
+      >
         
         {/* HEADER DEL MODAL AGREGADO */}
         <div className="flex justify-between items-center border-b border-slate-800 pb-4 mb-4">

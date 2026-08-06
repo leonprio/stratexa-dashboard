@@ -12,6 +12,7 @@ export const CURRENT_MONTH_INDEX = new Date().getMonth();
  * Determina si un indicador debe sumarse (acumulativo) basándose en su nombre o tipo explícito.
  */
 export const isAccumulativeIndicator = (indicatorName: string | undefined, type?: string): boolean => {
+  if (type === 'average') return false;
   if (type === 'accumulative') return true;
   if (!indicatorName) return false;
 

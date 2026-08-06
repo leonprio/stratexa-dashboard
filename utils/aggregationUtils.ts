@@ -210,7 +210,7 @@ export const calculateAggregateDashboard = (
                     });
 
                     if (hasData) {
-                        result[t] = sumW > 0 ? Number((sumVal / sumW).toFixed(precision)) : 0;
+                        result[t] = sumW > 0 ? sumVal / sumW : 0;
                     }
                 }
                 return result;
