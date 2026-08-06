@@ -108,7 +108,7 @@ describe('AggregateBuilder Component (v9.4.15 Contract)', () => {
         onChangeComponentIds={jest.fn()}
         onClose={jest.fn()}
       />
-    );  const listContainer = container.querySelector('.max-h-56')!;
+    );  const listContainer = document.querySelector('.max-h-56')!;
     expect(within(listContainer as HTMLElement).queryByText('#4')).not.toBeInTheDocument();
   });
 

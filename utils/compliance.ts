@@ -343,6 +343,14 @@ export const resolveItemValues = (
 
   // Identificar si es compuesto o fórmula y si tenemos contexto
   if (item.indicatorType === 'compound' && item.componentIds && contextItems.length > 0) {
+    // 🛡️ FIX v9.4.20 (AGGREGATE RUNTIME): Distinguir suma vs promedio por item.type.
+    // Acumular con conteos independientes por mes para progress y goals.
+    // El valor 0 es dato válido; null/undefined no se contabilizan.
+    const progressSums: number[] = new Array(12).fill(0);
+    const goalSums: number[] = new Array(12).fill(0);
+    const progressCounts: number[] = new Array(12).fill(0);
+    const goalCounts: number[] = new Array(12).fill(0);
+
     const nextVisited = new Set(visitedIds);
     nextVisited.add(itemId);
 
@@ -353,13 +361,38 @@ export const resolveItemValues = (
         const { monthlyProgress: childP, monthlyGoals: childG } = resolveItemValues(child, contextItems, year, nextVisited);
 
         for (let i = 0; i < 12; i++) {
-          monthlyProgress[i] = (monthlyProgress[i] || 0) + Number(childP[i] || 0);
-          monthlyGoals[i] = (monthlyGoals[i] || 0) + Number(childG[i] || 0);
+          const pVal = childP[i];
+          const gVal = childG[i];
+          // Un número finito (incluido 0) es dato válido; null/undefined no lo es.
+          if (pVal !== null && pVal !== undefined && Number.isFinite(Number(pVal))) {
+            progressSums[i] += Number(pVal);
+            progressCounts[i]++;
+          }
+          if (gVal !== null && gVal !== undefined && Number.isFinite(Number(gVal))) {
+            goalSums[i] += Number(gVal);
+            goalCounts[i]++;
+          }
         }
       }
     });
 
-    return { monthlyProgress, monthlyGoals };
+    const resultP: (number | null)[] = new Array(12).fill(null);
+    const resultG: (number | null)[] = new Array(12).fill(null);
+    const isAverage = item.type === 'average';
+
+    for (let i = 0; i < 12; i++) {
+      if (progressCounts[i] > 0) {
+        resultP[i] = isAverage ? progressSums[i] / progressCounts[i] : progressSums[i];
+      }
+      if (goalCounts[i] > 0) {
+        resultG[i] = isAverage ? goalSums[i] / goalCounts[i] : goalSums[i];
+      }
+    }
+
+    return {
+      monthlyProgress: resultP as number[],
+      monthlyGoals: resultG as number[],
+    };
   }
   else if (item.indicatorType === 'formula' && item.formula && contextItems.length > 0) {
     // 🛡️ REGLA v9.4.7 (DERIVED FORMULA CONTRACT):

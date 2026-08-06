@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { DashboardItem } from '../types';
 
 interface AggregateBuilderProps {
@@ -151,9 +152,14 @@ export const AggregateBuilder: React.FC<AggregateBuilderProps> = ({
 
   const isApplyDisabled = validSelectedItems.length === 0 || orphanedSourceIds.length > 0;
 
-  return (
+  // 🛡️ FIX v9.4.20 (PORTAL MODAL): Montar sobre document.body para escapar el stacking
+  // context del IndicatorManager. El ancestro IndicatorManager tiene z-[100] y propiedades
+  // CSS (transform en animaciones, will-change) que crean un contexto de apilamiento propio,
+  // haciendo que cualquier fixed child quede subordinado a ese contexto aunque tenga z-50.
+  // Solución: createPortal saca el modal del árbol DOM del ancestro.
+  const modalContent = (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-200"
+      className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-200"
       onClick={onClose}
     >
       <div
@@ -335,4 +341,7 @@ export const AggregateBuilder: React.FC<AggregateBuilderProps> = ({
       </div>
     </div>
   );
+
+  if (typeof document === 'undefined') return null;
+  return createPortal(modalContent, document.body);
 };
