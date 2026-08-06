@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { DashboardItem } from '../types';
+import { calculateMonthlyCompliancePercentage } from '../utils/compliance';
 
 interface AggregateBuilderProps {
   currentItem: DashboardItem | (Omit<DashboardItem, 'id'> & { id: number | string });
@@ -146,9 +147,9 @@ export const AggregateBuilder: React.FC<AggregateBuilderProps> = ({
   }, [validSelectedItems, strategy]);
 
   const previewCompliancePct = useMemo(() => {
-    if (previewGoal === 0) return 0;
-    return Math.round((previewProgress / previewGoal) * 100);
-  }, [previewProgress, previewGoal]);
+    const isMinimize = currentItem.goalType === 'minimize' || (currentItem as any).type === 'minimize' || (currentItem as any).type === 'lower' || (currentItem as any).type === 'min';
+    return Math.round(calculateMonthlyCompliancePercentage(previewProgress, previewGoal, isMinimize));
+  }, [previewProgress, previewGoal, currentItem.goalType, (currentItem as any).type]);
 
   const isApplyDisabled = validSelectedItems.length === 0 || orphanedSourceIds.length > 0;
 
