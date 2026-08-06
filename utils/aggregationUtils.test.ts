@@ -63,5 +63,27 @@ describe('calculateAggregateDashboard', () => {
         expect(agg.items[0].indicator).toBe('BAJAS TOTALES');
         expect(agg.items[0].monthlyProgress[0]).toBe(30); // SUM PROTECTION
     });
-});
 
+    test('v9.4.19: Rotación SH configurada como PROMEDIO promedia avances y metas correctamente', () => {
+        // avances=[37.04, 0, 18.18, 61.54, 50] (5 tableros) -> Suma=166.76 -> Promedio = 33.352
+        // metas=[5, 2, 2, 5, 2] (5 tableros) -> Suma=16 -> Promedio = 3.2
+        const avances = [37.04, 0, 18.18, 61.54, 50];
+        const metas = [5, 2, 2, 5, 2];
+
+        const boards = avances.map((av, idx) =>
+            mockBoard(idx + 1, [{
+                indicator: 'Rotación SH',
+                type: 'average',
+                goalType: 'minimize',
+                monthlyProgress: [av, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                monthlyGoals: [metas[idx], 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+            }])
+        );
+
+        const agg = calculateAggregateDashboard(boards, { aggregationStrategy: 'manual', customWeights: { '1': 1, '2': 1, '3': 1, '4': 1, '5': 1 } } as any);
+
+        expect(agg.items[0].type).toBe('average');
+        expect(agg.items[0].monthlyProgress[0]).toBeCloseTo(33.352, 3);
+        expect(agg.items[0].monthlyGoals[0]).toBeCloseTo(3.2, 3);
+    });
+});

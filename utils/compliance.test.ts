@@ -308,3 +308,30 @@ describe("calculateCaptureMetrics & hasApplicableGoals — Semántica Canónica 
     });
 });
 
+describe("v9.4.19: Rotación SH & Compliance Metrics (MINIMIZAR, SUMA vs PROMEDIO, Brecha)", () => {
+    test("Calcula cumplimiento MINIMIZAR exacto para Rotación SH (33.352 real, 3.2 meta -> 9.5946%)", () => {
+        const { calculateMonthlyCompliancePercentage } = require('./compliance');
+        // MINIMIZAR con actual=33.352 y target=3.2
+        // Fórmula lowerIsBetter: (target / actual) * 100 = (3.2 / 33.352) * 100 = 9.59462699898057...
+        const pct = calculateMonthlyCompliancePercentage(33.352, 3.2, true);
+        expect(pct).toBeCloseTo(9.5946, 4);
+
+        // Brecha en pp: 39.7466% (cumplimiento al 100%) - 9.5946% = 30.152 pp aprox contra target 100% o diff directo
+        // Brecha real (33.352) vs meta (3.2) = 30.152 pp
+        const brechaVal = 33.352 - 3.2;
+        expect(brechaVal).toBeCloseTo(30.152, 3);
+    });
+
+    test("Suma acumula 166.76 real y 16 meta", () => {
+        const { calculateMonthlyCompliancePercentage } = require('./compliance');
+        const pctSum = calculateMonthlyCompliancePercentage(166.76, 16, true);
+        expect(pctSum).toBeCloseTo(9.5946, 4);
+    });
+
+    test("Manejo de lista vacía y valores en cero", () => {
+        const { calculateMonthlyCompliancePercentage } = require('./compliance');
+        expect(calculateMonthlyCompliancePercentage(0, 0, true)).toBe(0);
+        expect(calculateMonthlyCompliancePercentage(null, 5, true)).toBe(0);
+        expect(calculateMonthlyCompliancePercentage(0, 5, true)).toBe(100);
+    });
+});

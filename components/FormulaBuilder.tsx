@@ -66,6 +66,23 @@ export const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
     }
   }, [parsedExpression]);
 
+  React.useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        e.stopPropagation();
+        onClose();
+      }
+    };
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    window.addEventListener('keydown', handleKeyDown, true);
+    return () => {
+      document.body.style.overflow = originalOverflow;
+      window.removeEventListener('keydown', handleKeyDown, true);
+    };
+  }, [onClose]);
+
   // Función interna para sincronizar el borrador de la fórmula
   const updateFormulaString = (opA: string, op: string, opB: string) => {
     if (!opA && !opB) {
@@ -184,8 +201,14 @@ export const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
   const isZeroDenominator = operator === '/' && Number(valB) === 0 && Boolean(operandB);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-200">
-      <div className="bg-slate-900 border border-cyan-500/40 rounded-3xl w-full max-w-[800px] max-h-[90vh] overflow-y-auto shadow-2xl flex flex-col p-6 text-slate-100">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-200"
+      onClick={handleCancel}
+    >
+      <div
+        className="bg-slate-900 border border-cyan-500/40 rounded-3xl w-full max-w-[800px] max-h-[90vh] overflow-y-auto shadow-2xl flex flex-col p-6 text-slate-100"
+        onClick={(e) => e.stopPropagation()}
+      >
         
         {/* HEADER DEL MODAL DE FÓRMULAS */}
         <div className="flex justify-between items-center border-b border-slate-800 pb-4 mb-4">
