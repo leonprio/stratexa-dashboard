@@ -203,4 +203,137 @@ describe('AggregateBuilder Component (v9.4.15 Contract)', () => {
     );
     expect(screen.getByText('2. Selecciona las fuentes de consolidación (2 seleccionadas)')).toBeInTheDocument();
   });
+
+  describe('v9.4.21 - Aggregate preview compliance tests', () => {
+    it('1. MINIMIZAR: advance=33.352, goal=3.2 -> expectedCompliance ≈ 9.5946% (nunca ~1044%)', () => {
+      const minItem: DashboardItem = {
+        id: 10,
+        indicator: 'Rotación SH',
+        unit: '%',
+        indicatorType: 'compound',
+        goalType: 'minimize',
+        type: 'average',
+        componentIds: [11],
+        monthlyProgress: Array(12).fill(0),
+        monthlyGoals: Array(12).fill(0),
+      };
+      const sourceItem: DashboardItem = {
+        id: 11,
+        indicator: 'Fuente Rotación',
+        unit: '%',
+        indicatorType: 'simple',
+        goalType: 'minimize',
+        monthlyProgress: [0, 0, 0, 0, 0, 33.352, 0, 0, 0, 0, 0, 0],
+        monthlyGoals: [0, 0, 0, 0, 0, 3.2, 0, 0, 0, 0, 0, 0],
+      };
+      render(
+        <AggregateBuilder
+          currentItem={minItem}
+          allItems={[minItem, sourceItem]}
+          onChangeComponentIds={jest.fn()}
+          onClose={jest.fn()}
+        />
+      );
+      expect(screen.getByText('33.4 %')).toBeInTheDocument();
+      expect(screen.getByText('3.2 %')).toBeInTheDocument();
+      expect(screen.getByText('10%')).toBeInTheDocument();
+      expect(screen.queryByText('1044%')).not.toBeInTheDocument();
+      expect(screen.queryByText('1043%')).not.toBeInTheDocument();
+    });
+
+    it('3. MAXIMIZAR: advance=80, goal=100 -> expectedCompliance = 80%', () => {
+      const maxItem: DashboardItem = {
+        id: 12,
+        indicator: 'Ventas',
+        unit: '%',
+        indicatorType: 'compound',
+        goalType: 'maximize',
+        type: 'average',
+        componentIds: [13],
+        monthlyProgress: Array(12).fill(0),
+        monthlyGoals: Array(12).fill(0),
+      };
+      const sourceItem: DashboardItem = {
+        id: 13,
+        indicator: 'Fuente Ventas',
+        unit: '%',
+        indicatorType: 'simple',
+        goalType: 'maximize',
+        monthlyProgress: [0, 0, 0, 0, 0, 80, 0, 0, 0, 0, 0, 0],
+        monthlyGoals: [0, 0, 0, 0, 0, 100, 0, 0, 0, 0, 0, 0],
+      };
+      render(
+        <AggregateBuilder
+          currentItem={maxItem}
+          allItems={[maxItem, sourceItem]}
+          onChangeComponentIds={jest.fn()}
+          onClose={jest.fn()}
+        />
+      );
+      expect(screen.getByText('80%')).toBeInTheDocument();
+    });
+
+    it('4. MINIMIZAR: advance=80, goal=100 -> expectedCompliance = 125%', () => {
+      const minItem: DashboardItem = {
+        id: 14,
+        indicator: 'Costos',
+        unit: '%',
+        indicatorType: 'compound',
+        goalType: 'minimize',
+        type: 'average',
+        componentIds: [15],
+        monthlyProgress: Array(12).fill(0),
+        monthlyGoals: Array(12).fill(0),
+      };
+      const sourceItem: DashboardItem = {
+        id: 15,
+        indicator: 'Fuente Costos',
+        unit: '%',
+        indicatorType: 'simple',
+        goalType: 'minimize',
+        monthlyProgress: [0, 0, 0, 0, 0, 80, 0, 0, 0, 0, 0, 0],
+        monthlyGoals: [0, 0, 0, 0, 0, 100, 0, 0, 0, 0, 0, 0],
+      };
+      render(
+        <AggregateBuilder
+          currentItem={minItem}
+          allItems={[minItem, sourceItem]}
+          onChangeComponentIds={jest.fn()}
+          onClose={jest.fn()}
+        />
+      );
+      expect(screen.getByText('125%')).toBeInTheDocument();
+    });
+
+    it('5. Cero y ausencia: meta 0 y avance 0 devuelven 0%', () => {
+      const zeroItem: DashboardItem = {
+        id: 16,
+        indicator: 'Vacio',
+        unit: '%',
+        indicatorType: 'compound',
+        goalType: 'maximize',
+        type: 'average',
+        componentIds: [17],
+        monthlyProgress: Array(12).fill(0),
+        monthlyGoals: Array(12).fill(0),
+      };
+      const sourceItem: DashboardItem = {
+        id: 17,
+        indicator: 'Fuente Vacia',
+        unit: '%',
+        indicatorType: 'simple',
+        monthlyProgress: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        monthlyGoals: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+      };
+      render(
+        <AggregateBuilder
+          currentItem={zeroItem}
+          allItems={[zeroItem, sourceItem]}
+          onChangeComponentIds={jest.fn()}
+          onClose={jest.fn()}
+        />
+      );
+      expect(screen.getByText('0%')).toBeInTheDocument();
+    });
+  });
 });

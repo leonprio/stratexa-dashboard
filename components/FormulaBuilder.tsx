@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { DashboardItem } from '../types';
-import { evaluateFormula } from '../utils/compliance';
+import { evaluateFormula, calculateMonthlyCompliancePercentage } from '../utils/compliance';
 import { formatIndicatorValue } from '../utils/formatters';
 
 interface FormulaBuilderProps {
@@ -17,6 +17,8 @@ export const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
   currentItem,
   allItems,
   onChangeFormula,
+  onChangeGoalMode,
+  onChangeFormulaOutputMode,
   onClose,
 }) => {
   const [isAdvancedMode, setIsAdvancedMode] = useState(false);
@@ -195,9 +197,9 @@ export const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
       const val = Number(derivedValue || 0);
       return val <= 1.0 ? Math.round(val * 100) : Math.round(val);
     }
-    if (Number(derivedGoal) === 0) return 0;
-    return Math.round((Number(derivedValue) / Number(derivedGoal)) * 100);
-  }, [derivedValue, derivedGoal, formulaOutputMode]);
+    const isMinimize = currentItem.goalType === 'minimize' || (currentItem as any).type === 'minimize' || (currentItem as any).type === 'lower' || (currentItem as any).type === 'min';
+    return Math.round(calculateMonthlyCompliancePercentage(Number(derivedValue), Number(derivedGoal), isMinimize));
+  }, [derivedValue, derivedGoal, formulaOutputMode, currentItem.goalType, (currentItem as any).type]);
 
   const isZeroDenominator = operator === '/' && Number(valB) === 0 && Boolean(operandB);
 
