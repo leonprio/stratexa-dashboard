@@ -76,38 +76,44 @@ describe("formatIndicatorValue — contrato decimal v9.4.16", () => {
         });
     });
 
-    // --- CONTRATO CRÍTICO: 0 < |val| < 1 ---
-    describe("valores con |val| < 1 — cero inicial eliminado", () => {
-        test("precision=0, input=0.8 → '.8' (nunca '0' ni '1')", () => {
-            const result = formatIndicatorValue(0.8, "", 0);
-            expect(result).toBe(".8");
-            expect(result).not.toBe("0");
-            expect(result).not.toBe("1");
+    // --- CONTRATO v9.4.22-NUMERIC-CLARITY: precision=0 siempre redondea a entero ---
+    describe("valores con precision=0 — redondeo a entero entero (v9.4.22)", () => {
+        test("precision=0, input=0.8 → '1'", () => {
+            expect(formatIndicatorValue(0.8, "", 0)).toBe("1");
         });
+        test("precision=0, input=0.4 → '0'", () => {
+            expect(formatIndicatorValue(0.4, "", 0)).toBe("0");
+        });
+        test("precision=0, input=-0.8 → '-1'", () => {
+            expect(formatIndicatorValue(-0.8, "", 0)).toBe("-1");
+        });
+        test("precision=0, input=82.6 → '83'", () => {
+            expect(formatIndicatorValue(82.6, "", 0)).toBe("83");
+        });
+        test("precision=0, input=99050 → '99,050'", () => {
+            expect(formatIndicatorValue(99050, "", 0)).toBe("99,050");
+        });
+        test("precision=0, input=0 → '0'", () => {
+            expect(formatIndicatorValue(0, "", 0)).toBe("0");
+        });
+    });
+
+    // --- CONTRATO DE PRECISIÓN DECIMAL EXPLÍCITA: precision > 0 ---
+    describe("valores con precision > 0 — preserva precisión explícita solcitada", () => {
         test("precision=1, input=0.8 → '.8'", () => {
             expect(formatIndicatorValue(0.8, "", 1)).toBe(".8");
         });
         test("precision=2, input=0.8 → '.80'", () => {
             expect(formatIndicatorValue(0.8, "", 2)).toBe(".80");
         });
-        test("precision=0, input=0.5 → '.5'", () => {
-            expect(formatIndicatorValue(0.5, "", 0)).toBe(".5");
-        });
-        test("precision=2, input=0.5 → '.50'", () => {
-            expect(formatIndicatorValue(0.5, "", 2)).toBe(".50");
-        });
-    });
-
-    // --- Negativos < 1 ---
-    describe("valores negativos con |val| < 1", () => {
         test("precision=1, input=-0.8 → '-.8'", () => {
             expect(formatIndicatorValue(-0.8, "", 1)).toBe("-.8");
         });
-        test("precision=0, input=-0.8 → '-.8'", () => {
-            expect(formatIndicatorValue(-0.8, "", 0)).toBe("-.8");
-        });
         test("precision=2, input=-0.8 → '-.80'", () => {
             expect(formatIndicatorValue(-0.8, "", 2)).toBe("-.80");
+        });
+        test("precision=2, input=0.5 → '.50'", () => {
+            expect(formatIndicatorValue(0.5, "", 2)).toBe(".50");
         });
     });
 
@@ -127,7 +133,6 @@ describe("formatIndicatorValue — contrato decimal v9.4.16", () => {
     // --- Porcentajes ---
     describe("porcentajes — sufijo % conservado", () => {
         test("precision=0, input=50, unit='%' → '50%'", () => {
-            // 50 > 1, no es razón normalizada → formatea directamente
             expect(formatIndicatorValue(50, "%", 0)).toBe("50%");
         });
         test("precision=1, input=50, unit='%' → '50.0%'", () => {
@@ -157,29 +162,15 @@ describe("formatIndicatorValue — contrato decimal v9.4.16", () => {
         });
     });
 
-    // --- Garantía crítica: 0.8 nunca es 0 ni 1 ---
-    describe("garantía anti-redondeo: 0.8 ≠ 0 y 0.8 ≠ 1", () => {
-        const precisions: Array<0 | 1 | 2> = [0, 1, 2];
-        precisions.forEach((p) => {
-            test(`precision=${p}, input=0.8 → no es '0' ni '1'`, () => {
-                const result = formatIndicatorValue(0.8, "", p);
-                expect(result).not.toBe("0");
-                expect(result).not.toBe("1");
-                // Debe empezar con "." (cero inicial eliminado)
-                expect(result.startsWith(".")).toBe(true);
-            });
-        });
-    });
-
-    // --- Prueba de que cambiar precision cambia el resultado ---
+    // --- Prueba de variación de precision ---
     describe("variación de precision → resultado distinto en el valor principal", () => {
         test("input=6 cambia de '6' a '6.0' a '6.00' según precision", () => {
             expect(formatIndicatorValue(6, "", 0)).toBe("6");
             expect(formatIndicatorValue(6, "", 1)).toBe("6.0");
             expect(formatIndicatorValue(6, "", 2)).toBe("6.00");
         });
-        test("input=0.8 cambia de '.8' a '.8' a '.80' según precision", () => {
-            expect(formatIndicatorValue(0.8, "", 0)).toBe(".8");
+        test("input=0.8 cambia de '1' a '.8' a '.80' según precision", () => {
+            expect(formatIndicatorValue(0.8, "", 0)).toBe("1");
             expect(formatIndicatorValue(0.8, "", 1)).toBe(".8");
             expect(formatIndicatorValue(0.8, "", 2)).toBe(".80");
         });

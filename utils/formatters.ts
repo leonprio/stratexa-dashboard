@@ -95,7 +95,8 @@ export const formatIndicatorValue = (
         const scaled = num * 100;
         if (precision === 0) {
             const rounded = Math.round(scaled);
-            return `${rounded.toLocaleString('en-US')}%`;
+            const safeRounded = rounded === 0 ? 0 : rounded;
+            return `${safeRounded.toLocaleString('en-US')}%`;
         }
         return `${scaled.toLocaleString('en-US', {
             minimumFractionDigits: precision,
@@ -103,9 +104,18 @@ export const formatIndicatorValue = (
         })}%`;
     }
 
+    // 🛡️ REGLA v9.4.22-NUMERIC-CLARITY:
+    // Si precision === 0, SIEMPRE redondear a entero (incluyendo |val| < 1: 0.8 → 1, 0.4 → 0, -0.8 → -1)
+    if (precision === 0) {
+        const rounded = Math.round(num);
+        const safeRounded = rounded === 0 ? 0 : rounded;
+        const formatted = safeRounded.toLocaleString('en-US');
+        return isPercentage ? `${formatted}%` : (trimmedUnit ? `${formatted} ${trimmedUnit}` : formatted);
+    }
+
     const absNum = Math.abs(num);
 
-    // Valores finitos no nulos con |val| < 1: preservar sin cero inicial (.8, -.8)
+    // Valores finitos no nulos con |val| < 1 (SOLO cuando precision > 0)
     if (num !== 0 && absNum < 1) {
         const effectivePrecision = Math.max(1, precision);
         const absFormatted = absNum.toLocaleString('en-US', {
@@ -115,12 +125,6 @@ export const formatIndicatorValue = (
         const withoutLeadingZero = absFormatted.replace(/^0\./, '.');
         const signed = num < 0 ? `-${withoutLeadingZero}` : withoutLeadingZero;
         return isPercentage ? `${signed}%` : (trimmedUnit ? `${signed} ${trimmedUnit}` : signed);
-    }
-
-    if (precision === 0) {
-        const rounded = Math.round(num);
-        const formatted = rounded.toLocaleString('en-US');
-        return isPercentage ? `${formatted}%` : (trimmedUnit ? `${formatted} ${trimmedUnit}` : formatted);
     }
 
     // Valores |val| >= 1 o val === 0 (cuando precision > 0)
