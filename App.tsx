@@ -35,9 +35,19 @@ import { IPS_INDICATORS } from "./utils/standardStructure";
 import { exportBulkDataToCSV } from "./utils/exportUtils";
 import { normalizeGroupName } from "./utils/formatters";
 
+import { ContributionMatrixView } from "./components/strategy/ContributionMatrixView";
+import { strategyService } from "./services/strategyService";
+import {
+  StrategicPerspective,
+  StrategicObjective,
+  AreaStrategyConfig,
+  ContributionObjective,
+  ContributionIndicatorAssignment,
+} from "./strategyTypes";
+
 type AppStatus = "loading" | "no-session" | "ready" | "error";
 type ViewMode = "grid" | "compact";
-type AdminSection = "none" | "users" | "thresholds" | "clients" | "indicators" | "weights" | "kpiWeights" | "import" | "export" | "help" | "master";
+type AdminSection = "none" | "users" | "thresholds" | "clients" | "indicators" | "weights" | "kpiWeights" | "import" | "export" | "help" | "master" | "strategy";
 
 /**
  * Componente principal de la aplicación Stratexa Dashboard.
@@ -130,6 +140,40 @@ const SHIELD_ID = "GOLD MASTER";
     const saved = localStorage.getItem("sidebarCollapsed");
     return saved === "true";
   });
+
+  // 🎯 Estado para Fundamentos de Estrategia (v9.5.0)
+  const [perspectives, setPerspectives] = useState<StrategicPerspective[]>([]);
+  const [objectives, setObjectives] = useState<StrategicObjective[]>([]);
+  const [areaConfigs, setAreaConfigs] = useState<AreaStrategyConfig[]>([]);
+  const [contributionObjectives, setContributionObjectives] = useState<ContributionObjective[]>([]);
+  const [assignments, setAssignments] = useState<ContributionIndicatorAssignment[]>([]);
+
+  // Carga diferida condicional (Feature Flag OFF = 0 llamadas a Firebase)
+  const loadStrategyData = useCallback(async () => {
+    if (!settings?.enableStrategyMap) return;
+    try {
+      const [pList, oList, acList, coList, asgnList] = await Promise.all([
+        strategyService.getPerspectives(selectedClientId),
+        strategyService.getStrategicObjectives(selectedClientId),
+        strategyService.getAreaConfigs(selectedClientId),
+        strategyService.getContributionObjectives(selectedClientId),
+        strategyService.getAssignments(selectedClientId),
+      ]);
+      setPerspectives(pList);
+      setObjectives(oList);
+      setAreaConfigs(acList);
+      setContributionObjectives(coList);
+      setAssignments(asgnList);
+    } catch (err) {
+      console.error("Error al cargar datos estratégicos:", err);
+    }
+  }, [settings?.enableStrategyMap, selectedClientId]);
+
+  useEffect(() => {
+    if (settings?.enableStrategyMap) {
+      loadStrategyData();
+    }
+  }, [settings?.enableStrategyMap, selectedClientId, loadStrategyData]);
 
   // Derivar roles del perfil de usuario
   const isGlobalAdmin = useMemo(() =>
@@ -1798,6 +1842,16 @@ const SHIELD_ID = "GOLD MASTER";
                   </button>
                 </>
               )}
+
+              {settings?.enableStrategyMap && (
+                <button
+                  onClick={() => setActiveAdminSection("strategy")}
+                  className={`px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${activeAdminSection === "strategy" ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-950/40' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}
+                  title="Matriz de Contribución Estratégica"
+                >
+                  Estrategia
+                </button>
+              )}
             </nav>
           )}
 
@@ -2104,6 +2158,28 @@ Esto corregirá cualquier inconsistencia en colores (ej. Amarillo vs Rojo).`)) {
               setActiveAdminSection("none");
             }}
           />
+        )
+      }
+
+      {
+        activeAdminSection === "strategy" && settings?.enableStrategyMap && (
+          <div className="p-4 lg:p-8 max-w-[1600px] mx-auto min-h-screen">
+            <ContributionMatrixView
+              perspectives={perspectives}
+              objectives={objectives}
+              areaConfigs={areaConfigs}
+              contributionObjectives={contributionObjectives}
+              assignments={assignments}
+              dashboards={dashboards}
+              selectedClientId={selectedClientId}
+              currentUser={userProfile || undefined}
+              onRefreshData={loadStrategyData}
+              onNavigateToDashboard={(dashboardId, itemId) => {
+                setActiveAdminSection("none");
+                setSelectedDashboardId(dashboardId);
+              }}
+            />
+          </div>
         )
       }
 
