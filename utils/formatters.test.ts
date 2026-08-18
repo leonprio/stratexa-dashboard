@@ -1,4 +1,4 @@
-import { normalizeGroupName, formatIndicatorValue } from "./formatters";
+import { normalizeGroupName, formatIndicatorValue, formatNumberWithCommas } from "./formatters";
 
 describe("normalizeGroupName", () => {
     test("should handle basic normalization (accents and case)", () => {
@@ -76,8 +76,20 @@ describe("formatIndicatorValue — contrato decimal v9.4.16", () => {
         });
     });
 
-    // --- CONTRATO v9.4.22-NUMERIC-CLARITY: precision=0 siempre redondea a entero ---
-    describe("valores con precision=0 — redondeo a entero entero (v9.4.22)", () => {
+    // --- CONTRATO v9.4.22-NUMERIC-CLARITY: precision=0 siempre redondea a entero y previene -0 ---
+    describe("valores con precision=0 — redondeo a entero y prevención de -0 (v9.4.22)", () => {
+        test("precision=0, input=-0.4 → '0'", () => {
+            expect(formatIndicatorValue(-0.4, "", 0)).toBe("0");
+            expect(formatNumberWithCommas(-0.4, 0)).toBe("0");
+        });
+        test("precision=0, input=-0.49 → '0'", () => {
+            expect(formatIndicatorValue(-0.49, "", 0)).toBe("0");
+            expect(formatNumberWithCommas(-0.49, 0)).toBe("0");
+        });
+        test("precision=0, input=-0.5 → '-1' (según Math.round) y jamás '-0'", () => {
+            expect(formatIndicatorValue(-0.5, "", 0)).not.toBe("-0");
+            expect(formatNumberWithCommas(-0.5, 0)).not.toBe("-0");
+        });
         test("precision=0, input=0.8 → '1'", () => {
             expect(formatIndicatorValue(0.8, "", 0)).toBe("1");
         });
@@ -95,6 +107,18 @@ describe("formatIndicatorValue — contrato decimal v9.4.16", () => {
         });
         test("precision=0, input=0 → '0'", () => {
             expect(formatIndicatorValue(0, "", 0)).toBe("0");
+        });
+    });
+
+    // --- RESTAURACIÓN DE PRECISIÓN POR DEFECTO HISTÓRICA (DEFAULT = 2) ---
+    describe("restauración de precisión por defecto histórica (precision predeterminada = 2)", () => {
+        test("formatNumberWithCommas(1234.567) sin precision predetermina 2 decimales", () => {
+            expect(formatNumberWithCommas(1234.567)).toBe("1,234.57");
+            expect(formatNumberWithCommas(100)).toBe("100.00");
+        });
+        test("formatIndicatorValue(1234.567) sin precision predetermina 2 decimales", () => {
+            expect(formatIndicatorValue(1234.567)).toBe("1,234.57");
+            expect(formatIndicatorValue(100)).toBe("100.00");
         });
     });
 

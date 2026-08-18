@@ -434,7 +434,7 @@ export const DataEditor: React.FC<DataEditorProps> = React.memo(({ item, allDash
                       type="text"
                       inputMode="decimal"
                       placeholder="0"
-                      value={focusedInputId === `w-goal-${i}` ? (weeklyGoals[i] ?? '').toString() : formatNumberWithCommas(weeklyGoals[i])}
+                      value={focusedInputId === `w-goal-${i}` ? (weeklyGoals[i] ?? '').toString() : formatNumberWithCommas(weeklyGoals[i], 0)}
                       onFocus={() => setFocusedInputId(`w-goal-${i}`)}
                       onBlur={() => setFocusedInputId(null)}
                       onChange={(e) => {
@@ -453,7 +453,7 @@ export const DataEditor: React.FC<DataEditorProps> = React.memo(({ item, allDash
                       type="text"
                       inputMode="decimal"
                       placeholder="0"
-                      value={focusedInputId === `w-actual-${i}` ? (weeklyProgress[i] ?? '').toString() : formatNumberWithCommas(weeklyProgress[i])}
+                      value={focusedInputId === `w-actual-${i}` ? (weeklyProgress[i] ?? '').toString() : formatNumberWithCommas(weeklyProgress[i], 0)}
                       onFocus={() => setFocusedInputId(`w-actual-${i}`)}
                       onBlur={() => setFocusedInputId(null)}
                       onChange={(e) => {

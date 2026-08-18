@@ -85,7 +85,7 @@ export const LineChart: React.FC<LineChartProps> = React.memo(({ progressData, g
   const yMax = maxValue + (range * paddingFactor || maxValue * 0.1);
   const yMin = Math.max(0, minValue - (range * paddingFactor || 0));
 
-  const formatNumber = (num: number) => formatNumberWithCommas(num);
+  const formatNumber = (num: number) => formatNumberWithCommas(num, 0);
 
   // 🛡️ DYNAMIC LEFT PADDING TO PREVENT TEXT CLIPPING FOR LARGE NUMBERS
   const yTickValues = [0, 0.5, 1].map(tick => yMin + (yMax - yMin) * tick);

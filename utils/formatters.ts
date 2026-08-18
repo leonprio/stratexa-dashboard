@@ -49,7 +49,7 @@ export const isSameGroup = (groupA: string | undefined | null, groupB: string | 
  * Formats a number with comma as thousand separator.
  * Displays decimals only if they are present in the original number, up to specified precision.
  */
-export const formatNumberWithCommas = (value: number | string | null | undefined, precision: number = 0): string => {
+export const formatNumberWithCommas = (value: number | string | null | undefined, precision: number = 2): string => {
     if (value === null || value === undefined || value === "") return "";
     
     // Convert to number if it's a string, removing existing commas
@@ -58,7 +58,9 @@ export const formatNumberWithCommas = (value: number | string | null | undefined
     if (isNaN(num)) return value.toString();
 
     if (precision === 0) {
-        return Math.round(num).toLocaleString('en-US');
+        const rounded = Math.round(num);
+        const safeRounded = Object.is(rounded, -0) || rounded === 0 ? 0 : rounded;
+        return safeRounded.toLocaleString('en-US');
     }
 
     // Use en-US for comma thousands (1,250.50)
@@ -74,13 +76,13 @@ export const formatNumberWithCommas = (value: number | string | null | undefined
  *
  * Contrato decimal:
  * - null | undefined | NaN | Infinity → "SIN DATOS"
- * - precision === 0 → redondeo a entero con Math.round() y separadores de miles
+ * - precision === 0 → redondeo a entero con Math.round() y separadores de miles (normalizando -0 a 0)
  * - isPercentage && (isDerived || 0 < val ≤ 1) → escalar ×100
  */
 export const formatIndicatorValue = (
     rawValue: number | null | undefined,
     unit?: string,
-    precision: number = 0,
+    precision: number = 2,
     isDerivedFormula: boolean = false
 ): string => {
     if (rawValue === null || rawValue === undefined) return "SIN DATOS";
@@ -95,7 +97,7 @@ export const formatIndicatorValue = (
         const scaled = num * 100;
         if (precision === 0) {
             const rounded = Math.round(scaled);
-            const safeRounded = rounded === 0 ? 0 : rounded;
+            const safeRounded = Object.is(rounded, -0) || rounded === 0 ? 0 : rounded;
             return `${safeRounded.toLocaleString('en-US')}%`;
         }
         return `${scaled.toLocaleString('en-US', {
@@ -108,7 +110,7 @@ export const formatIndicatorValue = (
     // Si precision === 0, SIEMPRE redondear a entero (incluyendo |val| < 1: 0.8 → 1, 0.4 → 0, -0.8 → -1)
     if (precision === 0) {
         const rounded = Math.round(num);
-        const safeRounded = rounded === 0 ? 0 : rounded;
+        const safeRounded = Object.is(rounded, -0) || rounded === 0 ? 0 : rounded;
         const formatted = safeRounded.toLocaleString('en-US');
         return isPercentage ? `${formatted}%` : (trimmedUnit ? `${formatted} ${trimmedUnit}` : formatted);
     }
