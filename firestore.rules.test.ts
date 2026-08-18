@@ -85,6 +85,14 @@ describe('Firestore Security Rules — Strategy Module (v9.5.0 Foundation)', () 
           globalRole: 'Director'
         });
 
+        // Usuario 7: SuperAdmin
+        await setDoc(doc(db, 'tbl_users', 'super_admin'), {
+          uid: 'super_admin',
+          email: 'leon@leonprior.com',
+          clientId: 'IPS',
+          globalRole: 'Admin'
+        });
+
         // Documentos de estrategia iniciales
         await setDoc(doc(db, 'tbl_strategicPerspectives', 'persp_ips'), {
           id: 'persp_ips',
@@ -268,5 +276,24 @@ describe('Firestore Security Rules — Strategy Module (v9.5.0 Foundation)', () 
     const userXabcDb = testEnv.authenticatedContext('user_xabc').firestore();
     const ref = doc(userXabcDb, 'tbl_strategicPerspectives', 'persp_abc');
     await assertFails(getDoc(ref));
+  });
+
+  // 🛡️ NUEVAS PRUEBAS DE SUPERADMIN Y CLIENTID ESTRUCTURAL (22..24)
+  it('22. denies SuperAdmin create of strategic document with clientId=".*"', async () => {
+    const superAdminDb = testEnv.authenticatedContext('super_admin', { email: 'leon@leonprior.com' }).firestore();
+    const ref = doc(superAdminDb, 'tbl_strategicObjectives', 'oe_super_malicious_1');
+    await assertFails(setDoc(ref, { id: 'oe_super_malicious_1', clientId: '.*', title: 'Super Malicious' }));
+  });
+
+  it('23. denies SuperAdmin create of strategic document with clientId="IPS|CLIENT_A"', async () => {
+    const superAdminDb = testEnv.authenticatedContext('super_admin', { email: 'leon@leonprior.com' }).firestore();
+    const ref = doc(superAdminDb, 'tbl_strategicObjectives', 'oe_super_malicious_2');
+    await assertFails(setDoc(ref, { id: 'oe_super_malicious_2', clientId: 'IPS|CLIENT_A', title: 'Super Malicious' }));
+  });
+
+  it('24. denies SuperAdmin update changing valid clientId to "^IPS$"', async () => {
+    const superAdminDb = testEnv.authenticatedContext('super_admin', { email: 'leon@leonprior.com' }).firestore();
+    const ref = doc(superAdminDb, 'tbl_strategicPerspectives', 'persp_ips');
+    await assertFails(updateDoc(ref, { clientId: '^IPS$' }));
   });
 });
