@@ -348,7 +348,7 @@ export const DataEditor: React.FC<DataEditorProps> = React.memo(({ item, allDash
                     <input
                       type="text"
                       inputMode="decimal"
-                      value={focusedInputId === `m-goal-${idx}` ? (monthlyGoals[idx] ?? '').toString() : formatIndicatorValue(monthlyGoals[idx], item.unit, 2, item.indicatorType === 'formula')}
+                      value={focusedInputId === `m-goal-${idx}` ? (monthlyGoals[idx] ?? '').toString() : formatIndicatorValue(monthlyGoals[idx], item.unit, 0, item.indicatorType === 'formula')}
                       onFocus={() => setFocusedInputId(`m-goal-${idx}`)}
                       onBlur={() => setFocusedInputId(null)}
                       onChange={(e) => setGoalAt(idx, e.target.value)}
@@ -361,7 +361,7 @@ export const DataEditor: React.FC<DataEditorProps> = React.memo(({ item, allDash
                     <input
                       type="text"
                       inputMode="decimal"
-                      value={focusedInputId === `m-actual-${idx}` ? (monthlyProgress[idx] ?? '').toString() : formatIndicatorValue(monthlyProgress[idx], item.unit, 2, item.indicatorType === 'formula')}
+                      value={focusedInputId === `m-actual-${idx}` ? (monthlyProgress[idx] ?? '').toString() : formatIndicatorValue(monthlyProgress[idx], item.unit, 0, item.indicatorType === 'formula')}
                       onFocus={() => setFocusedInputId(`m-actual-${idx}`)}
                       onBlur={() => setFocusedInputId(null)}
                       onChange={(e) => setProgressAt(idx, e.target.value)}

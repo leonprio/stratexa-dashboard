@@ -28,7 +28,7 @@ export const CurrentPeriodFocus: React.FC<CurrentPeriodFocusProps> = ({
     canEdit,
     onClose,
     allDashboardItems = [],
-    decimalPrecision = 2
+    decimalPrecision = 0
 }) => {
     // 🛡️ ACTIVE SHIELD: Blindaje contra ítems malformados
     const [localGoal, setLocalGoal] = useState<string>('');

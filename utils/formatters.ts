@@ -49,7 +49,7 @@ export const isSameGroup = (groupA: string | undefined | null, groupB: string | 
  * Formats a number with comma as thousand separator.
  * Displays decimals only if they are present in the original number, up to specified precision.
  */
-export const formatNumberWithCommas = (value: number | string | null | undefined, precision: number = 2): string => {
+export const formatNumberWithCommas = (value: number | string | null | undefined, precision: number = 0): string => {
     if (value === null || value === undefined || value === "") return "";
     
     // Convert to number if it's a string, removing existing commas
@@ -57,8 +57,11 @@ export const formatNumberWithCommas = (value: number | string | null | undefined
     
     if (isNaN(num)) return value.toString();
 
+    if (precision === 0) {
+        return Math.round(num).toLocaleString('en-US');
+    }
+
     // Use en-US for comma thousands (1,250.50)
-    // 🛡️ REGLA v10.9.6-UX: Respetar precisión seleccionada por el usuario (Default: 2)
     return num.toLocaleString('en-US', {
         minimumFractionDigits: precision,
         maximumFractionDigits: precision
@@ -71,17 +74,13 @@ export const formatNumberWithCommas = (value: number | string | null | undefined
  *
  * Contrato decimal:
  * - null | undefined | NaN | Infinity → "SIN DATOS"
- * - isPercentage && (isDerived || 0 < val ≤ 1) → escalar ×100, aplicar precision
- * - 0 < |val| < 1 → effectivePrecision = max(1, precision); eliminar cero inicial (.8, -.8)
- * - val === 0 → formatear con precision elegida
- * - |val| >= 1 → formatear con precision
- *
- * Si la unidad es '%', multiplica rawValue×100 ANTES de aplicar precisión decimal.
+ * - precision === 0 → redondeo a entero con Math.round() y separadores de miles
+ * - isPercentage && (isDerived || 0 < val ≤ 1) → escalar ×100
  */
 export const formatIndicatorValue = (
     rawValue: number | null | undefined,
     unit?: string,
-    precision: number = 2,
+    precision: number = 0,
     isDerivedFormula: boolean = false
 ): string => {
     if (rawValue === null || rawValue === undefined) return "SIN DATOS";
@@ -94,6 +93,10 @@ export const formatIndicatorValue = (
     // Porcentajes: escalar ×100 cuando el valor raw es una razón normalizada
     if (isPercentage && (isDerivedFormula || (num > 0 && num <= 1.0))) {
         const scaled = num * 100;
+        if (precision === 0) {
+            const rounded = Math.round(scaled);
+            return `${rounded.toLocaleString('en-US')}%`;
+        }
         return `${scaled.toLocaleString('en-US', {
             minimumFractionDigits: precision,
             maximumFractionDigits: precision
@@ -102,21 +105,25 @@ export const formatIndicatorValue = (
 
     const absNum = Math.abs(num);
 
-    // Valores finitos no nulos con |val| < 1: mínimo 1 decimal y sin cero inicial
+    // Valores finitos no nulos con |val| < 1: preservar sin cero inicial (.8, -.8)
     if (num !== 0 && absNum < 1) {
         const effectivePrecision = Math.max(1, precision);
-        // Formateamos el valor absoluto y reponemos el signo manualmente para eliminar el "0" inicial
         const absFormatted = absNum.toLocaleString('en-US', {
             minimumFractionDigits: effectivePrecision,
             maximumFractionDigits: effectivePrecision
         });
-        // absFormatted será "0.8" → quitamos el "0" inicial → ".8"
         const withoutLeadingZero = absFormatted.replace(/^0\./, '.');
         const signed = num < 0 ? `-${withoutLeadingZero}` : withoutLeadingZero;
         return isPercentage ? `${signed}%` : (trimmedUnit ? `${signed} ${trimmedUnit}` : signed);
     }
 
-    // Valores |val| >= 1 o val === 0
+    if (precision === 0) {
+        const rounded = Math.round(num);
+        const formatted = rounded.toLocaleString('en-US');
+        return isPercentage ? `${formatted}%` : (trimmedUnit ? `${formatted} ${trimmedUnit}` : formatted);
+    }
+
+    // Valores |val| >= 1 o val === 0 (cuando precision > 0)
     const formatted = num.toLocaleString('en-US', {
         minimumFractionDigits: precision,
         maximumFractionDigits: precision
