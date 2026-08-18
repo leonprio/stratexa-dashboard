@@ -379,13 +379,13 @@ export const CurrentPeriodFocus: React.FC<CurrentPeriodFocusProps> = ({
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                                 <div className={`bg-slate-950/40 border border-white/5 rounded-2xl p-3 transition-all ${canEdit && !activityMode ? 'focus-within:border-cyan-500/50' : 'opacity-80 grayscale-[0.5]'}`}>
                                     <div className="flex justify-between items-center mb-1.5">
-                                        <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest block">Meta ({unit})</span>
-                                        <span className="text-[10px] font-black text-cyan-400 tabular-nums">{localGoal !== '' ? formatIndicatorValue(localGoal, unit, decimalPrecision, item.indicatorType === 'formula') : 'SIN DATOS'}</span>
+                                        <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block">Meta del Periodo ({unit})</span>
+                                        <span className="text-[10px] font-black text-cyan-400 tabular-nums">{localGoal !== '' ? formatIndicatorValue(parseFormattedNumber(localGoal), unit, decimalPrecision, item.indicatorType === 'formula') : 'SIN DATOS'}</span>
                                     </div>
                                     <input
                                         type="text"
                                         inputMode="decimal"
-                                        value={isGoalFocused ? localGoal : formatIndicatorValue(localGoal, unit, decimalPrecision, item.indicatorType === 'formula')}
+                                        value={isGoalFocused ? localGoal : (localGoal !== '' ? formatIndicatorValue(parseFormattedNumber(localGoal), unit, decimalPrecision, item.indicatorType === 'formula') : '')}
                                         onFocus={() => setIsGoalFocused(true)}
                                         onBlur={() => setIsGoalFocused(false)}
                                         onChange={(e) => {
@@ -402,13 +402,13 @@ export const CurrentPeriodFocus: React.FC<CurrentPeriodFocusProps> = ({
                                 </div>
                                 <div className={`bg-slate-950/40 border border-white/5 rounded-2xl p-3 transition-all ${effectiveCanEdit && !activityMode ? 'focus-within:border-emerald-500/50' : 'opacity-80 grayscale-[0.5]'}`}>
                                     <div className="flex justify-between items-center mb-1.5">
-                                        <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest block">Real ({unit})</span>
-                                        <span className="text-[10px] font-black text-emerald-400 tabular-nums">{localActual !== '' ? formatIndicatorValue(localActual, unit, decimalPrecision, item.indicatorType === 'formula') : 'SIN DATOS'}</span>
+                                        <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block">Real del Periodo ({unit})</span>
+                                        <span className="text-[10px] font-black text-emerald-400 tabular-nums">{localActual !== '' ? formatIndicatorValue(parseFormattedNumber(localActual), unit, decimalPrecision, item.indicatorType === 'formula') : 'SIN DATOS'}</span>
                                     </div>
                                     <input
                                         type="text"
                                         inputMode="decimal"
-                                        value={isActualFocused ? localActual : formatIndicatorValue(localActual, unit, decimalPrecision, item.indicatorType === 'formula')}
+                                        value={isActualFocused ? localActual : (localActual !== '' ? formatIndicatorValue(parseFormattedNumber(localActual), unit, decimalPrecision, item.indicatorType === 'formula') : '')}
                                         onFocus={() => setIsActualFocused(true)}
                                         onBlur={() => setIsActualFocused(false)}
                                         onChange={(e) => {
@@ -466,23 +466,31 @@ export const CurrentPeriodFocus: React.FC<CurrentPeriodFocusProps> = ({
                                 <div className="flex flex-col">
                                     <div className="flex items-center gap-2 mb-1">
                                         <div className={`w-2.5 h-2.5 rounded-full animate-pulse ${compliance.complianceStatus === 'OnTrack' ? 'bg-emerald-500' : compliance.complianceStatus === 'AtRisk' ? 'bg-amber-500' : compliance.complianceStatus === 'InProgress' ? 'bg-sky-500' : compliance.complianceStatus === 'Neutral' ? 'bg-slate-600' : 'bg-rose-500'}`} />
-                                        <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none">CUMPLIMIENTO</span>
+                                        <span className="text-[9px] font-black text-slate-300 uppercase tracking-widest leading-none">
+                                            {type === 'accumulative' ? 'CUMPLIMIENTO YTD (ACUMULADO)' : 'CUMPLIMIENTO YTD'}
+                                        </span>
                                     </div>
                                     <span className={`text-4xl font-black tabular-nums tracking-tighter leading-none ${compliance.complianceStatus === 'OnTrack' ? 'text-emerald-400' : compliance.complianceStatus === 'AtRisk' ? 'text-amber-400' : compliance.complianceStatus === 'InProgress' ? 'text-sky-400' : compliance.complianceStatus === 'Neutral' ? 'text-slate-500' : 'text-rose-400'}`}>
                                         {Math.round(compliance.overallPercentage)}%
                                     </span>
+                                    <span className="text-[8px] font-bold text-slate-400 mt-1 block">
+                                        (Acumulado anual al periodo de corte)
+                                    </span>
                                 </div>
                                 <div className="flex flex-col items-end">
-                                    <span className="text-[9px] font-black uppercase tracking-widest text-slate-500 mb-1">Brecha Actual</span>
+                                    <span className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">Brecha del Periodo</span>
                                     <span className={`text-lg font-black ${isPositiveGap ? 'text-emerald-400' : 'text-rose-400'}`}>
                                         {isPositiveGap ? '▲' : '▼'} {isCalculated ? `${(Math.abs(gap) * 100).toFixed(1)} pp` : `${formatNumber(Math.abs(gap))} ${unit}`}
+                                    </span>
+                                    <span className="text-[8px] font-bold text-slate-500 mt-0.5">
+                                        ({currentPeriodLabel})
                                     </span>
                                 </div>
                             </div>
                             
                             <div className="bg-slate-950/40 rounded-2xl p-3 border border-white/5 flex-grow flex flex-col justify-center">
                                 <div className="mb-2 flex items-center justify-between">
-                                    <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest italic">Tendencia Histórica (Línea Punteada = Meta)</span>
+                                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic">Tendencia Histórica (Línea Punteada = Meta)</span>
                                 </div>
                                 <LineChart
                                     progressData={chartData.progress}
