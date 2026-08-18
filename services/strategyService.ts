@@ -45,7 +45,7 @@ const ASSIGNMENTS_COLLECTION = `${COLLECTION_PREFIX}contributionIndicatorAssignm
 const COUNTERS_COLLECTION = `${COLLECTION_PREFIX}strategyCounters`;
 const CODE_RESERVATIONS_COLLECTION = `${COLLECTION_PREFIX}areaCodeReservations`;
 
-const cleanClientId = (clientId?: string): string => {
+const normalizeClientId = (clientId?: string): string => {
   if (!clientId || clientId === 'all') return 'IPS';
   return clientId.trim().toUpperCase();
 };
@@ -55,7 +55,7 @@ export const strategyService = {
   // 1. Perspectivas Estratégicas (4 Slots Configurables)
   // -----------------------------
   getPerspectives: async (clientId?: string): Promise<StrategicPerspective[]> => {
-    const targetClient = cleanClientId(clientId);
+    const targetClient = normalizeClientId(clientId);
     const ref = collection(db, PERSPECTIVES_COLLECTION);
     const q = query(ref, where('clientId', '==', targetClient));
     const snap = await getDocs(q);
@@ -69,7 +69,7 @@ export const strategyService = {
   },
 
   savePerspective: async (perspective: StrategicPerspective, clientId?: string): Promise<StrategicPerspective> => {
-    const targetClient = cleanClientId(clientId || perspective.clientId);
+    const targetClient = normalizeClientId(clientId || perspective.clientId);
     const ref = doc(db, PERSPECTIVES_COLLECTION, `${targetClient}_${perspective.id}`);
 
     const data: StrategicPerspective = {
@@ -82,7 +82,7 @@ export const strategyService = {
   },
 
   saveAllPerspectives: async (perspectives: StrategicPerspective[], clientId?: string): Promise<boolean> => {
-    const targetClient = cleanClientId(clientId);
+    const targetClient = normalizeClientId(clientId);
     const batch = writeBatch(db);
 
     perspectives.forEach(p => {
@@ -99,7 +99,7 @@ export const strategyService = {
   // 2. Objetivos Estratégicos (OE)
   // -----------------------------
   getStrategicObjectives: async (clientId?: string): Promise<StrategicObjective[]> => {
-    const targetClient = cleanClientId(clientId);
+    const targetClient = normalizeClientId(clientId);
     const ref = collection(db, OBJECTIVES_COLLECTION);
     const q = query(ref, where('clientId', '==', targetClient));
     const snap = await getDocs(q);
@@ -114,7 +114,7 @@ export const strategyService = {
   },
 
   saveStrategicObjective: async (objective: Omit<StrategicObjective, 'id'> & { id?: string }): Promise<StrategicObjective> => {
-    const targetClient = cleanClientId(objective.clientId);
+    const targetClient = normalizeClientId(objective.clientId);
     const docId = objective.id || `oe_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
     const ref = doc(db, OBJECTIVES_COLLECTION, docId);
 
@@ -132,7 +132,7 @@ export const strategyService = {
   },
 
   deleteStrategicObjective: async (objectiveId: string, clientId?: string): Promise<boolean> => {
-    const targetClient = cleanClientId(clientId);
+    const targetClient = normalizeClientId(clientId);
     const ref = doc(db, OBJECTIVES_COLLECTION, objectiveId);
     // Defensa en profundidad: Verificar pertenencia al tenant
     const snap = await getDoc(ref);
@@ -151,7 +151,7 @@ export const strategyService = {
   // 3. Configuración y Reserva Atómica de Código de Área
   // -----------------------------
   getAreaConfigs: async (clientId?: string): Promise<AreaStrategyConfig[]> => {
-    const targetClient = cleanClientId(clientId);
+    const targetClient = normalizeClientId(clientId);
     const ref = collection(db, AREA_CONFIGS_COLLECTION);
     const q = query(ref, where('clientId', '==', targetClient));
     const snap = await getDocs(q);
@@ -165,11 +165,19 @@ export const strategyService = {
     clientId?: string,
     areaConfigId?: string
   ): Promise<AreaStrategyConfig> => {
-    const targetClient = cleanClientId(clientId);
+    const targetClient = normalizeClientId(clientId);
     const normArea = areaName.trim().toUpperCase();
     const normCode = code.trim().toUpperCase();
 
-    const targetAreaConfigId = areaConfigId || `areacfg_${targetClient}_${normArea.replace(/[^A-Z0-9]/g, '_')}`;
+    // 🛡️ REGLA DE IDENTIDAD INMUTABLE: Generar ID técnico auto-contenido independiente del nombre visible
+    const areaConfigs = await strategyService.getAreaConfigs(targetClient);
+    const existing = areaConfigs.find(
+      c => (areaConfigId && c.id === areaConfigId) ||
+           c.areaName.trim().toUpperCase() === normArea ||
+           (c.aliases && c.aliases.some(a => a.trim().toUpperCase() === normArea))
+    );
+
+    const targetAreaConfigId = areaConfigId || existing?.id || `areacfg_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
 
     // Ejecutar la reserva y guardado dentro de una Transacción Atómica de Firestore
     const result = await runTransaction(db, async (transaction) => {
@@ -189,12 +197,18 @@ export const strategyService = {
         }
       }
 
-      // Si se está cambiando el código de un área existente, liberar la reserva previa
+      // Manejar actualización de aliases y liberación de código antiguo
       let oldCodeToRelease: string | null = null;
+      let existingAliases: string[] = [];
+
       if (areaConfigSnap.exists()) {
         const currentData = areaConfigSnap.data() as AreaStrategyConfig;
         if (currentData.code && currentData.code !== normCode) {
           oldCodeToRelease = currentData.code;
+        }
+        existingAliases = currentData.aliases || [];
+        if (currentData.areaName && currentData.areaName !== normArea && !existingAliases.includes(currentData.areaName)) {
+          existingAliases.push(currentData.areaName);
         }
       }
 
@@ -208,6 +222,7 @@ export const strategyService = {
         id: targetAreaConfigId,
         areaName: normArea,
         code: normCode,
+        aliases: existingAliases,
         clientId: targetClient,
         updatedAt: now,
         createdAt: areaConfigSnap.exists() ? (areaConfigSnap.data() as AreaStrategyConfig).createdAt : now
@@ -231,10 +246,10 @@ export const strategyService = {
   },
 
   // -----------------------------
-  // 4. Objetivos de Contribución (OC) con Contador Atómico Transaccional
+  // 4. Objetivos de Contribución (OC) con Contador Atómico Transaccional Estricto
   // -----------------------------
   getContributionObjectives: async (clientId?: string): Promise<ContributionObjective[]> => {
-    const targetClient = cleanClientId(clientId);
+    const targetClient = normalizeClientId(clientId);
     const ref = collection(db, CONTRIBUTION_OBJECTIVES_COLLECTION);
     const q = query(ref, where('clientId', '==', targetClient));
     const snap = await getDocs(q);
@@ -250,13 +265,15 @@ export const strategyService = {
       areaCode?: string;
     }
   ): Promise<ContributionObjective> => {
-    const targetClient = cleanClientId(data.clientId);
+    const targetClient = normalizeClientId(data.clientId);
     const normArea = data.areaName.trim().toUpperCase();
 
     // 1. Asegurar la existencia y obtener la configuración de área relacional
     const areaConfigs = await strategyService.getAreaConfigs(targetClient);
     let areaConfig = areaConfigs.find(
-      c => (data.areaConfigId && c.id === data.areaConfigId) || c.areaName.trim().toUpperCase() === normArea
+      c => (data.areaConfigId && c.id === data.areaConfigId) ||
+           c.areaName.trim().toUpperCase() === normArea ||
+           (c.aliases && c.aliases.some(a => a.trim().toUpperCase() === normArea))
     );
 
     if (!areaConfig) {
@@ -295,7 +312,7 @@ export const strategyService = {
       return updatedOC;
     }
 
-    // Si es un nuevo OC: Transacción Atómica de Incremento Monótono Indivisible
+    // 🛡️ REGLA DE CONCURRENCIA ESTRICTA: Transacción 100% interna sin getDocs externo previo
     const result = await runTransaction(db, async (transaction) => {
       const counterRef = doc(db, COUNTERS_COLLECTION, `cnt_${targetClient}_${resolvedAreaConfigId}`);
       const counterSnap = await transaction.get(counterRef);
@@ -303,21 +320,6 @@ export const strategyService = {
       let lastSeq = 0;
       if (counterSnap.exists()) {
         lastSeq = (counterSnap.data() as StrategyCounter).lastIssuedSequence || 0;
-      } else {
-        // Inicialización resiliente: Consultar OCs existentes del área para evitar duplicar si ya había datos
-        const OCsRef = collection(db, CONTRIBUTION_OBJECTIVES_COLLECTION);
-        const qOCs = query(
-          OCsRef,
-          where('clientId', '==', targetClient),
-          where('areaConfigId', '==', resolvedAreaConfigId)
-        );
-        const existingSnap = await getDocs(qOCs);
-        if (!existingSnap.empty) {
-          lastSeq = existingSnap.docs.reduce((max, d) => {
-            const seq = Number((d.data() as ContributionObjective).sequenceNumber) || 0;
-            return seq > max ? seq : max;
-          }, 0);
-        }
       }
 
       const nextSeq = lastSeq + 1;
@@ -358,7 +360,7 @@ export const strategyService = {
   },
 
   deleteContributionObjective: async (ocId: string, clientId?: string): Promise<boolean> => {
-    const targetClient = cleanClientId(clientId);
+    const targetClient = normalizeClientId(clientId);
     const ref = doc(db, CONTRIBUTION_OBJECTIVES_COLLECTION, ocId);
     // Defensa en profundidad: Verificar pertenencia al tenant
     const snap = await getDoc(ref);
@@ -390,7 +392,7 @@ export const strategyService = {
   // 5. Asignaciones de Indicadores
   // -----------------------------
   getAssignments: async (clientId?: string): Promise<ContributionIndicatorAssignment[]> => {
-    const targetClient = cleanClientId(clientId);
+    const targetClient = normalizeClientId(clientId);
     const ref = collection(db, ASSIGNMENTS_COLLECTION);
     const q = query(ref, where('clientId', '==', targetClient));
     const snap = await getDocs(q);
@@ -403,7 +405,7 @@ export const strategyService = {
     items: { dashboardId: number | string; itemId: number | string }[],
     clientId?: string
   ): Promise<boolean> => {
-    const targetClient = cleanClientId(clientId);
+    const targetClient = normalizeClientId(clientId);
     
     // Defensa en profundidad: Verificar que el OC existe y pertenece al tenant
     const ocRef = doc(db, CONTRIBUTION_OBJECTIVES_COLLECTION, ocId);

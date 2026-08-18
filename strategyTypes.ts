@@ -62,9 +62,10 @@ export interface StrategicObjective {
 }
 
 export interface AreaStrategyConfig {
-  id: string; // Identidad técnica inmutable (ej. "areacfg_IPS_COMERCIAL")
-  areaName: string; // Nombre de despliegue del área (ej. "COMERCIAL")
+  id: string; // Identidad técnica inmutable auto-generada (ej. "areacfg_171800..._x8z")
+  areaName: string; // Nombre visible/fuente del área (ej. "COMERCIAL")
   code: string; // Código de estrategia estable (ej. "COM")
+  aliases?: string[]; // Nombres históricos/alias mapeados a esta misma entidad técnica
   clientId: string;
   createdAt?: string;
   updatedAt?: string;
@@ -96,7 +97,7 @@ export interface ContributionIndicatorAssignment {
 }
 
 export interface StrategyCounter {
-  id: string; // Documento de contador (ej. "cnt_IPS_areacfg_COM")
+  id: string; // Documento de contador (ej. "cnt_IPS_areacfg_171800...")
   lastIssuedSequence: number;
   areaConfigId: string;
   clientId: string;
@@ -145,15 +146,15 @@ export function deriveAreaCodeSuggestion(areaName: string): string {
 
 /**
  * Valida la unicidad de un código de área para un mismo cliente.
- * Retorna true si el código es único o pertenece a la misma configuración de área.
+ * Retorna true si el código es único o pertenece a la misma entidad de configuración de área.
  */
 export function validateAreaCodeUniqueness(
   configs: AreaStrategyConfig[],
   newCode: string,
-  currentAreaNameOrId: string
+  currentConfigIdOrName: string
 ): boolean {
   const normalizedNewCode = newCode.trim().toUpperCase();
-  const normalizedKey = currentAreaNameOrId.trim().toUpperCase();
+  const normalizedKey = currentConfigIdOrName.trim().toUpperCase();
 
   if (!normalizedNewCode) return false;
 
@@ -163,11 +164,11 @@ export function validateAreaCodeUniqueness(
 
   if (!existing) return true;
 
-  // Si existe pero pertenece al mismo área o mismo ID, es válido
-  return (
-    existing.id.trim().toUpperCase() === normalizedKey ||
-    existing.areaName.trim().toUpperCase() === normalizedKey
-  );
+  const isSameId = existing.id.trim().toUpperCase() === normalizedKey;
+  const isSameName = existing.areaName.trim().toUpperCase() === normalizedKey;
+  const isAliasMatch = Boolean(existing.aliases && existing.aliases.some(a => a.trim().toUpperCase() === normalizedKey));
+
+  return isSameId || isSameName || isAliasMatch;
 }
 
 /**
