@@ -38,16 +38,16 @@ service cloud.firestore {
         exists(/databases/$(database)/documents/tbl_users/$(request.auth.uid)) &&
         (
           getUserProfile().clientId == 'all' ||
+          getUserProfile().clientId == 'ALL' ||
           getUserProfile().clientId == targetClientId ||
-          targetClientId == 'IPS'
+          getUserProfile().clientId.matches('(.*,|^)\\s*' + targetClientId + '\\s*(,.*|$)')
         )
       );
     }
 
     function isTenantAdmin(targetClientId) {
       return isSuperAdmin() || (
-        isStratexaAdmin() &&
-        (getUserProfile().clientId == 'all' || getUserProfile().clientId == targetClientId || targetClientId == 'IPS')
+        isStratexaAdmin() && isTenantUser(targetClientId)
       );
     }
 
@@ -99,7 +99,7 @@ service cloud.firestore {
     match /tbl_contributionObjectives/{docId} {
       allow read: if isTableroUser() && (resource == null || isTenantUser(resource.data.clientId));
       allow create: if isTableroUser() && isTenantAdmin(request.resource.data.clientId);
-      allow update: if isTableroUser() && isTenantAdmin(resource.data.clientId) && request.resource.data.clientId == resource.data.clientId;
+      allow update: if isTableroUser() && isTenantAdmin(request.resource.data.clientId);
       allow delete: if isTableroUser() && isTenantAdmin(resource.data.clientId);
     }
 
