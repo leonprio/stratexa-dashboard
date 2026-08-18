@@ -571,6 +571,30 @@ export const ClientSettings: React.FC<ClientSettingsProps> = React.memo(({
                 </div>
               </div>
 
+              {/* 🎯 Feature Flag: Módulo de Estrategia (v9.5.0 Foundation) */}
+              <div className="bg-slate-950 border border-slate-800 rounded-xl p-4 mt-4">
+                <h3 className="text-xs font-bold text-white uppercase tracking-wider mb-2 font-mono text-emerald-400">
+                  🎯 Módulo de Estrategia (BSC / Matriz de Contribución)
+                </h3>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="text-xs font-bold text-white">Activar Matriz de Contribución Estratégica</div>
+                    <div className="text-[10px] text-slate-400">
+                      Habilita la navegación y gestión de Objetivos Estratégicos (OE) y Objetivos de Contribución (OC).
+                    </div>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={!!settings?.enableStrategyMap}
+                      onChange={(e) => handleUpdateSystemSettings({ enableStrategyMap: e.target.checked })}
+                      className="sr-only peer"
+                    />
+                    <div className="w-11 h-6 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
+                  </label>
+                </div>
+              </div>
+
               {/* Exportación Operativa Ejecutiva (Human-Friendly) */}
               <div className="bg-slate-950 border border-slate-800 rounded-xl p-5 mt-5">
                 <h3 className="text-xs font-bold text-white uppercase tracking-wider mb-2 font-mono text-cyan-400">
