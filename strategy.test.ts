@@ -4,6 +4,7 @@ import {
   validateAreaCodeUniqueness,
   generateNextOCSequence,
   formatOCCode,
+  resolveAreaStrategyConfig,
   AreaStrategyConfig,
   ContributionObjective,
   StrategicObjective,
@@ -79,6 +80,87 @@ describe('Strategy Foundation — Pure Helpers & Architecture Contracts', () => 
     });
   });
 
+  describe('resolveAreaStrategyConfig & Alias Resolution', () => {
+    const areaConfigs: AreaStrategyConfig[] = [
+      {
+        id: 'areacfg_auto_101',
+        areaName: 'COMERCIAL Y VENTAS',
+        code: 'COM',
+        aliases: ['COMERCIAL', 'VENTAS'],
+        clientId: 'IPS'
+      },
+      {
+        id: 'areacfg_auto_102',
+        areaName: 'OPERACIONES',
+        code: 'OPE',
+        clientId: 'IPS'
+      }
+    ];
+
+    it('exact current area name resolves config', () => {
+      const res = resolveAreaStrategyConfig('COMERCIAL Y VENTAS', areaConfigs);
+      expect(res).toBeDefined();
+      expect(res?.id).toBe('areacfg_auto_101');
+      expect(res?.code).toBe('COM');
+    });
+
+    it('alias resolves same config', () => {
+      const res1 = resolveAreaStrategyConfig('COMERCIAL', areaConfigs);
+      expect(res1?.id).toBe('areacfg_auto_101');
+
+      const res2 = resolveAreaStrategyConfig('VENTAS', areaConfigs);
+      expect(res2?.id).toBe('areacfg_auto_101');
+    });
+
+    it('unrelated name does not resolve automatically', () => {
+      const res = resolveAreaStrategyConfig('FINANZAS', areaConfigs);
+      expect(res).toBeUndefined();
+    });
+
+    it('relink preserves areaConfigId and strategyCode', () => {
+      const existing = areaConfigs[0];
+      const newSourceAreaName = 'NUEVO NOMBRE COMERCIAL';
+
+      // Simular relink: agregar nuevo nombre a los aliases o como nuevo areaName
+      const relinkedConfig: AreaStrategyConfig = {
+        ...existing,
+        areaName: newSourceAreaName,
+        aliases: [...(existing.aliases || []), existing.areaName]
+      };
+
+      expect(relinkedConfig.id).toBe('areacfg_auto_101');
+      expect(relinkedConfig.code).toBe('COM');
+
+      // Comprobar que el nombre anterior ('COMERCIAL Y VENTAS') se mantiene en aliases
+      const resolvedFromOld = resolveAreaStrategyConfig('COMERCIAL Y VENTAS', [relinkedConfig]);
+      expect(resolvedFromOld?.id).toBe('areacfg_auto_101');
+
+      const resolvedFromNew = resolveAreaStrategyConfig('NUEVO NOMBRE COMERCIAL', [relinkedConfig]);
+      expect(resolvedFromNew?.id).toBe('areacfg_auto_101');
+    });
+
+    it('matrix resolver finds existing COM-OC01 after rename/relink', () => {
+      const existingOC: ContributionObjective = {
+        id: 'oc_1',
+        areaConfigId: 'areacfg_auto_101',
+        areaName: 'COMERCIAL',
+        areaCode: 'COM',
+        sequenceNumber: 1,
+        displayCode: 'COM-OC01',
+        title: 'Ventas Digitales',
+        primaryStrategicObjectiveId: 'oe_1',
+        clientId: 'IPS'
+      };
+
+      const resolvedAreaCfg = resolveAreaStrategyConfig('COMERCIAL Y VENTAS', areaConfigs);
+      expect(resolvedAreaCfg).toBeDefined();
+
+      const isMatch = existingOC.areaConfigId === resolvedAreaCfg?.id;
+      expect(isMatch).toBe(true);
+      expect(existingOC.displayCode).toBe('COM-OC01');
+    });
+  });
+
   describe('generateNextOCSequence & formatOCCode', () => {
     it('generates COM-OC01/02/03 independently from OPE-OC01/02', () => {
       const existingOCs: ContributionObjective[] = [
@@ -97,15 +179,13 @@ describe('Strategy Foundation — Pure Helpers & Architecture Contracts', () => 
     });
 
     it('does NOT reuse deleted OC sequence numbers', () => {
-      // Suppose COM-OC01 and COM-OC02 were created, then COM-OC02 was deleted.
-      // Maximum sequence number ever recorded in existingOCs is 3.
       const existingOCs: ContributionObjective[] = [
         { id: 'oc-1', areaConfigId: 'areacfg_com', areaName: 'COMERCIAL', areaCode: 'COM', sequenceNumber: 1, displayCode: 'COM-OC01', title: 'OC1', primaryStrategicObjectiveId: 'oe-1', clientId: 'IPS' },
         { id: 'oc-3', areaConfigId: 'areacfg_com', areaName: 'COMERCIAL', areaCode: 'COM', sequenceNumber: 3, displayCode: 'COM-OC03', title: 'OC3', primaryStrategicObjectiveId: 'oe-1', clientId: 'IPS' }
       ];
 
       const nextSeq = generateNextOCSequence(existingOCs, 'areacfg_com');
-      expect(nextSeq).toBe(4); // Must be 4, NOT 2!
+      expect(nextSeq).toBe(4);
       expect(formatOCCode('COM', nextSeq)).toBe('COM-OC04');
     });
   });
@@ -114,8 +194,8 @@ describe('Strategy Foundation — Pure Helpers & Architecture Contracts', () => 
     it('stable area code survives area-name change when resolved via areaConfigId', () => {
       const areaConfig: AreaStrategyConfig = {
         id: 'cfg-com-123',
-        areaName: 'COMERCIAL Y VENTAS', // Area name changed from COMERCIAL to COMERCIAL Y VENTAS
-        code: 'COM', // Stable display code configured previously
+        areaName: 'COMERCIAL Y VENTAS',
+        code: 'COM',
         clientId: 'IPS'
       };
 
@@ -123,7 +203,7 @@ describe('Strategy Foundation — Pure Helpers & Architecture Contracts', () => 
         id: 'oc-100',
         areaConfigId: areaConfig.id,
         areaName: 'COMERCIAL Y VENTAS',
-        areaCode: areaConfig.code, // Stays 'COM'
+        areaCode: areaConfig.code,
         sequenceNumber: 1,
         displayCode: formatOCCode(areaConfig.code, 1),
         title: 'Incrementar conversión',
@@ -153,8 +233,8 @@ describe('Strategy Foundation — Pure Helpers & Architecture Contracts', () => 
       const assignment: ContributionIndicatorAssignment = {
         id: 'assign-1',
         contributionObjectiveId: 'oc-1',
-        dashboardId: 101, // References original Dashboard
-        itemId: 'kpi-55',  // References original DashboardItem
+        dashboardId: 101,
+        itemId: 'kpi-55',
         clientId: 'IPS'
       };
 

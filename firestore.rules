@@ -32,9 +32,15 @@ service cloud.firestore {
       );
     }
 
+    // 🛡️ REGLA DE SEGURIDAD CONTRA INYECCIÓN REGEX: Valida que el ID del tenant sea alfanumérico seguro sin metacaracteres
+    function isSafeClientId(id) {
+      return id is string && id.size() > 0 && id.size() <= 64 && id.matches('^[a-zA-Z0-9_-]+$');
+    }
+
     function isTenantUser(targetClientId) {
       return isSuperAdmin() || (
         isAuthenticated() &&
+        isSafeClientId(targetClientId) &&
         exists(/databases/$(database)/documents/tbl_users/$(request.auth.uid)) &&
         (
           getUserProfile().clientId == 'all' ||
@@ -77,50 +83,50 @@ service cloud.firestore {
     // --- 🎯 REGLAS DE SEGURIDAD SERVIDORA: ESTRATEGIA (v9.5.0 FOUNDATION) ---
     match /tbl_strategicPerspectives/{docId} {
       allow read: if isTableroUser() && (resource == null || isTenantUser(resource.data.clientId));
-      allow create: if isTableroUser() && isTenantAdmin(request.resource.data.clientId);
-      allow update: if isTableroUser() && isTenantAdmin(resource.data.clientId) && request.resource.data.clientId == resource.data.clientId;
+      allow create: if isTableroUser() && isSafeClientId(request.resource.data.clientId) && isTenantAdmin(request.resource.data.clientId);
+      allow update: if isTableroUser() && isSafeClientId(resource.data.clientId) && isTenantAdmin(resource.data.clientId) && request.resource.data.clientId == resource.data.clientId;
       allow delete: if isTableroUser() && isTenantAdmin(resource.data.clientId);
     }
 
     match /tbl_strategicObjectives/{docId} {
       allow read: if isTableroUser() && (resource == null || isTenantUser(resource.data.clientId));
-      allow create: if isTableroUser() && isTenantAdmin(request.resource.data.clientId);
-      allow update: if isTableroUser() && isTenantAdmin(resource.data.clientId) && request.resource.data.clientId == resource.data.clientId;
+      allow create: if isTableroUser() && isSafeClientId(request.resource.data.clientId) && isTenantAdmin(request.resource.data.clientId);
+      allow update: if isTableroUser() && isSafeClientId(resource.data.clientId) && isTenantAdmin(resource.data.clientId) && request.resource.data.clientId == resource.data.clientId;
       allow delete: if isTableroUser() && isTenantAdmin(resource.data.clientId);
     }
 
     match /tbl_areaStrategyConfigs/{docId} {
       allow read: if isTableroUser() && (resource == null || isTenantUser(resource.data.clientId));
-      allow create: if isTableroUser() && isTenantAdmin(request.resource.data.clientId);
-      allow update: if isTableroUser() && isTenantAdmin(resource.data.clientId) && request.resource.data.clientId == resource.data.clientId;
+      allow create: if isTableroUser() && isSafeClientId(request.resource.data.clientId) && isTenantAdmin(request.resource.data.clientId);
+      allow update: if isTableroUser() && isSafeClientId(resource.data.clientId) && isTenantAdmin(resource.data.clientId) && request.resource.data.clientId == resource.data.clientId;
       allow delete: if isTableroUser() && isTenantAdmin(resource.data.clientId);
     }
 
     match /tbl_contributionObjectives/{docId} {
       allow read: if isTableroUser() && (resource == null || isTenantUser(resource.data.clientId));
-      allow create: if isTableroUser() && isTenantAdmin(request.resource.data.clientId);
-      allow update: if isTableroUser() && isTenantAdmin(request.resource.data.clientId);
+      allow create: if isTableroUser() && isSafeClientId(request.resource.data.clientId) && isTenantAdmin(request.resource.data.clientId);
+      allow update: if isTableroUser() && isSafeClientId(resource.data.clientId) && isTenantAdmin(resource.data.clientId) && request.resource.data.clientId == resource.data.clientId;
       allow delete: if isTableroUser() && isTenantAdmin(resource.data.clientId);
     }
 
     match /tbl_contributionIndicatorAssignments/{docId} {
       allow read: if isTableroUser() && (resource == null || isTenantUser(resource.data.clientId));
-      allow create: if isTableroUser() && isTenantAdmin(request.resource.data.clientId);
-      allow update: if isTableroUser() && isTenantAdmin(resource.data.clientId) && request.resource.data.clientId == resource.data.clientId;
+      allow create: if isTableroUser() && isSafeClientId(request.resource.data.clientId) && isTenantAdmin(request.resource.data.clientId);
+      allow update: if isTableroUser() && isSafeClientId(resource.data.clientId) && isTenantAdmin(resource.data.clientId) && request.resource.data.clientId == resource.data.clientId;
       allow delete: if isTableroUser() && isTenantAdmin(resource.data.clientId);
     }
 
     match /tbl_strategyCounters/{docId} {
       allow read: if isTableroUser() && (resource == null || isTenantUser(resource.data.clientId));
-      allow create: if isTableroUser() && isTenantAdmin(request.resource.data.clientId);
-      allow update: if isTableroUser() && isTenantAdmin(resource.data.clientId) && request.resource.data.clientId == resource.data.clientId;
+      allow create: if isTableroUser() && isSafeClientId(request.resource.data.clientId) && isTenantAdmin(request.resource.data.clientId);
+      allow update: if isTableroUser() && isSafeClientId(resource.data.clientId) && isTenantAdmin(resource.data.clientId) && request.resource.data.clientId == resource.data.clientId;
       allow delete: if isTableroUser() && isTenantAdmin(resource.data.clientId);
     }
 
     match /tbl_areaCodeReservations/{docId} {
       allow read: if isTableroUser() && (resource == null || isTenantUser(resource.data.clientId));
-      allow create: if isTableroUser() && isTenantAdmin(request.resource.data.clientId);
-      allow update: if isTableroUser() && isTenantAdmin(resource.data.clientId) && request.resource.data.clientId == resource.data.clientId;
+      allow create: if isTableroUser() && isSafeClientId(request.resource.data.clientId) && isTenantAdmin(request.resource.data.clientId);
+      allow update: if isTableroUser() && isSafeClientId(resource.data.clientId) && isTenantAdmin(resource.data.clientId) && request.resource.data.clientId == resource.data.clientId;
       allow delete: if isTableroUser() && isTenantAdmin(resource.data.clientId);
     }
 

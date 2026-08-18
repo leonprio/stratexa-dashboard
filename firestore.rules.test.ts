@@ -42,7 +42,7 @@ describe('Firestore Security Rules — Strategy Module (v9.5.0 Foundation)', () 
       // Sembrar datos de usuarios para pruebas RBAC/Tenancy
       await testEnv.withSecurityRulesDisabled(async (context) => {
         const db = context.firestore();
-        
+
         // Usuario 1: Usuario normal de IPS
         await setDoc(doc(db, 'tbl_users', 'user_ips'), {
           uid: 'user_ips',
@@ -78,6 +78,13 @@ describe('Firestore Security Rules — Strategy Module (v9.5.0 Foundation)', () 
           globalRole: 'Admin'
         });
 
+        // Usuario 6: Usuario de XABC únicamente
+        await setDoc(doc(db, 'tbl_users', 'user_xabc'), {
+          uid: 'user_xabc',
+          clientId: 'XABC',
+          globalRole: 'Director'
+        });
+
         // Documentos de estrategia iniciales
         await setDoc(doc(db, 'tbl_strategicPerspectives', 'persp_ips'), {
           id: 'persp_ips',
@@ -101,6 +108,12 @@ describe('Firestore Security Rules — Strategy Module (v9.5.0 Foundation)', () 
           id: 'persp_clientB',
           clientId: 'CLIENT_B',
           name: 'Procesos'
+        });
+
+        await setDoc(doc(db, 'tbl_strategicPerspectives', 'persp_abc'), {
+          id: 'persp_abc',
+          clientId: 'ABC',
+          name: 'ABC'
         });
       });
     }
@@ -216,5 +229,44 @@ describe('Firestore Security Rules — Strategy Module (v9.5.0 Foundation)', () 
     const userDb = testEnv.authenticatedContext('user_ips').firestore();
     const ref = doc(userDb, 'tbl_areaCodeReservations', 'res_ips');
     await assertFails(setDoc(ref, { id: 'res_ips', clientId: 'IPS', code: 'HACK' }));
+  });
+
+  // 🛡️ NUEVAS PRUEBAS DE SEGURIDAD CONTRA INYECCIÓN REGEX (17..21)
+  it('17. denies malicious clientId containing ".*"', async () => {
+    const adminDb = testEnv.authenticatedContext('admin_ips').firestore();
+    const ref = doc(adminDb, 'tbl_strategicObjectives', 'oe_malicious_1');
+    await assertFails(setDoc(ref, { id: 'oe_malicious_1', clientId: '.*', title: 'Malicious' }));
+  });
+
+  it('18. denies malicious clientId containing "IPS|CLIENT_A"', async () => {
+    const adminDb = testEnv.authenticatedContext('admin_ips').firestore();
+    const ref = doc(adminDb, 'tbl_strategicObjectives', 'oe_malicious_2');
+    await assertFails(setDoc(ref, { id: 'oe_malicious_2', clientId: 'IPS|CLIENT_A', title: 'Malicious' }));
+  });
+
+  it('19. denies malicious clientId containing "^IPS$"', async () => {
+    const adminDb = testEnv.authenticatedContext('admin_ips').firestore();
+    const ref = doc(adminDb, 'tbl_strategicObjectives', 'oe_malicious_3');
+    await assertFails(setDoc(ref, { id: 'oe_malicious_3', clientId: '^IPS$', title: 'Malicious' }));
+  });
+
+  it('20. denies clientId "IPS2" for user with profile "IPS"', async () => {
+    const userDb = testEnv.authenticatedContext('user_ips').firestore();
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      await setDoc(doc(context.firestore(), 'tbl_strategicPerspectives', 'persp_ips2'), {
+        id: 'persp_ips2',
+        clientId: 'IPS2',
+        name: 'IPS2'
+      });
+    });
+
+    const ref = doc(userDb, 'tbl_strategicPerspectives', 'persp_ips2');
+    await assertFails(getDoc(ref));
+  });
+
+  it('21. denies user with profile "XABC" from reading "ABC"', async () => {
+    const userXabcDb = testEnv.authenticatedContext('user_xabc').firestore();
+    const ref = doc(userXabcDb, 'tbl_strategicPerspectives', 'persp_abc');
+    await assertFails(getDoc(ref));
   });
 });

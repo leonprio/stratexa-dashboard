@@ -7,7 +7,8 @@ import {
   ContributionObjective,
   ContributionIndicatorAssignment,
   DEFAULT_PERSPECTIVES,
-  deriveAreaCodeSuggestion
+  deriveAreaCodeSuggestion,
+  resolveAreaStrategyConfig
 } from '../../strategyTypes';
 import { Dashboard as DashboardType, User, GlobalUserRole } from '../../types';
 import { calculateCompliance } from '../../utils/compliance';
@@ -29,12 +30,13 @@ export interface ContributionMatrixViewProps {
 
 /**
  * Vista de Matriz de Contribución Estratégica (BSC / Fundamentos de Estrategia).
- * 
+ *
  * - Filas: Perspectiva -> Objetivos Estratégicos (OE).
  * - Columnas: Áreas organizacionales de negocio.
  * - Celda vacía: Muestra "No contribuye" (sin persistir datos ficticios).
  * - Celda poblada: Soporta explícitamente MÚLTIPLES Objetivos de Contribución (OC).
  * - Múltiples KPIs: NO promedia porcentajes entre indicadores heterogéneos. Despliega distribución por estatus.
+ * - Mapeo de Aliases: Resuelve columnas y OCs utilizando resolveAreaStrategyConfig.
  */
 export const ContributionMatrixView: React.FC<ContributionMatrixViewProps> = ({
   perspectives = DEFAULT_PERSPECTIVES,
@@ -138,7 +140,7 @@ export const ContributionMatrixView: React.FC<ContributionMatrixViewProps> = ({
 
   return (
     <div className="space-y-6">
-      
+
       {/* Header & Controls */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-slate-900 border border-slate-800 p-6 rounded-xl">
         <div>
@@ -207,7 +209,7 @@ export const ContributionMatrixView: React.FC<ContributionMatrixViewProps> = ({
                     Perspectiva / Objetivos Estratégicos (OE)
                   </th>
                   {visibleAreas.map(areaName => {
-                    const cfg = areaConfigs.find(c => c.areaName.trim().toUpperCase() === areaName.trim().toUpperCase());
+                    const cfg = resolveAreaStrategyConfig(areaName, areaConfigs);
                     const code = cfg?.code || deriveAreaCodeSuggestion(areaName);
 
                     return (
@@ -271,9 +273,9 @@ export const ContributionMatrixView: React.FC<ContributionMatrixViewProps> = ({
                           {/* Celdas por Área */}
                           {visibleAreas.map(areaName => {
                             const normArea = areaName.trim().toUpperCase();
-                            const areaCfg = areaConfigs.find(c => c.areaName.trim().toUpperCase() === normArea);
+                            const areaCfg = resolveAreaStrategyConfig(normArea, areaConfigs);
 
-                            // Buscar OCs pertenecientes a este Área (por areaConfigId o por snapshot areaName) y vinculados a este OE
+                            // Buscar OCs pertenecientes a este Área (por areaConfigId o por snapshot areaName/alias) y vinculados a este OE
                             const cellOCs = contributionObjectives.filter(
                               oc =>
                                 ((areaCfg && oc.areaConfigId === areaCfg.id) ||

@@ -2,7 +2,7 @@
  * Servicio de Persistencia para la Capa de Estrategia (BSC / Matriz de Contribución).
  * Implementa seguridad defensiva en profundidad, aislamiento multitenant estricto por `clientId`,
  * transacciones atómicas para reservas de código de área y contadores atómicos de secuencia por OC.
- * 
+ *
  * @module strategyService
  * @version v9.4.22
  */
@@ -32,6 +32,7 @@ import {
   StrategyCounter,
   AreaCodeReservation,
   validateAreaCodeUniqueness,
+  resolveAreaStrategyConfig,
   formatOCCode,
   deriveAreaCodeSuggestion
 } from '../strategyTypes';
@@ -148,7 +149,7 @@ export const strategyService = {
   },
 
   // -----------------------------
-  // 3. Configuración y Reserva Atómica de Código de Área
+  // 3. Configuración y Reserva Atómica de Código de Área (con Auto-ID nativo de Firestore)
   // -----------------------------
   getAreaConfigs: async (clientId?: string): Promise<AreaStrategyConfig[]> => {
     const targetClient = normalizeClientId(clientId);
@@ -169,19 +170,24 @@ export const strategyService = {
     const normArea = areaName.trim().toUpperCase();
     const normCode = code.trim().toUpperCase();
 
-    // 🛡️ REGLA DE IDENTIDAD INMUTABLE: Generar ID técnico auto-contenido independiente del nombre visible
+    // 🛡️ Mapeo centralizado por nombre directo o histórico de aliases
     const areaConfigs = await strategyService.getAreaConfigs(targetClient);
-    const existing = areaConfigs.find(
-      c => (areaConfigId && c.id === areaConfigId) ||
-           c.areaName.trim().toUpperCase() === normArea ||
-           (c.aliases && c.aliases.some(a => a.trim().toUpperCase() === normArea))
-    );
+    const existing = resolveAreaStrategyConfig(normArea, areaConfigs) ||
+                     (areaConfigId ? areaConfigs.find(c => c.id === areaConfigId) : undefined);
 
-    const targetAreaConfigId = areaConfigId || existing?.id || `areacfg_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
+    // 🛡️ AUTO-ID NATIVO DE FIRESTORE: Usar referencia de colección para autogeneración limpia y libre de colisiones
+    let areaConfigRef;
+    if (areaConfigId || existing?.id) {
+      const resolvedId = areaConfigId || existing!.id;
+      areaConfigRef = doc(db, AREA_CONFIGS_COLLECTION, resolvedId);
+    } else {
+      areaConfigRef = doc(collection(db, AREA_CONFIGS_COLLECTION));
+    }
+
+    const targetAreaConfigId = areaConfigRef.id;
 
     // Ejecutar la reserva y guardado dentro de una Transacción Atómica de Firestore
     const result = await runTransaction(db, async (transaction) => {
-      const areaConfigRef = doc(db, AREA_CONFIGS_COLLECTION, targetAreaConfigId);
       const reservationRef = doc(db, CODE_RESERVATIONS_COLLECTION, `res_${targetClient}_${normCode}`);
 
       const [areaConfigSnap, reservationSnap] = await Promise.all([
@@ -270,11 +276,8 @@ export const strategyService = {
 
     // 1. Asegurar la existencia y obtener la configuración de área relacional
     const areaConfigs = await strategyService.getAreaConfigs(targetClient);
-    let areaConfig = areaConfigs.find(
-      c => (data.areaConfigId && c.id === data.areaConfigId) ||
-           c.areaName.trim().toUpperCase() === normArea ||
-           (c.aliases && c.aliases.some(a => a.trim().toUpperCase() === normArea))
-    );
+    let areaConfig = resolveAreaStrategyConfig(normArea, areaConfigs) ||
+                     (data.areaConfigId ? areaConfigs.find(c => c.id === data.areaConfigId) : undefined);
 
     if (!areaConfig) {
       const suggestedCode = data.areaCode || deriveAreaCodeSuggestion(normArea);
@@ -406,7 +409,6 @@ export const strategyService = {
     clientId?: string
   ): Promise<boolean> => {
     const targetClient = normalizeClientId(clientId);
-    
     // Defensa en profundidad: Verificar que el OC existe y pertenece al tenant
     const ocRef = doc(db, CONTRIBUTION_OBJECTIVES_COLLECTION, ocId);
     const ocSnap = await getDoc(ocRef);
@@ -424,7 +426,7 @@ export const strategyService = {
     const snap = await getDocs(q);
 
     const batch = writeBatch(db);
-    
+
     // Borrar previas
     snap.docs.forEach(d => batch.delete(d.ref));
 

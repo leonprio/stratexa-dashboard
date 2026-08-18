@@ -113,6 +113,24 @@ export interface AreaCodeReservation {
 }
 
 /**
+ * Resuelve la entidad de configuración de estrategia de un área dada (por nombre directo o histórico de aliases).
+ */
+export function resolveAreaStrategyConfig(
+  sourceAreaName: string,
+  configs: AreaStrategyConfig[]
+): AreaStrategyConfig | undefined {
+  if (!sourceAreaName || !sourceAreaName.trim()) return undefined;
+  const normKey = sourceAreaName.trim().toUpperCase();
+
+  return configs.find(
+    c =>
+      c.areaName.trim().toUpperCase() === normKey ||
+      c.id.trim().toUpperCase() === normKey ||
+      (c.aliases && c.aliases.some(a => a.trim().toUpperCase() === normKey))
+  );
+}
+
+/**
  * Deriva una sugerencia inicial de código de área a partir de su nombre.
  * ÚNICAMENTE como sugerencia previa a ser guardada por el usuario.
  */

@@ -8,7 +8,8 @@ import {
   ContributionIndicatorAssignment,
   DEFAULT_PERSPECTIVES,
   deriveAreaCodeSuggestion,
-  validateAreaCodeUniqueness
+  validateAreaCodeUniqueness,
+  resolveAreaStrategyConfig
 } from '../../strategyTypes';
 import { Dashboard as DashboardType, User, GlobalUserRole } from '../../types';
 import { strategyService } from '../../services/strategyService';
@@ -62,6 +63,9 @@ export const StrategyConfigModal: React.FC<StrategyConfigModalProps> = ({
   const [selectedAreaForConfig, setSelectedAreaForConfig] = useState<string>('');
   const [customAreaCode, setCustomAreaCode] = useState<string>('');
 
+  // Relink explicit state
+  const [relinkTargetConfigId, setRelinkTargetConfigId] = useState<string>('');
+
   // Form State: Objetivos de Contribución (OC)
   const [ocAreaName, setOcAreaName] = useState<string>('');
   const [ocPrimaryOEId, setOcPrimaryOEId] = useState<string>('');
@@ -85,7 +89,7 @@ export const StrategyConfigModal: React.FC<StrategyConfigModalProps> = ({
     if (availableAreas.length > 0) {
       if (!selectedAreaForConfig) {
         setSelectedAreaForConfig(availableAreas[0]);
-        const existing = areaConfigs.find(c => c.areaName === availableAreas[0]);
+        const existing = resolveAreaStrategyConfig(availableAreas[0], areaConfigs);
         setCustomAreaCode(existing?.code || deriveAreaCodeSuggestion(availableAreas[0]));
       }
       if (!ocAreaName) {
@@ -97,8 +101,9 @@ export const StrategyConfigModal: React.FC<StrategyConfigModalProps> = ({
   // Manejador al cambiar el área en tab de configuración de código de área
   const handleAreaSelectForConfigChange = (area: string) => {
     setSelectedAreaForConfig(area);
-    const existing = areaConfigs.find(c => c.areaName === area);
+    const existing = resolveAreaStrategyConfig(area, areaConfigs);
     setCustomAreaCode(existing?.code || deriveAreaCodeSuggestion(area));
+    setRelinkTargetConfigId('');
   };
 
   // Actualizar perspectiva en estado local
@@ -184,7 +189,7 @@ export const StrategyConfigModal: React.FC<StrategyConfigModalProps> = ({
     }
   };
 
-  // Guardar Código de Área Estable
+  // Guardar Código de Área Estable / Relink Explicito
   const handleSaveAreaCode = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!isAdmin) return;
@@ -198,16 +203,24 @@ export const StrategyConfigModal: React.FC<StrategyConfigModalProps> = ({
       setLoading(true);
       setErrorMsg(null);
 
-      const existingConfig = areaConfigs.find(c => c.areaName === selectedAreaForConfig);
+      const existingConfig = relinkTargetConfigId
+        ? areaConfigs.find(c => c.id === relinkTargetConfigId)
+        : resolveAreaStrategyConfig(selectedAreaForConfig, areaConfigs);
+
+      const targetIdToUse = relinkTargetConfigId || existingConfig?.id;
+      const targetCodeToUse = relinkTargetConfigId && existingConfig
+        ? existingConfig.code
+        : customAreaCode.trim().toUpperCase();
 
       const savedConfig = await strategyService.saveAreaConfig(
         selectedAreaForConfig,
-        customAreaCode.trim().toUpperCase(),
+        targetCodeToUse,
         selectedClientId,
-        existingConfig?.id
+        targetIdToUse
       );
 
-      setSuccessMsg(`Código de área para "${selectedAreaForConfig}" guardado como "${savedConfig.code}".`);
+      setSuccessMsg(`Configuración de área para "${selectedAreaForConfig}" vinculada exitosamente con código "${savedConfig.code}".`);
+      setRelinkTargetConfigId('');
       await onRefreshData();
     } catch (err: any) {
       setErrorMsg(err.message || 'Error al guardar código de área.');
@@ -220,10 +233,14 @@ export const StrategyConfigModal: React.FC<StrategyConfigModalProps> = ({
   const areaDashboardsAndItems = useMemo(() => {
     if (!ocAreaName) return [];
     const normArea = ocAreaName.trim().toUpperCase();
+    const areaCfg = resolveAreaStrategyConfig(normArea, areaConfigs);
     const result: { dashboard: DashboardType; item: any }[] = [];
 
     dashboards.forEach(d => {
-      if ((d.area || '').trim().toUpperCase() === normArea) {
+      const dAreaNorm = (d.area || '').trim().toUpperCase();
+      const isMatch = dAreaNorm === normArea || (areaCfg && (dAreaNorm === areaCfg.areaName.toUpperCase() || (areaCfg.aliases && areaCfg.aliases.some(a => a.toUpperCase() === dAreaNorm))));
+
+      if (isMatch) {
         (d.items || []).forEach(it => {
           result.push({ dashboard: d, item: it });
         });
@@ -231,7 +248,7 @@ export const StrategyConfigModal: React.FC<StrategyConfigModalProps> = ({
     });
 
     return result;
-  }, [dashboards, ocAreaName]);
+  }, [dashboards, ocAreaName, areaConfigs]);
 
   // Toggle KPI selección
   const toggleKpiSelection = (dashId: number | string, itemId: number | string) => {
@@ -255,7 +272,7 @@ export const StrategyConfigModal: React.FC<StrategyConfigModalProps> = ({
       setLoading(true);
       setErrorMsg(null);
 
-      const areaCfg = areaConfigs.find(c => c.areaName.trim().toUpperCase() === ocAreaName.trim().toUpperCase());
+      const areaCfg = resolveAreaStrategyConfig(ocAreaName, areaConfigs);
 
       const savedOC = await strategyService.saveContributionObjective({
         areaName: ocAreaName,
@@ -326,7 +343,7 @@ export const StrategyConfigModal: React.FC<StrategyConfigModalProps> = ({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 overflow-y-auto">
       <div className="bg-slate-900 border border-slate-800 rounded-xl w-full max-w-5xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
-        
+
         {/* Header */}
         <div className="p-6 border-b border-slate-800 bg-slate-950 flex justify-between items-center">
           <div>
@@ -468,7 +485,7 @@ export const StrategyConfigModal: React.FC<StrategyConfigModalProps> = ({
           {/* SECTION 1: OBJETIVOS ESTRATÉGICOS (OE) */}
           {activeSection === 'objectives' && (
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              
+
               {/* Form de creación de OE */}
               <div className="lg:col-span-1 bg-slate-950 p-5 rounded-xl border border-slate-800 space-y-4">
                 <h3 className="text-sm font-bold text-white flex items-center gap-2">
@@ -537,7 +554,7 @@ export const StrategyConfigModal: React.FC<StrategyConfigModalProps> = ({
               {/* Lista de OEs registrados por perspectiva */}
               <div className="lg:col-span-2 space-y-4">
                 <h3 className="text-sm font-bold text-white">Objetivos Estratégicos Configurados ({objectives.length})</h3>
-                
+
                 {perspectives.map(p => {
                   const pObjectives = objectives.filter(o => o.perspectiveId === p.id);
                   return (
@@ -588,20 +605,19 @@ export const StrategyConfigModal: React.FC<StrategyConfigModalProps> = ({
             </div>
           )}
 
-          {/* SECTION 2: CÓDIGOS ESTABLES DE ÁREA */}
+          {/* SECTION 2: CÓDIGOS ESTABLES DE ÁREA Y VINCULACIÓN / RELINK EXPLÍCITO */}
           {activeSection === 'areaCodes' && (
             <div className="max-w-2xl mx-auto bg-slate-950 p-6 rounded-xl border border-slate-800 space-y-6">
               <div>
-                <h3 className="text-base font-bold text-white">Configuración de Códigos Estables de Área (Atómicos)</h3>
+                <h3 className="text-base font-bold text-white">Configuración y Vincular Área (Auto-ID Nativo & Alias)</h3>
                 <p className="text-xs text-slate-400 mt-1">
-                  Los códigos de área (ej. <code>COM</code>, <code>OPE</code>) identifican de forma estable los Objetivos de Contribución.
-                  Se reservan mediante una transacción atómica en Firestore para garantizar unicidad e integridad relacional.
+                  Los códigos de área (ej. <code>COM</code>, <code>OPE</code>) identifican de forma estable los Objetivos de Contribución. Si el área organizacional cambia de nombre (ej. a <i>COMERCIAL Y VENTAS</i>), puedes vincularla explícitamente a un área existente sin duplicar registros ni perder la historia.
                 </p>
               </div>
 
               <form onSubmit={handleSaveAreaCode} className="space-y-4">
                 <div>
-                  <label className="text-xs font-semibold text-slate-300 block mb-1">Área Organizacional</label>
+                  <label className="text-xs font-semibold text-slate-300 block mb-1">Área Organizacional de Tablero</label>
                   <select
                     value={selectedAreaForConfig}
                     onChange={e => handleAreaSelectForConfigChange(e.target.value)}
@@ -613,39 +629,71 @@ export const StrategyConfigModal: React.FC<StrategyConfigModalProps> = ({
                   </select>
                 </div>
 
-                <div>
-                  <label className="text-xs font-semibold text-slate-300 block mb-1">
-                    Código de Estrategia Estable (3-4 Letras)
+                {/* Opción para relink explícito con un área existente */}
+                <div className="p-3 bg-slate-900 border border-slate-800 rounded-lg space-y-2">
+                  <label className="text-xs font-semibold text-slate-300 block">
+                    Vincular / Relacionar con Área Estratégica Existente (Opcional)
                   </label>
-                  <input
-                    type="text"
-                    required
-                    maxLength={6}
-                    placeholder="Ej. COM"
-                    value={customAreaCode}
-                    onChange={e => setCustomAreaCode(e.target.value.toUpperCase())}
-                    className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-white uppercase tracking-widest font-mono"
-                  />
-                  <p className="text-[10px] text-slate-500 mt-1">
-                    Sugerencia autogenerada para {selectedAreaForConfig}: <code>{deriveAreaCodeSuggestion(selectedAreaForConfig)}</code>
-                  </p>
+                  <select
+                    value={relinkTargetConfigId}
+                    onChange={e => {
+                      setRelinkTargetConfigId(e.target.value);
+                      if (e.target.value) {
+                        const targetCfg = areaConfigs.find(c => c.id === e.target.value);
+                        if (targetCfg) setCustomAreaCode(targetCfg.code);
+                      }
+                    }}
+                    className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-xs text-white"
+                  >
+                    <option value="">-- Crear nueva entidad estratégica o usar actual --</option>
+                    {areaConfigs.map(c => (
+                      <option key={c.id} value={c.id}>
+                        Vincular a: {c.areaName} (Código: {c.code})
+                      </option>
+                    ))}
+                  </select>
+                  {relinkTargetConfigId && (
+                    <p className="text-[10px] text-emerald-400 font-semibold">
+                      ✓ El área "{selectedAreaForConfig}" compartirá la misma entidad relacional, código e historial de OCs.
+                    </p>
+                  )}
                 </div>
+
+                {!relinkTargetConfigId && (
+                  <div>
+                    <label className="text-xs font-semibold text-slate-300 block mb-1">
+                      Código de Estrategia Estable (3-4 Letras)
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      maxLength={6}
+                      placeholder="Ej. COM"
+                      value={customAreaCode}
+                      onChange={e => setCustomAreaCode(e.target.value.toUpperCase())}
+                      className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-white uppercase tracking-widest font-mono"
+                    />
+                    <p className="text-[10px] text-slate-500 mt-1">
+                      Sugerencia para {selectedAreaForConfig}: <code>{deriveAreaCodeSuggestion(selectedAreaForConfig)}</code>
+                    </p>
+                  </div>
+                )}
 
                 <button
                   type="submit"
                   disabled={loading}
                   className="w-full py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold transition-all disabled:opacity-50"
                 >
-                  {loading ? 'Guardando...' : 'Guardar Código Estable de Área'}
+                  {loading ? 'Guardando...' : relinkTargetConfigId ? 'Confirmar Vinculación Explícita' : 'Guardar Código Estable de Área'}
                 </button>
               </form>
 
-              {/* Resumen de códigos configurados */}
+              {/* Resumen de códigos y aliases configurados */}
               <div className="pt-4 border-t border-slate-800 space-y-3">
-                <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider">Códigos Configurados Actualmente</h4>
-                <div className="grid grid-cols-2 gap-2">
+                <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider">Entidades Estratégicas Registradas</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                   {availableAreas.map(area => {
-                    const cfg = areaConfigs.find(c => c.areaName === area);
+                    const cfg = resolveAreaStrategyConfig(area, areaConfigs);
                     const resolvedCode = cfg?.code || deriveAreaCodeSuggestion(area);
                     const isConfigured = !!cfg;
 
@@ -654,7 +702,9 @@ export const StrategyConfigModal: React.FC<StrategyConfigModalProps> = ({
                         <div>
                           <div className="text-xs font-bold text-white">{area}</div>
                           <div className="text-[10px] text-slate-500">
-                            {isConfigured ? 'Guardado explícito' : 'Sugerencia inicial'}
+                            {isConfigured ? (
+                              <span>Configurado ({cfg.areaName}{cfg.aliases?.length ? `, Aliases: ${cfg.aliases.join(', ')}` : ''})</span>
+                            ) : 'Sugerencia inicial'}
                           </div>
                         </div>
                         <span className="px-2.5 py-1 text-xs font-mono font-black bg-blue-500/10 text-blue-400 border border-blue-500/20 rounded">
@@ -735,7 +785,7 @@ export const StrategyConfigModal: React.FC<StrategyConfigModalProps> = ({
                     <label className="text-xs font-semibold text-slate-300 block mb-1">
                       Vincular KPIs Operativos del Área ({areaDashboardsAndItems.length} disponibles)
                     </label>
-                    
+
                     {areaDashboardsAndItems.length === 0 ? (
                       <p className="text-xs text-slate-500 italic">No hay KPIs registrados en el área {ocAreaName}.</p>
                     ) : (
