@@ -25,6 +25,7 @@ export interface SystemSettings {
   indicatorDriver?: string; // Nombre del indicador maestro (si strategy === 'indicator')
   customWeights?: Record<string, number>; // { dashboardId: 30 } (si strategy === 'manual')
   calculationMode?: 'realTime' | 'definitive'; // Default: 'realTime'
+  enableStrategyMap?: boolean; // 🎯 Feature Flag para Mapa de Estrategia / Matriz de Contribución (v9.5.0 Foundation)
 }
 
 export enum CalculationMode {
