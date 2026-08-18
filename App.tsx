@@ -53,8 +53,8 @@ export default function App() {
   const [_errorMsg, setErrorMsg] = useState<string>("");
   const [user, setUser] = useState<FirebaseUser | null>(null);
   const [userProfile, setUserProfile] = useState<User | null>(null);
-// 🛡️ v9.4.21-PREVIEW-COMPLIANCE-ALIGNMENT
-const VERSION_LABEL = "v9.4.21-PREVIEW-COMPLIANCE-ALIGNMENT";
+// 🛡️ v9.4.22-CHART-UX-CLARITY
+const VERSION_LABEL = "v9.4.22-CHART-UX-CLARITY";
 const SHIELD_ID = "GOLD MASTER";
   const [activeAdminSection, setActiveAdminSection] = useState<AdminSection>("none");
   const [allUsers, setAllUsers] = useState<User[]>([]);
