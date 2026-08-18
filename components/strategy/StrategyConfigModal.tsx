@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { X, Plus, Trash2, Edit2, ShieldAlert, Check, RefreshCw, Layers, Link as LinkIcon, Compass } from 'lucide-react';
+import { X, Plus, Trash2, Edit2, ShieldAlert, Check, RefreshCw, Layers, Link as LinkIcon, Compass, Sliders } from 'lucide-react';
 import {
   StrategicPerspective,
   StrategicObjective,
@@ -26,7 +26,7 @@ export interface StrategyConfigModalProps {
   onRefreshData: () => Promise<void>;
 }
 
-type ConfigSection = 'objectives' | 'areaCodes' | 'contributionObjectives';
+type ConfigSection = 'perspectives' | 'objectives' | 'areaCodes' | 'contributionObjectives';
 
 export const StrategyConfigModal: React.FC<StrategyConfigModalProps> = ({
   perspectives = DEFAULT_PERSPECTIVES,
@@ -45,6 +45,12 @@ export const StrategyConfigModal: React.FC<StrategyConfigModalProps> = ({
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+
+  // Form State: Perspectivas Configurables (4 Slots)
+  const [editablePerspectives, setEditablePerspectives] = useState<StrategicPerspective[]>(() => {
+    if (perspectives.length > 0) return perspectives;
+    return DEFAULT_PERSPECTIVES;
+  });
 
   // Form State: Objetivos Estratégicos (OE)
   const [oePerspectiveId, setOePerspectiveId] = useState<string>(perspectives[0]?.id || 'FINANCIERA');
@@ -95,6 +101,34 @@ export const StrategyConfigModal: React.FC<StrategyConfigModalProps> = ({
     setCustomAreaCode(existing?.code || deriveAreaCodeSuggestion(area));
   };
 
+  // Actualizar perspectiva en estado local
+  const handlePerspectiveChange = (index: number, field: keyof StrategicPerspective, value: string) => {
+    setEditablePerspectives(prev => {
+      const copy = [...prev];
+      copy[index] = { ...copy[index], [field]: value };
+      return copy;
+    });
+  };
+
+  // Guardar los 4 Slots de Perspectivas
+  const handleSavePerspectives = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!isAdmin) return;
+
+    try {
+      setLoading(true);
+      setErrorMsg(null);
+
+      await strategyService.saveAllPerspectives(editablePerspectives, selectedClientId);
+      setSuccessMsg('Perspectivas estratégicas guardadas correctamente.');
+      await onRefreshData();
+    } catch (err: any) {
+      setErrorMsg(err.message || 'Error al guardar perspectivas.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Guardar Objetivo Estratégico (OE)
   const handleSaveOE = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -140,7 +174,7 @@ export const StrategyConfigModal: React.FC<StrategyConfigModalProps> = ({
 
     try {
       setLoading(true);
-      await strategyService.deleteStrategicObjective(oeId);
+      await strategyService.deleteStrategicObjective(oeId, selectedClientId);
       await onRefreshData();
       setSuccessMsg('Objetivo Estratégico eliminado.');
     } catch (err: any) {
@@ -164,13 +198,16 @@ export const StrategyConfigModal: React.FC<StrategyConfigModalProps> = ({
       setLoading(true);
       setErrorMsg(null);
 
-      await strategyService.saveAreaConfig(
+      const existingConfig = areaConfigs.find(c => c.areaName === selectedAreaForConfig);
+
+      const savedConfig = await strategyService.saveAreaConfig(
         selectedAreaForConfig,
         customAreaCode.trim().toUpperCase(),
-        selectedClientId
+        selectedClientId,
+        existingConfig?.id
       );
 
-      setSuccessMsg(`Código de área para "${selectedAreaForConfig}" guardado como "${customAreaCode.trim().toUpperCase()}".`);
+      setSuccessMsg(`Código de área para "${selectedAreaForConfig}" guardado como "${savedConfig.code}".`);
       await onRefreshData();
     } catch (err: any) {
       setErrorMsg(err.message || 'Error al guardar código de área.');
@@ -218,8 +255,11 @@ export const StrategyConfigModal: React.FC<StrategyConfigModalProps> = ({
       setLoading(true);
       setErrorMsg(null);
 
+      const areaCfg = areaConfigs.find(c => c.areaName.trim().toUpperCase() === ocAreaName.trim().toUpperCase());
+
       const savedOC = await strategyService.saveContributionObjective({
         areaName: ocAreaName,
+        areaConfigId: areaCfg?.id,
         primaryStrategicObjectiveId: ocPrimaryOEId,
         title: ocTitle.trim(),
         description: ocDescription.trim(),
@@ -253,7 +293,7 @@ export const StrategyConfigModal: React.FC<StrategyConfigModalProps> = ({
 
     try {
       setLoading(true);
-      await strategyService.deleteContributionObjective(ocId);
+      await strategyService.deleteContributionObjective(ocId, selectedClientId);
       await onRefreshData();
       setSuccessMsg('Objetivo de Contribución eliminado.');
     } catch (err: any) {
@@ -306,6 +346,18 @@ export const StrategyConfigModal: React.FC<StrategyConfigModalProps> = ({
         {/* Tab Navigation */}
         <div className="flex border-b border-slate-800 bg-slate-950 px-6 gap-2">
           <button
+            onClick={() => { setActiveSection('perspectives'); setErrorMsg(null); setSuccessMsg(null); }}
+            className={`py-3 px-4 text-xs font-bold border-b-2 transition-all flex items-center gap-2 ${
+              activeSection === 'perspectives'
+                ? 'border-emerald-500 text-emerald-400'
+                : 'border-transparent text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <Sliders className="w-4 h-4" />
+            Perspectivas BSC
+          </button>
+
+          <button
             onClick={() => { setActiveSection('objectives'); setErrorMsg(null); setSuccessMsg(null); }}
             className={`py-3 px-4 text-xs font-bold border-b-2 transition-all flex items-center gap-2 ${
               activeSection === 'objectives'
@@ -356,6 +408,62 @@ export const StrategyConfigModal: React.FC<StrategyConfigModalProps> = ({
 
         {/* Content Body */}
         <div className="p-6 overflow-y-auto flex-1 space-y-6">
+
+          {/* SECTION 0: PERSPECTIVAS BSC (4 SLOTS CONFIGURABLES) */}
+          {activeSection === 'perspectives' && (
+            <form onSubmit={handleSavePerspectives} className="max-w-3xl mx-auto space-y-6">
+              <div>
+                <h3 className="text-base font-bold text-white">Configuración de Perspectivas Estratégicas (4 Slots BSC)</h3>
+                <p className="text-xs text-slate-400 mt-1">
+                  Personaliza los nombres visibles y descripciones de las 4 perspectivas. Los IDs de slot internos no cambian, garantizando la integridad de los Objetivos Estratégicos.
+                </p>
+              </div>
+
+              <div className="space-y-4">
+                {editablePerspectives.map((p, idx) => (
+                  <div key={p.id} className="p-4 bg-slate-950 border border-slate-800 rounded-xl space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div className="w-3.5 h-3.5 rounded-full" style={{ backgroundColor: p.color || '#3B82F6' }} />
+                        <span className="text-xs font-bold text-white uppercase tracking-wider">Slot {idx + 1} ({p.id})</span>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <div>
+                        <label className="text-[10px] font-semibold text-slate-400 block mb-1">Nombre Visible</label>
+                        <input
+                          type="text"
+                          required
+                          value={p.name}
+                          onChange={e => handlePerspectiveChange(idx, 'name', e.target.value)}
+                          className="w-full bg-slate-900 border border-slate-800 rounded-lg p-2 text-xs text-white"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[10px] font-semibold text-slate-400 block mb-1">Descripción</label>
+                        <input
+                          type="text"
+                          value={p.description || ''}
+                          onChange={e => handlePerspectiveChange(idx, 'description', e.target.value)}
+                          className="w-full bg-slate-900 border border-slate-800 rounded-lg p-2 text-xs text-white"
+                          placeholder="Descripción breve..."
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold transition-all disabled:opacity-50"
+              >
+                {loading ? 'Guardando...' : 'Guardar Configuración de Perspectivas'}
+              </button>
+            </form>
+          )}
 
           {/* SECTION 1: OBJETIVOS ESTRATÉGICOS (OE) */}
           {activeSection === 'objectives' && (
@@ -484,10 +592,10 @@ export const StrategyConfigModal: React.FC<StrategyConfigModalProps> = ({
           {activeSection === 'areaCodes' && (
             <div className="max-w-2xl mx-auto bg-slate-950 p-6 rounded-xl border border-slate-800 space-y-6">
               <div>
-                <h3 className="text-base font-bold text-white">Configuración de Códigos Estables de Área</h3>
+                <h3 className="text-base font-bold text-white">Configuración de Códigos Estables de Área (Atómicos)</h3>
                 <p className="text-xs text-slate-400 mt-1">
                   Los códigos de área (ej. <code>COM</code>, <code>OPE</code>) identifican de forma estable los Objetivos de Contribución.
-                  Una vez guardados, no cambiarán automáticamente aunque el nombre del área sea modificado en los tableros.
+                  Se reservan mediante una transacción atómica en Firestore para garantizar unicidad e integridad relacional.
                 </p>
               </div>
 
@@ -662,7 +770,7 @@ export const StrategyConfigModal: React.FC<StrategyConfigModalProps> = ({
                     disabled={loading || !ocPrimaryOEId}
                     className="w-full py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold transition-all disabled:opacity-50"
                   >
-                    {loading ? 'Guardando...' : 'Crear Objetivo de Contribución'}
+                    {loading ? 'Guardando...' : 'Crear Objetivo de Contribución (Atómico)'}
                   </button>
                 </form>
               </div>

@@ -31,17 +31,19 @@ export const ContributionDetailModal: React.FC<ContributionDetailModalProps> = (
 }) => {
   if (!oc) return null;
 
-  // Cálculo de cumplimiento general derivado de los KPIs vinculados (solo lectura)
-  const defaultThresholds = { onTrack: 95, atRisk: 80 };
+  // Evaluación individual/distribución de estatus de KPIs vinculados (solo lectura)
+  const defaultThresholds = { onTrack: 95, atRisk: 85 };
   
-  const kpiCompliances = linkedKpis.map(({ item }) => {
-    const result = calculateCompliance(item, defaultThresholds);
-    return result.overallPercentage;
-  }).filter((c): c is number => typeof c === 'number' && !isNaN(c));
+  const kpiEvaluations = linkedKpis.map(({ item }) => {
+    const compResult = calculateCompliance(item, defaultThresholds);
+    return compResult;
+  });
 
-  const averageCompliance = kpiCompliances.length > 0
-    ? kpiCompliances.reduce((acc, val) => acc + val, 0) / kpiCompliances.length
-    : null;
+  const onTrackCount = kpiEvaluations.filter(e => e.overallPercentage >= 95).length;
+  const atRiskCount = kpiEvaluations.filter(e => e.overallPercentage >= 85 && e.overallPercentage < 95).length;
+  const offTrackCount = kpiEvaluations.filter(e => e.overallPercentage < 85).length;
+
+  const singleCompliance = linkedKpis.length === 1 ? kpiEvaluations[0]?.overallPercentage : null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
@@ -101,7 +103,7 @@ export const ContributionDetailModal: React.FC<ContributionDetailModalProps> = (
             </div>
           )}
 
-          {/* Resumen de Cumplimiento Derivado (Solo Lectura) */}
+          {/* Resumen de Cumplimiento / Estatus (Solo Lectura) */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-between">
               <div>
@@ -113,14 +115,24 @@ export const ContributionDetailModal: React.FC<ContributionDetailModalProps> = (
 
             <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-between">
               <div>
-                <span className="text-xs font-medium text-slate-400">Cumplimiento Derivado (Mes Actual)</span>
-                <div className="text-2xl font-black mt-1" style={{
-                  color: averageCompliance === null ? '#94A3B8' : averageCompliance >= 95 ? '#10B981' : averageCompliance >= 85 ? '#F59E0B' : '#EF4444'
-                }}>
-                  {averageCompliance !== null ? `${averageCompliance.toFixed(1)}%` : 'N/D'}
-                </div>
+                <span className="text-xs font-medium text-slate-400">Desempeño Operativo</span>
+                {linkedKpis.length === 1 ? (
+                  <div className="text-2xl font-black mt-1" style={{
+                    color: singleCompliance === null ? '#94A3B8' : singleCompliance >= 95 ? '#10B981' : singleCompliance >= 85 ? '#F59E0B' : '#EF4444'
+                  }}>
+                    {singleCompliance !== null ? `${singleCompliance.toFixed(1)}%` : 'N/D'}
+                  </div>
+                ) : linkedKpis.length > 1 ? (
+                  <div className="text-xs font-bold text-slate-200 mt-2 space-y-0.5">
+                    {onTrackCount > 0 && <span className="text-emerald-400 block">{onTrackCount} Al día (≥95%)</span>}
+                    {atRiskCount > 0 && <span className="text-amber-400 block">{atRiskCount} Atención (85-94%)</span>}
+                    {offTrackCount > 0 && <span className="text-red-400 block">{offTrackCount} Fuera de meta (&lt;85%)</span>}
+                  </div>
+                ) : (
+                  <div className="text-sm font-bold text-slate-500 mt-1">Sin Datos</div>
+                )}
               </div>
-              {averageCompliance !== null && averageCompliance >= 95 ? (
+              {linkedKpis.length === 1 && singleCompliance !== null && singleCompliance >= 95 ? (
                 <CheckCircle2 className="w-8 h-8 text-emerald-500" />
               ) : (
                 <AlertTriangle className="w-8 h-8 text-amber-500" />
@@ -129,7 +141,7 @@ export const ContributionDetailModal: React.FC<ContributionDetailModalProps> = (
 
             <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-between">
               <div>
-                <span className="text-xs font-medium text-slate-400">Estado Operativo</span>
+                <span className="text-xs font-medium text-slate-400">Estado de Seguimiento</span>
                 <div className="text-sm font-bold text-slate-300 mt-1">
                   {linkedKpis.length > 0 ? 'En Seguimiento' : 'Sin KPIs Asignados'}
                 </div>

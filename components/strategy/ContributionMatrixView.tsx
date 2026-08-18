@@ -34,6 +34,7 @@ export interface ContributionMatrixViewProps {
  * - Columnas: Áreas organizacionales de negocio.
  * - Celda vacía: Muestra "No contribuye" (sin persistir datos ficticios).
  * - Celda poblada: Soporta explícitamente MÚLTIPLES Objetivos de Contribución (OC).
+ * - Múltiples KPIs: NO promedia porcentajes entre indicadores heterogéneos. Despliega distribución por estatus.
  */
 export const ContributionMatrixView: React.FC<ContributionMatrixViewProps> = ({
   perspectives = DEFAULT_PERSPECTIVES,
@@ -71,7 +72,7 @@ export const ContributionMatrixView: React.FC<ContributionMatrixViewProps> = ({
     return activeAreas.filter(a => a === selectedAreaFilter);
   }, [activeAreas, selectedAreaFilter]);
 
-  // Mapa rápido de OE a Perspectiva
+  // Usar perspectivas pasadas o fallback a las 4 por defecto
   const activePerspectives = perspectives.length > 0 ? perspectives : DEFAULT_PERSPECTIVES;
 
   // Resolver KPIs vinculados para un OC específico (Solo Lectura)
@@ -92,25 +93,46 @@ export const ContributionMatrixView: React.FC<ContributionMatrixViewProps> = ({
     return result;
   };
 
-  // Calcular métricas de resumen para un OC
+  // Calcular métricas de resumen para un OC sin promediar porcentajes si hay múltiples KPIs
   const getOCSummaryMetrics = (ocId: string) => {
     const linked = getLinkedKpisForOC(ocId);
     if (linked.length === 0) {
-      return { kpiCount: 0, compliance: null };
+      return { kpiCount: 0, mode: 'none' as const, singleCompliance: null, onTrackCount: 0, atRiskCount: 0, offTrackCount: 0 };
     }
 
-    const defaultThresholds = { onTrack: 95, atRisk: 80 };
-    const compliances = linked
-      .map(({ item }) => calculateCompliance(item, defaultThresholds).overallPercentage)
-      .filter((c): c is number => typeof c === 'number' && !isNaN(c));
+    const defaultThresholds = { onTrack: 95, atRisk: 85 };
 
-    const avgCompliance = compliances.length > 0
-      ? compliances.reduce((a, b) => a + b, 0) / compliances.length
-      : null;
+    if (linked.length === 1) {
+      const comp = calculateCompliance(linked[0].item, defaultThresholds).overallPercentage;
+      return {
+        kpiCount: 1,
+        mode: 'single' as const,
+        singleCompliance: comp,
+        onTrackCount: comp >= 95 ? 1 : 0,
+        atRiskCount: comp >= 85 && comp < 95 ? 1 : 0,
+        offTrackCount: comp < 85 ? 1 : 0
+      };
+    }
+
+    // Regla de Integridad de Matriz: MÚLTIPLES KPIs -> No promediar porcentajes. Calcular distribución por estatus.
+    let onTrackCount = 0;
+    let atRiskCount = 0;
+    let offTrackCount = 0;
+
+    linked.forEach(({ item }) => {
+      const comp = calculateCompliance(item, defaultThresholds).overallPercentage;
+      if (comp >= 95) onTrackCount++;
+      else if (comp >= 85) atRiskCount++;
+      else offTrackCount++;
+    });
 
     return {
       kpiCount: linked.length,
-      compliance: avgCompliance
+      mode: 'multiple' as const,
+      singleCompliance: null,
+      onTrackCount,
+      atRiskCount,
+      offTrackCount
     };
   };
 
@@ -216,9 +238,16 @@ export const ContributionMatrixView: React.FC<ContributionMatrixViewProps> = ({
                           className="p-3 text-xs font-bold uppercase tracking-wider text-white"
                           style={{ borderLeft: `4px solid ${p.color || '#3B82F6'}` }}
                         >
-                          <div className="flex items-center gap-2">
-                            <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: p.color || '#3B82F6' }} />
-                            <span>Perspectiva: {p.name}</span>
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: p.color || '#3B82F6' }} />
+                              <span>Perspectiva: {p.name}</span>
+                            </div>
+                            {p.description && (
+                              <span className="text-[10px] text-slate-400 font-normal italic hidden md:inline">
+                                {p.description}
+                              </span>
+                            )}
                           </div>
                         </td>
                       </tr>
@@ -242,10 +271,14 @@ export const ContributionMatrixView: React.FC<ContributionMatrixViewProps> = ({
                           {/* Celdas por Área */}
                           {visibleAreas.map(areaName => {
                             const normArea = areaName.trim().toUpperCase();
-                            
-                            // Buscar todos los OCs pertenecientes a este Área y vinculados a este OE
+                            const areaCfg = areaConfigs.find(c => c.areaName.trim().toUpperCase() === normArea);
+
+                            // Buscar OCs pertenecientes a este Área (por areaConfigId o por snapshot areaName) y vinculados a este OE
                             const cellOCs = contributionObjectives.filter(
-                              oc => oc.areaName.trim().toUpperCase() === normArea && oc.primaryStrategicObjectiveId === oe.id
+                              oc =>
+                                ((areaCfg && oc.areaConfigId === areaCfg.id) ||
+                                  oc.areaName.trim().toUpperCase() === normArea) &&
+                                oc.primaryStrategicObjectiveId === oe.id
                             );
 
                             return (
@@ -278,16 +311,39 @@ export const ContributionMatrixView: React.FC<ContributionMatrixViewProps> = ({
 
                                           <h5 className="text-xs font-bold text-white line-clamp-2">{oc.title}</h5>
 
+                                          {/* Métrica / Distribución sin promedios inventados */}
                                           <div className="flex items-center justify-between text-[10px] text-slate-400 pt-1 border-t border-slate-900">
                                             <span>{metrics.kpiCount} KPI{metrics.kpiCount !== 1 ? 's' : ''}</span>
-                                            <span
-                                              className="font-bold"
-                                              style={{
-                                                color: metrics.compliance === null ? '#94A3B8' : metrics.compliance >= 95 ? '#10B981' : metrics.compliance >= 85 ? '#F59E0B' : '#EF4444'
-                                              }}
-                                            >
-                                              {metrics.compliance !== null ? `${metrics.compliance.toFixed(1)}%` : 'N/D'}
-                                            </span>
+                                            {metrics.mode === 'single' ? (
+                                              <span
+                                                className="font-bold"
+                                                style={{
+                                                  color: metrics.singleCompliance === null ? '#94A3B8' : metrics.singleCompliance >= 95 ? '#10B981' : metrics.singleCompliance >= 85 ? '#F59E0B' : '#EF4444'
+                                                }}
+                                              >
+                                                {metrics.singleCompliance !== null ? `${metrics.singleCompliance.toFixed(1)}%` : 'N/D'}
+                                              </span>
+                                            ) : metrics.mode === 'multiple' ? (
+                                              <div className="flex items-center gap-1.5 font-semibold text-[9px]">
+                                                {metrics.onTrackCount > 0 && (
+                                                  <span className="text-emerald-400" title={`${metrics.onTrackCount} KPI(s) Al día`}>
+                                                    {metrics.onTrackCount} Al día
+                                                  </span>
+                                                )}
+                                                {metrics.atRiskCount > 0 && (
+                                                  <span className="text-amber-400" title={`${metrics.atRiskCount} KPI(s) En riesgo`}>
+                                                    {metrics.atRiskCount} Atención
+                                                  </span>
+                                                )}
+                                                {metrics.offTrackCount > 0 && (
+                                                  <span className="text-red-400" title={`${metrics.offTrackCount} KPI(s) Fuera de meta`}>
+                                                    {metrics.offTrackCount} Fuera
+                                                  </span>
+                                                )}
+                                              </div>
+                                            ) : (
+                                              <span className="text-slate-500">Sin datos</span>
+                                            )}
                                           </div>
                                         </div>
                                       );
@@ -313,7 +369,7 @@ export const ContributionMatrixView: React.FC<ContributionMatrixViewProps> = ({
         <ContributionDetailModal
           oc={selectedOCForDetail}
           oe={objectives.find(o => o.id === selectedOCForDetail.primaryStrategicObjectiveId) || null}
-          perspective={perspectives.find(p => p.id === (objectives.find(o => o.id === selectedOCForDetail.primaryStrategicObjectiveId)?.perspectiveId)) || null}
+          perspective={activePerspectives.find(p => p.id === (objectives.find(o => o.id === selectedOCForDetail.primaryStrategicObjectiveId)?.perspectiveId)) || null}
           linkedKpis={getLinkedKpisForOC(selectedOCForDetail.id)}
           onClose={() => setSelectedOCForDetail(null)}
           onNavigateToDashboard={onNavigateToDashboard}
