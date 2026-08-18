@@ -19,14 +19,46 @@ service cloud.firestore {
     function isTableroUser() {
       return isSuperAdmin() || exists(/databases/$(database)/documents/tbl_users/$(request.auth.uid));
     }
+
+    function getUserProfile() {
+      return get(/databases/$(database)/documents/tbl_users/$(request.auth.uid)).data;
+    }
+
+    function isStratexaAdmin() {
+      return isSuperAdmin() || (
+        isAuthenticated() &&
+        exists(/databases/$(database)/documents/tbl_users/$(request.auth.uid)) &&
+        (getUserProfile().globalRole == 'Admin' || getUserProfile().globalRole == 'admin')
+      );
+    }
+
+    function isTenantUser(targetClientId) {
+      return isSuperAdmin() || (
+        isAuthenticated() &&
+        exists(/databases/$(database)/documents/tbl_users/$(request.auth.uid)) &&
+        (
+          getUserProfile().clientId == 'all' ||
+          getUserProfile().clientId == targetClientId ||
+          targetClientId == 'IPS'
+        )
+      );
+    }
+
+    function isTenantAdmin(targetClientId) {
+      return isSuperAdmin() || (
+        isStratexaAdmin() &&
+        (getUserProfile().clientId == 'all' || getUserProfile().clientId == targetClientId || targetClientId == 'IPS')
+      );
+    }
+
     function isGobernanzaUser() {
       return isAuthenticated(); // Legacy permit: don't break Governance app
     }
-    
+
     function isVacantesUser() {
       return isAuthenticated(); // Legacy permit: don't break Vacancy app
     }
-    
+
     function isActivadorUser() {
       return isAuthenticated(); // Legacy permit: don't break Activador app
     }
@@ -42,8 +74,57 @@ service cloud.firestore {
     match /tbl_systemSettings/{id=**} { allow read, write: if isTableroUser(); }
     match /tbl_managedClients/{id=**} { allow read, write: if isTableroUser(); }
 
+    // --- 🎯 REGLAS DE SEGURIDAD SERVIDORA: ESTRATEGIA (v9.5.0 FOUNDATION) ---
+    match /tbl_strategicPerspectives/{docId} {
+      allow read: if isTableroUser() && (resource == null || isTenantUser(resource.data.clientId));
+      allow create: if isTableroUser() && isTenantAdmin(request.resource.data.clientId);
+      allow update: if isTableroUser() && isTenantAdmin(resource.data.clientId) && request.resource.data.clientId == resource.data.clientId;
+      allow delete: if isTableroUser() && isTenantAdmin(resource.data.clientId);
+    }
+
+    match /tbl_strategicObjectives/{docId} {
+      allow read: if isTableroUser() && (resource == null || isTenantUser(resource.data.clientId));
+      allow create: if isTableroUser() && isTenantAdmin(request.resource.data.clientId);
+      allow update: if isTableroUser() && isTenantAdmin(resource.data.clientId) && request.resource.data.clientId == resource.data.clientId;
+      allow delete: if isTableroUser() && isTenantAdmin(resource.data.clientId);
+    }
+
+    match /tbl_areaStrategyConfigs/{docId} {
+      allow read: if isTableroUser() && (resource == null || isTenantUser(resource.data.clientId));
+      allow create: if isTableroUser() && isTenantAdmin(request.resource.data.clientId);
+      allow update: if isTableroUser() && isTenantAdmin(resource.data.clientId) && request.resource.data.clientId == resource.data.clientId;
+      allow delete: if isTableroUser() && isTenantAdmin(resource.data.clientId);
+    }
+
+    match /tbl_contributionObjectives/{docId} {
+      allow read: if isTableroUser() && (resource == null || isTenantUser(resource.data.clientId));
+      allow create: if isTableroUser() && isTenantAdmin(request.resource.data.clientId);
+      allow update: if isTableroUser() && isTenantAdmin(resource.data.clientId) && request.resource.data.clientId == resource.data.clientId;
+      allow delete: if isTableroUser() && isTenantAdmin(resource.data.clientId);
+    }
+
+    match /tbl_contributionIndicatorAssignments/{docId} {
+      allow read: if isTableroUser() && (resource == null || isTenantUser(resource.data.clientId));
+      allow create: if isTableroUser() && isTenantAdmin(request.resource.data.clientId);
+      allow update: if isTableroUser() && isTenantAdmin(resource.data.clientId) && request.resource.data.clientId == resource.data.clientId;
+      allow delete: if isTableroUser() && isTenantAdmin(resource.data.clientId);
+    }
+
+    match /tbl_strategyCounters/{docId} {
+      allow read: if isTableroUser() && (resource == null || isTenantUser(resource.data.clientId));
+      allow create: if isTableroUser() && isTenantAdmin(request.resource.data.clientId);
+      allow update: if isTableroUser() && isTenantAdmin(resource.data.clientId) && request.resource.data.clientId == resource.data.clientId;
+      allow delete: if isTableroUser() && isTenantAdmin(resource.data.clientId);
+    }
+
+    match /tbl_areaCodeReservations/{docId} {
+      allow read: if isTableroUser() && (resource == null || isTenantUser(resource.data.clientId));
+      allow create: if isTableroUser() && isTenantAdmin(request.resource.data.clientId);
+      allow update: if isTableroUser() && isTenantAdmin(resource.data.clientId) && request.resource.data.clientId == resource.data.clientId;
+      allow delete: if isTableroUser() && isTenantAdmin(resource.data.clientId);
+    }
+
     // --- 2. AISLAMIENTO: GOBERNANZA (cpx_*) ---
-    // Gobernanza usa cpx_ para proteger su integridad
     match /cpx_users/{userId} {
       allow read, write: if isAuthenticated() && (request.auth.uid == userId || isGobernanzaUser());
     }
@@ -52,7 +133,6 @@ service cloud.firestore {
     match /cpx_reports/{id=**} { allow read, write: if isGobernanzaUser(); }
 
     // --- 3. AISLAMIENTO: VACANTES (vac_*) ---
-    // Nueva burbuja aislada de Activador
     match /vac_users/{userId} {
       allow read, write: if isAuthenticated() && (request.auth.uid == userId || isVacantesUser());
     }
@@ -77,8 +157,6 @@ service cloud.firestore {
       allow read, write: if isAuthenticated();
     }
     
-    // Bloqueo de colecciones genéricas (Aislamiento progresivo)
-    // Permite lectura a todas las apps legacy, pero lo restringe a que sean usuarios reconocidos en al menos una app
     match /dashboards/{id=**} { allow read, write: if isTableroUser() || isGobernanzaUser() || isActivadorUser() || isVacantesUser(); }
     match /weekly_data/{id=**} { allow read, write: if isTableroUser() || isGobernanzaUser() || isActivadorUser() || isVacantesUser(); }
     match /weekly_analysis/{id=**} { allow read, write: if isTableroUser() || isGobernanzaUser() || isActivadorUser() || isVacantesUser(); }
@@ -99,14 +177,13 @@ service cloud.firestore {
 
 
     // --- 🚨 REGLA DE COMPATIBILIDAD UNIVERSAL (AISLAMIENTO INTELIGENTE) 🚨 ---
-    // En lugar de un cierre nuclear ciego, permitimos acceso a cualquier colección
-    // QUE NO SEA parte del nuevo esquema de aislamiento. 
-    // Esto asegura que las apps antiguas no se rompan sin importar qué colecciones usen,
-    // mientras mantenemos las nuevas colecciones estrictamente protegidas.
     match /{collection}/{document=**} {
       allow read, write: if isAuthenticated() && 
         !(collection in [
           'tbl_users', 'tbl_dashboards', 'tbl_systemSettings', 'tbl_managedClients',
+          'tbl_strategicPerspectives', 'tbl_strategicObjectives', 'tbl_areaStrategyConfigs',
+          'tbl_contributionObjectives', 'tbl_contributionIndicatorAssignments',
+          'tbl_strategyCounters', 'tbl_areaCodeReservations',
           'vac_users', 'vac_weekly_data', 'vac_weekly_analysis', 'vac_config', 'vac_unes',
           'cpx_users', 'cpx_work_plans', 'cpx_indicators', 'cpx_reports'
         ]);

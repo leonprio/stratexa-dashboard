@@ -7,10 +7,43 @@ import {
   AreaStrategyConfig,
   ContributionObjective,
   StrategicObjective,
-  ContributionIndicatorAssignment
+  ContributionIndicatorAssignment,
+  StrategicPerspective
 } from './strategyTypes';
 
 describe('Strategy Foundation — Pure Helpers & Architecture Contracts', () => {
+
+  describe('DEFAULT_PERSPECTIVES (4 Configurable BSC Slots)', () => {
+    it('has exactly 4 default perspective slots with required labels', () => {
+      expect(DEFAULT_PERSPECTIVES.length).toBe(4);
+      expect(DEFAULT_PERSPECTIVES[0].name).toBe('Resultados / Financiera');
+      expect(DEFAULT_PERSPECTIVES[1].name).toBe('Cliente / Grupos de interés');
+      expect(DEFAULT_PERSPECTIVES[2].name).toBe('Procesos internos');
+      expect(DEFAULT_PERSPECTIVES[3].name).toBe('Capacidad organizacional');
+    });
+
+    it('allows changing display name without breaking slot IDs', () => {
+      const customPerspectives: StrategicPerspective[] = DEFAULT_PERSPECTIVES.map((p, idx) => ({
+        ...p,
+        name: `Custom Perspective ${idx + 1}`
+      }));
+
+      expect(customPerspectives[0].id).toBe('FINANCIERA');
+      expect(customPerspectives[0].name).toBe('Custom Perspective 1');
+
+      const oe: StrategicObjective = {
+        id: 'oe-1',
+        perspectiveId: customPerspectives[0].id,
+        code: 'OE-01',
+        title: 'Rentabilidad',
+        order: 1,
+        clientId: 'IPS'
+      };
+
+      // OE link remains valid even after perspective name change
+      expect(oe.perspectiveId).toBe('FINANCIERA');
+    });
+  });
 
   describe('deriveAreaCodeSuggestion', () => {
     it('generates 3 letter uppercase code for single word areas', () => {
@@ -27,8 +60,8 @@ describe('Strategy Foundation — Pure Helpers & Architecture Contracts', () => 
 
   describe('validateAreaCodeUniqueness', () => {
     const existingConfigs: AreaStrategyConfig[] = [
-      { id: '1', areaName: 'COMERCIAL', code: 'COM', clientId: 'IPS' },
-      { id: '2', areaName: 'OPERACIONES', code: 'OPE', clientId: 'IPS' }
+      { id: 'areacfg_IPS_COMERCIAL', areaName: 'COMERCIAL', code: 'COM', clientId: 'IPS' },
+      { id: 'areacfg_IPS_OPERACIONES', areaName: 'OPERACIONES', code: 'OPE', clientId: 'IPS' }
     ];
 
     it('allows assigning a new unique code', () => {
@@ -40,44 +73,45 @@ describe('Strategy Foundation — Pure Helpers & Architecture Contracts', () => 
       expect(validateAreaCodeUniqueness(existingConfigs, 'OPE', 'FINANZAS')).toBe(false);
     });
 
-    it('allows preserving/updating code for the same area', () => {
+    it('allows preserving/updating code for the same area by name or ID', () => {
       expect(validateAreaCodeUniqueness(existingConfigs, 'COM', 'COMERCIAL')).toBe(true);
+      expect(validateAreaCodeUniqueness(existingConfigs, 'COM', 'areacfg_IPS_COMERCIAL')).toBe(true);
     });
   });
 
   describe('generateNextOCSequence & formatOCCode', () => {
     it('generates COM-OC01/02/03 independently from OPE-OC01/02', () => {
       const existingOCs: ContributionObjective[] = [
-        { id: 'oc-1', areaName: 'COMERCIAL', areaCode: 'COM', sequenceNumber: 1, displayCode: 'COM-OC01', title: 'OC1', primaryStrategicObjectiveId: 'oe-1', clientId: 'IPS' },
-        { id: 'oc-2', areaName: 'COMERCIAL', areaCode: 'COM', sequenceNumber: 2, displayCode: 'COM-OC02', title: 'OC2', primaryStrategicObjectiveId: 'oe-1', clientId: 'IPS' },
-        { id: 'oc-3', areaName: 'OPERACIONES', areaCode: 'OPE', sequenceNumber: 1, displayCode: 'OPE-OC01', title: 'OC3', primaryStrategicObjectiveId: 'oe-2', clientId: 'IPS' }
+        { id: 'oc-1', areaConfigId: 'areacfg_com', areaName: 'COMERCIAL', areaCode: 'COM', sequenceNumber: 1, displayCode: 'COM-OC01', title: 'OC1', primaryStrategicObjectiveId: 'oe-1', clientId: 'IPS' },
+        { id: 'oc-2', areaConfigId: 'areacfg_com', areaName: 'COMERCIAL', areaCode: 'COM', sequenceNumber: 2, displayCode: 'COM-OC02', title: 'OC2', primaryStrategicObjectiveId: 'oe-1', clientId: 'IPS' },
+        { id: 'oc-3', areaConfigId: 'areacfg_ope', areaName: 'OPERACIONES', areaCode: 'OPE', sequenceNumber: 1, displayCode: 'OPE-OC01', title: 'OC3', primaryStrategicObjectiveId: 'oe-2', clientId: 'IPS' }
       ];
 
-      const nextComSeq = generateNextOCSequence(existingOCs, 'COMERCIAL');
+      const nextComSeq = generateNextOCSequence(existingOCs, 'areacfg_com');
       expect(nextComSeq).toBe(3);
       expect(formatOCCode('COM', nextComSeq)).toBe('COM-OC03');
 
-      const nextOpeSeq = generateNextOCSequence(existingOCs, 'OPERACIONES');
+      const nextOpeSeq = generateNextOCSequence(existingOCs, 'areacfg_ope');
       expect(nextOpeSeq).toBe(2);
       expect(formatOCCode('OPE', nextOpeSeq)).toBe('OPE-OC02');
     });
 
     it('does NOT reuse deleted OC sequence numbers', () => {
       // Suppose COM-OC01 and COM-OC02 were created, then COM-OC02 was deleted.
-      // Maximum sequence number ever recorded in existingOCs is 2.
+      // Maximum sequence number ever recorded in existingOCs is 3.
       const existingOCs: ContributionObjective[] = [
-        { id: 'oc-1', areaName: 'COMERCIAL', areaCode: 'COM', sequenceNumber: 1, displayCode: 'COM-OC01', title: 'OC1', primaryStrategicObjectiveId: 'oe-1', clientId: 'IPS' },
-        { id: 'oc-3', areaName: 'COMERCIAL', areaCode: 'COM', sequenceNumber: 3, displayCode: 'COM-OC03', title: 'OC3', primaryStrategicObjectiveId: 'oe-1', clientId: 'IPS' }
+        { id: 'oc-1', areaConfigId: 'areacfg_com', areaName: 'COMERCIAL', areaCode: 'COM', sequenceNumber: 1, displayCode: 'COM-OC01', title: 'OC1', primaryStrategicObjectiveId: 'oe-1', clientId: 'IPS' },
+        { id: 'oc-3', areaConfigId: 'areacfg_com', areaName: 'COMERCIAL', areaCode: 'COM', sequenceNumber: 3, displayCode: 'COM-OC03', title: 'OC3', primaryStrategicObjectiveId: 'oe-1', clientId: 'IPS' }
       ];
 
-      const nextSeq = generateNextOCSequence(existingOCs, 'COMERCIAL');
+      const nextSeq = generateNextOCSequence(existingOCs, 'areacfg_com');
       expect(nextSeq).toBe(4); // Must be 4, NOT 2!
       expect(formatOCCode('COM', nextSeq)).toBe('COM-OC04');
     });
   });
 
-  describe('Stable Area Code Contracts', () => {
-    it('stable area code survives area-name change when resolved via AreaStrategyConfig', () => {
+  describe('Stable Relational Area Code Contracts', () => {
+    it('stable area code survives area-name change when resolved via areaConfigId', () => {
       const areaConfig: AreaStrategyConfig = {
         id: 'cfg-com-123',
         areaName: 'COMERCIAL Y VENTAS', // Area name changed from COMERCIAL to COMERCIAL Y VENTAS
@@ -87,6 +121,7 @@ describe('Strategy Foundation — Pure Helpers & Architecture Contracts', () => 
 
       const oc: ContributionObjective = {
         id: 'oc-100',
+        areaConfigId: areaConfig.id,
         areaName: 'COMERCIAL Y VENTAS',
         areaCode: areaConfig.code, // Stays 'COM'
         sequenceNumber: 1,
@@ -96,6 +131,7 @@ describe('Strategy Foundation — Pure Helpers & Architecture Contracts', () => 
         clientId: 'IPS'
       };
 
+      expect(oc.areaConfigId).toBe('cfg-com-123');
       expect(oc.displayCode).toBe('COM-OC01');
     });
   });
@@ -103,11 +139,11 @@ describe('Strategy Foundation — Pure Helpers & Architecture Contracts', () => 
   describe('Matrix Cell & Relationship Contracts', () => {
     it('supports multiple OCs from the same area linked to the same OE', () => {
       const ocs: ContributionObjective[] = [
-        { id: 'oc-1', areaName: 'COMERCIAL', areaCode: 'COM', sequenceNumber: 1, displayCode: 'COM-OC01', title: 'Ventas Directas', primaryStrategicObjectiveId: 'oe-1', clientId: 'IPS' },
-        { id: 'oc-2', areaName: 'COMERCIAL', areaCode: 'COM', sequenceNumber: 2, displayCode: 'COM-OC02', title: 'Ventas Digitales', primaryStrategicObjectiveId: 'oe-1', clientId: 'IPS' }
+        { id: 'oc-1', areaConfigId: 'areacfg_com', areaName: 'COMERCIAL', areaCode: 'COM', sequenceNumber: 1, displayCode: 'COM-OC01', title: 'Ventas Directas', primaryStrategicObjectiveId: 'oe-1', clientId: 'IPS' },
+        { id: 'oc-2', areaConfigId: 'areacfg_com', areaName: 'COMERCIAL', areaCode: 'COM', sequenceNumber: 2, displayCode: 'COM-OC02', title: 'Ventas Digitales', primaryStrategicObjectiveId: 'oe-1', clientId: 'IPS' }
       ];
 
-      const cellOCs = ocs.filter(oc => oc.areaName === 'COMERCIAL' && oc.primaryStrategicObjectiveId === 'oe-1');
+      const cellOCs = ocs.filter(oc => oc.areaConfigId === 'areacfg_com' && oc.primaryStrategicObjectiveId === 'oe-1');
       expect(cellOCs.length).toBe(2);
       expect(cellOCs[0].displayCode).toBe('COM-OC01');
       expect(cellOCs[1].displayCode).toBe('COM-OC02');

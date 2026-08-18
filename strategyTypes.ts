@@ -5,23 +5,53 @@
  */
 
 export interface StrategicPerspective {
-  id: string;
-  name: string;
+  id: string; // Identificador inmutable de slot (FINANCIERA, CLIENTE, PROCESOS_INTERNOS, APRENDIZAJE_CRECIMIENTO)
+  name: string; // Nombre visible configurable por el Admin
+  description?: string;
   order: number;
   color?: string;
   icon?: string;
+  clientId?: string;
 }
 
 export const DEFAULT_PERSPECTIVES: StrategicPerspective[] = [
-  { id: 'FINANCIERA', name: 'Financiera', order: 1, color: '#10B981', icon: 'DollarSign' },
-  { id: 'CLIENTE', name: 'Cliente', order: 2, color: '#3B82F6', icon: 'Users' },
-  { id: 'PROCESOS_INTERNOS', name: 'Procesos Internos', order: 3, color: '#F59E0B', icon: 'Zap' },
-  { id: 'APRENDIZAJE_CRECIMIENTO', name: 'Aprendizaje y Crecimiento', order: 4, color: '#8B5CF6', icon: 'BookOpen' }
+  {
+    id: 'FINANCIERA',
+    name: 'Resultados / Financiera',
+    description: 'Objetivos de desempeño financiero y generación de valor.',
+    order: 1,
+    color: '#10B981',
+    icon: 'DollarSign'
+  },
+  {
+    id: 'CLIENTE',
+    name: 'Cliente / Grupos de interés',
+    description: 'Propuesta de valor para clientes y partes interesadas.',
+    order: 2,
+    color: '#3B82F6',
+    icon: 'Users'
+  },
+  {
+    id: 'PROCESOS_INTERNOS',
+    name: 'Procesos internos',
+    description: 'Excelencia operacional e innovación de procesos.',
+    order: 3,
+    color: '#F59E0B',
+    icon: 'Zap'
+  },
+  {
+    id: 'APRENDIZAJE_CRECIMIENTO',
+    name: 'Capacidad organizacional',
+    description: 'Talento, cultura, clima y competencias clave.',
+    order: 4,
+    color: '#8B5CF6',
+    icon: 'BookOpen'
+  }
 ];
 
 export interface StrategicObjective {
   id: string;
-  perspectiveId: string;
+  perspectiveId: string; // Referencia inmutable a la perspectiva
   code: string; // e.g. "OE-01"
   title: string;
   description?: string;
@@ -32,20 +62,21 @@ export interface StrategicObjective {
 }
 
 export interface AreaStrategyConfig {
-  id: string; // Identity técnico inmutable
-  areaName: string; // Nombre del área (e.g. "COMERCIAL")
-  code: string; // Código de despliegue estable (e.g. "COM")
+  id: string; // Identidad técnica inmutable (ej. "areacfg_IPS_COMERCIAL")
+  areaName: string; // Nombre de despliegue del área (ej. "COMERCIAL")
+  code: string; // Código de estrategia estable (ej. "COM")
   clientId: string;
   createdAt?: string;
   updatedAt?: string;
 }
 
 export interface ContributionObjective {
-  id: string; // Identity técnico inmutable
-  areaName: string; // Área a la que pertenece (e.g. "COMERCIAL")
-  areaCode: string; // Código de área asignado al momento de creación (e.g. "COM")
-  sequenceNumber: number; // Consecutivo monótono independiente por área (e.g. 1, 2, 3)
-  displayCode: string; // Código visible derivado estable (e.g. "COM-OC01")
+  id: string; // Identidad técnica inmutable
+  areaConfigId?: string; // Referencia relacional inmutable a AreaStrategyConfig.id
+  areaName: string; // Snapshot visible del nombre del área (ej. "COMERCIAL")
+  areaCode: string; // Snapshot visible del código asignado al crearse (ej. "COM")
+  sequenceNumber: number; // Consecutivo monótono atómico e independiente por área (ej. 1, 2, 3)
+  displayCode: string; // Código de despliegue derivado estable (ej. "COM-OC01")
   title: string;
   description?: string;
   primaryStrategicObjectiveId: string; // OE primario al que contribuye
@@ -62,6 +93,22 @@ export interface ContributionIndicatorAssignment {
   itemId: number | string;
   clientId: string;
   createdAt?: string;
+}
+
+export interface StrategyCounter {
+  id: string; // Documento de contador (ej. "cnt_IPS_areacfg_COM")
+  lastIssuedSequence: number;
+  areaConfigId: string;
+  clientId: string;
+  updatedAt?: string;
+}
+
+export interface AreaCodeReservation {
+  id: string; // Documento de reserva (ej. "res_IPS_COM")
+  areaConfigId: string;
+  code: string;
+  clientId: string;
+  updatedAt?: string;
 }
 
 /**
@@ -83,7 +130,6 @@ export function deriveAreaCodeSuggestion(areaName: string): string {
     return words[0].slice(0, 3);
   }
 
-  // Si son múltiples palabras (ej. "TALENTO Y CULTURA" o "PROCESOS INTERNOS")
   const stopWords = new Set(['Y', 'DE', 'DEL', 'LA', 'EL', 'LOS', 'LAS', 'EN', 'PARA']);
   const meaningfulWords = words.filter(w => !stopWords.has(w));
 
@@ -99,15 +145,15 @@ export function deriveAreaCodeSuggestion(areaName: string): string {
 
 /**
  * Valida la unicidad de un código de área para un mismo cliente.
- * Retorna true si el código es único o pertenece al mismo área.
+ * Retorna true si el código es único o pertenece a la misma configuración de área.
  */
 export function validateAreaCodeUniqueness(
   configs: AreaStrategyConfig[],
   newCode: string,
-  currentAreaName: string
+  currentAreaNameOrId: string
 ): boolean {
   const normalizedNewCode = newCode.trim().toUpperCase();
-  const normalizedAreaName = currentAreaName.trim().toUpperCase();
+  const normalizedKey = currentAreaNameOrId.trim().toUpperCase();
 
   if (!normalizedNewCode) return false;
 
@@ -117,8 +163,11 @@ export function validateAreaCodeUniqueness(
 
   if (!existing) return true;
 
-  // Si existe pero pertenece al mismo área, es válido
-  return existing.areaName.trim().toUpperCase() === normalizedAreaName;
+  // Si existe pero pertenece al mismo área o mismo ID, es válido
+  return (
+    existing.id.trim().toUpperCase() === normalizedKey ||
+    existing.areaName.trim().toUpperCase() === normalizedKey
+  );
 }
 
 /**
@@ -127,11 +176,13 @@ export function validateAreaCodeUniqueness(
  */
 export function generateNextOCSequence(
   existingOCs: ContributionObjective[],
-  areaName: string
+  areaNameOrConfigId: string
 ): number {
-  const normArea = areaName.trim().toUpperCase();
+  const normKey = areaNameOrConfigId.trim().toUpperCase();
   const areaOCs = existingOCs.filter(
-    oc => oc.areaName.trim().toUpperCase() === normArea
+    oc =>
+      (oc.areaConfigId && oc.areaConfigId.trim().toUpperCase() === normKey) ||
+      oc.areaName.trim().toUpperCase() === normKey
   );
 
   if (areaOCs.length === 0) return 1;
