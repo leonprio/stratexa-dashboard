@@ -43,6 +43,7 @@ import {
   AreaStrategyConfig,
   ContributionObjective,
   ContributionIndicatorAssignment,
+  StrategicObjectiveRelationship,
 } from "./strategyTypes";
 
 type AppStatus = "loading" | "no-session" | "ready" | "error";
@@ -141,33 +142,49 @@ const SHIELD_ID = "GOLD MASTER";
     return saved === "true";
   });
 
-  // 🎯 Estado para Fundamentos de Estrategia (v9.5.0)
+  // 🎯 Estado para Fundamentos de Estrategia y Mapa Estratégico (v9.5.1)
   const [perspectives, setPerspectives] = useState<StrategicPerspective[]>([]);
   const [objectives, setObjectives] = useState<StrategicObjective[]>([]);
   const [areaConfigs, setAreaConfigs] = useState<AreaStrategyConfig[]>([]);
   const [contributionObjectives, setContributionObjectives] = useState<ContributionObjective[]>([]);
   const [assignments, setAssignments] = useState<ContributionIndicatorAssignment[]>([]);
+  const [relationships, setRelationships] = useState<StrategicObjectiveRelationship[]>([]);
 
   // Carga diferida condicional (Feature Flag OFF = 0 llamadas a Firebase)
   const loadStrategyData = useCallback(async () => {
     if (!settings?.enableStrategyMap) return;
     try {
-      const [pList, oList, acList, coList, asgnList] = await Promise.all([
+      const [pList, oList, acList, coList, asgnList, relList] = await Promise.all([
         strategyService.getPerspectives(selectedClientId),
         strategyService.getStrategicObjectives(selectedClientId),
         strategyService.getAreaConfigs(selectedClientId),
         strategyService.getContributionObjectives(selectedClientId),
         strategyService.getAssignments(selectedClientId),
+        strategyService.getStrategicObjectiveRelationships(selectedClientId),
       ]);
       setPerspectives(pList);
       setObjectives(oList);
       setAreaConfigs(acList);
       setContributionObjectives(coList);
       setAssignments(asgnList);
+      setRelationships(relList);
     } catch (err) {
       console.error("Error al cargar datos estratégicos:", err);
     }
   }, [settings?.enableStrategyMap, selectedClientId]);
+
+  const handleSaveRelationship = useCallback(async (rel: { sourceStrategicObjectiveId: string; targetStrategicObjectiveId: string; description?: string }) => {
+    await strategyService.saveStrategicObjectiveRelationship({
+      ...rel,
+      clientId: selectedClientId
+    });
+    await loadStrategyData();
+  }, [selectedClientId, loadStrategyData]);
+
+  const handleDeleteRelationship = useCallback(async (relationshipId: string) => {
+    await strategyService.deleteStrategicObjectiveRelationship(relationshipId, selectedClientId);
+    await loadStrategyData();
+  }, [selectedClientId, loadStrategyData]);
 
   useEffect(() => {
     if (settings?.enableStrategyMap) {
@@ -2170,10 +2187,13 @@ Esto corregirá cualquier inconsistencia en colores (ej. Amarillo vs Rojo).`)) {
               areaConfigs={areaConfigs}
               contributionObjectives={contributionObjectives}
               assignments={assignments}
+              relationships={relationships}
               dashboards={dashboards}
               selectedClientId={selectedClientId}
               currentUser={userProfile || undefined}
               onRefreshData={loadStrategyData}
+              onSaveRelationship={handleSaveRelationship}
+              onDeleteRelationship={handleDeleteRelationship}
               onNavigateToDashboard={(dashboardId, itemId) => {
                 setActiveAdminSection("none");
                 setSelectedDashboardId(dashboardId);

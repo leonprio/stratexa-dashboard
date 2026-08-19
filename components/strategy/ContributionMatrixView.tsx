@@ -6,6 +6,7 @@ import {
   AreaStrategyConfig,
   ContributionObjective,
   ContributionIndicatorAssignment,
+  StrategicObjectiveRelationship,
   DEFAULT_PERSPECTIVES,
   deriveAreaCodeSuggestion,
   resolveAreaStrategyConfig
@@ -14,6 +15,7 @@ import { Dashboard as DashboardType, User, GlobalUserRole } from '../../types';
 import { calculateCompliance } from '../../utils/compliance';
 import { ContributionDetailModal } from './ContributionDetailModal';
 import { StrategyConfigModal } from './StrategyConfigModal';
+import { StrategyMapView } from './StrategyMapView';
 
 export interface ContributionMatrixViewProps {
   perspectives: StrategicPerspective[];
@@ -21,10 +23,13 @@ export interface ContributionMatrixViewProps {
   areaConfigs: AreaStrategyConfig[];
   contributionObjectives: ContributionObjective[];
   assignments: ContributionIndicatorAssignment[];
+  relationships?: StrategicObjectiveRelationship[];
   dashboards: DashboardType[];
   selectedClientId: string;
   currentUser?: User;
   onRefreshData: () => Promise<void>;
+  onSaveRelationship?: (rel: { sourceStrategicObjectiveId: string; targetStrategicObjectiveId: string; description?: string }) => Promise<void>;
+  onDeleteRelationship?: (relationshipId: string) => Promise<void>;
   onNavigateToDashboard?: (dashboardId: number | string, itemId: number | string) => void;
 }
 
@@ -44,14 +49,18 @@ export const ContributionMatrixView: React.FC<ContributionMatrixViewProps> = ({
   areaConfigs = [],
   contributionObjectives = [],
   assignments = [],
+  relationships = [],
   dashboards = [],
   selectedClientId,
   currentUser,
   onRefreshData,
+  onSaveRelationship,
+  onDeleteRelationship,
   onNavigateToDashboard,
 }) => {
   const isAdmin = currentUser?.globalRole === GlobalUserRole.Admin;
 
+  const [subView, setSubView] = useState<'matrix' | 'map'>('map');
   const [selectedOCForDetail, setSelectedOCForDetail] = useState<ContributionObjective | null>(null);
   const [showConfigModal, setShowConfigModal] = useState(false);
   const [selectedAreaFilter, setSelectedAreaFilter] = useState<string>('TODAS');
@@ -98,34 +107,36 @@ export const ContributionMatrixView: React.FC<ContributionMatrixViewProps> = ({
   // Calcular métricas de resumen para un OC sin promediar porcentajes si hay múltiples KPIs
   const getOCSummaryMetrics = (ocId: string) => {
     const linked = getLinkedKpisForOC(ocId);
+
     if (linked.length === 0) {
       return { kpiCount: 0, mode: 'none' as const, singleCompliance: null, onTrackCount: 0, atRiskCount: 0, offTrackCount: 0 };
     }
 
-    const defaultThresholds = { onTrack: 95, atRisk: 85 };
-
     if (linked.length === 1) {
-      const comp = calculateCompliance(linked[0].item, defaultThresholds).overallPercentage;
+      const compResult = calculateCompliance(linked[0].item);
+      const comp = compResult?.overallPercentage;
       return {
         kpiCount: 1,
         mode: 'single' as const,
         singleCompliance: comp,
-        onTrackCount: comp >= 95 ? 1 : 0,
-        atRiskCount: comp >= 85 && comp < 95 ? 1 : 0,
-        offTrackCount: comp < 85 ? 1 : 0
+        onTrackCount: comp !== null && comp !== undefined && comp >= 95 ? 1 : 0,
+        atRiskCount: comp !== null && comp !== undefined && comp >= 85 && comp < 95 ? 1 : 0,
+        offTrackCount: comp !== null && comp !== undefined && comp < 85 ? 1 : 0
       };
     }
 
-    // Regla de Integridad de Matriz: MÚLTIPLES KPIs -> No promediar porcentajes. Calcular distribución por estatus.
     let onTrackCount = 0;
     let atRiskCount = 0;
     let offTrackCount = 0;
 
     linked.forEach(({ item }) => {
-      const comp = calculateCompliance(item, defaultThresholds).overallPercentage;
-      if (comp >= 95) onTrackCount++;
-      else if (comp >= 85) atRiskCount++;
-      else offTrackCount++;
+      const compResult = calculateCompliance(item);
+      const comp = compResult?.overallPercentage;
+      if (comp !== null && comp !== undefined) {
+        if (comp >= 95) onTrackCount++;
+        else if (comp >= 85) atRiskCount++;
+        else offTrackCount++;
+      }
     });
 
     return {
@@ -146,29 +157,56 @@ export const ContributionMatrixView: React.FC<ContributionMatrixViewProps> = ({
         <div>
           <div className="flex items-center gap-2">
             <span className="px-2.5 py-0.5 text-xs font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded">
-              v9.4.22
+              v9.5.1
             </span>
-            <span className="text-xs font-semibold text-slate-400">BSC & Matriz de Contribución</span>
+            <span className="text-xs font-semibold text-slate-400">BSC & Fundamentos de Estrategia</span>
           </div>
-          <h1 className="text-2xl font-black text-white mt-1 tracking-tight">Matriz de Contribución Estratégica</h1>
+          <h1 className="text-2xl font-black text-white mt-1 tracking-tight">Estrategia Organizacional (BSC)</h1>
           <p className="text-xs text-slate-400 mt-1 max-w-3xl">
-            Alineación entre los Objetivos Estratégicos (OE) de la organización y los Objetivos de Contribución (OC) de cada Área operacional.
+            Visualización de relaciones causa-efecto en el Mapa Estratégico y alineación de Objetivos de Contribución por área.
           </p>
+
+          {/* Selector de Sub-vistas (Pestañas) */}
+          <div className="flex items-center gap-2 mt-4">
+            <button
+              onClick={() => setSubView('map')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors flex items-center gap-1.5 ${
+                subView === 'map'
+                  ? 'bg-indigo-600 text-white shadow-sm'
+                  : 'bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700'
+              }`}
+            >
+              <Compass className="w-3.5 h-3.5" />
+              Mapa Estratégico (Causa-Efecto)
+            </button>
+            <button
+              onClick={() => setSubView('matrix')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors flex items-center gap-1.5 ${
+                subView === 'matrix'
+                  ? 'bg-emerald-600 text-white shadow-sm'
+                  : 'bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700'
+              }`}
+            >
+              <Layers className="w-3.5 h-3.5" />
+              Matriz de Contribución
+            </button>
+          </div>
         </div>
 
         {/* Action Buttons */}
         <div className="flex items-center gap-3 shrink-0">
-          {/* Selector de Filtro de Área */}
-          <select
-            value={selectedAreaFilter}
-            onChange={e => setSelectedAreaFilter(e.target.value)}
-            className="bg-slate-950 border border-slate-700 text-xs font-semibold text-white rounded-lg px-3 py-2 focus:ring-emerald-500"
-          >
-            <option value="TODAS">Todas las Áreas ({activeAreas.length})</option>
-            {activeAreas.map(a => (
-              <option key={a} value={a}>Área: {a}</option>
-            ))}
-          </select>
+          {subView === 'matrix' && (
+            <select
+              value={selectedAreaFilter}
+              onChange={e => setSelectedAreaFilter(e.target.value)}
+              className="bg-slate-950 border border-slate-700 text-xs font-semibold text-white rounded-lg px-3 py-2 focus:ring-emerald-500"
+            >
+              <option value="TODAS">Todas las Áreas ({activeAreas.length})</option>
+              {activeAreas.map(a => (
+                <option key={a} value={a}>Área: {a}</option>
+              ))}
+            </select>
+          )}
 
           {isAdmin && (
             <button
@@ -182,8 +220,23 @@ export const ContributionMatrixView: React.FC<ContributionMatrixViewProps> = ({
         </div>
       </div>
 
-      {/* Matriz de Contribución */}
-      {objectives.length === 0 ? (
+      {/* Renderizado según Sub-vista seleccionada (Mapa Estratégico o Matriz) */}
+      {subView === 'map' ? (
+        <StrategyMapView
+          perspectives={activePerspectives}
+          objectives={objectives}
+          relationships={relationships}
+          contributions={contributionObjectives}
+          assignments={assignments}
+          dashboards={dashboards}
+          isAdmin={isAdmin}
+          selectedClientId={selectedClientId}
+          onRefreshData={onRefreshData}
+          onSaveRelationship={onSaveRelationship}
+          onDeleteRelationship={onDeleteRelationship}
+          onNavigateToDashboard={onNavigateToDashboard}
+        />
+      ) : objectives.length === 0 ? (
         <div className="p-12 bg-slate-900 border border-slate-800 rounded-xl text-center space-y-4">
           <Compass className="w-12 h-12 text-slate-600 mx-auto" />
           <h3 className="text-base font-bold text-white">No hay Objetivos Estratégicos Configurados</h3>
