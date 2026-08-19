@@ -1,3 +1,7 @@
+import React from 'react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import '@testing-library/jest-dom';
+
 import {
   StrategicPerspective,
   StrategicObjective,
@@ -5,8 +9,39 @@ import {
   ContributionObjective,
   ContributionIndicatorAssignment,
   validateObjectiveRelationship,
-  getCanonicalRelationshipId
+  getCanonicalRelationshipId,
+  DEFAULT_PERSPECTIVES
 } from './strategyTypes';
+
+import { strategyService } from './services/strategyService';
+import { RelationshipEditorModal } from './components/strategy/RelationshipEditorModal';
+
+// Mock de Firestore para pruebas directas en strategyService
+const mockGetDoc = jest.fn();
+const mockSetDoc = jest.fn();
+const mockDeleteDoc = jest.fn();
+const mockGetDocs = jest.fn();
+const mockRunTransaction = jest.fn();
+
+jest.mock('firebase/firestore', () => {
+  const actual = jest.requireActual('firebase/firestore');
+  return {
+    ...actual,
+    doc: jest.fn((_db, coll, id) => ({ _path: `${coll}/${id}`, id, collection: coll })),
+    collection: jest.fn((_db, coll) => ({ _path: coll, id: coll })),
+    query: jest.fn((ref, ..._constraints) => ref),
+    where: jest.fn(),
+    getDoc: (...args: any[]) => mockGetDoc(...args),
+    setDoc: (...args: any[]) => mockSetDoc(...args),
+    deleteDoc: (...args: any[]) => mockDeleteDoc(...args),
+    getDocs: (...args: any[]) => mockGetDocs(...args),
+    runTransaction: (...args: any[]) => mockRunTransaction(...args)
+  };
+});
+
+jest.mock('./firebase', () => ({
+  db: {}
+}));
 
 describe('v9.5.1 Strategy Map & Cause-Effect Relationships Unit Tests', () => {
 
@@ -269,31 +304,323 @@ describe('v9.5.1 Strategy Map & Cause-Effect Relationships Unit Tests', () => {
     });
   });
 
-  // --- 6. Relationship Editor Modal Error Handling & State Cleanup ---
-  describe('RelationshipEditorModal Error & Finally Handling', () => {
+  // --- 6. Pruebas Ejecutables Directas del Servicio Transaccional (saveStrategicObjectiveRelationship) ---
+  describe('Direct saveStrategicObjectiveRelationship execution', () => {
 
-    it('always resets isSaving state on save failure through proper finally block', async () => {
-      let isSaving = false;
-      let errorMsg: string | null = null;
+    beforeEach(() => {
+      jest.clearAllMocks();
+    });
 
-      const mockOnSaveFailure = jest.fn().mockRejectedValue(new Error('Network / Firestore failure'));
-
-      const handleAddSimulated = async () => {
-        try {
-          isSaving = true;
-          await mockOnSaveFailure();
-        } catch (err: any) {
-          errorMsg = err.message || 'Error';
-        } finally {
-          isSaving = false;
-        }
+    it('successfully reads source and target OEs, computes canonical ID and commits transaction', async () => {
+      const sourceOE: StrategicObjective = {
+        id: 'oe_src_1',
+        perspectiveId: 'APRENDIZAJE_CRECIMIENTO',
+        code: 'OE-01',
+        title: 'Capacitación Técnica',
+        order: 1,
+        clientId: 'IPS'
       };
 
-      await handleAddSimulated();
+      const targetOE: StrategicObjective = {
+        id: 'oe_tgt_1',
+        perspectiveId: 'PROCESOS_INTERNOS',
+        code: 'OE-02',
+        title: 'Optimización Operativa',
+        order: 1,
+        clientId: 'IPS'
+      };
 
-      expect(mockOnSaveFailure).toHaveBeenCalledTimes(1);
-      expect(errorMsg).toBe('Network / Firestore failure');
-      expect(isSaving).toBe(false); // Validates that isSaving never stays true permanently
+      mockRunTransaction.mockImplementation(async (_db, callback) => {
+        const fakeTx = {
+          get: jest.fn().mockImplementation(async (ref: any) => {
+            if (ref.id === 'oe_src_1') return { exists: () => true, data: () => sourceOE };
+            if (ref.id === 'oe_tgt_1') return { exists: () => true, data: () => targetOE };
+            if (ref.id === 'rel_IPS_oe_src_1_oe_tgt_1') return { exists: () => false, data: () => undefined };
+            return { exists: () => false, data: () => undefined };
+          }),
+          set: jest.fn()
+        };
+        return await callback(fakeTx);
+      });
+
+      const result = await strategyService.saveStrategicObjectiveRelationship({
+        clientId: 'IPS',
+        sourceStrategicObjectiveId: 'oe_src_1',
+        targetStrategicObjectiveId: 'oe_tgt_1',
+        description: 'La capacitación optimiza los procesos'
+      });
+
+      expect(mockRunTransaction).toHaveBeenCalledTimes(1);
+      expect(result.id).toBe('rel_IPS_oe_src_1_oe_tgt_1');
+      expect(result.clientId).toBe('IPS');
+      expect(result.sourceStrategicObjectiveId).toBe('oe_src_1');
+      expect(result.targetStrategicObjectiveId).toBe('oe_tgt_1');
+      expect(result.description).toBe('La capacitación optimiza los procesos');
+    });
+
+    it('repeated logical save targets the same canonical document rather than creating a second physical document', async () => {
+      const sourceOE: StrategicObjective = { id: 'oe_1', perspectiveId: 'FINANCIERA', code: 'OE-01', title: 'OE 1', order: 1, clientId: 'IPS' };
+      const targetOE: StrategicObjective = { id: 'oe_2', perspectiveId: 'CLIENTE', code: 'OE-02', title: 'OE 2', order: 1, clientId: 'IPS' };
+
+      const existingRel: StrategicObjectiveRelationship = {
+        id: 'rel_IPS_oe_1_oe_2',
+        clientId: 'IPS',
+        sourceStrategicObjectiveId: 'oe_1',
+        targetStrategicObjectiveId: 'oe_2',
+        description: 'Initial rationale',
+        createdAt: '2026-01-01T00:00:00.000Z'
+      };
+
+      let capturedSetData: any = null;
+
+      mockRunTransaction.mockImplementation(async (_db, callback) => {
+        const fakeTx = {
+          get: jest.fn().mockImplementation(async (ref: any) => {
+            if (ref.id === 'oe_1') return { exists: () => true, data: () => sourceOE };
+            if (ref.id === 'oe_2') return { exists: () => true, data: () => targetOE };
+            if (ref.id === 'rel_IPS_oe_1_oe_2') return { exists: () => true, data: () => existingRel };
+            return { exists: () => false, data: () => undefined };
+          }),
+          set: jest.fn().mockImplementation((ref: any, data: any) => {
+            capturedSetData = { ref, data };
+          })
+        };
+        return await callback(fakeTx);
+      });
+
+      const updated = await strategyService.saveStrategicObjectiveRelationship({
+        clientId: 'IPS',
+        sourceStrategicObjectiveId: 'oe_1',
+        targetStrategicObjectiveId: 'oe_2',
+        description: 'Updated rationale'
+      });
+
+      expect(updated.id).toBe('rel_IPS_oe_1_oe_2');
+      expect(capturedSetData.ref.id).toBe('rel_IPS_oe_1_oe_2');
+      expect(capturedSetData.data.createdAt).toBe('2026-01-01T00:00:00.000Z');
+      expect(capturedSetData.data.description).toBe('Updated rationale');
+    });
+
+    it('rejects relationship when source OE does not exist', async () => {
+      mockRunTransaction.mockImplementation(async (_db, callback) => {
+        const fakeTx = {
+          get: jest.fn().mockImplementation(async (ref: any) => {
+            if (ref.id === 'oe_non_existent') return { exists: () => false };
+            return { exists: () => true, data: () => ({ clientId: 'IPS' }) };
+          }),
+          set: jest.fn()
+        };
+        return await callback(fakeTx);
+      });
+
+      await expect(strategyService.saveStrategicObjectiveRelationship({
+        clientId: 'IPS',
+        sourceStrategicObjectiveId: 'oe_non_existent',
+        targetStrategicObjectiveId: 'oe_valid'
+      })).rejects.toThrow('El objetivo estratégico de origen "oe_non_existent" no existe.');
+    });
+
+    it('rejects relationship when target OE does not exist', async () => {
+      mockRunTransaction.mockImplementation(async (_db, callback) => {
+        const fakeTx = {
+          get: jest.fn().mockImplementation(async (ref: any) => {
+            if (ref.id === 'oe_valid_src') return { exists: () => true, data: () => ({ clientId: 'IPS' }) };
+            if (ref.id === 'oe_non_existent_tgt') return { exists: () => false };
+            return { exists: () => false };
+          }),
+          set: jest.fn()
+        };
+        return await callback(fakeTx);
+      });
+
+      await expect(strategyService.saveStrategicObjectiveRelationship({
+        clientId: 'IPS',
+        sourceStrategicObjectiveId: 'oe_valid_src',
+        targetStrategicObjectiveId: 'oe_non_existent_tgt'
+      })).rejects.toThrow('El objetivo estratégico de destino "oe_non_existent_tgt" no existe.');
+    });
+
+    it('rejects relationship with cross-tenant source OE', async () => {
+      mockRunTransaction.mockImplementation(async (_db, callback) => {
+        const fakeTx = {
+          get: jest.fn().mockImplementation(async (ref: any) => {
+            if (ref.id === 'oe_other_tenant') return { exists: () => true, data: () => ({ clientId: 'CLIENT_B' }) };
+            return { exists: () => true, data: () => ({ clientId: 'IPS' }) };
+          }),
+          set: jest.fn()
+        };
+        return await callback(fakeTx);
+      });
+
+      await expect(strategyService.saveStrategicObjectiveRelationship({
+        clientId: 'IPS',
+        sourceStrategicObjectiveId: 'oe_other_tenant',
+        targetStrategicObjectiveId: 'oe_ips'
+      })).rejects.toThrow('El objetivo de origen pertenece a otro tenant.');
+    });
+
+    it('rejects relationship with cross-tenant target OE', async () => {
+      mockRunTransaction.mockImplementation(async (_db, callback) => {
+        const fakeTx = {
+          get: jest.fn().mockImplementation(async (ref: any) => {
+            if (ref.id === 'oe_ips_src') return { exists: () => true, data: () => ({ clientId: 'IPS' }) };
+            if (ref.id === 'oe_target_b') return { exists: () => true, data: () => ({ clientId: 'CLIENT_B' }) };
+            return { exists: () => false };
+          }),
+          set: jest.fn()
+        };
+        return await callback(fakeTx);
+      });
+
+      await expect(strategyService.saveStrategicObjectiveRelationship({
+        clientId: 'IPS',
+        sourceStrategicObjectiveId: 'oe_ips_src',
+        targetStrategicObjectiveId: 'oe_target_b'
+      })).rejects.toThrow('El objetivo de destino pertenece a otro tenant.');
+    });
+  });
+
+  // --- 7. Pruebas Ejecutables Directas de Guarda de Orfandad (deleteStrategicObjective) ---
+  describe('Direct deleteStrategicObjective orphan guard execution', () => {
+
+    beforeEach(() => {
+      jest.clearAllMocks();
+    });
+
+    it('blocks deletion when OE participates as source (outgoing relationship)', async () => {
+      mockGetDoc.mockResolvedValueOnce({
+        exists: () => true,
+        data: () => ({ id: 'oe_active_src', clientId: 'IPS', title: 'OE Activo' })
+      });
+
+      mockGetDocs.mockResolvedValueOnce({
+        docs: [
+          {
+            data: () => ({
+              id: 'rel_1',
+              clientId: 'IPS',
+              sourceStrategicObjectiveId: 'oe_active_src',
+              targetStrategicObjectiveId: 'oe_other'
+            })
+          }
+        ]
+      });
+
+      await expect(
+        strategyService.deleteStrategicObjective('oe_active_src', 'IPS')
+      ).rejects.toThrow('No es posible eliminar el objetivo estratégico porque participa en relaciones de causa y efecto activas. Elimine las relaciones primero.');
+
+      expect(mockDeleteDoc).not.toHaveBeenCalled();
+    });
+
+    it('blocks deletion when OE participates as target (incoming relationship)', async () => {
+      mockGetDoc.mockResolvedValueOnce({
+        exists: () => true,
+        data: () => ({ id: 'oe_active_tgt', clientId: 'IPS', title: 'OE Destino' })
+      });
+
+      mockGetDocs.mockResolvedValueOnce({
+        docs: [
+          {
+            data: () => ({
+              id: 'rel_2',
+              clientId: 'IPS',
+              sourceStrategicObjectiveId: 'oe_source',
+              targetStrategicObjectiveId: 'oe_active_tgt'
+            })
+          }
+        ]
+      });
+
+      await expect(
+        strategyService.deleteStrategicObjective('oe_active_tgt', 'IPS')
+      ).rejects.toThrow('No es posible eliminar el objetivo estratégico porque participa en relaciones de causa y efecto activas. Elimine las relaciones primero.');
+
+      expect(mockDeleteDoc).not.toHaveBeenCalled();
+    });
+
+    it('allows deletion when OE has zero relationships', async () => {
+      mockGetDoc.mockResolvedValueOnce({
+        exists: () => true,
+        data: () => ({ id: 'oe_isolated', clientId: 'IPS', title: 'OE Aislado' })
+      });
+
+      mockGetDocs.mockResolvedValueOnce({
+        docs: [
+          {
+            data: () => ({
+              id: 'rel_other',
+              clientId: 'IPS',
+              sourceStrategicObjectiveId: 'oe_a',
+              targetStrategicObjectiveId: 'oe_b'
+            })
+          }
+        ]
+      });
+
+      mockDeleteDoc.mockResolvedValueOnce(undefined);
+
+      const result = await strategyService.deleteStrategicObjective('oe_isolated', 'IPS');
+      expect(result).toBe(true);
+      expect(mockDeleteDoc).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  // --- 8. Pruebas Ejecutables Directas de RelationshipEditorModal (Componente Real) ---
+  describe('Direct RelationshipEditorModal Component Failure & Finally Handling', () => {
+
+    beforeEach(() => {
+      jest.clearAllMocks();
+    });
+
+    const perspectives: StrategicPerspective[] = DEFAULT_PERSPECTIVES;
+    const objectives: StrategicObjective[] = [
+      { id: 'oe_1', perspectiveId: 'FINANCIERA', code: 'OE-01', title: 'Incrementar Rentabilidad', order: 1, clientId: 'IPS' },
+      { id: 'oe_2', perspectiveId: 'CLIENTE', code: 'OE-02', title: 'Fidelizar Clientes', order: 2, clientId: 'IPS' }
+    ];
+
+    it('renders real modal, handles save rejection and safely resets saving state so control is reusable', async () => {
+      const mockSave = jest.fn().mockRejectedValue(new Error('Error del servidor de Firestore'));
+      const mockDelete = jest.fn().mockResolvedValue(undefined);
+      const mockClose = jest.fn();
+
+      render(
+        React.createElement(RelationshipEditorModal, {
+          isOpen: true,
+          onClose: mockClose,
+          perspectives: perspectives,
+          objectives: objectives,
+          relationships: [],
+          clientId: 'IPS',
+          onSaveRelationship: mockSave,
+          onDeleteRelationship: mockDelete
+        })
+      );
+
+      expect(screen.getByText('Gestión de Relaciones de Causa y Efecto')).toBeInTheDocument();
+
+      const selects = screen.getAllByRole('combobox');
+      const sourceSelect = selects[0];
+      const targetSelect = selects[1];
+      const submitBtn = screen.getByRole('button', { name: /Agregar Relación/i });
+
+      // Seleccionar OEs válidos
+      fireEvent.change(sourceSelect, { target: { value: 'oe_1' } });
+      fireEvent.change(targetSelect, { target: { value: 'oe_2' } });
+
+      expect(submitBtn).not.toBeDisabled();
+
+      // Disparar acción de guardar
+      fireEvent.click(submitBtn);
+
+      // El error debe desplegarse en pantalla y el botón debe volver a estar habilitado con texto "Agregar Relación"
+      await waitFor(() => {
+        expect(screen.getByText('Error del servidor de Firestore')).toBeInTheDocument();
+      });
+
+      expect(submitBtn).not.toBeDisabled();
+      expect(submitBtn).toHaveTextContent('Agregar Relación');
+      expect(mockSave).toHaveBeenCalledTimes(1);
     });
   });
 });
