@@ -72,7 +72,8 @@ export const StrategicObjectiveNode: React.FC<StrategicObjectiveNodeProps> = ({
       if (dbMatch) {
         const itemMatch = (dbMatch.items || []).find(it => String(it.id) === String(asgn.itemId));
         if (itemMatch) {
-          const compResult = calculateCompliance(itemMatch);
+          const applicableThresholds = (itemMatch as any).thresholds || dbMatch.thresholds || { onTrack: 95, atRisk: 85 };
+          const compResult = calculateCompliance(itemMatch, applicableThresholds, undefined, 'realTime', dbMatch.items || []);
           const comp = compResult?.overallPercentage;
           if (comp !== null && comp !== undefined) {
             if (comp >= 95) green++;

@@ -124,6 +124,21 @@ export interface StrategicObjectiveRelationship {
 }
 
 /**
+ * Genera el ID canónico determinista de una relación de causa-efecto.
+ * Garantiza unicidad atómica en Firestore: tenant + sourceOE + targetOE.
+ */
+export function getCanonicalRelationshipId(
+  clientId: string,
+  sourceStrategicObjectiveId: string,
+  targetStrategicObjectiveId: string
+): string {
+  const normClient = (clientId || 'IPS').trim().toUpperCase();
+  const cleanSource = (sourceStrategicObjectiveId || '').trim();
+  const cleanTarget = (targetStrategicObjectiveId || '').trim();
+  return `rel_${normClient}_${cleanSource}_${cleanTarget}`;
+}
+
+/**
  * Valida la creación de una relación de causa-efecto entre dos Objetivos Estratégicos.
  * Previene: auto-relaciones, relaciones duplicadas exactas, referencias a OE inexistentes.
  */

@@ -132,8 +132,23 @@ service cloud.firestore {
 
     match /tbl_strategicObjectiveRelationships/{docId} {
       allow read: if isTableroUser() && (resource == null || isTenantUser(resource.data.clientId));
-      allow create: if isTableroUser() && isSafeClientId(request.resource.data.clientId) && isTenantAdmin(request.resource.data.clientId);
-      allow update: if isTableroUser() && isSafeClientId(resource.data.clientId) && isTenantAdmin(resource.data.clientId) && request.resource.data.clientId == resource.data.clientId;
+      allow create: if isTableroUser() &&
+        isSafeClientId(request.resource.data.clientId) &&
+        isTenantAdmin(request.resource.data.clientId) &&
+        request.resource.data.sourceStrategicObjectiveId is string &&
+        request.resource.data.targetStrategicObjectiveId is string &&
+        request.resource.data.sourceStrategicObjectiveId != request.resource.data.targetStrategicObjectiveId &&
+        docId == 'rel_' + request.resource.data.clientId + '_' + request.resource.data.sourceStrategicObjectiveId + '_' + request.resource.data.targetStrategicObjectiveId &&
+        exists(/databases/$(database)/documents/tbl_strategicObjectives/$(request.resource.data.sourceStrategicObjectiveId)) &&
+        exists(/databases/$(database)/documents/tbl_strategicObjectives/$(request.resource.data.targetStrategicObjectiveId)) &&
+        get(/databases/$(database)/documents/tbl_strategicObjectives/$(request.resource.data.sourceStrategicObjectiveId)).data.clientId == request.resource.data.clientId &&
+        get(/databases/$(database)/documents/tbl_strategicObjectives/$(request.resource.data.targetStrategicObjectiveId)).data.clientId == request.resource.data.clientId;
+      allow update: if isTableroUser() &&
+        isSafeClientId(resource.data.clientId) &&
+        isTenantAdmin(resource.data.clientId) &&
+        request.resource.data.clientId == resource.data.clientId &&
+        request.resource.data.sourceStrategicObjectiveId == resource.data.sourceStrategicObjectiveId &&
+        request.resource.data.targetStrategicObjectiveId == resource.data.targetStrategicObjectiveId;
       allow delete: if isTableroUser() && isTenantAdmin(resource.data.clientId);
     }
 

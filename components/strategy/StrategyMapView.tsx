@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef, useEffect, useLayoutEffect } from 'react';
+import React, { useState, useMemo, useRef, useEffect, useLayoutEffect, useId, useCallback } from 'react';
 import { Settings, Compass, Layers, Info, CheckCircle2, AlertTriangle, Plus } from 'lucide-react';
 import {
   StrategicPerspective,
@@ -64,10 +64,17 @@ export const StrategyMapView: React.FC<StrategyMapViewProps> = ({
   const [hoveredOEId, setHoveredOEId] = useState<string | null>(null);
   const [showEditorModal, setShowEditorModal] = useState(false);
 
+  // Generador de ID de instancia único y sanitizado para marcadores SVG
+  const rawInstanceId = useId();
+  const instanceId = useMemo(() => rawInstanceId.replace(/[^a-zA-Z0-9_-]/g, '_'), [rawInstanceId]);
+  const defaultMarkerId = `arrowhead-default-${instanceId}`;
+  const activeMarkerId = `arrowhead-active-${instanceId}`;
+
   // Referencias DOM para cálculo de coordenadas del SVG Overlay
   const containerRef = useRef<HTMLDivElement>(null);
   const nodeRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const [nodePositions, setNodePositions] = useState<Record<string, NodeBounds>>({});
+  const rafIdRef = useRef<number | null>(null);
 
   // Perspectivas activas ordenadas
   const sortedPerspectives = useMemo(() => {
@@ -75,34 +82,65 @@ export const StrategyMapView: React.FC<StrategyMapViewProps> = ({
     return [...list].sort((a, b) => (a.order || 0) - (b.order || 0));
   }, [perspectives]);
 
-  // Recalcular posiciones de los nodos para las flechas del SVG Overlay
-  const updateNodePositions = () => {
-    if (!containerRef.current) return;
-    const containerRect = containerRef.current.getBoundingClientRect();
-    const newPositions: Record<string, NodeBounds> = {};
+  // Recalcular posiciones de los nodos para las flechas del SVG Overlay con requestAnimationFrame
+  const updateNodePositions = useCallback(() => {
+    if (rafIdRef.current !== null) {
+      cancelAnimationFrame(rafIdRef.current);
+    }
+    rafIdRef.current = requestAnimationFrame(() => {
+      if (!containerRef.current) return;
+      const containerRect = containerRef.current.getBoundingClientRect();
+      const newPositions: Record<string, NodeBounds> = {};
 
-    Object.keys(nodeRefs.current).forEach(oeId => {
-      const el = nodeRefs.current[oeId];
-      if (el) {
-        const rect = el.getBoundingClientRect();
-        newPositions[oeId] = {
-          x: rect.left - containerRect.left,
-          y: rect.top - containerRect.top,
-          width: rect.width,
-          height: rect.height
-        };
-      }
+      Object.keys(nodeRefs.current).forEach(oeId => {
+        const el = nodeRefs.current[oeId];
+        if (el) {
+          const rect = el.getBoundingClientRect();
+          newPositions[oeId] = {
+            x: rect.left - containerRect.left + containerRef.current!.scrollLeft,
+            y: rect.top - containerRect.top + containerRef.current!.scrollTop,
+            width: rect.width,
+            height: rect.height
+          };
+        }
+      });
+
+      setNodePositions(newPositions);
     });
-
-    setNodePositions(newPositions);
-  };
+  }, []);
 
   useLayoutEffect(() => {
     updateNodePositions();
-    const handleResize = () => updateNodePositions();
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, [objectives, perspectives, relationships]);
+
+    const handleWindowResize = () => updateNodePositions();
+    window.addEventListener('resize', handleWindowResize, { passive: true });
+
+    const containerEl = containerRef.current;
+    let resizeObserver: ResizeObserver | null = null;
+
+    if (containerEl) {
+      containerEl.addEventListener('scroll', updateNodePositions, { passive: true });
+      if (typeof ResizeObserver !== 'undefined') {
+        resizeObserver = new ResizeObserver(() => {
+          updateNodePositions();
+        });
+        resizeObserver.observe(containerEl);
+      }
+    }
+
+    return () => {
+      window.removeEventListener('resize', handleWindowResize);
+      if (containerEl) {
+        containerEl.removeEventListener('scroll', updateNodePositions);
+      }
+      if (resizeObserver) {
+        resizeObserver.disconnect();
+      }
+      if (rafIdRef.current !== null) {
+        cancelAnimationFrame(rafIdRef.current);
+      }
+    };
+  }, [objectives, perspectives, relationships, updateNodePositions]);
 
   // Nodos de causa/efecto activos respecto al nodo en hover/seleccionado
   const activeRelationships = useMemo(() => {
@@ -182,7 +220,7 @@ export const StrategyMapView: React.FC<StrategyMapViewProps> = ({
           <svg className="absolute inset-0 pointer-events-none w-full h-full z-10">
             <defs>
               <marker
-                id="arrowhead-default"
+                id={defaultMarkerId}
                 markerWidth="8"
                 markerHeight="8"
                 refX="7"
@@ -192,7 +230,7 @@ export const StrategyMapView: React.FC<StrategyMapViewProps> = ({
                 <polygon points="0 0, 8 4, 0 8" fill="#94A3B8" />
               </marker>
               <marker
-                id="arrowhead-active"
+                id={activeMarkerId}
                 markerWidth="9"
                 markerHeight="9"
                 refX="8"
@@ -231,7 +269,7 @@ export const StrategyMapView: React.FC<StrategyMapViewProps> = ({
                   stroke={isActive ? '#4F46E5' : '#CBD5E1'}
                   strokeWidth={isActive ? 3 : 1.5}
                   strokeDasharray={isActive ? 'none' : 'none'}
-                  markerEnd={isActive ? 'url(#arrowhead-active)' : 'url(#arrowhead-default)'}
+                  markerEnd={isActive ? `url(#${activeMarkerId})` : `url(#${defaultMarkerId})`}
                   className="transition-all duration-200"
                 />
               );

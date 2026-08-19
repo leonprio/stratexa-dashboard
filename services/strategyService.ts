@@ -35,7 +35,8 @@ import {
   validateAreaCodeUniqueness,
   resolveAreaStrategyConfig,
   formatOCCode,
-  deriveAreaCodeSuggestion
+  deriveAreaCodeSuggestion,
+  getCanonicalRelationshipId
 } from '../strategyTypes';
 
 const COLLECTION_PREFIX = 'tbl_';
@@ -142,8 +143,21 @@ export const strategyService = {
     if (!snap.exists()) return true;
 
     const existing = snap.data() as StrategicObjective;
-    if (existing.clientId && existing.clientId !== targetClient) {
+    if (existing.clientId && normalizeClientId(existing.clientId) !== targetClient) {
       throw new Error(`Acceso denegado: El objetivo pertenece al cliente "${existing.clientId}" y no a "${targetClient}".`);
+    }
+
+    // 🛡️ GUARDA DE INTEGRIDAD / ORPHAN GUARD: Bloquear si el OE participa en relaciones activas
+    const relRef = collection(db, RELATIONSHIPS_COLLECTION);
+    const qRel = query(relRef, where('clientId', '==', targetClient));
+    const relSnap = await getDocs(qRel);
+    const hasActiveRelationships = relSnap.docs.some(d => {
+      const r = d.data() as StrategicObjectiveRelationship;
+      return r.sourceStrategicObjectiveId === objectiveId || r.targetStrategicObjectiveId === objectiveId;
+    });
+
+    if (hasActiveRelationships) {
+      throw new Error('No es posible eliminar el objetivo estratégico porque participa en relaciones de causa y efecto activas. Elimine las relaciones primero.');
     }
 
     await deleteDoc(ref);
@@ -469,20 +483,60 @@ export const strategyService = {
     rel: Omit<StrategicObjectiveRelationship, 'id'> & { id?: string }
   ): Promise<StrategicObjectiveRelationship> => {
     const targetClient = normalizeClientId(rel.clientId);
-    const docId = rel.id || `rel_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
-    const ref = doc(db, RELATIONSHIPS_COLLECTION, docId);
+    const sourceId = (rel.sourceStrategicObjectiveId || '').trim();
+    const targetId = (rel.targetStrategicObjectiveId || '').trim();
 
-    const now = new Date().toISOString();
-    const finalData: StrategicObjectiveRelationship = {
-      ...rel,
-      id: docId,
-      clientId: targetClient,
-      updatedAt: now,
-      createdAt: rel.createdAt || now
-    };
+    if (!sourceId || !targetId) {
+      throw new Error('Debe especificar un objetivo estratégico de origen y uno de destino.');
+    }
+    if (sourceId === targetId) {
+      throw new Error('Un objetivo estratégico no puede relacionarse consigo mismo.');
+    }
 
-    await setDoc(ref, JSON.parse(JSON.stringify(finalData)), { merge: true });
-    return finalData;
+    const canonicalDocId = getCanonicalRelationshipId(targetClient, sourceId, targetId);
+    const relRef = doc(db, RELATIONSHIPS_COLLECTION, canonicalDocId);
+    const sourceRef = doc(db, OBJECTIVES_COLLECTION, sourceId);
+    const targetRef = doc(db, OBJECTIVES_COLLECTION, targetId);
+
+    const result = await runTransaction(db, async transaction => {
+      const sourceSnap = await transaction.get(sourceRef);
+      if (!sourceSnap.exists()) {
+        throw new Error(`El objetivo estratégico de origen "${sourceId}" no existe.`);
+      }
+      const sourceData = sourceSnap.data() as StrategicObjective;
+      if (normalizeClientId(sourceData.clientId) !== targetClient) {
+        throw new Error(`El objetivo de origen pertenece a otro tenant.`);
+      }
+
+      const targetSnap = await transaction.get(targetRef);
+      if (!targetSnap.exists()) {
+        throw new Error(`El objetivo estratégico de destino "${targetId}" no existe.`);
+      }
+      const targetData = targetSnap.data() as StrategicObjective;
+      if (normalizeClientId(targetData.clientId) !== targetClient) {
+        throw new Error(`El objetivo de destino pertenece a otro tenant.`);
+      }
+
+      const relSnap = await transaction.get(relRef);
+      const now = new Date().toISOString();
+
+      const finalData: StrategicObjectiveRelationship = {
+        ...rel,
+        id: canonicalDocId,
+        clientId: targetClient,
+        sourceStrategicObjectiveId: sourceId,
+        targetStrategicObjectiveId: targetId,
+        description: rel.description !== undefined ? rel.description : (relSnap.exists() ? (relSnap.data() as StrategicObjectiveRelationship).description : undefined),
+        order: rel.order !== undefined ? rel.order : (relSnap.exists() ? (relSnap.data() as StrategicObjectiveRelationship).order : undefined),
+        updatedAt: now,
+        createdAt: relSnap.exists() ? ((relSnap.data() as StrategicObjectiveRelationship).createdAt || now) : (rel.createdAt || now)
+      };
+
+      transaction.set(relRef, JSON.parse(JSON.stringify(finalData)), { merge: true });
+      return finalData;
+    });
+
+    return result;
   },
 
   deleteStrategicObjectiveRelationship: async (relationshipId: string, clientId?: string): Promise<boolean> => {
@@ -493,7 +547,7 @@ export const strategyService = {
     if (!snap.exists()) return true;
 
     const existing = snap.data() as StrategicObjectiveRelationship;
-    if (existing.clientId && existing.clientId !== targetClient) {
+    if (existing.clientId && normalizeClientId(existing.clientId) !== targetClient) {
       throw new Error(`Acceso denegado: La relación pertenece al cliente "${existing.clientId}" y no a "${targetClient}".`);
     }
 

@@ -206,7 +206,8 @@ export const OEDetailModal: React.FC<OEDetailModalProps> = ({
                       {linkedKpis.length > 0 ? (
                         <div className="mt-2 space-y-1.5">
                           {linkedKpis.map(({ dashboard, item }) => {
-                            const compResult = calculateCompliance(item);
+                            const applicableThresholds = item.thresholds || dashboard.thresholds || { onTrack: 95, atRisk: 85 };
+                            const compResult = calculateCompliance(item, applicableThresholds, undefined, 'realTime', dashboard.items || []);
                             const comp = compResult?.overallPercentage;
                             let badge = <span className="text-slate-400 text-xs">-</span>;
 

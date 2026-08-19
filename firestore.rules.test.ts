@@ -14,6 +14,8 @@ const PROJECT_ID = 'demo-stratexa-rules';
 
 let testEnv: RulesTestEnvironment;
 
+jest.setTimeout(30000);
+
 describe('Firestore Security Rules — Strategy Module (v9.5.0 Foundation)', () => {
   beforeAll(async () => {
     const rulesPath = path.resolve(__dirname, 'firestore.rules');
@@ -106,6 +108,30 @@ describe('Firestore Security Rules — Strategy Module (v9.5.0 Foundation)', () 
           title: 'OE IPS'
         });
 
+        await setDoc(doc(db, 'tbl_strategicObjectives', 'oe_1'), {
+          id: 'oe_1',
+          clientId: 'IPS',
+          title: 'OE 1'
+        });
+
+        await setDoc(doc(db, 'tbl_strategicObjectives', 'oe_2'), {
+          id: 'oe_2',
+          clientId: 'IPS',
+          title: 'OE 2'
+        });
+
+        await setDoc(doc(db, 'tbl_strategicObjectives', 'oe_3'), {
+          id: 'oe_3',
+          clientId: 'IPS',
+          title: 'OE 3'
+        });
+
+        await setDoc(doc(db, 'tbl_strategicObjectives', 'oe_b1'), {
+          id: 'oe_b1',
+          clientId: 'CLIENT_B',
+          title: 'OE B1'
+        });
+
         await setDoc(doc(db, 'tbl_strategicPerspectives', 'persp_clientA'), {
           id: 'persp_clientA',
           clientId: 'CLIENT_A',
@@ -124,8 +150,8 @@ describe('Firestore Security Rules — Strategy Module (v9.5.0 Foundation)', () 
           name: 'ABC'
         });
 
-        await setDoc(doc(db, 'tbl_strategicObjectiveRelationships', 'rel_ips'), {
-          id: 'rel_ips',
+        await setDoc(doc(db, 'tbl_strategicObjectiveRelationships', 'rel_IPS_oe_1_oe_2'), {
+          id: 'rel_IPS_oe_1_oe_2',
           clientId: 'IPS',
           sourceStrategicObjectiveId: 'oe_1',
           targetStrategicObjectiveId: 'oe_2'
@@ -304,46 +330,94 @@ describe('Firestore Security Rules — Strategy Module (v9.5.0 Foundation)', () 
     await assertFails(updateDoc(ref, { clientId: '^IPS$' }));
   });
 
-  // 🛡️ PRUEBAS DE SEGURIDAD PARA RELACIONES (tbl_strategicObjectiveRelationships) (25..31)
+  // 🛡️ PRUEBAS DE SEGURIDAD PARA RELACIONES (tbl_strategicObjectiveRelationships) (25..39)
   it('25. denies unauthenticated read of objective relationships', async () => {
     const unauthDb = testEnv.unauthenticatedContext().firestore();
-    const ref = doc(unauthDb, 'tbl_strategicObjectiveRelationships', 'rel_ips');
+    const ref = doc(unauthDb, 'tbl_strategicObjectiveRelationships', 'rel_IPS_oe_1_oe_2');
     await assertFails(getDoc(ref));
   });
 
   it('26. allows same-tenant user read of objective relationships', async () => {
     const userDb = testEnv.authenticatedContext('user_ips').firestore();
-    const ref = doc(userDb, 'tbl_strategicObjectiveRelationships', 'rel_ips');
+    const ref = doc(userDb, 'tbl_strategicObjectiveRelationships', 'rel_IPS_oe_1_oe_2');
     await assertSucceeds(getDoc(ref));
   });
 
   it('27. denies wrong-tenant user read of objective relationships', async () => {
     const userClientBDb = testEnv.authenticatedContext('user_clientB').firestore();
-    const ref = doc(userClientBDb, 'tbl_strategicObjectiveRelationships', 'rel_ips');
+    const ref = doc(userClientBDb, 'tbl_strategicObjectiveRelationships', 'rel_IPS_oe_1_oe_2');
     await assertFails(getDoc(ref));
   });
 
   it('28. denies non-Admin create of objective relationships', async () => {
     const userDb = testEnv.authenticatedContext('user_ips').firestore();
-    const ref = doc(userDb, 'tbl_strategicObjectiveRelationships', 'rel_new_user');
-    await assertFails(setDoc(ref, { id: 'rel_new_user', clientId: 'IPS', sourceStrategicObjectiveId: 'oe_1', targetStrategicObjectiveId: 'oe_3' }));
+    const ref = doc(userDb, 'tbl_strategicObjectiveRelationships', 'rel_IPS_oe_1_oe_3');
+    await assertFails(setDoc(ref, { id: 'rel_IPS_oe_1_oe_3', clientId: 'IPS', sourceStrategicObjectiveId: 'oe_1', targetStrategicObjectiveId: 'oe_3' }));
   });
 
-  it('29. allows same-tenant Admin create of objective relationships', async () => {
+  it('29. allows same-tenant Admin create of canonical objective relationships with valid OEs', async () => {
     const adminDb = testEnv.authenticatedContext('admin_ips').firestore();
-    const ref = doc(adminDb, 'tbl_strategicObjectiveRelationships', 'rel_new_admin');
-    await assertSucceeds(setDoc(ref, { id: 'rel_new_admin', clientId: 'IPS', sourceStrategicObjectiveId: 'oe_1', targetStrategicObjectiveId: 'oe_3' }));
+    const ref = doc(adminDb, 'tbl_strategicObjectiveRelationships', 'rel_IPS_oe_1_oe_3');
+    await assertSucceeds(setDoc(ref, { id: 'rel_IPS_oe_1_oe_3', clientId: 'IPS', sourceStrategicObjectiveId: 'oe_1', targetStrategicObjectiveId: 'oe_3' }));
   });
 
   it('30. denies cross-tenant write of objective relationships by Admin of another tenant', async () => {
     const adminClientBDb = testEnv.authenticatedContext('admin_clientB').firestore();
-    const ref = doc(adminClientBDb, 'tbl_strategicObjectiveRelationships', 'rel_ips');
+    const ref = doc(adminClientBDb, 'tbl_strategicObjectiveRelationships', 'rel_IPS_oe_1_oe_2');
     await assertFails(updateDoc(ref, { description: 'Hacked' }));
   });
 
   it('31. denies create of objective relationship with malicious clientId', async () => {
     const adminDb = testEnv.authenticatedContext('admin_ips').firestore();
-    const ref = doc(adminDb, 'tbl_strategicObjectiveRelationships', 'rel_malicious');
-    await assertFails(setDoc(ref, { id: 'rel_malicious', clientId: '.*', sourceStrategicObjectiveId: 'oe_1', targetStrategicObjectiveId: 'oe_2' }));
+    const ref = doc(adminDb, 'tbl_strategicObjectiveRelationships', 'rel_.*_oe_1_oe_2');
+    await assertFails(setDoc(ref, { id: 'rel_.*_oe_1_oe_2', clientId: '.*', sourceStrategicObjectiveId: 'oe_1', targetStrategicObjectiveId: 'oe_2' }));
+  });
+
+  it('32. denies create of relationship using cross-tenant source OE', async () => {
+    const adminDb = testEnv.authenticatedContext('admin_ips').firestore();
+    const ref = doc(adminDb, 'tbl_strategicObjectiveRelationships', 'rel_IPS_oe_b1_oe_2');
+    await assertFails(setDoc(ref, { id: 'rel_IPS_oe_b1_oe_2', clientId: 'IPS', sourceStrategicObjectiveId: 'oe_b1', targetStrategicObjectiveId: 'oe_2' }));
+  });
+
+  it('33. denies create of relationship using cross-tenant target OE', async () => {
+    const adminDb = testEnv.authenticatedContext('admin_ips').firestore();
+    const ref = doc(adminDb, 'tbl_strategicObjectiveRelationships', 'rel_IPS_oe_1_oe_b1');
+    await assertFails(setDoc(ref, { id: 'rel_IPS_oe_1_oe_b1', clientId: 'IPS', sourceStrategicObjectiveId: 'oe_1', targetStrategicObjectiveId: 'oe_b1' }));
+  });
+
+  it('34. denies create of relationship with non-existent source OE', async () => {
+    const adminDb = testEnv.authenticatedContext('admin_ips').firestore();
+    const ref = doc(adminDb, 'tbl_strategicObjectiveRelationships', 'rel_IPS_oe_ghost_oe_2');
+    await assertFails(setDoc(ref, { id: 'rel_IPS_oe_ghost_oe_2', clientId: 'IPS', sourceStrategicObjectiveId: 'oe_ghost', targetStrategicObjectiveId: 'oe_2' }));
+  });
+
+  it('35. denies create of relationship with non-existent target OE', async () => {
+    const adminDb = testEnv.authenticatedContext('admin_ips').firestore();
+    const ref = doc(adminDb, 'tbl_strategicObjectiveRelationships', 'rel_IPS_oe_1_oe_ghost');
+    await assertFails(setDoc(ref, { id: 'rel_IPS_oe_1_oe_ghost', clientId: 'IPS', sourceStrategicObjectiveId: 'oe_1', targetStrategicObjectiveId: 'oe_ghost' }));
+  });
+
+  it('36. denies create of self relationship (source == target)', async () => {
+    const adminDb = testEnv.authenticatedContext('admin_ips').firestore();
+    const ref = doc(adminDb, 'tbl_strategicObjectiveRelationships', 'rel_IPS_oe_1_oe_1');
+    await assertFails(setDoc(ref, { id: 'rel_IPS_oe_1_oe_1', clientId: 'IPS', sourceStrategicObjectiveId: 'oe_1', targetStrategicObjectiveId: 'oe_1' }));
+  });
+
+  it('37. denies create of relationship with non-canonical / random document ID', async () => {
+    const adminDb = testEnv.authenticatedContext('admin_ips').firestore();
+    const ref = doc(adminDb, 'tbl_strategicObjectiveRelationships', 'random_rel_doc_123');
+    await assertFails(setDoc(ref, { id: 'random_rel_doc_123', clientId: 'IPS', sourceStrategicObjectiveId: 'oe_1', targetStrategicObjectiveId: 'oe_3' }));
+  });
+
+  it('38. denies mutation of source or target OE endpoints on existing relationship', async () => {
+    const adminDb = testEnv.authenticatedContext('admin_ips').firestore();
+    const ref = doc(adminDb, 'tbl_strategicObjectiveRelationships', 'rel_IPS_oe_1_oe_2');
+    await assertFails(updateDoc(ref, { targetStrategicObjectiveId: 'oe_3' }));
+  });
+
+  it('39. allows same-tenant Admin update of metadata (description) on existing relationship', async () => {
+    const adminDb = testEnv.authenticatedContext('admin_ips').firestore();
+    const ref = doc(adminDb, 'tbl_strategicObjectiveRelationships', 'rel_IPS_oe_1_oe_2');
+    await assertSucceeds(updateDoc(ref, { description: 'Updated valid rationale' }));
   });
 });

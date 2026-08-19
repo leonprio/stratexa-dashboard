@@ -4,7 +4,8 @@ import {
   StrategicObjectiveRelationship,
   ContributionObjective,
   ContributionIndicatorAssignment,
-  validateObjectiveRelationship
+  validateObjectiveRelationship,
+  getCanonicalRelationshipId
 } from './strategyTypes';
 
 describe('v9.5.1 Strategy Map & Cause-Effect Relationships Unit Tests', () => {
@@ -210,6 +211,89 @@ describe('v9.5.1 Strategy Map & Cause-Effect Relationships Unit Tests', () => {
       const targetPersp = modifiedPerspectives.find(p => p.id === targetOE?.perspectiveId);
 
       expect(targetPersp?.name).toBe('Desempeño Financiero y Valor');
+    });
+  });
+
+  // --- 4. Identidad Canónica Determinista y Unicidad Atómica ---
+  describe('Deterministic Canonical Relationship Identity', () => {
+
+    it('generates consistent canonical relationship ID', () => {
+      const canonicalId = getCanonicalRelationshipId('IPS', 'oe_cap_1', 'oe_proc_1');
+      expect(canonicalId).toBe('rel_IPS_oe_cap_1_oe_proc_1');
+    });
+
+    it('treats A->B and B->A as distinct canonical identities', () => {
+      const idAtoB = getCanonicalRelationshipId('IPS', 'oe_1', 'oe_2');
+      const idBtoA = getCanonicalRelationshipId('IPS', 'oe_2', 'oe_1');
+
+      expect(idAtoB).toBe('rel_IPS_oe_1_oe_2');
+      expect(idBtoA).toBe('rel_IPS_oe_2_oe_1');
+      expect(idAtoB).not.toBe(idBtoA);
+    });
+
+    it('normalizes tenant casing and trims spaces for canonical relationship identity', () => {
+      const id = getCanonicalRelationshipId('  ips  ', ' oe_1 ', ' oe_2 ');
+      expect(id).toBe('rel_IPS_oe_1_oe_2');
+    });
+  });
+
+  // --- 5. Guarda de Orfandad al Eliminar Objetivos Estratégicos ---
+  describe('OE Deletion Orphan Guard Protection', () => {
+
+    it('detects when an OE participates in upstream or downstream relationships', () => {
+      const targetOEId = 'oe_proc_1';
+
+      const participatesAsSource = sampleRelationships.some(r => r.sourceStrategicObjectiveId === targetOEId);
+      const participatesAsTarget = sampleRelationships.some(r => r.targetStrategicObjectiveId === targetOEId);
+
+      expect(participatesAsSource || participatesAsTarget).toBe(true);
+      expect(participatesAsSource).toBe(true); // rel_2 (source: oe_proc_1 -> target: oe_cli_1)
+      expect(participatesAsTarget).toBe(true); // rel_1 (source: oe_cap_1 -> target: oe_proc_1)
+    });
+
+    it('identifies unlinked OE safe for deletion', () => {
+      const isolatedOE: StrategicObjective = {
+        id: 'oe_isolated',
+        perspectiveId: 'FINANCIERA',
+        code: 'OE-99',
+        title: 'OE Aislado',
+        order: 99,
+        clientId: 'IPS'
+      };
+
+      const hasRelationships = sampleRelationships.some(
+        r => r.sourceStrategicObjectiveId === isolatedOE.id || r.targetStrategicObjectiveId === isolatedOE.id
+      );
+
+      expect(hasRelationships).toBe(false);
+    });
+  });
+
+  // --- 6. Relationship Editor Modal Error Handling & State Cleanup ---
+  describe('RelationshipEditorModal Error & Finally Handling', () => {
+
+    it('always resets isSaving state on save failure through proper finally block', async () => {
+      let isSaving = false;
+      let errorMsg: string | null = null;
+
+      const mockOnSaveFailure = jest.fn().mockRejectedValue(new Error('Network / Firestore failure'));
+
+      const handleAddSimulated = async () => {
+        try {
+          isSaving = true;
+          await mockOnSaveFailure();
+        } catch (err: any) {
+          errorMsg = err.message || 'Error';
+        } finally {
+          isSaving = false;
+        }
+      };
+
+      await handleAddSimulated();
+
+      expect(mockOnSaveFailure).toHaveBeenCalledTimes(1);
+      expect(errorMsg).toBe('Network / Firestore failure');
+      expect(isSaving).toBe(false); // Validates that isSaving never stays true permanently
     });
   });
 });

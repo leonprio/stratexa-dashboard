@@ -113,7 +113,9 @@ export const ContributionMatrixView: React.FC<ContributionMatrixViewProps> = ({
     }
 
     if (linked.length === 1) {
-      const compResult = calculateCompliance(linked[0].item);
+      const first = linked[0];
+      const applicableThresholds = first.item.thresholds || first.dashboard.thresholds || { onTrack: 95, atRisk: 85 };
+      const compResult = calculateCompliance(first.item, applicableThresholds, undefined, 'realTime', first.dashboard.items || []);
       const comp = compResult?.overallPercentage;
       return {
         kpiCount: 1,
@@ -129,8 +131,9 @@ export const ContributionMatrixView: React.FC<ContributionMatrixViewProps> = ({
     let atRiskCount = 0;
     let offTrackCount = 0;
 
-    linked.forEach(({ item }) => {
-      const compResult = calculateCompliance(item);
+    linked.forEach(({ dashboard, item }) => {
+      const applicableThresholds = item.thresholds || dashboard.thresholds || { onTrack: 95, atRisk: 85 };
+      const compResult = calculateCompliance(item, applicableThresholds, undefined, 'realTime', dashboard.items || []);
       const comp = compResult?.overallPercentage;
       if (comp !== null && comp !== undefined) {
         if (comp >= 95) onTrackCount++;

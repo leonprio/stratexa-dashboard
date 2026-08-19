@@ -85,7 +85,7 @@ export const RelationshipEditorModal: React.FC<RelationshipEditorModalProps> = (
       setDescription('');
     } catch (err: any) {
       setErrorMsg(err.message || 'Error al guardar la relación.');
-    } fontFinally: {
+    } finally {
       setIsSaving(false);
     }
   };
