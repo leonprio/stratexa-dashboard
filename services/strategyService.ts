@@ -31,6 +31,7 @@ import {
   ContributionIndicatorAssignment,
   StrategyCounter,
   AreaCodeReservation,
+  StrategicObjectiveRelationship,
   validateAreaCodeUniqueness,
   resolveAreaStrategyConfig,
   formatOCCode,
@@ -45,6 +46,7 @@ const CONTRIBUTION_OBJECTIVES_COLLECTION = `${COLLECTION_PREFIX}contributionObje
 const ASSIGNMENTS_COLLECTION = `${COLLECTION_PREFIX}contributionIndicatorAssignments`;
 const COUNTERS_COLLECTION = `${COLLECTION_PREFIX}strategyCounters`;
 const CODE_RESERVATIONS_COLLECTION = `${COLLECTION_PREFIX}areaCodeReservations`;
+const RELATIONSHIPS_COLLECTION = `${COLLECTION_PREFIX}strategicObjectiveRelationships`;
 
 const normalizeClientId = (clientId?: string): string => {
   if (!clientId || clientId === 'all') return 'IPS';
@@ -447,6 +449,55 @@ export const strategyService = {
     });
 
     await batch.commit();
+    return true;
+  },
+
+  // -----------------------------
+  // 6. Relaciones de Causa y Efecto entre Objetivos Estratégicos (Mapa Estratégico)
+  // -----------------------------
+  getStrategicObjectiveRelationships: async (clientId?: string): Promise<StrategicObjectiveRelationship[]> => {
+    const targetClient = normalizeClientId(clientId);
+    const ref = collection(db, RELATIONSHIPS_COLLECTION);
+    const q = query(ref, where('clientId', '==', targetClient));
+    const snap = await getDocs(q);
+
+    const list = snap.docs.map(d => ({ id: d.id, ...d.data() } as StrategicObjectiveRelationship));
+    return list.sort((a, b) => (a.order || 0) - (b.order || 0));
+  },
+
+  saveStrategicObjectiveRelationship: async (
+    rel: Omit<StrategicObjectiveRelationship, 'id'> & { id?: string }
+  ): Promise<StrategicObjectiveRelationship> => {
+    const targetClient = normalizeClientId(rel.clientId);
+    const docId = rel.id || `rel_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
+    const ref = doc(db, RELATIONSHIPS_COLLECTION, docId);
+
+    const now = new Date().toISOString();
+    const finalData: StrategicObjectiveRelationship = {
+      ...rel,
+      id: docId,
+      clientId: targetClient,
+      updatedAt: now,
+      createdAt: rel.createdAt || now
+    };
+
+    await setDoc(ref, JSON.parse(JSON.stringify(finalData)), { merge: true });
+    return finalData;
+  },
+
+  deleteStrategicObjectiveRelationship: async (relationshipId: string, clientId?: string): Promise<boolean> => {
+    const targetClient = normalizeClientId(clientId);
+    const ref = doc(db, RELATIONSHIPS_COLLECTION, relationshipId);
+
+    const snap = await getDoc(ref);
+    if (!snap.exists()) return true;
+
+    const existing = snap.data() as StrategicObjectiveRelationship;
+    if (existing.clientId && existing.clientId !== targetClient) {
+      throw new Error(`Acceso denegado: La relación pertenece al cliente "${existing.clientId}" y no a "${targetClient}".`);
+    }
+
+    await deleteDoc(ref);
     return true;
   }
 };

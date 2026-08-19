@@ -123,6 +123,13 @@ describe('Firestore Security Rules — Strategy Module (v9.5.0 Foundation)', () 
           clientId: 'ABC',
           name: 'ABC'
         });
+
+        await setDoc(doc(db, 'tbl_strategicObjectiveRelationships', 'rel_ips'), {
+          id: 'rel_ips',
+          clientId: 'IPS',
+          sourceStrategicObjectiveId: 'oe_1',
+          targetStrategicObjectiveId: 'oe_2'
+        });
       });
     }
   });
@@ -295,5 +302,48 @@ describe('Firestore Security Rules — Strategy Module (v9.5.0 Foundation)', () 
     const superAdminDb = testEnv.authenticatedContext('super_admin', { email: 'leon@leonprior.com' }).firestore();
     const ref = doc(superAdminDb, 'tbl_strategicPerspectives', 'persp_ips');
     await assertFails(updateDoc(ref, { clientId: '^IPS$' }));
+  });
+
+  // 🛡️ PRUEBAS DE SEGURIDAD PARA RELACIONES (tbl_strategicObjectiveRelationships) (25..31)
+  it('25. denies unauthenticated read of objective relationships', async () => {
+    const unauthDb = testEnv.unauthenticatedContext().firestore();
+    const ref = doc(unauthDb, 'tbl_strategicObjectiveRelationships', 'rel_ips');
+    await assertFails(getDoc(ref));
+  });
+
+  it('26. allows same-tenant user read of objective relationships', async () => {
+    const userDb = testEnv.authenticatedContext('user_ips').firestore();
+    const ref = doc(userDb, 'tbl_strategicObjectiveRelationships', 'rel_ips');
+    await assertSucceeds(getDoc(ref));
+  });
+
+  it('27. denies wrong-tenant user read of objective relationships', async () => {
+    const userClientBDb = testEnv.authenticatedContext('user_clientB').firestore();
+    const ref = doc(userClientBDb, 'tbl_strategicObjectiveRelationships', 'rel_ips');
+    await assertFails(getDoc(ref));
+  });
+
+  it('28. denies non-Admin create of objective relationships', async () => {
+    const userDb = testEnv.authenticatedContext('user_ips').firestore();
+    const ref = doc(userDb, 'tbl_strategicObjectiveRelationships', 'rel_new_user');
+    await assertFails(setDoc(ref, { id: 'rel_new_user', clientId: 'IPS', sourceStrategicObjectiveId: 'oe_1', targetStrategicObjectiveId: 'oe_3' }));
+  });
+
+  it('29. allows same-tenant Admin create of objective relationships', async () => {
+    const adminDb = testEnv.authenticatedContext('admin_ips').firestore();
+    const ref = doc(adminDb, 'tbl_strategicObjectiveRelationships', 'rel_new_admin');
+    await assertSucceeds(setDoc(ref, { id: 'rel_new_admin', clientId: 'IPS', sourceStrategicObjectiveId: 'oe_1', targetStrategicObjectiveId: 'oe_3' }));
+  });
+
+  it('30. denies cross-tenant write of objective relationships by Admin of another tenant', async () => {
+    const adminClientBDb = testEnv.authenticatedContext('admin_clientB').firestore();
+    const ref = doc(adminClientBDb, 'tbl_strategicObjectiveRelationships', 'rel_ips');
+    await assertFails(updateDoc(ref, { description: 'Hacked' }));
+  });
+
+  it('31. denies create of objective relationship with malicious clientId', async () => {
+    const adminDb = testEnv.authenticatedContext('admin_ips').firestore();
+    const ref = doc(adminDb, 'tbl_strategicObjectiveRelationships', 'rel_malicious');
+    await assertFails(setDoc(ref, { id: 'rel_malicious', clientId: '.*', sourceStrategicObjectiveId: 'oe_1', targetStrategicObjectiveId: 'oe_2' }));
   });
 });

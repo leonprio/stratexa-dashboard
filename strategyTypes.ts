@@ -112,6 +112,50 @@ export interface AreaCodeReservation {
   updatedAt?: string;
 }
 
+export interface StrategicObjectiveRelationship {
+  id: string;
+  clientId: string;
+  sourceStrategicObjectiveId: string; // OE Causa / Origen
+  targetStrategicObjectiveId: string; // OE Efecto / Destino
+  description?: string;
+  order?: number;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+/**
+ * Valida la creación de una relación de causa-efecto entre dos Objetivos Estratégicos.
+ * Previene: auto-relaciones, relaciones duplicadas exactas, referencias a OE inexistentes.
+ */
+export function validateObjectiveRelationship(
+  rel: { sourceStrategicObjectiveId: string; targetStrategicObjectiveId: string; clientId: string },
+  existing: StrategicObjectiveRelationship[],
+  objectives: StrategicObjective[]
+): { valid: boolean; error?: string } {
+  if (!rel.sourceStrategicObjectiveId || !rel.targetStrategicObjectiveId) {
+    return { valid: false, error: 'Debe seleccionar un objetivo de origen y un objetivo de destino.' };
+  }
+  if (rel.sourceStrategicObjectiveId === rel.targetStrategicObjectiveId) {
+    return { valid: false, error: 'Un objetivo estratégico no puede estar relacionado consigo mismo.' };
+  }
+  const sourceExists = objectives.some(o => o.id === rel.sourceStrategicObjectiveId);
+  const targetExists = objectives.some(o => o.id === rel.targetStrategicObjectiveId);
+  if (!sourceExists || !targetExists) {
+    return { valid: false, error: 'El objetivo de origen o de destino no existe en el catálogo.' };
+  }
+  const normClient = (rel.clientId || 'IPS').trim().toUpperCase();
+  const isDuplicate = existing.some(
+    r =>
+      (r.clientId || 'IPS').trim().toUpperCase() === normClient &&
+      r.sourceStrategicObjectiveId === rel.sourceStrategicObjectiveId &&
+      r.targetStrategicObjectiveId === rel.targetStrategicObjectiveId
+  );
+  if (isDuplicate) {
+    return { valid: false, error: 'La relación entre estos dos objetivos estratégicos ya existe.' };
+  }
+  return { valid: true };
+}
+
 /**
  * Resuelve la entidad de configuración de estrategia de un área dada (por nombre directo o histórico de aliases).
  */

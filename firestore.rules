@@ -130,6 +130,13 @@ service cloud.firestore {
       allow delete: if isTableroUser() && isTenantAdmin(resource.data.clientId);
     }
 
+    match /tbl_strategicObjectiveRelationships/{docId} {
+      allow read: if isTableroUser() && (resource == null || isTenantUser(resource.data.clientId));
+      allow create: if isTableroUser() && isSafeClientId(request.resource.data.clientId) && isTenantAdmin(request.resource.data.clientId);
+      allow update: if isTableroUser() && isSafeClientId(resource.data.clientId) && isTenantAdmin(resource.data.clientId) && request.resource.data.clientId == resource.data.clientId;
+      allow delete: if isTableroUser() && isTenantAdmin(resource.data.clientId);
+    }
+
     // --- 2. AISLAMIENTO: GOBERNANZA (cpx_*) ---
     match /cpx_users/{userId} {
       allow read, write: if isAuthenticated() && (request.auth.uid == userId || isGobernanzaUser());
@@ -189,7 +196,7 @@ service cloud.firestore {
           'tbl_users', 'tbl_dashboards', 'tbl_systemSettings', 'tbl_managedClients',
           'tbl_strategicPerspectives', 'tbl_strategicObjectives', 'tbl_areaStrategyConfigs',
           'tbl_contributionObjectives', 'tbl_contributionIndicatorAssignments',
-          'tbl_strategyCounters', 'tbl_areaCodeReservations',
+          'tbl_strategyCounters', 'tbl_areaCodeReservations', 'tbl_strategicObjectiveRelationships',
           'vac_users', 'vac_weekly_data', 'vac_weekly_analysis', 'vac_config', 'vac_unes',
           'cpx_users', 'cpx_work_plans', 'cpx_indicators', 'cpx_reports'
         ]);
