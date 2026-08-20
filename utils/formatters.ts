@@ -158,3 +158,43 @@ export const getCleanIndicatorName = (name: string | null | undefined): string =
     if (!name) return "";
     return name.replace(/\s*\((SOSTENIBILIDAD|CAPACIDADES|PROCESOS|IMPACTO\s+Y\s+VALOR|IMPACTO|VALOR|ESTRATEGIA|FINANCIERO|OPERACIONAL|CALIDAD|APRENDIZAJE|RESULTADOS)\)$/i, "").trim();
 };
+
+/**
+ * 🛡️ CONTRATO DE IDENTIDAD TÉCNICA DE TENANT (v9.5.2)
+ * Genera un clientId técnico seguro cumpliendo con ^[a-zA-Z0-9_-]+$ (máx 64 caracteres).
+ * Elimina diacríticos/acentos, reemplaza espacios por guiones bajos y remueve caracteres especiales.
+ * Soporta resolución determinista de colisiones comparando con IDs existentes.
+ */
+export const generateSafeClientId = (displayName: string, existingClientIds: string[] = []): string => {
+    if (!displayName || !displayName.trim()) return "CLIENT_NEW";
+
+    const normalized = displayName
+        .trim()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "") // Remueve acentos / diacríticos
+        .replace(/[\u200B-\u200D\uFEFF]/g, "") // Zero-width spaces
+        .toUpperCase()
+        .replace(/\s+/g, "_") // Espacios a guión bajo
+        .replace(/[^A-Z0-9_-]/g, "") // Solo A-Z, 0-9, _, -
+        .replace(/_+/g, "_") // Colapsar guiones bajos repetidos
+        .replace(/^_+|_+$/g, ""); // Recortar guiones bajos en extremos
+
+    let baseId = normalized || "CLIENT";
+    if (baseId.length > 50) {
+        baseId = baseId.substring(0, 50).replace(/_+$/, "");
+    }
+
+    const existingUpperSet = new Set(existingClientIds.map(id => id.trim().toUpperCase()));
+
+    if (!existingUpperSet.has(baseId)) {
+        return baseId;
+    }
+
+    // Resolución determinista de colisiones
+    let counter = 2;
+    while (existingUpperSet.has(`${baseId}_${counter}`)) {
+        counter++;
+    }
+
+    return `${baseId}_${counter}`;
+};

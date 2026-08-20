@@ -33,6 +33,11 @@ export enum CalculationMode {
   Definitive = 'definitive',
 }
 
+export interface ManagedClient {
+  clientId: string;
+  displayName: string;
+}
+
 export interface Client {
   id: string;
   name: string;

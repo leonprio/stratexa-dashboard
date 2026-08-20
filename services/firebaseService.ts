@@ -475,11 +475,48 @@ export const firebaseService = {
         return Array.from(clients).sort();
     },
 
-    ensureClientExists: async (clientId: string) => {
+    getAllManagedClients: async (): Promise<{ clientId: string; displayName: string }[]> => {
+        const map = new Map<string, string>();
+        map.set("IPS", "GRUPO IPS");
+
+        // 1. Get from Managed Clients (Persistence)
+        const qManaged = query(collection(db, CLIENTS_COLLECTION));
+        const snapManaged = await getDocs(qManaged);
+        snapManaged.docs.forEach(d => {
+            const data = d.data();
+            const id = d.id.trim().toUpperCase();
+            const displayName = data.displayName || data.name || id;
+            map.set(id, displayName);
+        });
+
+        // 2. Get from Dashboards (Discovery for legacy)
+        const qDash = query(collection(db, DASHBOARDS_COLLECTION));
+        const snapDash = await getDocs(qDash);
+        snapDash.docs.forEach(d => {
+            const c = d.data().clientId;
+            if (c) {
+                const id = String(c).trim().toUpperCase();
+                if (!map.has(id)) {
+                    map.set(id, id);
+                }
+            }
+        });
+
+        return Array.from(map.entries()).map(([clientId, displayName]) => ({
+            clientId,
+            displayName
+        })).sort((a, b) => a.displayName.localeCompare(b.displayName));
+    },
+
+    ensureClientExists: async (clientId: string, displayName?: string) => {
         const id = clientId.trim().toUpperCase();
         if (!id || id === 'IPS') return;
         const ref = doc(db, CLIENTS_COLLECTION, id);
-        await setDoc(ref, { id, createdAt: new Date().toISOString() }, { merge: true });
+        const data: any = { id, createdAt: new Date().toISOString() };
+        if (displayName && displayName.trim()) {
+            data.displayName = displayName.trim();
+        }
+        await setDoc(ref, data, { merge: true });
     },
 
     // -----------------------------

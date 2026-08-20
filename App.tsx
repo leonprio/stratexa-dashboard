@@ -25,6 +25,7 @@ import {
   SystemSettings,
   GlobalUserRole,
   User,
+  ManagedClient,
 } from "./types";
 import { calculateAggregateDashboard } from "./utils/aggregationUtils";
 import { IPS_DASHBOARDS, getIPSDashboardGroup } from "./utils/standardStructure";
@@ -33,7 +34,7 @@ import { shieldItem } from "./utils/compliance";
 
 import { IPS_INDICATORS } from "./utils/standardStructure";
 import { exportBulkDataToCSV } from "./utils/exportUtils";
-import { normalizeGroupName } from "./utils/formatters";
+import { normalizeGroupName, generateSafeClientId } from "./utils/formatters";
 
 import { ContributionMatrixView } from "./components/strategy/ContributionMatrixView";
 import { strategyService } from "./services/strategyService";
@@ -114,6 +115,7 @@ const SHIELD_ID = "GOLD MASTER";
   const [dashboards, setDashboards] = useState<DashboardType[]>([]);
   const [allRawDashboards, setAllRawDashboards] = useState<DashboardType[]>([]);
   const [dbClients, setDbClients] = useState<string[]>([]);
+  const [managedClientsList, setManagedClientsList] = useState<ManagedClient[]>([]);
   const [selectedDashboardId, setSelectedDashboardId] = useState<number | string | null>(() => {
     return localStorage.getItem("selectedDashboardId");
   });
@@ -685,8 +687,10 @@ const SHIELD_ID = "GOLD MASTER";
         if (cancelled) return;
 
         const clients = await firebaseService.getAllClients();
+        const mClients = await firebaseService.getAllManagedClients();
         if (cancelled) return;
         setDbClients(clients);
+        setManagedClientsList(mClients);
 
         const targetClientAgg = (selectedClientId || userProfile?.clientId || "IPS").trim().toUpperCase();
 
@@ -1158,6 +1162,22 @@ const SHIELD_ID = "GOLD MASTER";
 
     return Array.from(clientSet).sort();
   }, [dbClients, allRawDashboards, isGlobalAdmin, userProfile, tempClients]);
+
+  const availableManagedClients = useMemo<ManagedClient[]>(() => {
+    const nameMap = new Map<string, string>();
+    managedClientsList.forEach(mc => {
+      nameMap.set(mc.clientId.trim().toUpperCase(), mc.displayName);
+    });
+
+    return availableClients.map(cid => {
+      const normId = cid.trim().toUpperCase();
+      const displayName = nameMap.get(normId) || normId;
+      return {
+        clientId: normId,
+        displayName
+      };
+    });
+  }, [availableClients, managedClientsList]);
 
   const handleUpdateItem = async (updatedItem: DashboardItem) => {
     if (!selectedDashboard || selectedDashboard.id === -1) return;
@@ -1639,20 +1659,21 @@ const SHIELD_ID = "GOLD MASTER";
   };
 
   const handleCreateClientNew = async () => {
-    const name = prompt("Ingrese el nombre del nuevo cliente (Ej: EMPRESA X):");
-    if (name && name.trim().length > 0) {
-      const cleanName = name.trim().toUpperCase();
-      if (!availableClients.includes(cleanName)) {
-        setTempClients(prev => [...prev, cleanName]);
-        // 💾 PERSISTIR EN FIRESTORE INMEDIATAMENTE
-        await firebaseService.ensureClientExists(cleanName);
+    const rawDisplayName = prompt("Ingrese el nombre del nuevo cliente (Ej: IPS DIRECCIÓN):");
+    if (rawDisplayName && rawDisplayName.trim().length > 0) {
+      const displayName = rawDisplayName.trim();
+      const safeTechId = generateSafeClientId(displayName, availableClients);
+
+      if (!availableClients.includes(safeTechId)) {
+        setTempClients(prev => [...prev, safeTechId]);
+        // 💾 PERSISTIR EN FIRESTORE CON SEPARACIÓN DE ID TÉCNICO Y NOMBRE VISUAL
+        await firebaseService.ensureClientExists(safeTechId, displayName);
       }
-      setSelectedClientId(cleanName);
+      setSelectedClientId(safeTechId);
 
       // 🛡️ NUEVO FLUJO (v3.3.4): Preguntar por el primer tablero inmediatamente
       setTimeout(() => {
-         
-        if (confirm(`¿Deseas Crear el PRIMER TABLERO para "${cleanName}" ahora?\n\n(Ej: Operaciones, Ventas, Sucursal Centro)`)) {
+        if (confirm(`¿Deseas Crear el PRIMER TABLERO para "${displayName}" ahora?\n\n(Ej: Operaciones, Ventas, Sucursal Centro)`)) {
           handleAddDashboard();
         }
       }, 500);
@@ -1735,7 +1756,9 @@ const SHIELD_ID = "GOLD MASTER";
           <div className="flex flex-col items-start">
             <div className="flex items-center gap-2">
               <h1 className="text-xl lg:text-2xl font-black text-white italic uppercase tracking-tighter leading-none">
-                {(selectedClientId === 'all' || !selectedClientId) ? "TABLERO GLOBAL" : selectedClientId.toUpperCase()}
+                {(selectedClientId === 'all' || !selectedClientId)
+                  ? "TABLERO GLOBAL"
+                  : (availableManagedClients.find(c => c.clientId === selectedClientId.toUpperCase())?.displayName || selectedClientId).toUpperCase()}
               </h1>
               {isGlobalAdmin && selectedClientId && selectedClientId !== 'all' && (
                 <button
@@ -1886,7 +1909,9 @@ const SHIELD_ID = "GOLD MASTER";
                 className="bg-slate-900 border-2 border-cyan-500/20 rounded-2xl px-4 py-2.5 text-xs font-black text-cyan-400 outline-none min-w-[180px] focus:border-cyan-500 transition-all uppercase tracking-widest cursor-pointer"
               >
                 {/* <option value="all">VISTA GLOBAL</option> -- ELIMINADO POR SOLICITUD DEL USUARIO */}
-                {availableClients.map(c => <option key={c} value={c}>{c}</option>)}
+                {availableManagedClients.map(c => (
+                  <option key={c.clientId} value={c.clientId}>{c.displayName}</option>
+                ))}
                 <option value="NEW_CLIENT_OPTION" className="text-yellow-400">+ NUEVO CLIENTE</option>
               </select>
             )}
