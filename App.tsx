@@ -1932,16 +1932,20 @@ const SHIELD_ID = "GOLD MASTER";
           <div className="flex items-center gap-2">
             {isGlobalAdmin && (
               <select
-                value={selectedClientId}
+                value={clientSelectionReady ? selectedClientId : ""}
+                disabled={!clientSelectionReady}
                 onChange={(e) => {
                   if (e.target.value === "NEW_CLIENT_OPTION") {
                     handleCreateClientNew();
-                  } else {
+                  } else if (e.target.value) {
                     setSelectedClientId(e.target.value);
                   }
                 }}
-                className="bg-slate-900 border-2 border-cyan-500/20 rounded-2xl px-4 py-2.5 text-xs font-black text-cyan-400 outline-none min-w-[180px] focus:border-cyan-500 transition-all uppercase tracking-widest cursor-pointer"
+                className="bg-slate-900 border-2 border-cyan-500/20 rounded-2xl px-4 py-2.5 text-xs font-black text-cyan-400 outline-none min-w-[180px] focus:border-cyan-500 transition-all uppercase tracking-widest cursor-pointer disabled:opacity-50"
               >
+                {!clientSelectionReady && (
+                  <option value="" disabled>Seleccionando cliente…</option>
+                )}
                 {/* <option value="all">VISTA GLOBAL</option> -- ELIMINADO POR SOLICITUD DEL USUARIO */}
                 {availableManagedClients.map(c => (
                   <option key={c.clientId} value={c.clientId}>{c.displayName}</option>
