@@ -67,7 +67,7 @@ export default function App() {
   const [user, setUser] = useState<FirebaseUser | null>(null);
   const [userProfile, setUserProfile] = useState<User | null>(null);
 // 🛡️ v9.4.22-CHART-UX-CLARITY
-const VERSION_LABEL = "v9.5.2-CLIENT-IDENTITY";
+const VERSION_LABEL = "v9.5.3-CLIENT-SELECTION";
 const SHIELD_ID = "GOLD MASTER";
   const [activeAdminSection, setActiveAdminSection] = useState<AdminSection>("none");
   const [allUsers, setAllUsers] = useState<User[]>([]);
