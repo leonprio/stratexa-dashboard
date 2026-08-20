@@ -38,7 +38,7 @@ import { normalizeGroupName, generateSafeClientId } from "./utils/formatters";
 
 import { ContributionMatrixView } from "./components/strategy/ContributionMatrixView";
 import { strategyService } from "./services/strategyService";
-import { reconcileClientSelection } from "./utils/clientReconciliation";
+import { reconcileClientSelection, reconcileClientSelectionResult } from "./utils/clientReconciliation";
 import {
   StrategicPerspective,
   StrategicObjective,
@@ -125,12 +125,15 @@ const SHIELD_ID = "GOLD MASTER";
   const [selectedClientId, setSelectedClientId] = useState<string>(() => {
     return localStorage.getItem("selectedClientId") || "IPS";
   });
+  const [clientSelectionReady, setClientSelectionReady] = useState<boolean>(false);
   const [selectedGroupTab, setSelectedGroupTab] = useState<string>(() => {
     return localStorage.getItem("selectedGroupTab") || "TODOS";
   });
   useEffect(() => {
-    if (selectedClientId) localStorage.setItem("selectedClientId", selectedClientId);
-  }, [selectedClientId]);
+    if (clientSelectionReady && selectedClientId) {
+      localStorage.setItem("selectedClientId", selectedClientId);
+    }
+  }, [selectedClientId, clientSelectionReady]);
 
   useEffect(() => {
     if (selectedDashboardId) localStorage.setItem("selectedDashboardId", String(selectedDashboardId));
@@ -153,9 +156,12 @@ const SHIELD_ID = "GOLD MASTER";
   const [assignments, setAssignments] = useState<ContributionIndicatorAssignment[]>([]);
   const [relationships, setRelationships] = useState<StrategicObjectiveRelationship[]>([]);
 
+  const strategyRequestIdRef = useRef(0);
+
   // Carga diferida condicional (Feature Flag OFF = 0 llamadas a Firebase)
   const loadStrategyData = useCallback(async () => {
-    if (!settings?.enableStrategyMap) return;
+    if (!settings?.enableStrategyMap || !clientSelectionReady || !selectedClientId) return;
+    const currentRequestId = ++strategyRequestIdRef.current;
     try {
       const [pList, oList, acList, coList, asgnList, relList] = await Promise.all([
         strategyService.getPerspectives(selectedClientId),
@@ -165,16 +171,18 @@ const SHIELD_ID = "GOLD MASTER";
         strategyService.getAssignments(selectedClientId),
         strategyService.getStrategicObjectiveRelationships(selectedClientId),
       ]);
-      setPerspectives(pList);
-      setObjectives(oList);
-      setAreaConfigs(acList);
-      setContributionObjectives(coList);
-      setAssignments(asgnList);
-      setRelationships(relList);
+      if (currentRequestId === strategyRequestIdRef.current) {
+        setPerspectives(pList);
+        setObjectives(oList);
+        setAreaConfigs(acList);
+        setContributionObjectives(coList);
+        setAssignments(asgnList);
+        setRelationships(relList);
+      }
     } catch (err) {
       console.error("Error al cargar datos estratégicos:", err);
     }
-  }, [settings?.enableStrategyMap, selectedClientId]);
+  }, [settings?.enableStrategyMap, clientSelectionReady, selectedClientId]);
 
   const handleSaveRelationship = useCallback(async (rel: { sourceStrategicObjectiveId: string; targetStrategicObjectiveId: string; description?: string }) => {
     await strategyService.saveStrategicObjectiveRelationship({
@@ -190,10 +198,10 @@ const SHIELD_ID = "GOLD MASTER";
   }, [selectedClientId, loadStrategyData]);
 
   useEffect(() => {
-    if (settings?.enableStrategyMap) {
+    if (settings?.enableStrategyMap && clientSelectionReady) {
       loadStrategyData();
     }
-  }, [settings?.enableStrategyMap, selectedClientId, loadStrategyData]);
+  }, [settings?.enableStrategyMap, clientSelectionReady, selectedClientId, loadStrategyData]);
 
   // Derivar roles del perfil de usuario
   const isGlobalAdmin = useMemo(() =>
@@ -1182,17 +1190,26 @@ const SHIELD_ID = "GOLD MASTER";
 
   // 🛡️ RECONCILIACIÓN AUTOMÁTICA DE CLIENTE (v9.5.3)
   useEffect(() => {
-    if (availableManagedClients.length === 0) return;
+    if (availableManagedClients.length === 0) {
+      setClientSelectionReady(false);
+      return;
+    }
 
-    const reconciled = reconcileClientSelection({
+    const result = reconcileClientSelectionResult({
       selectedClientId,
       availableManagedClients,
       defaultFallback: 'IPS'
     });
 
-    if (reconciled !== selectedClientId) {
-      console.log(`🔄 [CLIENT RECONCILIATION] Reconciliando cliente seleccionado: "${selectedClientId}" -> "${reconciled}"`);
-      setSelectedClientId(reconciled);
+    if (result.status === 'resolved' && result.clientId) {
+      if (result.clientId !== selectedClientId) {
+        console.log(`🔄 [CLIENT RECONCILIATION] Reconciliando cliente seleccionado: "${selectedClientId}" -> "${result.clientId}"`);
+        setSelectedClientId(result.clientId);
+      }
+      setClientSelectionReady(true);
+    } else {
+      console.warn(`⚠️ [CLIENT RECONCILIATION] Selección no lista o ambigua: ${result.status} - ${result.reason}`);
+      setClientSelectionReady(false);
     }
   }, [availableManagedClients, selectedClientId]);
 

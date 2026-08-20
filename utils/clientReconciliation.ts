@@ -1,5 +1,13 @@
 import { ManagedClient } from '../types';
 
+export type ReconciliationStatus = 'resolved' | 'not_ready' | 'ambiguous' | 'unresolved';
+
+export interface ReconciliationResult {
+  status: ReconciliationStatus;
+  clientId?: string;
+  reason?: string;
+}
+
 export interface ClientReconciliationInput {
   selectedClientId: string;
   availableManagedClients: ManagedClient[];
@@ -9,59 +17,111 @@ export interface ClientReconciliationInput {
 /**
  * Reconcilia la selección de cliente activa contra la lista oficial de clientes gestionados.
  * 
- * Si un valor persistido en localStorage contiene un displayName de legado (ej. "IPS DIRECCIÓN"),
- * lo convierte automáticamente a su clientId técnico canónico (ej. "IPS_DIRECCION").
+ * Contrato de Reconciliación:
+ * CASE A — EXACT TECHNICAL ID: Coincidencia exacta con ManagedClient.clientId -> status: 'resolved'
+ * CASE B — UNIQUE EXACT DISPLAY NAME: Coincidencia exacta con único ManagedClient.displayName -> status: 'resolved'
+ * CASE C — AMBIGUOUS DISPLAY NAME: Múltiples clientes con exactamente el mismo displayName -> status: 'ambiguous' (sin adivinar)
+ * CASE D — UNKNOWN / EMPTY PERSISTED VALUE:
+ *          - Si defaultFallback existe en managedClients -> status: 'resolved' (con fallback)
+ *          - Si defaultFallback no existe y hay exactamente 1 cliente -> status: 'resolved' (único cliente)
+ *          - Si defaultFallback no existe y hay >1 cliente -> status: 'unresolved'
+ * CASE E — MANAGED CLIENTS NOT YET LOADED: availableManagedClients es undefined o vacío -> status: 'not_ready'
  */
-export function reconcileClientSelection({
+export function reconcileClientSelectionResult({
   selectedClientId,
   availableManagedClients,
-  defaultFallback = 'IPS'
-}: ClientReconciliationInput): string {
-  if (!selectedClientId) return defaultFallback;
-
-  // 🛡️ Proteccion contra condiciones de carrera: No reconciliar si los clientes aún no cargan
+  defaultFallback
+}: ClientReconciliationInput): ReconciliationResult {
+  // CASE E: Managed clients not yet loaded
   if (!availableManagedClients || availableManagedClients.length === 0) {
-    return selectedClientId;
+    return {
+      status: 'not_ready',
+      reason: 'Managed clients list is empty or not yet loaded.'
+    };
   }
 
-  // Opciones especiales del sistema que no se modifican
+  // Opciones especiales del sistema que no se modifican y son siempre válidas
   if (selectedClientId === 'all' || selectedClientId === 'NEW_CLIENT_OPTION') {
-    return selectedClientId;
+    return {
+      status: 'resolved',
+      clientId: selectedClientId,
+      reason: 'System special option.'
+    };
   }
 
-  const normSelected = selectedClientId.trim().toUpperCase();
-
-  // CASO A: Coincidencia exacta con el clientId técnico de un cliente gestionado
+  // CASE A: Coincidencia exacta de string con ManagedClient.clientId
   const exactTechnicalMatch = availableManagedClients.find(
-    c => c.clientId.trim().toUpperCase() === normSelected
+    c => c.clientId === selectedClientId
   );
   if (exactTechnicalMatch) {
-    return exactTechnicalMatch.clientId;
+    return {
+      status: 'resolved',
+      clientId: exactTechnicalMatch.clientId,
+      reason: 'Exact technical clientId match.'
+    };
   }
 
-  // CASO B: Coincidencia exacta con el displayName de un cliente gestionado (Legacy Migration)
-  const displayNameMatches = availableManagedClients.filter(
-    c => c.displayName.trim().toUpperCase() === normSelected
-  );
-
-  if (displayNameMatches.length === 1) {
-    return displayNameMatches[0].clientId;
-  }
-
-  // CASO D: Ambigüedad por múltiples displayNames idénticos
-  if (displayNameMatches.length > 1) {
-    console.warn(
-      `⚠️ [CLIENT RECONCILIATION] Ambigüedad detectada: El nombre "${selectedClientId}" coincide con múltiples clientes:`,
-      displayNameMatches.map(m => m.clientId)
+  // CASE B / C: Coincidencia exacta de string con ManagedClient.displayName
+  if (selectedClientId) {
+    const exactDisplayNameMatches = availableManagedClients.filter(
+      c => c.displayName === selectedClientId
     );
-    // Preferir el primer clientId técnico o fallback seguro en caso de ambigüedad
-    return availableManagedClients[0]?.clientId || defaultFallback;
+
+    if (exactDisplayNameMatches.length === 1) {
+      return {
+        status: 'resolved',
+        clientId: exactDisplayNameMatches[0].clientId,
+        reason: 'Unique exact displayName match.'
+      };
+    }
+
+    if (exactDisplayNameMatches.length > 1) {
+      return {
+        status: 'ambiguous',
+        reason: `Multiple clients found with exact displayName "${selectedClientId}".`
+      };
+    }
   }
 
-  // CASO C: No coincide ni con clientId ni con displayName (Valor obsoleto/desconocido)
-  const fallbackExists = availableManagedClients.some(
-    c => c.clientId.trim().toUpperCase() === defaultFallback.toUpperCase()
-  );
+  // CASE D: Persisted selection empty, unknown, or no exact match
+  if (defaultFallback) {
+    const fallbackMatch = availableManagedClients.find(
+      c => c.clientId === defaultFallback
+    );
+    if (fallbackMatch) {
+      return {
+        status: 'resolved',
+        clientId: fallbackMatch.clientId,
+        reason: 'Resolved to valid defaultFallback technical clientId.'
+      };
+    }
+  }
 
-  return fallbackExists ? defaultFallback : availableManagedClients[0].clientId;
+  // Si no hay fallback válido, resolver solo si hay exactamente 1 cliente gestionado
+  if (availableManagedClients.length === 1) {
+    return {
+      status: 'resolved',
+      clientId: availableManagedClients[0].clientId,
+      reason: 'Single managed client available.'
+    };
+  }
+
+  return {
+    status: 'unresolved',
+    reason: `Selection "${selectedClientId}" is non-existent and cannot be resolved safely.`
+  };
+}
+
+/**
+ * Función legacy/helper que retorna directamente el string resuelto o NOT_READY / UNRESOLVED / AMBIGUOUS
+ */
+export function reconcileClientSelection(input: ClientReconciliationInput): string {
+  const result = reconcileClientSelectionResult(input);
+  if (result.status === 'resolved' && result.clientId) {
+    return result.clientId;
+  }
+  if (result.status === 'not_ready') {
+    return input.selectedClientId;
+  }
+  return result.status.toUpperCase();
 }
