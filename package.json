@@ -9,8 +9,8 @@
     "deploy:safe": "npm run predeploy && npm run build && firebase deploy --only hosting:tablero",
     "preview": "vite preview",
     "integrity": "node scripts/generateIntegrityReport.js",
-    "test": "jest --testPathIgnorePatterns=firestore.rules.test.ts",
-    "test:rules": "firebase emulators:exec --project demo-stratexa-rules --only firestore \"jest firestore.rules.test.ts --runInBand\""
+    "test": "npx jest --testPathIgnorePatterns=firestore.rules.test.ts",
+    "test:rules": "firebase emulators:exec --project demo-stratexa-rules --only firestore \"npx jest firestore.rules.test.ts --runInBand\""
   },
   "dependencies": {
     "@types/file-saver": "^2.0.7",

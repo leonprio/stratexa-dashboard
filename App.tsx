@@ -38,6 +38,7 @@ import { normalizeGroupName, generateSafeClientId } from "./utils/formatters";
 
 import { ContributionMatrixView } from "./components/strategy/ContributionMatrixView";
 import { strategyService } from "./services/strategyService";
+import { reconcileClientSelection } from "./utils/clientReconciliation";
 import {
   StrategicPerspective,
   StrategicObjective,
@@ -1178,6 +1179,22 @@ const SHIELD_ID = "GOLD MASTER";
       };
     });
   }, [availableClients, managedClientsList]);
+
+  // 🛡️ RECONCILIACIÓN AUTOMÁTICA DE CLIENTE (v9.5.3)
+  useEffect(() => {
+    if (availableManagedClients.length === 0) return;
+
+    const reconciled = reconcileClientSelection({
+      selectedClientId,
+      availableManagedClients,
+      defaultFallback: 'IPS'
+    });
+
+    if (reconciled !== selectedClientId) {
+      console.log(`🔄 [CLIENT RECONCILIATION] Reconciliando cliente seleccionado: "${selectedClientId}" -> "${reconciled}"`);
+      setSelectedClientId(reconciled);
+    }
+  }, [availableManagedClients, selectedClientId]);
 
   const handleUpdateItem = async (updatedItem: DashboardItem) => {
     if (!selectedDashboard || selectedDashboard.id === -1) return;
