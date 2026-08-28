@@ -418,6 +418,8 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(({
             onClose={handleCloseFocus}
             allDashboardItems={safeItems}
             decimalPrecision={localDecimalPrecision as 0 | 1 | 2}
+            dashboardId={dashboard.id}
+            clientId={dashboard.clientId || currentUser.clientId}
           />
         </div>
       )}

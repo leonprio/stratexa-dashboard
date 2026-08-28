@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { DashboardItem, ComplianceThresholds } from '../types';
+import { RelatedActionPlans } from './RelatedActionPlans';
 import { calculateCompliance, findLastIndexWithData, resolveItemValues } from '../utils/compliance';
 import { getWeekNumber, getYearWeekMapping } from '../utils/weeklyUtils';
 import { ProgressBar } from './ProgressBar';
@@ -18,6 +19,8 @@ interface CurrentPeriodFocusProps {
     onClose: () => void;
     allDashboardItems?: DashboardItem[];
     decimalPrecision?: 0 | 1 | 2;
+    dashboardId?: number | string;
+    clientId?: string;
 }
 
 export const CurrentPeriodFocus: React.FC<CurrentPeriodFocusProps> = ({
@@ -28,7 +31,9 @@ export const CurrentPeriodFocus: React.FC<CurrentPeriodFocusProps> = ({
     canEdit,
     onClose,
     allDashboardItems = [],
-    decimalPrecision = 0
+    decimalPrecision = 0,
+    dashboardId,
+    clientId
 }) => {
     // 🛡️ ACTIVE SHIELD: Blindaje contra ítems malformados
     const [localGoal, setLocalGoal] = useState<string>('');
@@ -515,6 +520,17 @@ export const CurrentPeriodFocus: React.FC<CurrentPeriodFocusProps> = ({
                             canEdit={canEdit}
                             year={year}
                         />
+                        {dashboardId !== undefined && (
+                            <RelatedActionPlans
+                                indicatorId={item.id}
+                                dashboardId={dashboardId}
+                                clientId={clientId}
+                                year={year || new Date().getFullYear()}
+                                periodType={isWeekly ? 'weekly' : 'monthly'}
+                                periodIndex={currentIdx}
+                                canEdit={canEdit}
+                            />
+                        )}
                     </div>
                 </>
             )}
