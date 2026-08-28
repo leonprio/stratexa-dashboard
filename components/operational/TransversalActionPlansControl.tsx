@@ -6,14 +6,22 @@ const statusLabels: Record<ActionPlanStatus, string> = { planned: 'Planeado', in
 type Enriched = ActionPlan & { indicator: string; area: string };
 interface Props { dashboards: Dashboard[]; currentDashboard: Dashboard; canEdit?: boolean; }
 
+export type DueCategory = 'vencido' | 'próximo' | 'normal';
+export const classifyDue = (plan: Pick<ActionPlan, 'targetDate' | 'status'>, now = new Date()): DueCategory => {
+  if (!plan.targetDate || plan.status === 'completed' || plan.status === 'cancelled') return 'normal';
+  const target = new Date(plan.targetDate); const end = new Date(now); end.setDate(end.getDate() + 7);
+  return target < now ? 'vencido' : target <= end ? 'próximo' : 'normal';
+};
+export const dedupePlans = (items: Enriched[]) => Array.from(new Map(items.map(item => [item.id, item])).values());
+export const filterPlans = (items: Enriched[], filter: string, value: string) => items.filter(p => filter === 'Todos' || value === 'Todos' || (filter === 'Área' ? p.area === value : filter === 'Responsable' ? (p.responsible || 'Sin responsable') === value : statusLabels[p.status] === value));
+
 export const TransversalActionPlansControl: React.FC<Props> = ({ dashboards, currentDashboard, canEdit = true }) => {
   const [plans, setPlans] = useState<Enriched[]>([]); const [filter, setFilter] = useState('Todos'); const [value, setValue] = useState('Todos'); const [selected, setSelected] = useState<Enriched | null>(null); const [message, setMessage] = useState('Cargando planes…');
   const sources = useMemo(() => (dashboards.length ? dashboards : [currentDashboard]).filter(d => !d.isAggregate), [dashboards, currentDashboard]);
-  const load = async () => { try { const rows = (await Promise.all(sources.flatMap(d => (d.items || []).map(async item => ({ d, item, plans: await firebaseService.getActionPlansForIndicator(item.id, d.clientId || currentDashboard.clientId) }))))).flatMap(({ d, item, plans: ps }) => ps.map(p => ({ ...p, indicator: item.indicator, area: d.area || d.group || 'General' }))); const unique = Array.from(new Map(rows.map(p => [p.id, p])).values()); setPlans(unique); setMessage(unique.length ? '' : 'No hay planes registrados.'); } catch { setMessage('No se pudieron cargar los planes.'); } };
+  const load = async () => { try { const rows = (await Promise.all(sources.flatMap(d => (d.items || []).map(async item => ({ d, item, plans: await firebaseService.getActionPlansForIndicator(item.id, d.clientId || currentDashboard.clientId) }))))).flatMap(({ d, item, plans: ps }) => ps.map(p => ({ ...p, indicator: item.indicator, area: d.area || d.group || 'General' }))); const unique = dedupePlans(rows); setPlans(unique); setMessage(unique.length ? '' : 'No hay planes registrados.'); } catch { setMessage('No se pudieron cargar los planes.'); } };
   useEffect(() => { void load(); }, [sources]);
-  const today = new Date(); const end = new Date(today); end.setDate(end.getDate() + 7);
-  const due = (p: Enriched) => p.targetDate && p.status !== 'completed' && p.status !== 'cancelled' ? new Date(p.targetDate) < today ? 'vencido' : new Date(p.targetDate) <= end ? 'próximo' : 'normal' : 'normal';
-  const filtered = plans.filter(p => filter === 'Todos' || (filter === 'Área' ? p.area === value : filter === 'Responsable' ? (p.responsible || 'Sin responsable') === value : statusLabels[p.status] === value));
+  const due = (p: Enriched) => classifyDue(p);
+  const filtered = filterPlans(plans, filter, value);
   const active = filtered.filter(p => p.status === 'planned' || p.status === 'in_progress'); const completed = filtered.filter(p => p.status === 'completed').slice(0, 8); const attention = active.filter(p => due(p) !== 'normal');
   const options = filter === 'Área' ? [...new Set(plans.map(p => p.area))] : filter === 'Responsable' ? [...new Set(plans.map(p => p.responsible || 'Sin responsable'))] : Object.values(statusLabels);
   const save = async () => { if (!selected) return; try { await firebaseService.updateActionPlan(selected.id, selected); setSelected(null); await load(); } catch { setMessage('No se pudo guardar el plan.'); } };
