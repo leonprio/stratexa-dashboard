@@ -11,6 +11,7 @@ import { OperationalRanking } from './OperationalRanking';
 import { OperationalAlertsTable } from './OperationalAlertsTable';
 import { OperationalAlertsCenter } from './OperationalAlertsCenter';
 import { OperationalHistoryCenter } from './OperationalHistoryCenter';
+import { TransversalActionPlansControl } from './TransversalActionPlansControl';
 
 interface OperationalControlCenterProps {
   dashboards: Dashboard[];
@@ -25,7 +26,7 @@ export const OperationalControlCenter: React.FC<OperationalControlCenterProps> =
   globalThresholds,
   year
 }) => {
-  const [activeSubView, setActiveSubView] = useState<'heatmap' | 'rankings' | 'alerts' | 'alerts-engine' | 'history-engine'>('heatmap');
+  const [activeSubView, setActiveSubView] = useState<'plans' | 'heatmap' | 'rankings' | 'alerts' | 'alerts-engine' | 'history-engine'>('plans');
 
   // Asegurar que tengamos datos de todos los tableros relevantes
   const relevantDashboards = useMemo(() => {
@@ -200,6 +201,7 @@ export const OperationalControlCenter: React.FC<OperationalControlCenterProps> =
 
       {/* TABS DE SUB-SECCIONES */}
       <div className="flex flex-wrap gap-2 bg-slate-950 p-1.5 rounded-2xl border border-white/10 shadow-2xl backdrop-blur-xl w-fit">
+        <button onClick={() => setActiveSubView('plans')} className={`px-6 py-2.5 rounded-xl text-[9px] font-extrabold uppercase tracking-widest min-h-[44px] ${activeSubView === 'plans' ? 'bg-emerald-600 text-white' : 'text-slate-500 hover:text-slate-300'}`}>📌 Planes de acción</button>
         <button
           onClick={() => setActiveSubView('heatmap')}
           className={`px-6 py-2.5 rounded-xl text-[9px] font-extrabold uppercase tracking-widest transition-all duration-500 flex items-center gap-2 min-h-[44px] ${activeSubView === 'heatmap' ? 'bg-cyan-600 text-white shadow-[0_0_20px_rgba(8,145,178,0.5)]' : 'text-slate-500 hover:text-slate-300'}`}
@@ -234,6 +236,7 @@ export const OperationalControlCenter: React.FC<OperationalControlCenterProps> =
 
       {/* DESPLIEGUE DE SUB-VISTAS */}
       <div className="space-y-4">
+        {activeSubView === 'plans' && <TransversalActionPlansControl dashboards={relevantDashboards} currentDashboard={currentDashboard} />}
         {activeSubView === 'heatmap' && (
           <OperationalHeatmap
             directions={heatmap.directions}
