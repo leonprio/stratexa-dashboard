@@ -191,8 +191,8 @@ export const DashboardRow: React.FC<DashboardRowProps> = React.memo(({ item, onU
   };
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const handleSavePlan = (rows: any[]) => {
-    onUpdateItem({ ...item, paiRows: rows });
+  const handleSavePlan = async (rows: any[]) => {
+    await onUpdateItem({ ...item, paiRows: rows });
   };
 
   const handleCancelEdit = () => {

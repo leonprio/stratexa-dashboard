@@ -79,6 +79,12 @@ service cloud.firestore {
     }
     match /tbl_systemSettings/{id=**} { allow read, write: if isTableroUser(); }
     match /tbl_managedClients/{id=**} { allow read, write: if isTableroUser(); }
+    match /tbl_actionPlans/{planId} {
+      allow read: if isTableroUser() && isTenantUser(resource.data.clientId);
+      allow create: if isTableroUser() && isSafeClientId(request.resource.data.clientId) && isTenantAdmin(request.resource.data.clientId);
+      allow update: if isTableroUser() && isTenantAdmin(resource.data.clientId) && request.resource.data.clientId == resource.data.clientId;
+      allow delete: if isTableroUser() && isTenantAdmin(resource.data.clientId);
+    }
 
     // --- 🎯 REGLAS DE SEGURIDAD SERVIDORA: ESTRATEGIA (v9.5.0 FOUNDATION) ---
     match /tbl_strategicPerspectives/{docId} {

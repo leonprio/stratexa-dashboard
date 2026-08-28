@@ -106,6 +106,31 @@ export interface DashboardItem {
   progress?: any;
 }
 
+export type ActionPlanStatus = 'planned' | 'in_progress' | 'completed' | 'cancelled';
+export type ActionPlanOriginPeriodType = 'monthly' | 'weekly' | 'manual';
+
+export interface ActionPlan {
+  id: string;
+  indicatorId: number | string;
+  dashboardId: number | string;
+  clientId?: string;
+  area?: string;
+  title: string;
+  description?: string;
+  originYear: number;
+  originPeriodType: ActionPlanOriginPeriodType;
+  originPeriodIndex?: number;
+  status: ActionPlanStatus;
+  responsible?: string;
+  startDate: string;
+  targetDate?: string;
+  progress: number;
+  expectedImpact?: string;
+  createdAt: string;
+  updatedAt: string;
+  closedAt?: string;
+}
+
 /**
  * Represents a logical group of indicators, typically mapped to a person, area, or global synthesis.
  * Can be physical (stored in DB) or virtual (calculated dynamically on the fly).

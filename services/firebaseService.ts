@@ -31,6 +31,7 @@ import type {
     Dashboard as DashboardType,
     DashboardItem,
     SystemSettings,
+    ActionPlan,
 } from "../types";
 
 const COLLECTION_PREFIX = "tbl_"; // BLINDAJE ACTIVO: Todas las colecciones inician con 'tbl_'
@@ -39,6 +40,7 @@ const USERS_COLLECTION = `${COLLECTION_PREFIX}users`;
 const SYSTEM_SETTINGS_COLLECTION = `${COLLECTION_PREFIX}systemSettings`;
 const SYSTEM_SETTINGS_DOC_ID = "main";
 const CLIENTS_COLLECTION = `${COLLECTION_PREFIX}managedClients`;
+const ACTION_PLANS_COLLECTION = `${COLLECTION_PREFIX}actionPlans`;
 
 // -----------------------------
 // Helpers
@@ -66,6 +68,37 @@ const itemsCollectionRef = (dashboardId: number | string) =>
  * @version v9.1.0-PRO-FINAL-SHIELDED
  */
 export const firebaseService = {
+    createActionPlan: async (plan: ActionPlan): Promise<ActionPlan> => {
+        const id = plan.id || crypto.randomUUID();
+        const now = new Date().toISOString();
+        const value = { ...plan, id, createdAt: plan.createdAt || now, updatedAt: now };
+        await setDoc(doc(db, ACTION_PLANS_COLLECTION, id), value);
+        return value;
+    },
+
+    updateActionPlan: async (id: string, changes: Partial<ActionPlan>): Promise<boolean> => {
+        await updateDoc(doc(db, ACTION_PLANS_COLLECTION, id), { ...changes, updatedAt: new Date().toISOString() });
+        return true;
+    },
+
+    deleteActionPlan: async (id: string): Promise<boolean> => {
+        await deleteDoc(doc(db, ACTION_PLANS_COLLECTION, id));
+        return true;
+    },
+
+    getActionPlansForIndicator: async (indicatorId: number | string, clientId?: string): Promise<ActionPlan[]> => {
+        const constraints = [where('indicatorId', '==', indicatorId)];
+        if (clientId) constraints.push(where('clientId', '==', clientId.trim().toUpperCase()));
+        const snap = await getDocs(query(collection(db, ACTION_PLANS_COLLECTION), ...constraints));
+        return snap.docs.map(d => d.data() as ActionPlan).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+    },
+
+    getActiveActionPlansForDashboard: async (dashboardId: number | string, clientId?: string): Promise<ActionPlan[]> => {
+        const constraints = [where('dashboardId', '==', dashboardId), where('status', 'in', ['planned', 'in_progress'])];
+        if (clientId) constraints.push(where('clientId', '==', clientId.trim().toUpperCase()));
+        const snap = await getDocs(query(collection(db, ACTION_PLANS_COLLECTION), ...constraints));
+        return snap.docs.map(d => d.data() as ActionPlan);
+    },
     // -----------------------------
     // Auth helpers
     // -----------------------------

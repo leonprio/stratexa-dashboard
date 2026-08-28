@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { ComplianceStatus } from '../types';
 
 export interface PaiRow {
@@ -19,6 +19,11 @@ interface ActionPlanProps {
 export const ActionPlan: React.FC<ActionPlanProps> = ({ initialRows = [], status, onSave, canEdit, year = new Date().getFullYear() }) => {
     const [rows, setRows] = useState<PaiRow[]>(initialRows.length > 0 ? initialRows : []);
     const [isEditing, setIsEditing] = useState(false);
+    const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+
+    useEffect(() => {
+        setRows(initialRows);
+    }, [initialRows]);
 
     const isAlert = status === "AtRisk" || status === "OffTrack";
 
@@ -78,10 +83,16 @@ export const ActionPlan: React.FC<ActionPlanProps> = ({ initialRows = [], status
         setRows(newRows);
     };
 
-    const handleSave = () => {
+    const handleSave = async () => {
         const activeRows = rows.filter(r => r.action.trim() !== '' || r.date.trim() !== '' || r.result.trim() !== '');
-        onSave(activeRows);
-        setIsEditing(false);
+        setSaveState('saving');
+        try {
+            await onSave(activeRows);
+            setSaveState('saved');
+            setIsEditing(false);
+        } catch {
+            setSaveState('error');
+        }
     };
 
     const getImpactColor = (impact?: string) => {
@@ -202,8 +213,10 @@ export const ActionPlan: React.FC<ActionPlanProps> = ({ initialRows = [], status
                                 onClick={handleSave}
                                 className="text-xs bg-cyan-600 hover:bg-cyan-500 text-white px-8 py-2.5 rounded-xl font-black uppercase tracking-widest shadow-xl shadow-cyan-900/40"
                             >
-                                Guardar Itinerario
+                                {saveState === 'saving' ? 'Guardando...' : 'Guardar Itinerario'}
                             </button>
+                            {saveState === 'saved' && <span className="text-xs text-emerald-400 self-center">Guardado</span>}
+                            {saveState === 'error' && <span className="text-xs text-red-400 self-center">Error al guardar</span>}
                         </div>
                     </div>
                 </div>
