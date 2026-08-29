@@ -108,6 +108,16 @@ export interface DashboardItem {
 
 export type ActionPlanStatus = 'planned' | 'in_progress' | 'completed' | 'cancelled';
 export type ActionPlanOriginPeriodType = 'monthly' | 'weekly' | 'manual';
+export interface ActionPlanActivity {
+  id: string;
+  title: string;
+  responsible?: string;
+  targetDate?: string;
+  progress: number;
+  result?: string;
+  createdAt: string;
+  updatedAt: string;
+}
 
 export interface ActionPlan {
   id: string;
@@ -129,6 +139,7 @@ export interface ActionPlan {
   createdAt: string;
   updatedAt: string;
   closedAt?: string;
+  activities?: ActionPlanActivity[];
 }
 
 /**
