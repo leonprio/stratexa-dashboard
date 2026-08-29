@@ -23,7 +23,7 @@ interface CurrentPeriodFocusProps {
     clientId?: string;
 }
 
-export interface PendingKpiActivity { id: string; sourceActivityId: string; label: string; periodIndex: number; periodLabel: string; commitmentLabel?: string; status: 'PENDIENTE' | 'ATENCIÓN' | 'ATRASADA' | 'REPROGRAMADA' | 'COMPROMISO ACTUAL'; }
+export interface PendingKpiActivity { id: string; sourceActivityId: string; label: string; periodIndex: number; periodLabel: string; commitmentLabel?: string; rescheduleHistory?: { fromYear: number; fromPeriodType: 'monthly' | 'weekly'; fromPeriodIndex: number; toYear: number; toPeriodType: 'monthly' | 'weekly'; toPeriodIndex: number; changedAt: string }[]; status: 'PENDIENTE' | 'ATENCIÓN' | 'ATRASADA' | 'REPROGRAMADA' | 'COMPROMISO ACTUAL'; }
 export interface RescheduledKpiCommitment extends PendingKpiActivity { scheduledPeriodIndex: number; scheduledPeriodLabel: string; }
 export const deriveRescheduledKpiCommitments = (activityConfig: DashboardItem['activityConfig'], periodIndex: number, isWeekly: boolean, year: number): RescheduledKpiCommitment[] => {
     if (!activityConfig) return [];
@@ -40,7 +40,9 @@ export const applyOperationalReschedule = (activityConfig: DashboardItem['activi
     const index = source.findIndex(activity => activity.id === activityId);
     if (index < 0) return config;
     const previous = source[index].resolution || {};
-    source[index] = { ...source[index], resolution: { ...previous, resolutionStatus: 'rescheduled', scheduledResolutionYear: year, scheduledResolutionPeriodType: isWeekly ? 'weekly' : 'monthly', scheduledResolutionPeriodIndex: scheduledPeriodIndex } };
+    const nextType = isWeekly ? 'weekly' : 'monthly';
+    const history = [...(previous.rescheduleHistory || []), ...(previous.scheduledResolutionPeriodIndex === undefined ? [{ fromYear: year, fromPeriodType: nextType, fromPeriodIndex: originPeriodIndex, toYear: year, toPeriodType: nextType, toPeriodIndex: scheduledPeriodIndex, changedAt: new Date().toISOString() }] : [{ fromYear: previous.scheduledResolutionYear || year, fromPeriodType: previous.scheduledResolutionPeriodType || nextType, fromPeriodIndex: previous.scheduledResolutionPeriodIndex, toYear: year, toPeriodType: nextType, toPeriodIndex: scheduledPeriodIndex, changedAt: new Date().toISOString() }])];
+    source[index] = { ...source[index], resolution: { ...previous, resolutionStatus: 'rescheduled', scheduledResolutionYear: year, scheduledResolutionPeriodType: nextType, scheduledResolutionPeriodIndex: scheduledPeriodIndex, rescheduleHistory: history } };
     config[originPeriodIndex] = source;
     return config;
 };
@@ -64,6 +66,7 @@ export const derivePendingKpiActivities = (activityConfig: DashboardItem['activi
                     periodIndex,
                     periodLabel: commitment ? `ORIGEN ${origin} → COMPROMISO ${commitment}` : origin,
                     commitmentLabel: commitment,
+                    rescheduleHistory: activity.resolution?.rescheduleHistory,
                     status: scheduled === undefined
                         ? (periodIndex < currentIndex ? 'ATRASADA' as const : Number(activity.completedCount) > 0 ? 'ATENCIÓN' as const : 'PENDIENTE' as const)
                         : scheduled < currentIndex ? 'ATRASADA' as const : scheduled === currentIndex ? 'COMPROMISO ACTUAL' as const : 'REPROGRAMADA' as const

@@ -49,6 +49,18 @@ describe('operational reschedule S13 -> S36', () => {
     expect(screen.getByRole('button', { name: 'GESTIONAR' })).toBeInTheDocument();
   });
 
+  test('reprogramaciones sucesivas conservan historial y una sola actividad', () => {
+    let config = applyOperationalReschedule(item().activityConfig, 12, 'activity-s13', 35, true, 2026);
+    config = applyOperationalReschedule(config, 12, 'activity-s13', 39, true, 2026);
+    config = applyOperationalReschedule(config, 12, 'activity-s13', 42, true, 2026);
+    const activity = config[12][0];
+    expect(config[12]).toHaveLength(1);
+    expect(activity.resolution?.rescheduleHistory).toHaveLength(3);
+    expect(activity.resolution?.scheduledResolutionPeriodIndex).toBe(42);
+    expect(deriveRescheduledKpiCommitments(config, 35, true, 2026)).toHaveLength(0);
+    expect(deriveRescheduledKpiCommitments(config, 42, true, 2026)).toHaveLength(1);
+  });
+
   test('CurrentPeriodFocus real path renders the S36 destination commitment', () => {
     jest.useFakeTimers().setSystemTime(new Date('2026-09-02T12:00:00'));
     const source = item();

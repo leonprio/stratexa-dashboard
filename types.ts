@@ -106,6 +106,15 @@ export interface DashboardItem {
         scheduledResolutionYear?: number;
         scheduledResolutionPeriodType?: 'monthly' | 'weekly';
         scheduledResolutionPeriodIndex?: number;
+        rescheduleHistory?: {
+          fromYear: number;
+          fromPeriodType: 'monthly' | 'weekly';
+          fromPeriodIndex: number;
+          toYear: number;
+          toPeriodType: 'monthly' | 'weekly';
+          toPeriodIndex: number;
+          changedAt: string;
+        }[];
       };
     }[];
   };
