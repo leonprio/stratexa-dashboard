@@ -222,6 +222,45 @@ export const DataEditor: React.FC<DataEditorProps> = React.memo(({ item, allDash
   const [activeActivityPeriod, setActiveActivityPeriod] = useState<number | null>(null);
   const [managedCommitment, setManagedCommitment] = useState<RescheduledKpiCommitment | null>(null);
 
+  const renderCommitmentManager = (commitment: RescheduledKpiCommitment) => {
+    if (managedCommitment?.id !== commitment.id) return null;
+
+    return <KpiActivityManager
+      activity={commitment}
+      isWeekly={isWeekly}
+      currentPeriodIndex={commitment.scheduledPeriodIndex}
+      maxPeriodIndex={isWeekly ? 52 : 11}
+      onCancel={() => setManagedCommitment(null)}
+      onReschedule={async target => {
+        const config = applyOperationalReschedule(activityConfig, commitment.periodIndex, commitment.sourceActivityId, target, isWeekly, year);
+        await onSave({ activityConfig: config });
+        setActivityConfig(config);
+      }}
+      onComplete={async () => {
+        const config = { ...activityConfig };
+        const source = [...(config[commitment.periodIndex] || [])];
+        const index = source.findIndex(a => a.id === commitment.sourceActivityId);
+        if (index >= 0) {
+          source[index] = { ...source[index], resolution: { ...source[index].resolution, resolutionStatus: 'completed_later', resolvedAt: new Date().toISOString(), resolvedYear: year, resolvedPeriodType: isWeekly ? 'weekly' : 'monthly', resolvedPeriodIndex: commitment.scheduledPeriodIndex } };
+          config[commitment.periodIndex] = source;
+          await onSave({ activityConfig: config });
+          setActivityConfig(config);
+        }
+      }}
+      onDiscard={async note => {
+        const config = { ...activityConfig };
+        const source = [...(config[commitment.periodIndex] || [])];
+        const index = source.findIndex(a => a.id === commitment.sourceActivityId);
+        if (index >= 0) {
+          source[index] = { ...source[index], resolution: { ...source[index].resolution, resolutionStatus: 'discarded', resolutionNote: note, resolvedAt: new Date().toISOString(), resolvedYear: year, resolvedPeriodType: isWeekly ? 'weekly' : 'monthly', resolvedPeriodIndex: commitment.scheduledPeriodIndex } };
+          config[commitment.periodIndex] = source;
+          await onSave({ activityConfig: config });
+          setActivityConfig(config);
+        }
+      }}
+    />;
+  };
+
   const calculateFromActivities = useCallback((periodIdx: number, newActivities?: any[]) => {
     if (isCalculated) return;
     const raw = newActivities || activityConfig[periodIdx];
@@ -376,7 +415,7 @@ export const DataEditor: React.FC<DataEditorProps> = React.memo(({ item, allDash
                   </div>
                 </div>
 
-                <RescheduledCommitmentsSection commitments={rescheduledCommitments} onManage={setManagedCommitment} />
+                <RescheduledCommitmentsSection commitments={rescheduledCommitments} onManage={setManagedCommitment} renderManager={renderCommitmentManager} />
 
                 {isActivityMode && (
                   <button
@@ -476,7 +515,7 @@ export const DataEditor: React.FC<DataEditorProps> = React.memo(({ item, allDash
                   </div>
                 </div>
 
-                <RescheduledCommitmentsSection commitments={rescheduledCommitments} onManage={setManagedCommitment} />
+                <RescheduledCommitmentsSection commitments={rescheduledCommitments} onManage={setManagedCommitment} renderManager={renderCommitmentManager} />
 
                 {isActivityMode && (
                   <button
@@ -503,8 +542,6 @@ export const DataEditor: React.FC<DataEditorProps> = React.memo(({ item, allDash
           })}
         </div>
       )}
-
-      {managedCommitment && <KpiActivityManager activity={managedCommitment} isWeekly={isWeekly} currentPeriodIndex={managedCommitment.scheduledPeriodIndex} maxPeriodIndex={isWeekly ? 52 : 11} onCancel={() => setManagedCommitment(null)} onReschedule={async target => { const config = applyOperationalReschedule(activityConfig, managedCommitment.periodIndex, managedCommitment.sourceActivityId, target, isWeekly, year); await onSave({ activityConfig: config }); setActivityConfig(config); }} onComplete={async () => { const config = { ...activityConfig }; const source = [...(config[managedCommitment.periodIndex] || [])]; const index = source.findIndex(a => a.id === managedCommitment.sourceActivityId); if (index >= 0) { source[index] = { ...source[index], resolution: { ...source[index].resolution, resolutionStatus: 'completed_later', resolvedAt: new Date().toISOString(), resolvedYear: year, resolvedPeriodType: isWeekly ? 'weekly' : 'monthly', resolvedPeriodIndex: managedCommitment.scheduledPeriodIndex } }; config[managedCommitment.periodIndex] = source; await onSave({ activityConfig: config }); setActivityConfig(config); } }} onDiscard={async note => { const config = { ...activityConfig }; const source = [...(config[managedCommitment.periodIndex] || [])]; const index = source.findIndex(a => a.id === managedCommitment.sourceActivityId); if (index >= 0) { source[index] = { ...source[index], resolution: { ...source[index].resolution, resolutionStatus: 'discarded', resolutionNote: note, resolvedAt: new Date().toISOString(), resolvedYear: year, resolvedPeriodType: isWeekly ? 'weekly' : 'monthly', resolvedPeriodIndex: managedCommitment.scheduledPeriodIndex } }; config[managedCommitment.periodIndex] = source; await onSave({ activityConfig: config }); setActivityConfig(config); } }} />}
 
       {activeActivityPeriod !== null && (
         <ActivityManager
