@@ -325,15 +325,15 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(({
           )}
 
           <div className="flex flex-wrap items-center justify-center gap-2">
-            <button
+            {false && <button
               onClick={handleAnalyze}
               className="group flex items-center gap-2 bg-gradient-to-br from-indigo-500 via-purple-600 to-fuchsia-600 hover:from-indigo-400 hover:to-fuchsia-500 text-white px-3 py-2 rounded-xl text-[8px] font-black uppercase tracking-widest transition-all border border-white/20 active:scale-95 whitespace-nowrap"
             >
               <span className="text-sm">✨</span>
               <span>Audit IA</span>
-            </button>
+            </button>}
 
-            {(isGlobalAdmin || currentUser.canExportPPT) && (
+            {false && (isGlobalAdmin || currentUser.canExportPPT) && (
               <button
                 onClick={() => setIsExportingPPTX(true)}
                 className="flex items-center gap-2 bg-gradient-to-r from-orange-600 to-orange-500 hover:from-orange-500 hover:to-orange-400 text-white px-3 py-2 rounded-xl text-[8px] font-black uppercase tracking-widest transition-all shadow-lg active:scale-95"

@@ -301,7 +301,7 @@ export const ReportCenter: React.FC<ReportCenterProps> = React.memo(({ items, th
 
                 <div className="flex items-center gap-3">
                     {/* 🛡️ PERMISO DE EXPORTACIÓN PPT (v5.0.0) */}
-                    {(user.globalRole === 'Admin' || user.canExportPPT) && (
+                    {false && (user.globalRole === 'Admin' || user.canExportPPT) && (
                         <button
                             onClick={exportToPPTX}
                             className="px-6 py-3 rounded-2xl bg-orange-600 hover:bg-orange-500 text-white transition-all shadow-xl shadow-orange-950/20 flex items-center gap-3 active:scale-95 group"
