@@ -7,7 +7,8 @@ export { calculateActionPlanProgress, deriveActionPlanStatus, getActivityTraffic
 
 const statusLabels: Record<ActionPlanStatus, string> = { planned: 'Planeado', in_progress: 'En ejecución', completed: 'Completado', cancelled: 'Cancelado' };
 type Enriched = ActionPlan & { indicator: string; area: string };
-interface Props { dashboards: Dashboard[]; currentDashboard: Dashboard; canEdit?: boolean; }
+export interface ActionPlanControlSummary { active: number; overdue: number; }
+interface Props { dashboards: Dashboard[]; currentDashboard: Dashboard; canEdit?: boolean; onSummaryChange?: (summary: ActionPlanControlSummary) => void; }
 
 export type DueCategory = 'vencido' | 'próximo' | 'normal';
 export const classifyDue = (plan: Pick<ActionPlan, 'targetDate' | 'status'>, now = new Date()): DueCategory => {
@@ -18,7 +19,7 @@ export const classifyDue = (plan: Pick<ActionPlan, 'targetDate' | 'status'>, now
 export const dedupePlans = (items: Enriched[]) => Array.from(new Map(items.map(item => [item.id, item])).values());
 export const filterPlans = (items: Enriched[], filter: string, value: string) => items.filter(p => filter === 'Todos' || value === 'Todos' || (filter === 'Área' ? p.area === value : filter === 'Responsable' ? (p.responsible || 'Sin responsable') === value : statusLabels[p.status] === value));
 
-export const TransversalActionPlansControl: React.FC<Props> = ({ dashboards, currentDashboard, canEdit = true }) => {
+export const TransversalActionPlansControl: React.FC<Props> = ({ dashboards, currentDashboard, canEdit = true, onSummaryChange }) => {
   const [plans, setPlans] = useState<Enriched[]>([]); const [filter, setFilter] = useState('Todos'); const [value, setValue] = useState('Todos'); const [selected, setSelected] = useState<Enriched | null>(null); const [message, setMessage] = useState('Cargando planes…');
   const sources = useMemo(() => (dashboards.length ? dashboards : [currentDashboard]).filter(d => !d.isAggregate), [dashboards, currentDashboard]);
   const load = async () => { try { const rows = (await Promise.all(sources.flatMap(d => (d.items || []).map(async item => ({ d, item, plans: await firebaseService.getActionPlansForIndicator(item.id, d.clientId || currentDashboard.clientId) }))))).flatMap(({ d, item, plans: ps }) => { const identity = resolveOperationalIdentity(d, item); return ps.map(p => ({ ...p, indicator: identity.indicator, area: identity.area })); }); const unique = dedupePlans(rows); setPlans(unique); setMessage(unique.length ? '' : 'No hay planes registrados.'); } catch { setMessage('No se pudieron cargar los planes.'); } };
@@ -26,6 +27,8 @@ export const TransversalActionPlansControl: React.FC<Props> = ({ dashboards, cur
   const due = (p: Enriched) => classifyDue(p);
   const filtered = filterPlans(plans, filter, value);
   const active = filtered.filter(p => p.status === 'planned' || p.status === 'in_progress'); const completed = filtered.filter(p => p.status === 'completed').slice(0, 8); const attention = active.filter(p => due(p) !== 'normal');
+  const allActive = plans.filter(p => p.status === 'planned' || p.status === 'in_progress');
+  useEffect(() => { onSummaryChange?.({ active: allActive.length, overdue: allActive.filter(p => due(p) === 'vencido').length }); }, [plans, onSummaryChange]);
   const options = filter === 'Área' ? [...new Set(plans.map(p => p.area))] : filter === 'Responsable' ? [...new Set(plans.map(p => p.responsible || 'Sin responsable'))] : Object.values(statusLabels);
   const save = async () => { if (!selected) return; try { await firebaseService.updateActionPlan(selected.id, selected); setSelected(null); await load(); } catch { setMessage('No se pudo guardar el plan.'); } };
   const card = (p: Enriched) => { const progress = calculateActionPlanProgress(p.activities); const completed = p.activities?.filter(a => a.progress === 100).length || 0; return <button key={p.id} onClick={() => setSelected(p)} className="w-full rounded-xl border border-white/5 bg-slate-900/60 p-4 text-left hover:border-cyan-500/40"><div className="flex justify-between gap-3"><span className="font-bold text-slate-100">{p.title}</span><span className={`text-[10px] font-black uppercase ${due(p) === 'vencido' ? 'text-rose-400' : due(p) === 'próximo' ? 'text-amber-400' : 'text-cyan-400'}`}>{due(p) !== 'normal' ? due(p) : statusLabels[p.status]}</span></div><p className="mt-1 text-xs text-slate-400">{p.indicator} · {p.area}{p.responsible ? ` · ${p.responsible}` : ''}</p><p className="mt-1 text-[10px] text-slate-500">{completed} de {p.activities?.length || 0} actividades · {progress}%{p.targetDate ? ` · Meta: ${p.targetDate}` : ''} · Origen: {p.originPeriodType === 'weekly' ? `Semana ${(p.originPeriodIndex || 0) + 1}` : `${['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'][p.originPeriodIndex || 0]}`} {p.originYear}</p></button>; };

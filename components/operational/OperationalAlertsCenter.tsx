@@ -6,12 +6,14 @@ interface OperationalAlertsCenterProps {
   dashboards: Dashboard[];
   globalThresholds: ComplianceThresholds;
   year: number;
+  compact?: boolean;
 }
 
 export const OperationalAlertsCenter: React.FC<OperationalAlertsCenterProps> = ({
   dashboards,
   globalThresholds,
-  year
+  year,
+  compact = false
 }) => {
   const [selectedSeverity, setSelectedSeverity] = useState<string>('TODAS');
   const [selectedDirection, setSelectedDirection] = useState<string>('TODAS');
@@ -143,7 +145,7 @@ export const OperationalAlertsCenter: React.FC<OperationalAlertsCenterProps> = (
     <div className="space-y-8 animate-in fade-in duration-500">
       
       {/* SECCIÓN 1: HEADER EJECUTIVO DEL ENGINE */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+      {!compact && <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         
         {/* CARD 1: CONFIABILIDAD OPERATIVA PROMEDIO */}
         <div className="glass-card rounded-2xl p-5 border border-white/5 bg-slate-900/40 flex flex-col justify-between min-h-[120px] hover:scale-[1.02] transition-transform">
@@ -224,7 +226,7 @@ export const OperationalAlertsCenter: React.FC<OperationalAlertsCenterProps> = (
           </span>
         </div>
 
-      </div>
+      </div>}
 
       {/* SECCIÓN 2: ALERTS CENTER CON FILTROS E INTERFAZ PREMIUM */}
       <div className="glass-card rounded-[2rem] p-6 border border-white/5 shadow-2xl space-y-6">
@@ -232,7 +234,7 @@ export const OperationalAlertsCenter: React.FC<OperationalAlertsCenterProps> = (
         {/* FILTROS INTERACTIVOS TÁCTILES */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-white/5 pb-5">
           <div className="flex flex-col">
-            <h3 className="text-base font-black text-white uppercase tracking-wider">Centro de Alertas Activas</h3>
+            <h3 className="text-base font-black text-white uppercase tracking-wider">{compact ? 'Requiere atención' : 'Centro de Alertas Activas'}</h3>
             <span className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-1">
               Monitoreo ejecutivo de rezagos y deterioro en tiempo real
             </span>
