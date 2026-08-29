@@ -4,6 +4,7 @@ import { getYearWeekMapping, getWeekNumber } from "../utils/weeklyUtils";
 import { ActivityManager } from "./ActivityManager";
 import { formatNumberWithCommas, parseFormattedNumber, formatIndicatorValue } from "../utils/formatters";
 import { resolveItemValues } from "../utils/compliance";
+import { deriveRescheduledKpiCommitments, RescheduledCommitmentsSection } from "./CurrentPeriodFocus";
 
 interface DataEditorProps {
   item: DashboardItem;
@@ -317,6 +318,7 @@ export const DataEditor: React.FC<DataEditorProps> = React.memo(({ item, allDash
             const isToday = currentPeriod.isCurrentYear && currentPeriod.monthIdx === idx;
             const rawActs = activityConfig[idx];
             const activityCount = rawActs ? (Array.isArray(rawActs) ? rawActs.length : Object.values(rawActs).length) : 0;
+            const rescheduledCommitments = deriveRescheduledKpiCommitments(activityConfig, idx, false, year);
 
             return (
               <div
@@ -371,6 +373,8 @@ export const DataEditor: React.FC<DataEditorProps> = React.memo(({ item, allDash
                   </div>
                 </div>
 
+                <RescheduledCommitmentsSection commitments={rescheduledCommitments} onManage={() => undefined} />
+
                 {isActivityMode && (
                   <button
                     onClick={() => setActiveActivityPeriod(idx)}
@@ -408,6 +412,7 @@ export const DataEditor: React.FC<DataEditorProps> = React.memo(({ item, allDash
             const isToday = currentPeriod.isCurrentYear && currentPeriod.weekIdx === i;
             const rawActs = activityConfig[i];
             const activityCount = rawActs ? (Array.isArray(rawActs) ? rawActs.length : Object.values(rawActs).length) : 0;
+            const rescheduledCommitments = deriveRescheduledKpiCommitments(activityConfig, i, true, year);
 
             return (
               <div
@@ -467,6 +472,8 @@ export const DataEditor: React.FC<DataEditorProps> = React.memo(({ item, allDash
                     />
                   </div>
                 </div>
+
+                <RescheduledCommitmentsSection commitments={rescheduledCommitments} onManage={() => undefined} />
 
                 {isActivityMode && (
                   <button
