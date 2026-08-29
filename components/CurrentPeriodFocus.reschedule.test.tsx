@@ -39,6 +39,7 @@ describe('operational reschedule S13 -> S36', () => {
     const config = applyOperationalReschedule(item().activityConfig, 12, 'activity-s13', 35, true, 2026);
     render(<RescheduledCommitmentsSection commitments={deriveRescheduledKpiCommitments(config, 35, true, 2026)} onManage={jest.fn()} />);
     expect(screen.getByText(/COMPROMISOS REPROGRAMADOS/)).toBeInTheDocument();
+    expect(screen.getByText('NO SUMA A META')).toBeInTheDocument();
     expect(screen.getByText('Anai CE SM Texmelucan')).toBeInTheDocument();
     expect(screen.getByText(/S13.*S36/)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'GESTIONAR' })).toBeInTheDocument();
