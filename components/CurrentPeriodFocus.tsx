@@ -514,6 +514,8 @@ export const CurrentPeriodFocus: React.FC<CurrentPeriodFocusProps> = ({
                                 </div>
                             </div>
 
+                            {activityTab === 'current' && <RescheduledCommitmentsSection commitments={rescheduledCommitments} onManage={c => { const found = pendingKpiActivities.find(p => p.id === c.id); if (found) { setManagedPending(found); setActivityTab('pending'); setPendingAction('idle'); } }} />}
+
                             {activityMode && (<div className="space-y-2"><div className="flex gap-1 rounded-xl border border-indigo-500/20 bg-slate-950/50 p-1"><button onClick={() => setActivityTab('current')} className={`flex-1 rounded-lg px-3 py-2 text-[9px] font-black uppercase tracking-widest ${activityTab === 'current' ? 'bg-indigo-600/40 text-indigo-200' : 'text-slate-500'}`}>Período actual</button><button onClick={() => setActivityTab('pending')} className={`flex-1 rounded-lg px-3 py-2 text-[9px] font-black uppercase tracking-widest ${activityTab === 'pending' ? 'bg-amber-500/30 text-amber-200' : 'text-slate-500'}`}>Pendientes {pendingKpiActivities.length > 0 ? `(${pendingKpiActivities.length})` : ''}</button></div>{activityTab === 'current' ? <button
                                     onClick={() => setIsActivityManagerOpen(true)}
                                     className="w-full py-3 bg-gradient-to-r from-indigo-600/20 to-purple-600/20 border border-indigo-500/40 rounded-xl flex items-center justify-between px-6 hover:from-indigo-600/30 hover:to-purple-600/30 transition-all border-dashed"
@@ -617,7 +619,6 @@ export const CurrentPeriodFocus: React.FC<CurrentPeriodFocusProps> = ({
                 </>
             )}
 
-            <RescheduledCommitmentsSection commitments={rescheduledCommitments} onManage={c => { const found = pendingKpiActivities.find(p => p.id === c.id); if (found) { setManagedPending(found); setActivityTab('pending'); setPendingAction('idle'); } }} />
             {isActivityManagerOpen && (
                 <ActivityManager
                     title={indicator}

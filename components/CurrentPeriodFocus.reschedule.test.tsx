@@ -1,7 +1,11 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
 import { applyOperationalReschedule, derivePendingKpiActivities, deriveRescheduledKpiCommitments, RescheduledCommitmentsSection } from './CurrentPeriodFocus';
+import { CurrentPeriodFocus } from './CurrentPeriodFocus';
 import { DashboardItem } from '../types';
+
+jest.mock('./ActionPlan', () => ({ ActionPlan: () => null }));
+jest.mock('./RelatedActionPlans', () => ({ RelatedActionPlans: () => null }));
 
 const item = (): DashboardItem => ({
   id: 1, indicator: 'KPI semanal', weight: 100, frequency: 'weekly', unit: 'act', type: 'accumulative', goalType: 'maximize',
@@ -43,5 +47,18 @@ describe('operational reschedule S13 -> S36', () => {
     expect(screen.getByText('Anai CE SM Texmelucan')).toBeInTheDocument();
     expect(screen.getByText(/S13.*S36/)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'GESTIONAR' })).toBeInTheDocument();
+  });
+
+  test('CurrentPeriodFocus real path renders the S36 destination commitment', () => {
+    jest.useFakeTimers().setSystemTime(new Date('2026-09-02T12:00:00'));
+    const source = item();
+    const configured = { ...source, isActivityMode: true, activityConfig: applyOperationalReschedule(source.activityConfig, 12, 'activity-s13', 35, true, 2026) };
+    render(<CurrentPeriodFocus item={configured} globalThresholds={{ onTrack: 90, atRisk: 80 }} year={2026} onUpdateItem={jest.fn()} canEdit onClose={jest.fn()} />);
+    expect(screen.getByText('Semana 36')).toBeInTheDocument();
+    expect(screen.getByText(/COMPROMISOS REPROGRAMADOS \(1\)/)).toBeInTheDocument();
+    expect(screen.getByText('Anai CE SM Texmelucan')).toBeInTheDocument();
+    expect(screen.getByText(/Origen: S13 · 2026 → Compromiso: S36 · 2026/)).toBeInTheDocument();
+    expect(screen.getByText('NO SUMA A META')).toBeInTheDocument();
+    jest.useRealTimers();
   });
 });
