@@ -4,7 +4,9 @@ import { getYearWeekMapping, getWeekNumber } from "../utils/weeklyUtils";
 import { ActivityManager } from "./ActivityManager";
 import { formatNumberWithCommas, parseFormattedNumber, formatIndicatorValue } from "../utils/formatters";
 import { resolveItemValues } from "../utils/compliance";
-import { deriveRescheduledKpiCommitments, RescheduledCommitmentsSection } from "./CurrentPeriodFocus";
+import { deriveRescheduledKpiCommitments, RescheduledCommitmentsSection, applyOperationalReschedule } from "./CurrentPeriodFocus";
+import type { RescheduledKpiCommitment } from "./CurrentPeriodFocus";
+import { KpiActivityManager } from "./KpiActivityManager";
 
 interface DataEditorProps {
   item: DashboardItem;
@@ -218,6 +220,7 @@ export const DataEditor: React.FC<DataEditorProps> = React.memo(({ item, allDash
   );
   const [isActivityMode, setIsActivityMode] = useState<boolean>(item.isActivityMode || false);
   const [activeActivityPeriod, setActiveActivityPeriod] = useState<number | null>(null);
+  const [managedCommitment, setManagedCommitment] = useState<RescheduledKpiCommitment | null>(null);
 
   const calculateFromActivities = useCallback((periodIdx: number, newActivities?: any[]) => {
     if (isCalculated) return;
@@ -373,7 +376,7 @@ export const DataEditor: React.FC<DataEditorProps> = React.memo(({ item, allDash
                   </div>
                 </div>
 
-                <RescheduledCommitmentsSection commitments={rescheduledCommitments} onManage={() => undefined} />
+                <RescheduledCommitmentsSection commitments={rescheduledCommitments} onManage={setManagedCommitment} />
 
                 {isActivityMode && (
                   <button
@@ -473,7 +476,7 @@ export const DataEditor: React.FC<DataEditorProps> = React.memo(({ item, allDash
                   </div>
                 </div>
 
-                <RescheduledCommitmentsSection commitments={rescheduledCommitments} onManage={() => undefined} />
+                <RescheduledCommitmentsSection commitments={rescheduledCommitments} onManage={setManagedCommitment} />
 
                 {isActivityMode && (
                   <button
@@ -500,6 +503,8 @@ export const DataEditor: React.FC<DataEditorProps> = React.memo(({ item, allDash
           })}
         </div>
       )}
+
+      {managedCommitment && <KpiActivityManager activity={managedCommitment} isWeekly={isWeekly} currentPeriodIndex={managedCommitment.scheduledPeriodIndex} maxPeriodIndex={isWeekly ? 52 : 11} onCancel={() => setManagedCommitment(null)} onReschedule={async target => { const config = applyOperationalReschedule(activityConfig, managedCommitment.periodIndex, managedCommitment.sourceActivityId, target, isWeekly, year); await onSave({ activityConfig: config }); setActivityConfig(config); }} onComplete={async () => { const config = { ...activityConfig }; const source = [...(config[managedCommitment.periodIndex] || [])]; const index = source.findIndex(a => a.id === managedCommitment.sourceActivityId); if (index >= 0) { source[index] = { ...source[index], resolution: { ...source[index].resolution, resolutionStatus: 'completed_later', resolvedAt: new Date().toISOString(), resolvedYear: year, resolvedPeriodType: isWeekly ? 'weekly' : 'monthly', resolvedPeriodIndex: managedCommitment.scheduledPeriodIndex } }; config[managedCommitment.periodIndex] = source; await onSave({ activityConfig: config }); setActivityConfig(config); } }} onDiscard={async note => { const config = { ...activityConfig }; const source = [...(config[managedCommitment.periodIndex] || [])]; const index = source.findIndex(a => a.id === managedCommitment.sourceActivityId); if (index >= 0) { source[index] = { ...source[index], resolution: { ...source[index].resolution, resolutionStatus: 'discarded', resolutionNote: note, resolvedAt: new Date().toISOString(), resolvedYear: year, resolvedPeriodType: isWeekly ? 'weekly' : 'monthly', resolvedPeriodIndex: managedCommitment.scheduledPeriodIndex } }; config[managedCommitment.periodIndex] = source; await onSave({ activityConfig: config }); setActivityConfig(config); } }} />}
 
       {activeActivityPeriod !== null && (
         <ActivityManager
