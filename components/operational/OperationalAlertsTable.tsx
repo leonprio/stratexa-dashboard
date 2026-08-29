@@ -160,10 +160,10 @@ export const OperationalAlertsTable: React.FC<OperationalAlertsTableProps> = ({ 
                 className="hover:bg-white/5 border-b border-white/5 transition-colors"
               >
                 <td className="p-3 text-[10px] font-black text-white uppercase tracking-tight truncate max-w-[140px]">
-                  {item.group || 'GENERAL'}
+                  {item.group || 'SIN DIRECCIÓN REGISTRADA'}
                 </td>
                 <td className="p-3 text-[10px] font-black text-slate-400 uppercase tracking-tight truncate max-w-[120px]">
-                  {item.area || 'OPERACIONES'}
+                  {item.area || 'SIN ÁREA REGISTRADA'}
                 </td>
                 <td className="p-3 text-[11px] font-black text-white uppercase tracking-tight max-w-[280px]">
                   <div className="flex flex-col">

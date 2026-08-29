@@ -110,7 +110,7 @@ export const OperationalAlertsCenter: React.FC<OperationalAlertsCenterProps> = (
     const captured = Math.round(alert.captureRate * 0.12);
 
     return (
-      <div className="flex gap-1 items-center justify-center">
+      <div className="flex gap-1.5 items-center justify-center">
         {months.map((m, idx) => {
           let blockBg = 'bg-slate-800/40 border border-white/5';
           let title = `Periodo ${m} - Fuera de rango`;
@@ -128,7 +128,7 @@ export const OperationalAlertsCenter: React.FC<OperationalAlertsCenterProps> = (
           return (
             <div
               key={idx}
-              className={`w-3.5 h-4.5 rounded-[3px] text-[7px] font-black flex items-center justify-center text-white/90 cursor-help transition-all ${blockBg}`}
+              className={`w-4 h-5 rounded-[3px] text-[9px] font-black flex items-center justify-center text-white/90 cursor-help transition-all ${blockBg}`}
               title={title}
             >
               {m}
@@ -156,7 +156,7 @@ export const OperationalAlertsCenter: React.FC<OperationalAlertsCenterProps> = (
             </span>
           </div>
           <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest mt-2">
-            Score Nacional Consolidado
+            Score consolidado
           </span>
         </div>
 
@@ -309,7 +309,7 @@ export const OperationalAlertsCenter: React.FC<OperationalAlertsCenterProps> = (
                 <th className="p-3 text-center text-[9px] font-black text-slate-500 uppercase tracking-widest border-b border-white/5">Tendencia</th>
                 <th className="p-3 text-center text-[9px] font-black text-slate-500 uppercase tracking-widest border-b border-white/5">Consistencia</th>
                 <th className="p-3 text-center text-[9px] font-black text-slate-500 uppercase tracking-widest border-b border-white/5">Confiabilidad</th>
-                <th className="p-3 text-center text-[9px] font-black text-slate-500 uppercase tracking-widest border-b border-white/5">Trazabilidad Operativa (Futura)</th>
+                <th className="p-3 text-center text-[9px] font-black text-slate-500 uppercase tracking-widest border-b border-white/5">Trazabilidad operativa</th>
                 <th className="p-3 text-center text-[9px] font-black text-slate-500 uppercase tracking-widest border-b border-white/5 rounded-tr-2xl">Aging</th>
               </tr>
             </thead>
@@ -357,7 +357,7 @@ export const OperationalAlertsCenter: React.FC<OperationalAlertsCenterProps> = (
                           {alert.reliabilityScore}%
                         </span>
                         <span className="text-[6px] text-slate-500 font-black uppercase tracking-widest">
-                          Reliability
+                          Confiabilidad
                         </span>
                       </div>
                     </td>
@@ -365,10 +365,10 @@ export const OperationalAlertsCenter: React.FC<OperationalAlertsCenterProps> = (
                     {/* TRAZABILIDAD (FUTURA AUTOMATIZACIÓN) */}
                     <td className="p-3 text-center text-[9px] font-bold text-slate-400 max-w-[180px] truncate">
                       <div className="flex flex-col items-start leading-tight">
-                        <span className="text-[7px] text-slate-500 font-black uppercase">Último cambio:</span>
+                        <span className="text-[8px] text-slate-400 font-black uppercase">Última actualización:</span>
                         <span className="text-white truncate max-w-full">{alert.traceability.lastOperationalChange}</span>
-                        <span className="text-[6px] text-slate-500 font-black uppercase mt-0.5">
-                          Por {alert.traceability.lastUpdatedBy}
+                        <span className="text-[8px] text-slate-400 font-black uppercase mt-0.5">
+                          Actualizado por {alert.traceability.lastUpdatedBy}
                         </span>
                       </div>
                     </td>

@@ -1,5 +1,5 @@
 import { Dashboard, DashboardItem, ComplianceThresholds } from '../types';
-import { enrichDashboardsWithOperationalMetrics } from './operationalControl';
+import { enrichDashboardsWithOperationalMetrics, resolveOperationalIdentity } from './operationalControl';
 
 export type AlertSeverity = 'CRÍTICO' | 'ALTO' | 'MEDIO' | 'BAJO' | 'NINGUNO';
 export type OperationalTrend = 'MEJORANDO' | 'ESTABLE' | 'DETERIORÁNDOSE' | 'CRÍTICO';
@@ -144,10 +144,8 @@ export const buildOperationalAlerts = (
     // Evitar duplicar agregando tableros consolidados en el listado unitario
     if (d.isAggregate || String(d.id).includes('agg-') || d.id === -1) return;
 
-    const dirName = (d.group || 'GENERAL').trim().toUpperCase();
-    const areaName = (d.area || 'OPERACIONES').trim().toUpperCase();
-
     (d.items || []).forEach(item => {
+      const identity = resolveOperationalIdentity(d, item);
       const m = item.operationalMetrics;
       if (!m) return;
 
@@ -184,8 +182,8 @@ export const buildOperationalAlerts = (
       alerts.push({
         id: item.id,
         indicator: item.indicator,
-        direction: dirName,
-        area: areaName,
+        direction: identity.direction,
+        area: identity.area,
         severity,
         trend,
         agingLabel,

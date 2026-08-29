@@ -3,11 +3,18 @@ import {
   calculateOperationalHealth,
   enrichDashboardsWithOperationalMetrics,
   buildOperationalRanking,
-  buildOperationalMatrix
+  buildOperationalMatrix,
+  resolveOperationalIdentity
 } from './operationalControl';
 
 describe('Operational Control Center Analytics Engine', () => {
   const globalThresholds: ComplianceThresholds = { onTrack: 95, atRisk: 85 };
+
+  it('uses Dashboard as the canonical source for direction, area and KPI labels', () => {
+    const identity = resolveOperationalIdentity({ id: 1, title: 'Tablero', subtitle: '', items: [], thresholds: globalThresholds, group: 'Dirección Norte', area: 'Ventas', clientId: 'CLIENTE' }, { ...mockItem1 });
+    expect(identity).toEqual({ client: 'CLIENTE', direction: 'DIRECCIÓN NORTE', area: 'VENTAS', indicator: 'INDICADOR TEST 1' });
+    expect(resolveOperationalIdentity({ id: 2, title: 'Tablero', subtitle: '', items: [], thresholds: globalThresholds }, { ...mockItem1 }).area).toBe('SIN ÁREA REGISTRADA');
+  });
 
   const mockItem1: DashboardItem = {
     id: 'kpi-1',

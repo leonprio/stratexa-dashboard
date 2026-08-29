@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { ActionPlan, ActionPlanStatus, Dashboard } from '../../types';
 import { firebaseService } from '../../services/firebaseService';
 import { calculateActionPlanProgress } from '../../utils/actionPlanLogic';
+import { resolveOperationalIdentity } from '../../utils/operationalControl';
 export { calculateActionPlanProgress, deriveActionPlanStatus, getActivityTrafficLight } from '../../utils/actionPlanLogic';
 
 const statusLabels: Record<ActionPlanStatus, string> = { planned: 'Planeado', in_progress: 'En ejecución', completed: 'Completado', cancelled: 'Cancelado' };
@@ -20,7 +21,7 @@ export const filterPlans = (items: Enriched[], filter: string, value: string) =>
 export const TransversalActionPlansControl: React.FC<Props> = ({ dashboards, currentDashboard, canEdit = true }) => {
   const [plans, setPlans] = useState<Enriched[]>([]); const [filter, setFilter] = useState('Todos'); const [value, setValue] = useState('Todos'); const [selected, setSelected] = useState<Enriched | null>(null); const [message, setMessage] = useState('Cargando planes…');
   const sources = useMemo(() => (dashboards.length ? dashboards : [currentDashboard]).filter(d => !d.isAggregate), [dashboards, currentDashboard]);
-  const load = async () => { try { const rows = (await Promise.all(sources.flatMap(d => (d.items || []).map(async item => ({ d, item, plans: await firebaseService.getActionPlansForIndicator(item.id, d.clientId || currentDashboard.clientId) }))))).flatMap(({ d, item, plans: ps }) => ps.map(p => ({ ...p, indicator: item.indicator, area: d.area || d.group || 'General' }))); const unique = dedupePlans(rows); setPlans(unique); setMessage(unique.length ? '' : 'No hay planes registrados.'); } catch { setMessage('No se pudieron cargar los planes.'); } };
+  const load = async () => { try { const rows = (await Promise.all(sources.flatMap(d => (d.items || []).map(async item => ({ d, item, plans: await firebaseService.getActionPlansForIndicator(item.id, d.clientId || currentDashboard.clientId) }))))).flatMap(({ d, item, plans: ps }) => { const identity = resolveOperationalIdentity(d, item); return ps.map(p => ({ ...p, indicator: identity.indicator, area: identity.area })); }); const unique = dedupePlans(rows); setPlans(unique); setMessage(unique.length ? '' : 'No hay planes registrados.'); } catch { setMessage('No se pudieron cargar los planes.'); } };
   useEffect(() => { void load(); }, [sources]);
   const due = (p: Enriched) => classifyDue(p);
   const filtered = filterPlans(plans, filter, value);
