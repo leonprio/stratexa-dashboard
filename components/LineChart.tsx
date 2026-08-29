@@ -76,19 +76,22 @@ export const LineChart: React.FC<LineChartProps> = React.memo(({ progressData, g
 
   const allValues = [...validPlotData.map(d => d.value), ...validGoalData.map(d => d.value)];
 
+  const isPercentage = _unit === '%';
   const maxValue = allValues.length > 0 ? Math.max(...allValues, 1) : 100;
   const minValue = allValues.length > 0 ? Math.min(...allValues.filter(v => v !== null)) : 0;
 
   const range = maxValue - minValue;
   const paddingFactor = range === 0 ? 0.2 : 0.15;
 
-  const yMax = maxValue + (range * paddingFactor || maxValue * 0.1);
-  const yMin = Math.max(0, minValue - (range * paddingFactor || 0));
+  const yMax = isPercentage ? Math.max(100, Math.ceil(maxValue / 10) * 10) : maxValue + (range * paddingFactor || maxValue * 0.1);
+  const yMin = isPercentage ? 0 : Math.max(0, minValue - (range * paddingFactor || 0));
 
   const formatNumber = (num: number) => formatNumberWithCommas(num, 0);
 
   // 🛡️ DYNAMIC LEFT PADDING TO PREVENT TEXT CLIPPING FOR LARGE NUMBERS
-  const yTickValues = [0, 0.5, 1].map(tick => yMin + (yMax - yMin) * tick);
+  const yTickValues = isPercentage
+    ? [0, 50, 100, ...(yMax > 100 ? [yMax] : [])]
+    : [0, 0.5, 1].map(tick => yMin + (yMax - yMin) * tick);
   const formattedYTicks = yTickValues.map(v => formatNumber(v));
   const maxLabelCharCount = Math.max(...formattedYTicks.map(str => str.length));
   const dynamicLeftPadding = Math.max(65, Math.min(110, maxLabelCharCount * 7.5 + 20));
@@ -153,7 +156,7 @@ export const LineChart: React.FC<LineChartProps> = React.memo(({ progressData, g
           </div>
           <div className="flex items-center gap-1.5">
             <span className="w-3.5 h-0.5 border-t-2 border-dashed border-cyan-400 inline-block" />
-            <span className="text-cyan-400">Meta (Objetivo)</span>
+            <span className="text-cyan-400">{isPercentage ? 'META 100%' : 'Meta (Objetivo)'}</span>
           </div>
         </div>
         {_unit && <span className="text-slate-400 font-mono text-[10px]">Unidad: {_unit}</span>}

@@ -74,20 +74,20 @@ export const OperationalControlCenter: React.FC<OperationalControlCenterProps> =
     const totalDirections = heatmap.directions.length;
     const totalAreas = heatmap.areas.length;
 
-    // 1. Direcciones al día (captureRate = 100%)
+    // 1. Áreas al día (captureRate = 100%)
     const directionsOnTrack = rankings.directions.top.filter(d => d.captureRate >= 100).length;
 
-    // 2. Áreas atrasadas (áreas con al menos 1 KPI vencido o captureRate < 95)
+    // 2. Áreas con atraso (áreas con al menos 1 KPI vencido o captureRate < 95)
     const areasDelayed = rankings.areas.delayed.filter(a => a.missingPeriods > 0 || a.captureRate < 95).length;
 
-    // 3. KPIs vencidos sin captura (suma total de periodos faltantes)
+    // 3. KPIs pendientes de actualizar (suma total de periodos faltantes)
     const totalMissingPeriods = allKPIs.reduce((sum, item) => sum + (item.operationalMetrics?.missingPeriods || 0), 0);
 
     // 4. Captura nacional % (promedio de todos los kpis)
     const totalCaptured = allKPIs.reduce((sum, item) => sum + (item.operationalMetrics?.captureRate || 100), 0);
     const nationalCaptureRate = allKPIs.length > 0 ? Math.round(totalCaptured / allKPIs.length) : 100;
 
-    // 5. Riesgo operativo global (semáforo en base a salud operativa)
+    // 5. Nivel de atención (semáforo en base a salud operativa)
     let riskLevel: 'Bajo' | 'Medio' | 'Alto' = 'Bajo';
     if (globalHealthScore < 75) riskLevel = 'Alto';
     else if (globalHealthScore < 90) riskLevel = 'Medio';
@@ -109,10 +109,10 @@ export const OperationalControlCenter: React.FC<OperationalControlCenterProps> =
       {/* HEADER ANALÍTICO / TARJETAS EJECUTIVAS */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         
-        {/* CARD 1: DIRECCIONES AL DÍA */}
+        {/* CARD 1: ÁREAS AL DÍA */}
         <div className="glass-card rounded-2xl p-5 border border-white/5 bg-slate-900/40 flex flex-col justify-between min-h-[120px] hover:scale-[1.02] transition-transform">
           <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest leading-none">
-            Direcciones al Día
+            Áreas al día
           </span>
           <div className="flex items-baseline gap-2 mt-2">
             <span className="text-3xl font-black text-white tabular-nums tracking-tighter">
@@ -128,10 +128,10 @@ export const OperationalControlCenter: React.FC<OperationalControlCenterProps> =
           </span>
         </div>
 
-        {/* CARD 2: ÁREAS ATRASADAS */}
+        {/* CARD 2: ÁREAS CON ATRASO */}
         <div className="glass-card rounded-2xl p-5 border border-white/5 bg-slate-900/40 flex flex-col justify-between min-h-[120px] hover:scale-[1.02] transition-transform">
           <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest leading-none">
-            Áreas Atrasadas
+            Áreas con atraso
           </span>
           <div className="flex items-baseline gap-2 mt-2">
             <span className="text-3xl font-black text-rose-400 tabular-nums tracking-tighter">
@@ -147,10 +147,10 @@ export const OperationalControlCenter: React.FC<OperationalControlCenterProps> =
           </span>
         </div>
 
-        {/* CARD 3: KPIs VENCIDOS */}
+        {/* CARD 3: KPIs PENDIENTES */}
         <div className="glass-card rounded-2xl p-5 border border-white/5 bg-slate-900/40 flex flex-col justify-between min-h-[120px] hover:scale-[1.02] transition-transform">
           <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest leading-none">
-            KPIs Vencidos sin Captura
+            KPIs pendientes de actualizar
           </span>
           <div className="flex items-baseline mt-2">
             <span className="text-3xl font-black text-amber-400 tabular-nums tracking-tighter">
@@ -164,10 +164,10 @@ export const OperationalControlCenter: React.FC<OperationalControlCenterProps> =
           </span>
         </div>
 
-        {/* CARD 4: CAPTURA NACIONAL */}
+        {/* CARD 4: DISCIPLINA DE ACTUALIZACIÓN */}
         <div className="glass-card rounded-2xl p-5 border border-white/5 bg-slate-900/40 flex flex-col justify-between min-h-[120px] hover:scale-[1.02] transition-transform">
           <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest leading-none">
-            Disciplina Nacional
+            Disciplina de actualización
           </span>
           <div className="flex items-baseline mt-2">
             <span className={`text-3xl font-black tabular-nums tracking-tighter ${headerMetrics.nationalCaptureRate >= 95 ? 'text-emerald-400' : 'text-amber-400'}`}>
@@ -182,10 +182,10 @@ export const OperationalControlCenter: React.FC<OperationalControlCenterProps> =
           </div>
         </div>
 
-        {/* CARD 5: RIESGO OPERATIVO GLOBAL */}
+        {/* CARD 5: NIVEL DE ATENCIÓN */}
         <div className="glass-card rounded-2xl p-5 border border-white/5 bg-slate-900/40 flex flex-col justify-between min-h-[120px] hover:scale-[1.02] transition-transform">
           <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest leading-none">
-            Riesgo Operativo Global
+            Nivel de atención
           </span>
           <div className="flex items-baseline gap-2 mt-2">
             <span className={`text-3xl font-black uppercase tracking-tighter ${headerMetrics.riskLevel === 'Alto' ? 'text-rose-400' : headerMetrics.riskLevel === 'Medio' ? 'text-amber-400' : 'text-emerald-400'}`}>

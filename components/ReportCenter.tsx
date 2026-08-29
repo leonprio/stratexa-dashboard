@@ -348,25 +348,25 @@ export const ReportCenter: React.FC<ReportCenterProps> = React.memo(({ items, th
                 {/* KPI: En Riesgo - Diferenciado por contexto */}
                 <div className="bg-slate-900/60 backdrop-blur-xl rounded-2xl border border-white/10 p-4 shadow-xl">
                     <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-2">
-                        {isSingleDashboard ? "Indicadores Riesgo" : "En Riesgo"}
+                        {isSingleDashboard ? "KPIs en riesgo" : "Tableros en riesgo"}
                     </span>
                     <div className="flex items-baseline gap-1">
                         <span className="text-3xl font-black text-amber-400">
                             {isSingleDashboard ? indicatorStats.atRisk : groupRanking.filter(r => r.status === 'AtRisk').length}
                         </span>
                         <span className="text-sm font-bold text-slate-500">
-                            {isSingleDashboard ? "KPIs" : "tableros"}
+                        {isSingleDashboard ? "KPIs" : "tableros"}
                         </span>
                     </div>
                     <span className="text-[10px] text-rose-400 font-bold mt-1 block">
-                        {isSingleDashboard ? indicatorStats.offTrack : groupRanking.filter(r => r.status === 'OffTrack').length} críticos
+                        {isSingleDashboard ? indicatorStats.offTrack : groupRanking.filter(r => r.status === 'OffTrack').length} {isSingleDashboard ? 'KPIs críticos' : 'tableros críticos'}
                     </span>
                 </div>
 
                 {/* KPI: Promedio / Total Indicadores */}
                 <div className="bg-slate-900/60 backdrop-blur-xl rounded-2xl border border-white/10 p-4 shadow-xl">
                     <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-2">
-                        {isSingleDashboard ? "Total KPIs" : "Promedio Grupo"}
+                        {isSingleDashboard ? "Total KPIs" : "Brecha promedio"}
                     </span>
                     <div className="flex items-baseline gap-1">
                         {isSingleDashboard ? (
@@ -375,8 +375,8 @@ export const ReportCenter: React.FC<ReportCenterProps> = React.memo(({ items, th
                                 <span className="text-sm font-bold text-slate-500">indicadores</span>
                             </>
                         ) : (
-                            <span className={`text-3xl font-black ${groupAverage >= 95 ? 'text-emerald-400' : groupAverage >= 80 ? 'text-amber-400' : 'text-rose-400'}`}>
-                                {Math.round(groupAverage)}%
+                            <span className="text-3xl font-black text-cyan-400">
+                                {Math.max(0, 100 - Math.round(groupAverage))} pts
                             </span>
                         )}
                     </div>
