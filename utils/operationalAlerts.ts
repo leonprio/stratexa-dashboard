@@ -174,7 +174,7 @@ export const buildOperationalAlerts = (
         ? `Periodo ${lastMonthName} / 2026`
         : 'Sin capturas registradas';
       
-      const lastUpdatedBy = item.responsible || 'Analista Operativo';
+      const lastUpdatedBy = item.responsible || 'SIN RESPONSABLE REGISTRADO';
       const lastOperationalChange = lastMonthIdx >= 0 
         ? `Carga de datos periodo ${lastMonthName}`
         : 'KPI creado en sistema';

@@ -1,4 +1,5 @@
 import { Dashboard, DashboardItem, ComplianceThresholds } from '../types';
+import { resolveOperationalIdentity } from './operationalControl';
 import { 
   isAccumulativeIndicator, 
   calculateMonthlyCompliancePercentage, 
@@ -292,8 +293,9 @@ export const buildHistoryAndAuditEngine = (
   dashboards.forEach(d => {
     if (d.isAggregate || String(d.id).includes('agg-') || d.id === -1) return;
 
-    const dirName = (d.group || 'GENERAL').trim().toUpperCase();
-    const areaName = (d.area || 'OPERACIONES').trim().toUpperCase();
+    const identity = resolveOperationalIdentity(d, d.items?.[0] || ({ indicator: '' } as DashboardItem));
+    const dirName = identity.direction;
+    const areaName = identity.area;
     const thresholds = d.thresholds || globalThresholds;
 
     (d.items || []).forEach(item => {
@@ -345,7 +347,7 @@ export const buildHistoryAndAuditEngine = (
         ? `Periodo ${lastMonthName} / ${year}`
         : 'Sin capturas registradas';
       
-      const lastUpdatedBy = (item as any).responsible || 'Analista Operativo';
+      const lastUpdatedBy = (item as any).responsible || 'SIN RESPONSABLE REGISTRADO';
 
       // Histórico comparativo previo
       const previousSnapshot = snapshots.length > 1 ? snapshots[snapshots.length - 2] : null;

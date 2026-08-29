@@ -12,6 +12,7 @@ import { OperationalAlertsTable } from './OperationalAlertsTable';
 import { OperationalAlertsCenter } from './OperationalAlertsCenter';
 import { OperationalHistoryCenter } from './OperationalHistoryCenter';
 import { TransversalActionPlansControl } from './TransversalActionPlansControl';
+import { resolveOperationalIdentity } from '../../utils/operationalControl';
 
 interface OperationalControlCenterProps {
   dashboards: Dashboard[];
@@ -48,8 +49,8 @@ export const OperationalControlCenter: React.FC<OperationalControlCenterProps> =
       (d.items || []).forEach(item => {
         list.push({
           ...item,
-          group: d.group || 'GENERAL',
-          area: d.area || 'OPERACIONES'
+          group: resolveOperationalIdentity(d, item).direction,
+          area: resolveOperationalIdentity(d, item).area
         });
       });
     });

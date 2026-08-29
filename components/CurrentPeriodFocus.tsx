@@ -23,6 +23,18 @@ interface CurrentPeriodFocusProps {
     clientId?: string;
 }
 
+export interface PendingKpiActivity { id: string; label: string; periodIndex: number; periodLabel: string; status: 'PENDIENTE' | 'ATENCIÓN' | 'ATRASADA'; }
+export const derivePendingKpiActivities = (activityConfig: DashboardItem['activityConfig'], currentIndex: number, isWeekly: boolean, year: number): PendingKpiActivity[] => {
+    if (!activityConfig) return [];
+    const labels = isWeekly ? (index: number) => `S${index + 1}` : (index: number) => ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'][index] || `P${index + 1}`;
+    const pending = Object.entries(activityConfig).flatMap(([period, raw]) => {
+        const periodIndex = Number(period);
+        if (!Number.isFinite(periodIndex) || periodIndex > currentIndex || !Array.isArray(raw)) return [];
+        return raw.filter(activity => Number(activity.completedCount) < Number(activity.targetCount)).map(activity => ({ id: `${periodIndex}:${activity.id}`, label: activity.label, periodIndex, periodLabel: `${labels(periodIndex)} · ${year}`, status: periodIndex < currentIndex ? 'ATRASADA' as const : Number(activity.completedCount) > 0 ? 'ATENCIÓN' as const : 'PENDIENTE' as const }));
+    });
+    return Array.from(pending.reduce((unique, activity) => unique.set(activity.id, unique.get(activity.id) || activity), new Map<string, PendingKpiActivity>()).values());
+};
+
 export const CurrentPeriodFocus: React.FC<CurrentPeriodFocusProps> = ({
     item,
     globalThresholds,
@@ -42,6 +54,7 @@ export const CurrentPeriodFocus: React.FC<CurrentPeriodFocusProps> = ({
     const [isSaving, setIsSaving] = useState(false);
     const [isFullEditMode, setIsFullEditMode] = useState(false);
     const [isActivityManagerOpen, setIsActivityManagerOpen] = useState(false);
+    const [activityTab, setActivityTab] = useState<'current' | 'pending'>('current');
     const [activityMode, setActivityMode] = useState(item.isActivityMode || false);
     const [isGoalFocused, setIsGoalFocused] = useState(false);
     const [isActualFocused, setIsActualFocused] = useState(false);
@@ -88,6 +101,7 @@ export const CurrentPeriodFocus: React.FC<CurrentPeriodFocusProps> = ({
 
     // Usar activePeriodIdx para todo lo visual
     const currentIdx = activePeriodIdx === -1 ? periodIdx : activePeriodIdx;
+    const pendingKpiActivities = useMemo(() => derivePendingKpiActivities(item?.activityConfig, currentIdx, isWeekly, year || currentYear), [item?.activityConfig, currentIdx, isWeekly, year, currentYear]);
 
     const currentPeriodLabel = useMemo(() => {
         if (isWeekly) return `Semana ${currentIdx + 1}`;
@@ -430,8 +444,7 @@ export const CurrentPeriodFocus: React.FC<CurrentPeriodFocusProps> = ({
                                 </div>
                             </div>
 
-                            {activityMode && (
-                                <button
+                            {activityMode && (<div className="space-y-2"><div className="flex gap-1 rounded-xl border border-indigo-500/20 bg-slate-950/50 p-1"><button onClick={() => setActivityTab('current')} className={`flex-1 rounded-lg px-3 py-2 text-[9px] font-black uppercase tracking-widest ${activityTab === 'current' ? 'bg-indigo-600/40 text-indigo-200' : 'text-slate-500'}`}>Período actual</button><button onClick={() => setActivityTab('pending')} className={`flex-1 rounded-lg px-3 py-2 text-[9px] font-black uppercase tracking-widest ${activityTab === 'pending' ? 'bg-amber-500/30 text-amber-200' : 'text-slate-500'}`}>Pendientes {pendingKpiActivities.length > 0 ? `(${pendingKpiActivities.length})` : ''}</button></div>{activityTab === 'current' ? <button
                                     onClick={() => setIsActivityManagerOpen(true)}
                                     className="w-full py-3 bg-gradient-to-r from-indigo-600/20 to-purple-600/20 border border-indigo-500/40 rounded-xl flex items-center justify-between px-6 hover:from-indigo-600/30 hover:to-purple-600/30 transition-all border-dashed"
                                 >
@@ -440,8 +453,7 @@ export const CurrentPeriodFocus: React.FC<CurrentPeriodFocusProps> = ({
                                         <span className="text-lg font-bold text-white">Gestión Detallada</span>
                                     </div>
                                     <span className="text-xl">📝</span>
-                                </button>
-                            )}
+                                </button> : <div className="rounded-xl border border-amber-500/20 bg-slate-950/40 p-3">{pendingKpiActivities.length === 0 ? <p className="text-center text-[10px] font-black uppercase tracking-widest text-slate-500">No hay actividades pendientes</p> : <div className="space-y-2">{pendingKpiActivities.map(activity => <div key={activity.id} className="flex items-center justify-between gap-3 border-b border-white/5 pb-2 last:border-0 last:pb-0"><span className="truncate text-xs text-slate-200">{activity.label}</span><span className="shrink-0 text-[10px] font-black uppercase text-slate-400">{activity.periodLabel} · <span className={activity.status === 'ATRASADA' ? 'text-rose-400' : activity.status === 'ATENCIÓN' ? 'text-amber-300' : 'text-slate-400'}>{activity.status}</span></span></div>)}</div>}</div>}</div>)}
 
                             <div className={`bg-slate-950/40 border border-white/5 rounded-2xl p-3 ${(!canEdit || isCalculated) && 'opacity-80'}`}>
                                 <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1.5 block">Observaciones</span>

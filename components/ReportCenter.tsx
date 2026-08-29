@@ -6,6 +6,8 @@ import { GaugeChart } from './GaugeChart';
 import { LineChart } from './LineChart';
 import pptxgen from "pptxgenjs";
 
+export const calculateGapToTarget = (actual: number, target = 100): number => Math.max(0, Math.round(target) - Math.round(actual));
+
 interface ReportCenterProps {
     items: DashboardItem[];
     thresholds: ComplianceThresholds;
@@ -28,7 +30,7 @@ interface ReportCenterProps {
 export const ReportCenter: React.FC<ReportCenterProps> = React.memo(({ items, thresholds, year, allDashboards = [], currentDashboardId, user, onEditItem, onClose }) => {
     const isGlobalMode = currentDashboardId === -1 || String(currentDashboardId).startsWith('agg-global');
     const activeDashboard = allDashboards.find(d => d.id === currentDashboardId);
-    const activeGroupName = isGlobalMode ? "ESTADO GLOBAL" : (activeDashboard?.group || "GENERAL");
+    const activeGroupName = isGlobalMode ? "ESTADO GLOBAL" : (activeDashboard?.group || "SIN DIRECCIÓN REGISTRADA");
 
     // 🎯 DETECCIÓN DE CONTEXTO (v5.0.0)
     // Determinar si estamos viendo una UNE individual o un grupo/global
@@ -41,7 +43,7 @@ export const ReportCenter: React.FC<ReportCenterProps> = React.memo(({ items, th
             // En modo global, comparamos las UNEs principales
             return allDashboards.filter(d => typeof d.id === 'number');
         }
-        return allDashboards.filter(d => (d.group === activeGroupName || d.group === "GENERAL") && (typeof d.id === 'number' || (typeof d.id === 'string' && !d.id.startsWith('agg-'))));
+        return allDashboards.filter(d => (d.group === activeGroupName || d.group === "SIN DIRECCIÓN REGISTRADA") && (typeof d.id === 'number' || (typeof d.id === 'string' && !d.id.startsWith('agg-'))));
     }, [allDashboards, activeGroupName, isGlobalMode]);
 
     const totalScore = useMemo(() => {
@@ -366,7 +368,7 @@ export const ReportCenter: React.FC<ReportCenterProps> = React.memo(({ items, th
                 {/* KPI: Promedio / Total Indicadores */}
                 <div className="bg-slate-900/60 backdrop-blur-xl rounded-2xl border border-white/10 p-4 shadow-xl">
                     <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-2">
-                        {isSingleDashboard ? "Total KPIs" : "Brecha promedio"}
+                        {isSingleDashboard ? "Total KPIs" : "BRECHA A LA META"}
                     </span>
                     <div className="flex items-baseline gap-1">
                         {isSingleDashboard ? (
@@ -376,14 +378,14 @@ export const ReportCenter: React.FC<ReportCenterProps> = React.memo(({ items, th
                             </>
                         ) : (
                             <span className="text-3xl font-black text-cyan-400">
-                                {Math.max(0, 100 - Math.round(groupAverage))} pts
+                                {calculateGapToTarget(groupAverage)} pts
                             </span>
                         )}
                     </div>
                     <span className="text-[10px] text-cyan-400 font-bold mt-1 block">
                         {isSingleDashboard
                             ? `${indicatorStats.neutral} sin datos aún`
-                            : `Meta: 100% | Brecha: ${Math.max(0, 100 - Math.round(groupAverage))} pts`
+                            : `${Math.round(groupAverage)}% actual · Meta 100%`
                         }
                     </span>
                 </div>
