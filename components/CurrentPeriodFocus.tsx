@@ -23,14 +23,52 @@ interface CurrentPeriodFocusProps {
     clientId?: string;
 }
 
-export interface PendingKpiActivity { id: string; label: string; periodIndex: number; periodLabel: string; status: 'PENDIENTE' | 'ATENCIÓN' | 'ATRASADA'; }
+export interface PendingKpiActivity { id: string; sourceActivityId: string; label: string; periodIndex: number; periodLabel: string; commitmentLabel?: string; status: 'PENDIENTE' | 'ATENCIÓN' | 'ATRASADA' | 'REPROGRAMADA' | 'COMPROMISO ACTUAL'; }
+export interface RescheduledKpiCommitment extends PendingKpiActivity { scheduledPeriodIndex: number; scheduledPeriodLabel: string; }
+export const deriveRescheduledKpiCommitments = (activityConfig: DashboardItem['activityConfig'], periodIndex: number, isWeekly: boolean, year: number): RescheduledKpiCommitment[] => {
+    if (!activityConfig) return [];
+    const labels = isWeekly ? (index: number) => `S${index + 1}` : (index: number) => ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'][index] || `P${index + 1}`;
+    return Object.entries(activityConfig).flatMap(([period, raw]) => {
+        if (!Array.isArray(raw)) return [];
+        return raw.filter(a => a.resolution?.resolutionStatus === 'rescheduled' && a.resolution.scheduledResolutionYear === year && a.resolution.scheduledResolutionPeriodType === (isWeekly ? 'weekly' : 'monthly') && a.resolution.scheduledResolutionPeriodIndex === periodIndex && Number(a.completedCount) < Number(a.targetCount)).map(a => ({ id: `${period}:${a.id}`, sourceActivityId: a.id, label: a.label, periodIndex: Number(period), periodLabel: `${labels(Number(period))} · ${year}`, scheduledPeriodIndex: periodIndex, scheduledPeriodLabel: `${labels(periodIndex)} · ${year}`, status: 'ATENCIÓN' as const }));
+    });
+};
+export const RescheduledCommitmentsSection: React.FC<{ commitments: RescheduledKpiCommitment[]; onManage: (commitment: RescheduledKpiCommitment) => void }> = ({ commitments, onManage }) => commitments.length === 0 ? null : <section className="rounded-xl border border-cyan-500/20 bg-slate-950/40 p-3"><h3 className="text-[9px] font-black uppercase tracking-widest text-cyan-300">COMPROMISOS REPROGRAMADOS ({commitments.length})</h3>{commitments.map(commitment => <div key={commitment.id} className="mt-2 flex items-center justify-between gap-3"><div><p className="text-xs text-slate-200">{commitment.label}</p><p className="text-[10px] text-slate-500">Origen: {commitment.periodLabel} → Compromiso: {commitment.scheduledPeriodLabel}</p></div><button onClick={() => onManage(commitment)} className="rounded-lg border border-cyan-500/30 px-3 py-2 text-[9px] font-black text-cyan-300">GESTIONAR</button></div>)}</section>;
+export const applyOperationalReschedule = (activityConfig: DashboardItem['activityConfig'], originPeriodIndex: number, activityId: string, scheduledPeriodIndex: number, isWeekly: boolean, year: number): DashboardItem['activityConfig'] => {
+    const config = { ...(activityConfig || {}) };
+    const source = [...(config[originPeriodIndex] || [])];
+    const index = source.findIndex(activity => activity.id === activityId);
+    if (index < 0) return config;
+    const previous = source[index].resolution || {};
+    source[index] = { ...source[index], resolution: { ...previous, resolutionStatus: 'rescheduled', scheduledResolutionYear: year, scheduledResolutionPeriodType: isWeekly ? 'weekly' : 'monthly', scheduledResolutionPeriodIndex: scheduledPeriodIndex } };
+    config[originPeriodIndex] = source;
+    return config;
+};
 export const derivePendingKpiActivities = (activityConfig: DashboardItem['activityConfig'], currentIndex: number, isWeekly: boolean, year: number): PendingKpiActivity[] => {
     if (!activityConfig) return [];
     const labels = isWeekly ? (index: number) => `S${index + 1}` : (index: number) => ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'][index] || `P${index + 1}`;
     const pending = Object.entries(activityConfig).flatMap(([period, raw]) => {
         const periodIndex = Number(period);
         if (!Number.isFinite(periodIndex) || periodIndex > currentIndex || !Array.isArray(raw)) return [];
-        return raw.filter(activity => Number(activity.completedCount) < Number(activity.targetCount)).map(activity => ({ id: `${periodIndex}:${activity.id}`, label: activity.label, periodIndex, periodLabel: `${labels(periodIndex)} · ${year}`, status: periodIndex < currentIndex ? 'ATRASADA' as const : Number(activity.completedCount) > 0 ? 'ATENCIÓN' as const : 'PENDIENTE' as const }));
+        return raw
+            .filter(activity => Number(activity.completedCount) < Number(activity.targetCount) && !['completed_later', 'discarded'].includes(activity.resolution?.resolutionStatus || ''))
+            .map(activity => {
+                const scheduled = activity.resolution?.resolutionStatus === 'rescheduled' ? activity.resolution.scheduledResolutionPeriodIndex : undefined;
+                const scheduledYear = activity.resolution?.scheduledResolutionYear || year;
+                const origin = `${labels(periodIndex)} · ${year}`;
+                const commitment = scheduled === undefined ? undefined : `${labels(scheduled)} · ${scheduledYear}`;
+                return {
+                    id: `${periodIndex}:${activity.id}`,
+                    sourceActivityId: activity.id,
+                    label: activity.label,
+                    periodIndex,
+                    periodLabel: commitment ? `ORIGEN ${origin} → COMPROMISO ${commitment}` : origin,
+                    commitmentLabel: commitment,
+                    status: scheduled === undefined
+                        ? (periodIndex < currentIndex ? 'ATRASADA' as const : Number(activity.completedCount) > 0 ? 'ATENCIÓN' as const : 'PENDIENTE' as const)
+                        : scheduled < currentIndex ? 'ATRASADA' as const : scheduled === currentIndex ? 'COMPROMISO ACTUAL' as const : 'REPROGRAMADA' as const
+                };
+            });
     });
     return Array.from(pending.reduce((unique, activity) => unique.set(activity.id, unique.get(activity.id) || activity), new Map<string, PendingKpiActivity>()).values());
 };
@@ -55,6 +93,13 @@ export const CurrentPeriodFocus: React.FC<CurrentPeriodFocusProps> = ({
     const [isFullEditMode, setIsFullEditMode] = useState(false);
     const [isActivityManagerOpen, setIsActivityManagerOpen] = useState(false);
     const [activityTab, setActivityTab] = useState<'current' | 'pending'>('current');
+    const [managedPending, setManagedPending] = useState<PendingKpiActivity | null>(null);
+    const [pendingAction, setPendingAction] = useState<'idle' | 'complete' | 'discard' | 'reschedule'>('idle');
+    const [rescheduleTarget, setRescheduleTarget] = useState<number>(0);
+    const [pendingNote, setPendingNote] = useState('');
+    const [pendingSaving, setPendingSaving] = useState(false);
+    const [pendingError, setPendingError] = useState('');
+    const [pendingFeedback, setPendingFeedback] = useState('');
     const [activityMode, setActivityMode] = useState(item.isActivityMode || false);
     const [isGoalFocused, setIsGoalFocused] = useState(false);
     const [isActualFocused, setIsActualFocused] = useState(false);
@@ -102,6 +147,31 @@ export const CurrentPeriodFocus: React.FC<CurrentPeriodFocusProps> = ({
     // Usar activePeriodIdx para todo lo visual
     const currentIdx = activePeriodIdx === -1 ? periodIdx : activePeriodIdx;
     const pendingKpiActivities = useMemo(() => derivePendingKpiActivities(item?.activityConfig, currentIdx, isWeekly, year || currentYear), [item?.activityConfig, currentIdx, isWeekly, year, currentYear]);
+    const rescheduledCommitments = useMemo(() => deriveRescheduledKpiCommitments(item?.activityConfig, currentIdx, isWeekly, year || currentYear), [item?.activityConfig, currentIdx, isWeekly, year, currentYear]);
+
+    useEffect(() => { if (pendingAction === 'reschedule') setRescheduleTarget(currentIdx); }, [pendingAction, currentIdx]);
+
+    const resolvePendingActivity = async (pending: PendingKpiActivity, status: 'completed_later' | 'discarded', note = '') => {
+        if (status === 'discarded' && !note.trim()) return;
+        setPendingSaving(true); setPendingError('');
+        const config = { ...(item.activityConfig || {}) };
+        const source = [...(config[pending.periodIndex] || [])];
+        const index = source.findIndex(a => a.id === pending.sourceActivityId);
+        if (index < 0) { setPendingSaving(false); return; }
+        source[index] = { ...source[index], resolution: { resolutionStatus: status, resolvedAt: new Date().toISOString(), resolvedYear: year || currentYear, resolvedPeriodType: isWeekly ? 'weekly' : 'monthly', resolvedPeriodIndex: currentIdx, ...(status === 'discarded' ? { resolutionNote: note.trim() } : {}) } };
+        try { await onUpdateItem({ ...item, activityConfig: { ...config, [pending.periodIndex]: source } }); }
+        catch { setPendingError('No se pudo guardar la resolución.'); setPendingSaving(false); return; }
+        setPendingSaving(false); setManagedPending(null); setPendingAction('idle'); setPendingNote(''); setPendingFeedback(status === 'discarded' ? 'Actividad descartada' : 'Actividad completada');
+    };
+
+    const reschedulePendingActivity = async (pending: PendingKpiActivity) => {
+        if (rescheduleTarget < currentIdx) return;
+        setPendingSaving(true); setPendingError('');
+        const config = applyOperationalReschedule(item.activityConfig, pending.periodIndex, pending.sourceActivityId, rescheduleTarget, isWeekly, year || currentYear);
+        try { await onUpdateItem({ ...item, activityConfig: config }); }
+        catch { setPendingError('No se pudo guardar la reprogramación.'); setPendingSaving(false); return; }
+        setPendingSaving(false); setManagedPending(null); setPendingAction('idle');
+    };
 
     const currentPeriodLabel = useMemo(() => {
         if (isWeekly) return `Semana ${currentIdx + 1}`;
@@ -453,7 +523,7 @@ export const CurrentPeriodFocus: React.FC<CurrentPeriodFocusProps> = ({
                                         <span className="text-lg font-bold text-white">Gestión Detallada</span>
                                     </div>
                                     <span className="text-xl">📝</span>
-                                </button> : <div className="rounded-xl border border-amber-500/20 bg-slate-950/40 p-3">{pendingKpiActivities.length === 0 ? <p className="text-center text-[10px] font-black uppercase tracking-widest text-slate-500">No hay actividades pendientes</p> : <div className="space-y-2">{pendingKpiActivities.map(activity => <div key={activity.id} className="flex items-center justify-between gap-3 border-b border-white/5 pb-2 last:border-0 last:pb-0"><span className="truncate text-xs text-slate-200">{activity.label}</span><span className="shrink-0 text-[10px] font-black uppercase text-slate-400">{activity.periodLabel} · <span className={activity.status === 'ATRASADA' ? 'text-rose-400' : activity.status === 'ATENCIÓN' ? 'text-amber-300' : 'text-slate-400'}>{activity.status}</span></span></div>)}</div>}</div>}</div>)}
+                                </button> : <div className="rounded-xl border border-amber-500/20 bg-slate-950/40 p-3">{pendingKpiActivities.length === 0 ? <p className="text-center text-[10px] font-black uppercase tracking-widest text-slate-500">No hay actividades pendientes</p> : <div className="space-y-2">{pendingKpiActivities.map(activity => <React.Fragment key={activity.id}><div onClick={() => canEdit && (setManagedPending(activity), setPendingAction('idle'), setPendingError(''))} className="flex cursor-pointer items-center justify-between gap-3 border-b border-white/5 pb-2 last:border-0 last:pb-0" role="button" tabIndex={0}><span className="truncate text-xs text-slate-200">{activity.label} <span className="ml-2 rounded border border-amber-500/30 px-2 py-1 text-[9px] text-amber-300">GESTIONAR</span></span><span className="shrink-0 text-[10px] font-black uppercase text-slate-400">{activity.periodLabel} · <span className={activity.status === 'ATRASADA' ? 'text-rose-400' : activity.status === 'ATENCIÓN' ? 'text-amber-300' : 'text-slate-400'}>{activity.status}</span></span></div>{managedPending?.id === activity.id && <div className="mb-2 rounded-xl border border-cyan-500/30 bg-slate-900 p-3"><p className="text-xs font-bold text-white">{activity.label}</p><p className="text-[10px] text-slate-400">ORIGEN · {activity.periodLabel}</p>{pendingAction === 'idle' && <div className="mt-2 flex gap-2"><button onClick={() => setPendingAction('complete')} className="rounded bg-emerald-600 px-2 py-2 text-[9px] font-black text-white">✓ COMPLETAR AHORA</button><button onClick={() => setPendingAction('reschedule')} className="rounded bg-cyan-600 px-2 py-2 text-[9px] font-black text-white">→ REPROGRAMAR</button><button onClick={() => setPendingAction('discard')} className="rounded bg-rose-600 px-2 py-2 text-[9px] font-black text-white">× DESCARTAR</button><button onClick={() => setManagedPending(null)} className="rounded bg-slate-700 px-2 py-2 text-[9px] font-black text-white">CANCELAR</button></div>}{pendingAction === 'reschedule' && <div className="mt-2"><p className="text-xs font-bold text-white">REPROGRAMAR ACTIVIDAD</p><select value={rescheduleTarget} onChange={e => setRescheduleTarget(Number(e.target.value))} className="mt-2 w-full rounded bg-slate-950 p-2 text-xs text-white">{Array.from({ length: (isWeekly ? 53 : 12) - currentIdx }, (_, i) => currentIdx + i).map(idx => <option key={idx} value={idx}>{isWeekly ? `Semana ${idx + 1}` : ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'][idx]}</option>)}</select><button disabled={pendingSaving} onClick={() => void reschedulePendingActivity(activity)} className="mr-2 mt-2 rounded bg-cyan-600 px-2 py-2 text-[9px] font-black text-white">{pendingSaving ? 'Guardando...' : 'CONFIRMAR REPROGRAMACIÓN'}</button><button onClick={() => setPendingAction('idle')} className="mt-2 rounded bg-slate-700 px-2 py-2 text-[9px] font-black text-white">CANCELAR</button></div>}{pendingAction === 'complete' && <div className="mt-2"><p className="text-xs text-white">¿Confirmar como completada en el período actual?</p><button disabled={pendingSaving} onClick={() => void resolvePendingActivity(activity, 'completed_later')} className="mr-2 mt-2 rounded bg-emerald-600 px-2 py-2 text-[9px] font-black text-white">{pendingSaving ? 'Guardando...' : 'CONFIRMAR'}</button><button onClick={() => setPendingAction('idle')} className="mt-2 rounded bg-slate-700 px-2 py-2 text-[9px] font-black text-white">CANCELAR</button></div>}{pendingAction === 'discard' && <div className="mt-2"><label className="text-[9px] font-black text-slate-300">MOTIVO DEL DESCARTE<textarea value={pendingNote} onChange={e => setPendingNote(e.target.value)} className="mt-1 w-full rounded bg-slate-950 p-2 text-xs text-white" /></label><button disabled={pendingSaving || !pendingNote.trim()} onClick={() => void resolvePendingActivity(activity, 'discarded', pendingNote)} className="mr-2 mt-2 rounded bg-rose-600 px-2 py-2 text-[9px] font-black text-white">{pendingSaving ? 'Guardando...' : 'CONFIRMAR DESCARTE'}</button><button onClick={() => setPendingAction('idle')} className="mt-2 rounded bg-slate-700 px-2 py-2 text-[9px] font-black text-white">CANCELAR</button></div>}{pendingError && <p className="mt-2 text-[10px] text-rose-300">{pendingError}</p>}</div>}</React.Fragment>)}</div>}</div>}</div>)}
 
                             <div className={`bg-slate-950/40 border border-white/5 rounded-2xl p-3 ${(!canEdit || isCalculated) && 'opacity-80'}`}>
                                 <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1.5 block">Observaciones</span>
@@ -547,6 +617,7 @@ export const CurrentPeriodFocus: React.FC<CurrentPeriodFocusProps> = ({
                 </>
             )}
 
+            <RescheduledCommitmentsSection commitments={rescheduledCommitments} onManage={c => { const found = pendingKpiActivities.find(p => p.id === c.id); if (found) { setManagedPending(found); setActivityTab('pending'); setPendingAction('idle'); } }} />
             {isActivityManagerOpen && (
                 <ActivityManager
                     title={indicator}

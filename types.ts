@@ -96,6 +96,17 @@ export interface DashboardItem {
       label: string;
       targetCount: number;
       completedCount: number;
+      resolution?: {
+        resolutionStatus: 'completed_later' | 'discarded' | 'rescheduled';
+        resolvedAt?: string;
+        resolvedYear?: number;
+        resolvedPeriodType?: 'monthly' | 'weekly';
+        resolvedPeriodIndex?: number;
+        resolutionNote?: string;
+        scheduledResolutionYear?: number;
+        scheduledResolutionPeriodType?: 'monthly' | 'weekly';
+        scheduledResolutionPeriodIndex?: number;
+      };
     }[];
   };
 
