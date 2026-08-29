@@ -1,8 +1,9 @@
 import { Dashboard, DashboardItem, ComplianceThresholds } from '../types';
 import { enrichDashboardsWithOperationalMetrics, resolveOperationalIdentity } from './operationalControl';
 
-export type AlertSeverity = 'CRÍTICO' | 'ALTO' | 'MEDIO' | 'BAJO' | 'NINGUNO';
-export type OperationalTrend = 'MEJORANDO' | 'ESTABLE' | 'DETERIORÁNDOSE' | 'CRÍTICO';
+export type AlertSeverity = 'CRÍTICO' | 'REQUIERE ATENCIÓN' | 'DATOS PENDIENTES' | 'RIESGO OCULTO' | 'BAJO CONTROL';
+export type OperationalTrend = 'ESTABLE' | 'DETERIORÁNDOSE' | 'CRÍTICO' | 'NO EVALUABLE';
+export type OperationalDataStatus = 'AL DÍA' | 'PENDIENTE' | 'VENCIDA' | 'SIN DATOS';
 
 export interface OperationalAlert {
   id: string | number;
@@ -21,6 +22,8 @@ export interface OperationalAlert {
   isOvertRisk: boolean; // Alerta Roja: 3+ periodos vencidos
   isHiddenRisk: boolean; // Riesgo Oculto: Alto desempeño + baja captura
   isDeteriorating: boolean; // Deterioro Operativo: Caída de captureRate o consistencia
+  dataStatus: OperationalDataStatus;
+  performanceLabel: 'AL DÍA' | 'DESVIACIÓN' | 'CRÍTICO' | 'NO EVALUABLE';
   traceability: {
     lastUpdatedAt: string;
     lastUpdatedBy: string;
@@ -33,26 +36,19 @@ export interface OperationalAlert {
  */
 export const calculateAlertSeverity = (item: DashboardItem): AlertSeverity => {
   const m = item.operationalMetrics;
-  if (!m) return 'NINGUNO';
+  if (!m || m.expectedPeriods === 0) return 'DATOS PENDIENTES';
 
   const missing = m.missingPeriods;
   const captureRate = m.captureRate;
   const performanceScore = m.performanceScore;
 
-  // 1. Alerta Crítica: 3+ periodos vencidos o retraso mayor a 60 días
-  if (missing >= 3 || m.stalenessDays >= 60) return 'CRÍTICO';
-
-  // 2. Alerta Alta: 2 periodos vencidos o Riesgo Oculto (alto kpi, baja captura)
   const isHiddenRisk = performanceScore >= 90 && captureRate < 70;
-  if (missing === 2 || isHiddenRisk || m.stalenessDays >= 30) return 'ALTO';
-
-  // 3. Alerta Media: 1 periodo vencido
-  if (missing === 1 || m.stalenessDays > 5) return 'MEDIO';
-
-  // 4. Alerta Baja: Carga irregular o rezago mínimo
-  if (captureRate < 95) return 'BAJO';
-
-  return 'NINGUNO';
+  if (isHiddenRisk) return 'RIESGO OCULTO';
+  if (m.capturedPeriods === 0 || captureRate < 70) return 'DATOS PENDIENTES';
+  if (performanceScore < 70) return 'CRÍTICO';
+  if (performanceScore < 90) return 'REQUIERE ATENCIÓN';
+  if (missing > 0 || m.stalenessDays > 5) return 'DATOS PENDIENTES';
+  return 'BAJO CONTROL';
 };
 
 /**
@@ -60,27 +56,20 @@ export const calculateAlertSeverity = (item: DashboardItem): AlertSeverity => {
  */
 export const calculateOperationalTrend = (item: DashboardItem): OperationalTrend => {
   const m = item.operationalMetrics;
-  if (!m) return 'ESTABLE';
+  if (!m || m.expectedPeriods === 0 || m.capturedPeriods === 0 || m.captureRate < 70) return 'NO EVALUABLE';
 
-  const missing = m.missingPeriods;
-  const staleness = m.stalenessDays;
-  const captureRate = m.captureRate;
-
-  // Si tiene un retraso severo acumulándose
-  if (missing >= 3 || staleness >= 60) return 'CRÍTICO';
-
-  // Simular análisis de consistencia de los últimos 3 meses esperados
-  // Si captureRate es bajo o hay retrasos en aumento, se está deteriorando
-  if (missing >= 1 && staleness >= 30) return 'DETERIORÁNDOSE';
-  if (captureRate < 75 && missing > 0) return 'DETERIORÁNDOSE';
-
-  // Si tiene retraso pero menor a 15 días y captureRate es alto
-  if (missing > 0 && staleness <= 15 && captureRate >= 85) return 'MEJORANDO';
-
-  // Totalmente al día
-  if (missing === 0 && staleness === 0 && captureRate >= 95) return 'ESTABLE';
-
+  if (m.performanceScore < 70) return 'CRÍTICO';
+  if (m.performanceScore < 90) return 'DETERIORÁNDOSE';
   return 'ESTABLE';
+};
+
+export const calculateOperationalDataStatus = (item: DashboardItem): OperationalDataStatus => {
+  const m = item.operationalMetrics;
+  if (!m || m.expectedPeriods === 0) return 'SIN DATOS';
+  if (m.capturedPeriods === 0) return 'SIN DATOS';
+  if (m.stalenessDays >= 30 || m.missingPeriods >= 2) return 'VENCIDA';
+  if (m.missingPeriods > 0 || m.stalenessDays > 5) return 'PENDIENTE';
+  return 'AL DÍA';
 };
 
 /**
@@ -99,16 +88,14 @@ export const calculateOperationalAging = (item: DashboardItem): string => {
 
 /**
  * Calcula el score de confiabilidad operativa (operationalReliabilityScore).
- * Integra captureRate (40%), realOperationalScore (30%), freshness (20%) y penalización/bono de tendencia (10%).
+ * Mide únicamente suficiencia y actualidad de evidencia: captura (70%) y frescura (30%).
  */
 export const calculateReliabilityScore = (item: DashboardItem): number => {
   const m = item.operationalMetrics;
   if (!m) return 100;
 
   const captureRate = m.captureRate;
-  const realScore = m.realOperationalScore;
-
-  // Freshness: 0 días = 100%, 60 días o más = 0%
+  if (m.expectedPeriods === 0) return 0;
   const freshness = Math.max(0, 100 - (m.stalenessDays * 1.66));
 
   // Si está perfectamente al día (captureRate = 100 y freshness = 100), la confiabilidad es 100%
@@ -117,13 +104,7 @@ export const calculateReliabilityScore = (item: DashboardItem): number => {
   }
 
   // Bono/penalización por tendencia
-  const trend = calculateOperationalTrend(item);
-  let trendAdjustment = 0;
-  if (trend === 'MEJORANDO') trendAdjustment = 10;
-  if (trend === 'DETERIORÁNDOSE') trendAdjustment = -10;
-  if (trend === 'CRÍTICO') trendAdjustment = -20;
-
-  const rawScore = (captureRate * 0.40) + (realScore * 0.30) + (freshness * 0.20) + (trendAdjustment * 0.10);
+  const rawScore = (captureRate * 0.70) + (freshness * 0.30);
   
   // Acotar matemáticamente entre 0 y 100
   return Math.max(0, Math.min(100, Math.round(rawScore)));
@@ -153,6 +134,7 @@ export const buildOperationalAlerts = (
       const trend = calculateOperationalTrend(item);
       const agingLabel = calculateOperationalAging(item);
       const reliabilityScore = calculateReliabilityScore(item);
+      const dataStatus = calculateOperationalDataStatus(item);
 
       const isOvertRisk = m.missingPeriods >= 3;
       const isHiddenRisk = m.performanceScore >= 90 && m.captureRate < 70;
@@ -161,9 +143,10 @@ export const buildOperationalAlerts = (
       // Simulación inmutable de trazabilidad operativa
       // Busca el último mes cargado para simular lastUpdatedAt
       let lastMonthIdx = -1;
-      if (item.progress && typeof item.progress === 'object') {
-        const keys = Object.keys(item.progress).map(Number).sort((a, b) => b - a);
-        const validKey = keys.find(k => item.progress[k] !== null && item.progress[k] !== undefined);
+      const periodicProgress = Array.isArray(item.monthlyProgress) ? item.monthlyProgress : item.progress;
+      if (periodicProgress && typeof periodicProgress === 'object') {
+        const keys = Object.keys(periodicProgress).map(Number).sort((a, b) => b - a);
+        const validKey = keys.find(k => periodicProgress[k] !== null && periodicProgress[k] !== undefined && periodicProgress[k] !== '');
         if (validKey !== undefined) lastMonthIdx = validKey;
       }
 
@@ -196,6 +179,8 @@ export const buildOperationalAlerts = (
         isOvertRisk,
         isHiddenRisk,
         isDeteriorating,
+        dataStatus,
+        performanceLabel: trend === 'NO EVALUABLE' ? 'NO EVALUABLE' : trend === 'CRÍTICO' ? 'CRÍTICO' : trend === 'DETERIORÁNDOSE' ? 'DESVIACIÓN' : 'AL DÍA',
         traceability: {
           lastUpdatedAt,
           lastUpdatedBy,
@@ -206,7 +191,7 @@ export const buildOperationalAlerts = (
   });
 
   // Ordenar por nivel de severidad y luego por días de atraso
-  const severityWeight = { 'CRÍTICO': 4, 'ALTO': 3, 'MEDIO': 2, 'BAJO': 1, 'NINGUNO': 0 };
+  const severityWeight = { 'CRÍTICO': 5, 'REQUIERE ATENCIÓN': 4, 'RIESGO OCULTO': 3, 'DATOS PENDIENTES': 2, 'BAJO CONTROL': 1 };
   return alerts.sort((a, b) => {
     return (severityWeight[b.severity] || 0) - (severityWeight[a.severity] || 0) || b.stalenessDays - a.stalenessDays;
   });

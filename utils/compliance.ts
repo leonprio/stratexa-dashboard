@@ -866,9 +866,11 @@ export const calculateOperationalMetrics = (
   const isMinimize = shielded.goalType === 'minimize' || (shielded as any).type === 'minimize' || (shielded as any).type === 'lower' || (shielded as any).type === 'min';
   const hasValidGoal = (g: any) => g !== null && g !== undefined && g !== "" && !isNaN(Number(g)) && (isMinimize ? true : Number(g) > 0);
   const firstGoalIdx = monthlyGoals.findIndex(hasValidGoal);
+  const hasExplicitOperationalStart = (shielded as any).operationalStartPeriod !== undefined && (shielded as any).operationalStartPeriod !== null;
+  const hasOperationalDefinition = hasExplicitOperationalStart || firstGoalIdx >= 0;
 
   let startPeriodIdx = 0;
-  if ((shielded as any).operationalStartPeriod !== undefined && (shielded as any).operationalStartPeriod !== null) {
+  if (hasExplicitOperationalStart) {
     startPeriodIdx = parsePeriodToIndex((shielded as any).operationalStartPeriod);
   } else {
     startPeriodIdx = firstGoalIdx >= 0 ? firstGoalIdx : 0;
@@ -888,6 +890,7 @@ export const calculateOperationalMetrics = (
   } else if (year > currentYear) {
     limitIdx = -1;
   }
+  if (!hasOperationalDefinition) limitIdx = -1;
 
   // 4. Calcular periodos esperados
   const expectedPeriods = Math.max(0, limitIdx - startPeriodIdx + 1);

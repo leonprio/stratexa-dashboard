@@ -56,8 +56,8 @@ export const OperationalAlertsCenter: React.FC<OperationalAlertsCenterProps> = (
   const executiveMetrics = useMemo(() => {
     const total = allAlerts.length;
     const critical = allAlerts.filter(a => a.severity === 'CRÍTICO').length;
-    const high = allAlerts.filter(a => a.severity === 'ALTO').length;
-    const medium = allAlerts.filter(a => a.severity === 'MEDIO').length;
+    const high = allAlerts.filter(a => a.severity === 'REQUIERE ATENCIÓN').length;
+    const medium = allAlerts.filter(a => a.severity === 'DATOS PENDIENTES').length;
     
     // Conteo de riesgos ocultos
     const hiddenRisks = allAlerts.filter(a => a.isHiddenRisk).length;
@@ -84,19 +84,19 @@ export const OperationalAlertsCenter: React.FC<OperationalAlertsCenterProps> = (
   const getSeverityClasses = (severity: AlertSeverity): string => {
     switch (severity) {
       case 'CRÍTICO': return 'text-rose-400 bg-rose-500/10 border-rose-500/30';
-      case 'ALTO': return 'text-orange-400 bg-orange-500/10 border-orange-500/30';
-      case 'MEDIO': return 'text-amber-400 bg-amber-500/10 border-amber-500/30';
-      case 'BAJO': return 'text-cyan-400 bg-cyan-500/10 border-cyan-500/30';
-      default: return 'text-slate-400 bg-slate-500/10 border-slate-500/20';
+      case 'REQUIERE ATENCIÓN': return 'text-orange-400 bg-orange-500/10 border-orange-500/30';
+      case 'DATOS PENDIENTES': return 'text-amber-300 bg-amber-500/10 border-amber-500/30';
+      case 'RIESGO OCULTO': return 'text-violet-300 bg-violet-500/10 border-violet-500/30';
+      default: return 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20';
     }
   };
 
   // Clasificación de color por tendencia
   const getTrendIconAndColor = (trend: OperationalTrend) => {
     switch (trend) {
-      case 'MEJORANDO': return { icon: '📈', color: 'text-emerald-400 bg-emerald-500/5' };
       case 'DETERIORÁNDOSE': return { icon: '📉', color: 'text-orange-400 bg-orange-500/5' };
       case 'CRÍTICO': return { icon: '🚨', color: 'text-rose-400 bg-rose-500/5 animate-pulse' };
+      case 'NO EVALUABLE': return { icon: '—', color: 'text-slate-400 bg-slate-500/5' };
       default: return { icon: '➡️', color: 'text-slate-400 bg-slate-500/5' };
     }
   };
@@ -252,9 +252,10 @@ export const OperationalAlertsCenter: React.FC<OperationalAlertsCenterProps> = (
               >
                 <option value="TODAS">TODAS LAS CRITICIDADES</option>
                 <option value="CRÍTICO">CRÍTICO</option>
-                <option value="ALTO">ALTO / RIESGO OCULTO</option>
-                <option value="MEDIO">MEDIO</option>
-                <option value="BAJO">BAJO</option>
+                <option value="REQUIERE ATENCIÓN">REQUIERE ATENCIÓN</option>
+                <option value="DATOS PENDIENTES">DATOS PENDIENTES</option>
+                <option value="RIESGO OCULTO">RIESGO OCULTO</option>
+                <option value="BAJO CONTROL">BAJO CONTROL</option>
               </select>
             </div>
 
@@ -308,8 +309,8 @@ export const OperationalAlertsCenter: React.FC<OperationalAlertsCenterProps> = (
               <tr className="bg-slate-950/20">
                 <th className="p-3 text-left text-[9px] font-black text-slate-500 uppercase tracking-widest border-b border-white/5 rounded-tl-2xl">Origen / KPI</th>
                 <th className="p-3 text-center text-[9px] font-black text-slate-500 uppercase tracking-widest border-b border-white/5">Criticidad</th>
-                <th className="p-3 text-center text-[9px] font-black text-slate-500 uppercase tracking-widest border-b border-white/5">Tendencia</th>
-                <th className="p-3 text-center text-[9px] font-black text-slate-500 uppercase tracking-widest border-b border-white/5">Consistencia</th>
+                <th className="p-3 text-center text-[9px] font-black text-slate-500 uppercase tracking-widest border-b border-white/5">Resultado</th>
+                <th className="p-3 text-center text-[9px] font-black text-slate-500 uppercase tracking-widest border-b border-white/5">Datos</th>
                 <th className="p-3 text-center text-[9px] font-black text-slate-500 uppercase tracking-widest border-b border-white/5">Confiabilidad</th>
                 <th className="p-3 text-center text-[9px] font-black text-slate-500 uppercase tracking-widest border-b border-white/5">Trazabilidad operativa</th>
                 <th className="p-3 text-center text-[9px] font-black text-slate-500 uppercase tracking-widest border-b border-white/5 rounded-tr-2xl">Aging</th>
@@ -336,20 +337,19 @@ export const OperationalAlertsCenter: React.FC<OperationalAlertsCenterProps> = (
                     <td className="p-3 text-center">
                       <span className={`text-[9px] font-black px-2.5 py-1 rounded-lg border ${getSeverityClasses(alert.severity)}`}>
                         {alert.severity}
-                        {alert.isHiddenRisk && ' • OCULTO'}
                       </span>
                     </td>
 
                     {/* TENDENCIA */}
                     <td className="p-3 text-center">
                       <span className={`text-[9px] font-black px-2 py-1 rounded-lg ${trend.color} flex items-center justify-center gap-1 w-fit mx-auto`}>
-                        <span>{trend.icon}</span> <span>{alert.trend}</span>
+                        <span>{trend.icon}</span> <span>{alert.performanceLabel}</span>
                       </span>
                     </td>
 
                     {/* SPARKLINE COMPACTO */}
                     <td className="p-3 text-center">
-                      {renderSparkline(alert)}
+                      <div className="flex flex-col items-center gap-1"><span className={`rounded px-2 py-1 text-[8px] font-black ${alert.dataStatus === 'AL DÍA' ? 'text-emerald-400' : alert.dataStatus === 'PENDIENTE' ? 'text-amber-300' : 'text-slate-300'}`}>{alert.dataStatus}</span>{renderSparkline(alert)}</div>
                     </td>
 
                     {/* CONFIDENCE SCORE */}
