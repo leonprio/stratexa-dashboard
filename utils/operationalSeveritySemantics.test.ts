@@ -1,5 +1,5 @@
 import { calculateOperationalMetrics } from './compliance';
-import { calculateAlertSeverity, calculateOperationalAging, calculateOperationalDataStatus } from './operationalAlerts';
+import { calculateAlertSeverity, calculateOperationalAging, calculateOperationalDataStatus, findLastOperationalCapture } from './operationalAlerts';
 import type { DashboardItem } from '../types';
 
 const item = (goals: (number | null)[], progress: (number | null)[]) => ({ id: 1, indicator: 'KPI', weight: 10, unit: '#', type: 'accumulative', goalType: 'maximize', monthlyGoals: goals, monthlyProgress: progress } as DashboardItem);
@@ -12,8 +12,8 @@ describe('semántica ejecutiva de severidad', () => {
   it('no convierte configuración 0/0 sin meta operativa en ocho periodos vencidos', () => {
     const metrics = calculateOperationalMetrics(item(Array(12).fill(0), Array(12).fill(0)), thresholds, 2026);
     expect(metrics.expectedPeriods).toBe(0);
-    expect(calculateAlertSeverity({ ...item([], []), operationalMetrics: metrics })).toBe('DATOS PENDIENTES');
-    expect(calculateOperationalDataStatus({ ...item([], []), operationalMetrics: metrics })).toBe('SIN DATOS');
+    expect(calculateAlertSeverity({ ...item([], []), operationalMetrics: metrics })).toBe('SIN OBLIGACIÓN');
+    expect(calculateOperationalDataStatus({ ...item([], []), operationalMetrics: metrics })).toBe('SIN OBLIGACIÓN');
   });
 
   it('aging parte del cierre del periodo faltante más antiguo y reconoce capturas posteriores', () => {
@@ -33,5 +33,18 @@ describe('semántica ejecutiva de severidad', () => {
     expect(scores).toEqual(['BAJO CONTROL', 'REQUIERE ATENCIÓN', 'CRÍTICO']);
     expect(staleOnly).toBe('RIESGO OCULTO');
     expect([...scores, staleOnly].filter(state => state === 'CRÍTICO')).toHaveLength(1);
+  });
+
+  it('conserva desempeño crítico o en atención aunque la evidencia sea parcial', () => {
+    const partial = { expectedPeriods: 4, capturedPeriods: 2, missingPeriods: 2, captureRate: 50, realOperationalScore: 30, stalenessDays: 45, performanceStatus: 'OffTrack', captureStatus: 'OffTrack', operationalStatus: 'OffTrack' };
+    expect(calculateAlertSeverity({ ...item([], []), operationalMetrics: { ...partial, performanceScore: 53 } })).toBe('CRÍTICO');
+    expect(calculateAlertSeverity({ ...item([], []), operationalMetrics: { ...partial, performanceScore: 81 } })).toBe('REQUIERE ATENCIÓN');
+  });
+
+  it('última captura ignora slots futuros y ceros 0/0 preconfigurados', () => {
+    const source = item(Array(12).fill(0), Array(12).fill(0));
+    source.monthlyGoals[4] = 10; source.monthlyProgress[4] = 7;
+    source.monthlyGoals[11] = 0; source.monthlyProgress[11] = 0;
+    expect(findLastOperationalCapture(source, 2026, new Date('2026-08-29T12:00:00Z'))).toEqual({ periodIndex: 4, periodLabel: 'MAY' });
   });
 });

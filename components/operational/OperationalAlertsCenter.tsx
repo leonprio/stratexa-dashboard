@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { Dashboard, DashboardItem, ComplianceThresholds } from '../../types';
-import { buildOperationalAlerts, OperationalAlert, AlertSeverity, OperationalTrend } from '../../utils/operationalAlerts';
+import { buildOperationalAlerts, AlertSeverity, OperationalTrend } from '../../utils/operationalAlerts';
 
 interface OperationalAlertsCenterProps {
   dashboards: Dashboard[];
@@ -87,6 +87,7 @@ export const OperationalAlertsCenter: React.FC<OperationalAlertsCenterProps> = (
       case 'REQUIERE ATENCIÓN': return 'text-orange-400 bg-orange-500/10 border-orange-500/30';
       case 'DATOS PENDIENTES': return 'text-amber-300 bg-amber-500/10 border-amber-500/30';
       case 'RIESGO OCULTO': return 'text-violet-300 bg-violet-500/10 border-violet-500/30';
+      case 'SIN OBLIGACIÓN': return 'text-slate-300 bg-slate-500/10 border-slate-500/20';
       default: return 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20';
     }
   };
@@ -99,46 +100,6 @@ export const OperationalAlertsCenter: React.FC<OperationalAlertsCenterProps> = (
       case 'NO EVALUABLE': return { icon: '—', color: 'text-slate-400 bg-slate-500/5' };
       default: return { icon: '➡️', color: 'text-slate-400 bg-slate-500/5' };
     }
-  };
-
-  // Renderizar Sparkline compacto mensual de 12 bloques (Enero a Diciembre)
-  const renderSparkline = (alert: OperationalAlert) => {
-    const months = ['E', 'F', 'M', 'A', 'M', 'J', 'J', 'A', 'S', 'O', 'N', 'D'];
-    
-    // Simular los bloques de captura
-    // Los meses con datos se pintan verdes, sin datos rojos/grises, futuros grises
-    // Usamos el número de missingPeriods para simular los bloques finales vacíos
-    const expected = alert.missingPeriods + Math.round(alert.captureRate * 0.12);
-    const captured = Math.round(alert.captureRate * 0.12);
-
-    return (
-      <div className="flex gap-1.5 items-center justify-center">
-        {months.map((m, idx) => {
-          let blockBg = 'bg-slate-800/40 border border-white/5';
-          let title = `Periodo ${m} - Fuera de rango`;
-
-          if (idx < expected) {
-            if (idx < captured) {
-              blockBg = 'bg-emerald-500/60 border border-emerald-500/40 shadow-[0_0_4px_rgba(16,185,129,0.3)]';
-              title = `Periodo ${m} - CAPTURADO`;
-            } else {
-              blockBg = 'bg-rose-500/60 border border-rose-500/40 animate-pulse';
-              title = `Periodo ${m} - VENCIDO SIN CAPTURA`;
-            }
-          }
-
-          return (
-            <div
-              key={idx}
-              className={`w-4 h-5 rounded-[3px] text-[9px] font-black flex items-center justify-center text-white/90 cursor-help transition-all ${blockBg}`}
-              title={title}
-            >
-              {m}
-            </div>
-          );
-        })}
-      </div>
-    );
   };
 
   return (
@@ -256,6 +217,7 @@ export const OperationalAlertsCenter: React.FC<OperationalAlertsCenterProps> = (
                 <option value="DATOS PENDIENTES">DATOS PENDIENTES</option>
                 <option value="RIESGO OCULTO">RIESGO OCULTO</option>
                 <option value="BAJO CONTROL">BAJO CONTROL</option>
+                <option value="SIN OBLIGACIÓN">SIN OBLIGACIÓN</option>
               </select>
             </div>
 
@@ -304,13 +266,13 @@ export const OperationalAlertsCenter: React.FC<OperationalAlertsCenterProps> = (
 
         {/* TABLA ULTRA DENSA DE ALERTAS Y TRAZABILIDAD */}
         <div className="overflow-x-auto pb-4 scrollbar-hide max-w-full">
-          <table className="w-full border-collapse">
+          <table className="w-full min-w-[1120px] table-fixed border-collapse">
             <thead>
               <tr className="bg-slate-950/20">
-                <th className="p-3 text-left text-[9px] font-black text-slate-500 uppercase tracking-widest border-b border-white/5 rounded-tl-2xl">Origen / KPI</th>
-                <th className="p-3 text-center text-[9px] font-black text-slate-500 uppercase tracking-widest border-b border-white/5">Criticidad</th>
+                <th className="w-[22%] p-3 text-left text-[9px] font-black text-slate-500 uppercase tracking-widest border-b border-white/5 rounded-tl-2xl">Origen / KPI</th>
+                <th className="w-[15%] p-3 text-center text-[9px] font-black text-slate-500 uppercase tracking-widest border-b border-white/5">Estado</th>
                 <th className="p-3 text-center text-[9px] font-black text-slate-500 uppercase tracking-widest border-b border-white/5">Resultado</th>
-                <th className="p-3 text-center text-[9px] font-black text-slate-500 uppercase tracking-widest border-b border-white/5">Datos</th>
+                <th className="w-[15%] p-3 text-center text-[9px] font-black text-slate-500 uppercase tracking-widest border-b border-white/5">Datos</th>
                 <th className="p-3 text-center text-[9px] font-black text-slate-500 uppercase tracking-widest border-b border-white/5">Confiabilidad</th>
                 <th className="p-3 text-center text-[9px] font-black text-slate-500 uppercase tracking-widest border-b border-white/5">Trazabilidad operativa</th>
                 <th className="p-3 text-center text-[9px] font-black text-slate-500 uppercase tracking-widest border-b border-white/5 rounded-tr-2xl">Aging</th>
@@ -335,7 +297,7 @@ export const OperationalAlertsCenter: React.FC<OperationalAlertsCenterProps> = (
 
                     {/* CRITICIDAD */}
                     <td className="p-3 text-center">
-                      <span className={`text-[9px] font-black px-2.5 py-1 rounded-lg border ${getSeverityClasses(alert.severity)}`}>
+                      <span className={`inline-flex min-w-max whitespace-nowrap text-[9px] font-black px-2.5 py-1 rounded-lg border ${getSeverityClasses(alert.severity)}`}>
                         {alert.severity}
                       </span>
                     </td>
@@ -349,14 +311,14 @@ export const OperationalAlertsCenter: React.FC<OperationalAlertsCenterProps> = (
 
                     {/* SPARKLINE COMPACTO */}
                     <td className="p-3 text-center">
-                      <div className="flex flex-col items-center gap-1"><span className={`rounded px-2 py-1 text-[8px] font-black ${alert.dataStatus === 'AL DÍA' ? 'text-emerald-400' : alert.dataStatus === 'PENDIENTE' ? 'text-amber-300' : 'text-slate-300'}`}>{alert.dataStatus}</span>{renderSparkline(alert)}</div>
+                      <div className="flex flex-col items-center gap-1"><span className={`inline-flex min-w-max whitespace-nowrap rounded px-2 py-1 text-[8px] font-black ${alert.dataStatus === 'AL DÍA' ? 'text-emerald-400' : alert.dataStatus === 'DATOS INCOMPLETOS' || alert.dataStatus === 'DATOS VENCIDOS' ? 'text-amber-300' : 'text-slate-300'}`}>{alert.dataStatus}</span><span className="text-[8px] font-bold text-slate-500">{Math.round(alert.captureRate)}% captura</span></div>
                     </td>
 
                     {/* CONFIDENCE SCORE */}
                     <td className="p-3 text-center">
                       <div className="flex flex-col items-center">
                         <span className={`text-xs font-black tabular-nums tracking-tighter ${alert.reliabilityScore >= 90 ? 'text-emerald-400' : alert.reliabilityScore >= 70 ? 'text-amber-400' : 'text-rose-400'}`}>
-                          {alert.reliabilityScore}%
+                          {alert.dataStatus === 'SIN OBLIGACIÓN' ? '—' : `${alert.reliabilityScore}%`}
                         </span>
                         <span className="text-[6px] text-slate-500 font-black uppercase tracking-widest">
                           Confiabilidad
@@ -367,19 +329,17 @@ export const OperationalAlertsCenter: React.FC<OperationalAlertsCenterProps> = (
                     {/* TRAZABILIDAD (FUTURA AUTOMATIZACIÓN) */}
                     <td className="p-3 text-center text-[9px] font-bold text-slate-400 max-w-[180px] truncate">
                       <div className="flex flex-col items-start leading-tight">
-                        <span className="text-[8px] text-slate-400 font-black uppercase">Última actualización:</span>
                         <span className="text-white truncate max-w-full">{alert.traceability.lastOperationalChange}</span>
-                        <span className="text-[8px] text-slate-400 font-black uppercase mt-0.5">
-                          Actualizado por {alert.traceability.lastUpdatedBy}
-                        </span>
+                        <span className="text-[8px] text-slate-400 font-black uppercase mt-0.5">Responsable: {alert.traceability.lastUpdatedBy === 'SIN RESPONSABLE REGISTRADO' ? 'SIN REGISTRAR' : alert.traceability.lastUpdatedBy}</span>
                       </div>
                     </td>
 
                     {/* AGING OPERATIVO */}
                     <td className="p-3 text-center text-[10px] font-black text-white tabular-nums">
                       <span className={`px-2 py-0.5 rounded ${alert.stalenessDays >= 60 ? 'bg-rose-500/10 text-rose-400' : 'bg-slate-900/60 text-slate-300'}`}>
-                        {alert.agingLabel}
+                        {alert.stalenessDays > 0 ? `${alert.stalenessDays} días` : alert.dataStatus === 'SIN OBLIGACIÓN' ? 'NO APLICA' : 'AL DÍA'}
                       </span>
+                      {alert.stalenessDays > 0 && <span className="mt-1 block text-[7px] font-black text-rose-400">VENCIDO</span>}
                     </td>
 
                   </tr>

@@ -13,8 +13,8 @@ export const OperationalControlCenter: React.FC<OperationalControlCenterProps> =
   const [planSummary, setPlanSummary] = useState<ActionPlanControlSummary>({ active: 0, overdue: 0 });
   const relevantDashboards = useMemo(() => dashboards.length > 0 ? dashboards : [currentDashboard], [dashboards, currentDashboard]);
   const alerts = useMemo(() => buildOperationalAlerts(relevantDashboards, globalThresholds, year), [relevantDashboards, globalThresholds, year]);
-  const attentionAlerts = alerts.filter(alert => alert.severity !== 'BAJO CONTROL');
-  const delayedAlerts = attentionAlerts.filter(alert => alert.severity === 'DATOS PENDIENTES');
+  const attentionAlerts = alerts.filter(alert => alert.severity !== 'BAJO CONTROL' && alert.severity !== 'SIN OBLIGACIÓN');
+  const delayedAlerts = alerts.filter(alert => alert.dataStatus === 'DATOS INCOMPLETOS' || alert.dataStatus === 'DATOS VENCIDOS' || alert.dataStatus === 'SIN DATOS');
 
   return <div className="space-y-8 animate-in fade-in duration-500">
     <header><p className="text-[10px] font-black uppercase tracking-[0.3em] text-cyan-400">Control</p><h2 className="mt-1 text-2xl font-black tracking-tight text-white">Gestión por excepción</h2><p className="mt-1 text-sm text-slate-400">Qué requiere atención y qué estamos haciendo al respecto.</p></header>

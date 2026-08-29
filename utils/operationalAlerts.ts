@@ -1,9 +1,11 @@
 import { Dashboard, DashboardItem, ComplianceThresholds } from '../types';
 import { enrichDashboardsWithOperationalMetrics, resolveOperationalIdentity } from './operationalControl';
+import { isOperationalPeriodCaptured } from './compliance';
+import { getWeekNumber } from './weeklyUtils';
 
-export type AlertSeverity = 'CRÍTICO' | 'REQUIERE ATENCIÓN' | 'DATOS PENDIENTES' | 'RIESGO OCULTO' | 'BAJO CONTROL';
+export type AlertSeverity = 'CRÍTICO' | 'REQUIERE ATENCIÓN' | 'DATOS PENDIENTES' | 'RIESGO OCULTO' | 'BAJO CONTROL' | 'SIN OBLIGACIÓN';
 export type OperationalTrend = 'ESTABLE' | 'DETERIORÁNDOSE' | 'CRÍTICO' | 'NO EVALUABLE';
-export type OperationalDataStatus = 'AL DÍA' | 'PENDIENTE' | 'VENCIDA' | 'SIN DATOS';
+export type OperationalDataStatus = 'AL DÍA' | 'DATOS INCOMPLETOS' | 'DATOS VENCIDOS' | 'SIN DATOS' | 'SIN OBLIGACIÓN';
 
 export interface OperationalAlert {
   id: string | number;
@@ -36,17 +38,17 @@ export interface OperationalAlert {
  */
 export const calculateAlertSeverity = (item: DashboardItem): AlertSeverity => {
   const m = item.operationalMetrics;
-  if (!m || m.expectedPeriods === 0) return 'DATOS PENDIENTES';
+  if (!m || m.expectedPeriods === 0) return 'SIN OBLIGACIÓN';
 
   const missing = m.missingPeriods;
   const captureRate = m.captureRate;
   const performanceScore = m.performanceScore;
 
   const isHiddenRisk = performanceScore >= 90 && captureRate < 70;
-  if (isHiddenRisk) return 'RIESGO OCULTO';
-  if (m.capturedPeriods === 0 || captureRate < 70) return 'DATOS PENDIENTES';
+  if (m.capturedPeriods === 0) return 'DATOS PENDIENTES';
   if (performanceScore < 70) return 'CRÍTICO';
   if (performanceScore < 90) return 'REQUIERE ATENCIÓN';
+  if (isHiddenRisk) return 'RIESGO OCULTO';
   if (missing > 0 || m.stalenessDays > 5) return 'DATOS PENDIENTES';
   return 'BAJO CONTROL';
 };
@@ -56,7 +58,7 @@ export const calculateAlertSeverity = (item: DashboardItem): AlertSeverity => {
  */
 export const calculateOperationalTrend = (item: DashboardItem): OperationalTrend => {
   const m = item.operationalMetrics;
-  if (!m || m.expectedPeriods === 0 || m.capturedPeriods === 0 || m.captureRate < 70) return 'NO EVALUABLE';
+  if (!m || m.expectedPeriods === 0 || m.capturedPeriods === 0) return 'NO EVALUABLE';
 
   if (m.performanceScore < 70) return 'CRÍTICO';
   if (m.performanceScore < 90) return 'DETERIORÁNDOSE';
@@ -65,10 +67,10 @@ export const calculateOperationalTrend = (item: DashboardItem): OperationalTrend
 
 export const calculateOperationalDataStatus = (item: DashboardItem): OperationalDataStatus => {
   const m = item.operationalMetrics;
-  if (!m || m.expectedPeriods === 0) return 'SIN DATOS';
+  if (!m || m.expectedPeriods === 0) return 'SIN OBLIGACIÓN';
   if (m.capturedPeriods === 0) return 'SIN DATOS';
-  if (m.stalenessDays >= 30 || m.missingPeriods >= 2) return 'VENCIDA';
-  if (m.missingPeriods > 0 || m.stalenessDays > 5) return 'PENDIENTE';
+  if (m.stalenessDays >= 30 || m.missingPeriods >= 2) return 'DATOS VENCIDOS';
+  if (m.missingPeriods > 0 || m.stalenessDays > 5) return 'DATOS INCOMPLETOS';
   return 'AL DÍA';
 };
 
@@ -95,7 +97,7 @@ export const calculateReliabilityScore = (item: DashboardItem): number => {
   if (!m) return 100;
 
   const captureRate = m.captureRate;
-  if (m.expectedPeriods === 0) return 0;
+  if (m.expectedPeriods === 0) return 100;
   const freshness = Math.max(0, 100 - (m.stalenessDays * 1.66));
 
   // Si está perfectamente al día (captureRate = 100 y freshness = 100), la confiabilidad es 100%
@@ -142,24 +144,14 @@ export const buildOperationalAlerts = (
 
       // Simulación inmutable de trazabilidad operativa
       // Busca el último mes cargado para simular lastUpdatedAt
-      let lastMonthIdx = -1;
-      const periodicProgress = Array.isArray(item.monthlyProgress) ? item.monthlyProgress : item.progress;
-      if (periodicProgress && typeof periodicProgress === 'object') {
-        const keys = Object.keys(periodicProgress).map(Number).sort((a, b) => b - a);
-        const validKey = keys.find(k => periodicProgress[k] !== null && periodicProgress[k] !== undefined && periodicProgress[k] !== '');
-        if (validKey !== undefined) lastMonthIdx = validKey;
-      }
-
-      const months = ['ENE', 'FEB', 'MAR', 'ABR', 'MAY', 'JUN', 'JUL', 'AGO', 'SEP', 'OCT', 'NOV', 'DIC'];
-      const lastMonthName = lastMonthIdx >= 0 && lastMonthIdx < 12 ? months[lastMonthIdx] : 'N/A';
-      
-      const lastUpdatedAt = lastMonthIdx >= 0 
-        ? `Periodo ${lastMonthName} / 2026`
+      const lastCapture = findLastOperationalCapture(item, year);
+      const lastUpdatedAt = lastCapture
+        ? `${lastCapture.periodLabel} / ${year}`
         : 'Sin capturas registradas';
       
       const lastUpdatedBy = item.responsible || 'SIN RESPONSABLE REGISTRADO';
-      const lastOperationalChange = lastMonthIdx >= 0 
-        ? `Carga de datos periodo ${lastMonthName}`
+      const lastOperationalChange = lastCapture
+        ? `Última captura: ${lastCapture.periodLabel}`
         : 'KPI creado en sistema';
 
       alerts.push({
@@ -191,8 +183,21 @@ export const buildOperationalAlerts = (
   });
 
   // Ordenar por nivel de severidad y luego por días de atraso
-  const severityWeight = { 'CRÍTICO': 5, 'REQUIERE ATENCIÓN': 4, 'RIESGO OCULTO': 3, 'DATOS PENDIENTES': 2, 'BAJO CONTROL': 1 };
+  const severityWeight = { 'CRÍTICO': 6, 'REQUIERE ATENCIÓN': 5, 'RIESGO OCULTO': 4, 'DATOS PENDIENTES': 3, 'BAJO CONTROL': 2, 'SIN OBLIGACIÓN': 1 };
   return alerts.sort((a, b) => {
     return (severityWeight[b.severity] || 0) - (severityWeight[a.severity] || 0) || b.stalenessDays - a.stalenessDays;
   });
+};
+
+export const findLastOperationalCapture = (item: DashboardItem, year: number, today = new Date()): { periodIndex: number; periodLabel: string } | null => {
+  const weekly = item.frequency === 'weekly';
+  const progress = weekly ? item.weeklyProgress : item.monthlyProgress;
+  const goals = weekly ? item.weeklyGoals : item.monthlyGoals;
+  if (!Array.isArray(progress) || !Array.isArray(goals)) return null;
+  const currentYear = today.getFullYear();
+  const cutoff = year < currentYear ? progress.length - 1 : year > currentYear ? -1 : weekly ? getWeekNumber(today, item.weekStart === 'Sun' ? 0 : 1) - 1 : today.getMonth();
+  for (let index = Math.min(cutoff, progress.length - 1); index >= 0; index--) {
+    if (isOperationalPeriodCaptured(progress[index], goals[index])) return { periodIndex: index, periodLabel: weekly ? `S${index + 1}` : ['ENE','FEB','MAR','ABR','MAY','JUN','JUL','AGO','SEP','OCT','NOV','DIC'][index] };
+  }
+  return null;
 };

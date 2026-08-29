@@ -7,6 +7,12 @@ import { aggregateWeeklyToMonthly, getWeekNumber } from "./weeklyUtils";
 export type ComplianceStatus = "OnTrack" | "AtRisk" | "OffTrack" | "Neutral" | "InProgress";
 export const CURRENT_MONTH_INDEX = new Date().getMonth();
 
+export const isOperationalPeriodCaptured = (value: unknown, goal: unknown): boolean => {
+  const hasValue = value !== null && value !== undefined && value !== '' && Number.isFinite(Number(value));
+  const hasGoal = goal !== null && goal !== undefined && goal !== '' && Number.isFinite(Number(goal));
+  return hasValue && hasGoal && !(Number(value) === 0 && Number(goal) === 0);
+};
+
 /**
  * 🛡️ HELPER DE ACUMULADOS v9.1.0-PRO-FINAL-SHIELDED (ULTRA-AGGRESSIVE)
  * Determina si un indicador debe sumarse (acumulativo) basándose en su nombre o tipo explícito.
@@ -902,13 +908,7 @@ export const calculateOperationalMetrics = (
     const val = monthlyProgress[m];
     const goal = monthlyGoals[m];
 
-    const isNullVal = val === null || val === undefined || val === "" || isNaN(Number(val));
-    const isNullGoal = goal === null || goal === undefined || goal === "" || isNaN(Number(goal));
-    
-    const isGoalZero = Number(goal || 0) === 0;
-    const isValZero = Number(val || 0) === 0;
-
-    const isCaptured = !isNullVal && !isNullGoal && !(isGoalZero && isValZero);
+    const isCaptured = isOperationalPeriodCaptured(val, goal);
 
     if (isCaptured) {
       capturedPeriods++;
@@ -928,11 +928,7 @@ export const calculateOperationalMetrics = (
       if (!isExpected) return g;
 
       const val = monthlyProgress[m];
-      const isNullVal = val === null || val === undefined || val === "" || isNaN(Number(val));
-      const isNullGoal = g === null || g === undefined || g === "" || isNaN(Number(g));
-      const isGoalZero = Number(g || 0) === 0;
-      const isValZero = Number(val || 0) === 0;
-      const isCaptured = !isNullVal && !isNullGoal && !(isGoalZero && isValZero);
+      const isCaptured = isOperationalPeriodCaptured(val, g);
 
       return isCaptured ? g : null;
     })
@@ -957,11 +953,7 @@ export const calculateOperationalMetrics = (
       const val = monthlyProgress[m];
       const goal = monthlyGoals[m];
 
-      const isNullVal = val === null || val === undefined || val === "" || isNaN(Number(val));
-      const isNullGoal = goal === null || goal === undefined || goal === "" || isNaN(Number(goal));
-      const isGoalZero = Number(goal || 0) === 0;
-      const isValZero = Number(val || 0) === 0;
-      const isCaptured = !isNullVal && !isNullGoal && !(isGoalZero && isValZero);
+      const isCaptured = isOperationalPeriodCaptured(val, goal);
 
       if (isCaptured) {
         sumProgress += Number(val ?? 0);
@@ -977,11 +969,7 @@ export const calculateOperationalMetrics = (
       const val = monthlyProgress[m];
       const goal = monthlyGoals[m];
 
-      const isNullVal = val === null || val === undefined || val === "" || isNaN(Number(val));
-      const isNullGoal = goal === null || goal === undefined || goal === "" || isNaN(Number(goal));
-      const isGoalZero = Number(goal || 0) === 0;
-      const isValZero = Number(val || 0) === 0;
-      const isCaptured = !isNullVal && !isNullGoal && !(isGoalZero && isValZero);
+      const isCaptured = isOperationalPeriodCaptured(val, goal);
 
       if (isCaptured) {
         sumCompliance += calculateMonthlyCompliancePercentage(val, goal, lowerIsBetter);
