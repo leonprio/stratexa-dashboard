@@ -52,7 +52,7 @@ export const DEFAULT_PERSPECTIVES: StrategicPerspective[] = [
 export interface StrategicObjective {
   id: string;
   perspectiveId: string; // Referencia inmutable a la perspectiva
-  code: string; // e.g. "OE-01"
+  code: string; // e.g. "OE01"; historical hyphenated values remain valid
   title: string;
   description?: string;
   order: number;
@@ -77,7 +77,7 @@ export interface ContributionObjective {
   areaName: string; // Snapshot visible del nombre del área (ej. "COMERCIAL")
   areaCode: string; // Snapshot visible del código asignado al crearse (ej. "COM")
   sequenceNumber: number; // Consecutivo monótono atómico e independiente por área (ej. 1, 2, 3)
-  displayCode: string; // Código de despliegue derivado estable (ej. "COM-OC01")
+  displayCode: string; // Código de despliegue derivado estable (ej. "OCV01" o "OC01")
   title: string;
   description?: string;
   primaryStrategicObjectiveId: string; // OE primario al que contribuye
@@ -99,7 +99,8 @@ export interface ContributionIndicatorAssignment {
 export interface StrategyCounter {
   id: string; // Documento de contador (ej. "cnt_IPS_areacfg_171800...")
   lastIssuedSequence: number;
-  areaConfigId: string;
+  areaConfigId?: string;
+  scope?: string;
   clientId: string;
   updatedAt?: string;
 }
@@ -275,10 +276,14 @@ export function generateNextOCSequence(
 
 /**
  * Formatea el código de despliegue visible de un Objetivo de Contribución.
- * Ej: ("COM", 1) -> "COM-OC01"
+ * Ej: ("V", 1) -> "OCV01"; sin área -> "OC01"
  */
 export function formatOCCode(areaCode: string, sequenceNumber: number): string {
-  const cleanCode = (areaCode || 'AREA').trim().toUpperCase();
+  const cleanCode = (areaCode || '').trim().toUpperCase();
   const seqStr = String(sequenceNumber).padStart(2, '0');
-  return `${cleanCode}-OC${seqStr}`;
+  return cleanCode ? `OC${cleanCode}${seqStr}` : `OC${seqStr}`;
+}
+
+export function formatOECode(sequenceNumber: number): string {
+  return `OE${String(sequenceNumber).padStart(2, '0')}`;
 }

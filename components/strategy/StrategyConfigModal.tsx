@@ -55,7 +55,6 @@ export const StrategyConfigModal: React.FC<StrategyConfigModalProps> = ({
 
   // Form State: Objetivos Estratégicos (OE)
   const [oePerspectiveId, setOePerspectiveId] = useState<string>(perspectives[0]?.id || 'FINANCIERA');
-  const [oeCode, setOeCode] = useState<string>('');
   const [oeTitle, setOeTitle] = useState<string>('');
   const [oeDescription, setOeDescription] = useState<string>('');
 
@@ -149,18 +148,15 @@ export const StrategyConfigModal: React.FC<StrategyConfigModalProps> = ({
       setErrorMsg(null);
 
       const countInPerspective = objectives.filter(o => o.perspectiveId === oePerspectiveId).length;
-      const generatedCode = oeCode.trim() || `OE-${String(countInPerspective + 1).padStart(2, '0')}`;
-
       await strategyService.saveStrategicObjective({
         perspectiveId: oePerspectiveId,
-        code: generatedCode.toUpperCase(),
+        code: 'AUTOMÁTICO',
         title: oeTitle.trim(),
         description: oeDescription.trim(),
         order: countInPerspective + 1,
         clientId: selectedClientId
       });
 
-      setOeCode('');
       setOeTitle('');
       setOeDescription('');
       setSuccessMsg('Objetivo Estratégico (OE) guardado correctamente.');
@@ -263,8 +259,8 @@ export const StrategyConfigModal: React.FC<StrategyConfigModalProps> = ({
     e.preventDefault();
     if (!isAdmin) return;
 
-    if (!ocAreaName || !ocPrimaryOEId || !ocTitle.trim()) {
-      setErrorMsg('Selecciona Área, Objetivo Estratégico Primario y proporciona un título.');
+    if (!ocPrimaryOEId || !ocTitle.trim()) {
+      setErrorMsg('Selecciona Objetivo Estratégico Primario y proporciona un título.');
       return;
     }
 
@@ -507,15 +503,10 @@ export const StrategyConfigModal: React.FC<StrategyConfigModalProps> = ({
                     </select>
                   </div>
 
-                  <div>
-                    <label className="text-xs font-semibold text-slate-300 block mb-1">Código (Ej. OE-01)</label>
-                    <input
-                      type="text"
-                      placeholder="Autogenerado si se deja en blanco"
-                      value={oeCode}
-                      onChange={e => setOeCode(e.target.value)}
-                      className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-white"
-                    />
+                  <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-2">
+                    <div className="text-xs font-semibold text-slate-300">CÓDIGO</div>
+                    <div className="text-sm font-mono font-bold text-emerald-400">AUTOMÁTICO</div>
+                    <div className="text-[10px] text-slate-500">Se asigna de forma segura al guardar.</div>
                   </div>
 
                   <div>
@@ -623,7 +614,7 @@ export const StrategyConfigModal: React.FC<StrategyConfigModalProps> = ({
                     onChange={e => handleAreaSelectForConfigChange(e.target.value)}
                     className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-white"
                   >
-                    {availableAreas.map(a => (
+                      {availableAreas.map(a => (
                       <option key={a} value={a}>{a}</option>
                     ))}
                   </select>
@@ -737,6 +728,7 @@ export const StrategyConfigModal: React.FC<StrategyConfigModalProps> = ({
                       onChange={e => setOcAreaName(e.target.value)}
                       className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-white"
                     >
+                      <option value="GENERAL">GENERAL (sin área)</option>
                       {availableAreas.map(a => (
                         <option key={a} value={a}>{a}</option>
                       ))}

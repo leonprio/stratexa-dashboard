@@ -36,7 +36,8 @@ import {
   resolveAreaStrategyConfig,
   formatOCCode,
   deriveAreaCodeSuggestion,
-  getCanonicalRelationshipId
+  getCanonicalRelationshipId,
+  formatOECode
 } from '../strategyTypes';
 
 const COLLECTION_PREFIX = 'tbl_';
@@ -119,20 +120,28 @@ export const strategyService = {
 
   saveStrategicObjective: async (objective: Omit<StrategicObjective, 'id'> & { id?: string }): Promise<StrategicObjective> => {
     const targetClient = normalizeClientId(objective.clientId);
-    const docId = objective.id || `oe_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
-    const ref = doc(db, OBJECTIVES_COLLECTION, docId);
-
-    const now = new Date().toISOString();
-    const finalData: StrategicObjective = {
-      ...objective,
-      id: docId,
-      clientId: targetClient,
-      updatedAt: now,
-      createdAt: objective.createdAt || now
-    };
-
-    await setDoc(ref, JSON.parse(JSON.stringify(finalData)), { merge: true });
-    return finalData;
+    if (objective.id) {
+      const ref = doc(db, OBJECTIVES_COLLECTION, objective.id);
+      const snap = await getDoc(ref);
+      if (!snap.exists()) throw new Error(`Objetivo estratégico "${objective.id}" no encontrado.`);
+      const existing = snap.data() as StrategicObjective;
+      const now = new Date().toISOString();
+      const updated = { ...existing, ...objective, id: objective.id, code: existing.code, clientId: targetClient, updatedAt: now };
+      await setDoc(ref, JSON.parse(JSON.stringify(updated)), { merge: true });
+      return updated;
+    }
+    return runTransaction(db, async transaction => {
+      const counterRef = doc(db, COUNTERS_COLLECTION, `cnt_${targetClient}_OE`);
+      const counterSnap = await transaction.get(counterRef);
+      const nextSeq = ((counterSnap.exists() ? (counterSnap.data() as StrategyCounter).lastIssuedSequence : 0) || 0) + 1;
+      const docId = `oe_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
+      const ref = doc(db, OBJECTIVES_COLLECTION, docId);
+      const now = new Date().toISOString();
+      const finalData: StrategicObjective = { ...objective, id: docId, code: formatOECode(nextSeq), clientId: targetClient, updatedAt: now, createdAt: now };
+      transaction.set(counterRef, { id: `cnt_${targetClient}_OE`, scope: 'OE', lastIssuedSequence: nextSeq, clientId: targetClient, updatedAt: now }, { merge: true });
+      transaction.set(ref, JSON.parse(JSON.stringify(finalData)), { merge: true });
+      return finalData;
+    });
   },
 
   deleteStrategicObjective: async (objectiveId: string, clientId?: string): Promise<boolean> => {
@@ -288,20 +297,17 @@ export const strategyService = {
     }
   ): Promise<ContributionObjective> => {
     const targetClient = normalizeClientId(data.clientId);
-    const normArea = data.areaName.trim().toUpperCase();
+    const normArea = (data.areaName || 'GENERAL').trim().toUpperCase();
 
     // 1. Asegurar la existencia y obtener la configuración de área relacional
     const areaConfigs = await strategyService.getAreaConfigs(targetClient);
     let areaConfig = resolveAreaStrategyConfig(normArea, areaConfigs) ||
                      (data.areaConfigId ? areaConfigs.find(c => c.id === data.areaConfigId) : undefined);
 
-    if (!areaConfig) {
-      const suggestedCode = data.areaCode || deriveAreaCodeSuggestion(normArea);
-      areaConfig = await strategyService.saveAreaConfig(normArea, suggestedCode, targetClient, data.areaConfigId);
-    }
+    if (!areaConfig && normArea !== 'GENERAL') throw new Error('Configure primero el código estable del área.');
 
-    const resolvedAreaConfigId = areaConfig.id;
-    const resolvedAreaCode = areaConfig.code;
+    const resolvedAreaConfigId = areaConfig?.id;
+    const resolvedAreaCode = areaConfig?.code || '';
 
     // Si es edición de un OC existente, actualizar metadatos sin alterar su secuencia monótona
     if (data.id) {
@@ -333,7 +339,8 @@ export const strategyService = {
 
     // 🛡️ REGLA DE CONCURRENCIA ESTRICTA: Transacción 100% interna sin getDocs externo previo
     const result = await runTransaction(db, async (transaction) => {
-      const counterRef = doc(db, COUNTERS_COLLECTION, `cnt_${targetClient}_${resolvedAreaConfigId}`);
+      const scope = resolvedAreaConfigId || 'GENERAL';
+      const counterRef = doc(db, COUNTERS_COLLECTION, `cnt_${targetClient}_OC_${scope}`);
       const counterSnap = await transaction.get(counterRef);
 
       let lastSeq = 0;
@@ -362,9 +369,10 @@ export const strategyService = {
       };
 
       const updatedCounter: StrategyCounter = {
-        id: `cnt_${targetClient}_${resolvedAreaConfigId}`,
+        id: `cnt_${targetClient}_OC_${scope}`,
         lastIssuedSequence: nextSeq,
         areaConfigId: resolvedAreaConfigId,
+        scope,
         clientId: targetClient,
         updatedAt: now
       };
