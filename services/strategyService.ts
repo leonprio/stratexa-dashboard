@@ -55,6 +55,17 @@ const normalizeClientId = (clientId?: string): string => {
   return clientId.trim().toUpperCase();
 };
 
+const parseOESequence = (code?: string): number | null => {
+  const match = /^OE-?(\d+)$/.exec((code || '').trim().toUpperCase());
+  return match ? Number(match[1]) : null;
+};
+
+const canReleaseSequence = (deletedSequence: number | null, counter?: StrategyCounter): boolean =>
+  deletedSequence !== null &&
+  Number.isInteger(deletedSequence) &&
+  deletedSequence > 0 &&
+  counter?.lastIssuedSequence === deletedSequence;
+
 export const strategyService = {
   // -----------------------------
   // 1. Perspectivas Estratégicas (4 Slots Configurables)
@@ -157,20 +168,108 @@ export const strategyService = {
     }
 
     // 🛡️ GUARDA DE INTEGRIDAD / ORPHAN GUARD: Bloquear si el OE participa en relaciones activas
-    const relRef = collection(db, RELATIONSHIPS_COLLECTION);
-    const qRel = query(relRef, where('clientId', '==', targetClient));
-    const relSnap = await getDocs(qRel);
+    const [relSnap, contributionSnap] = await Promise.all([
+      getDocs(query(collection(db, RELATIONSHIPS_COLLECTION), where('clientId', '==', targetClient))),
+      getDocs(query(collection(db, CONTRIBUTION_OBJECTIVES_COLLECTION), where('clientId', '==', targetClient)))
+    ]);
     const hasActiveRelationships = relSnap.docs.some(d => {
       const r = d.data() as StrategicObjectiveRelationship;
       return r.sourceStrategicObjectiveId === objectiveId || r.targetStrategicObjectiveId === objectiveId;
     });
 
+    const hasContributionObjectives = contributionSnap.docs.some(d =>
+      (d.data() as ContributionObjective).primaryStrategicObjectiveId === objectiveId
+    );
+
     if (hasActiveRelationships) {
       throw new Error('No es posible eliminar el objetivo estratégico porque participa en relaciones de causa y efecto activas. Elimine las relaciones primero.');
     }
 
-    await deleteDoc(ref);
+    if (hasContributionObjectives) {
+      throw new Error('No es posible eliminar el objetivo estratégico porque tiene objetivos de contribución vinculados. Reasigne o elimine esas dependencias primero.');
+    }
+
+    await runTransaction(db, async transaction => {
+      const currentSnap = await transaction.get(ref);
+      if (!currentSnap.exists()) return;
+
+      const current = currentSnap.data() as StrategicObjective;
+      if (current.clientId && normalizeClientId(current.clientId) !== targetClient) {
+        throw new Error(`Acceso denegado: El objetivo pertenece al cliente "${current.clientId}" y no a "${targetClient}".`);
+      }
+
+      const sequence = parseOESequence(current.code);
+      const counterRef = doc(db, COUNTERS_COLLECTION, `cnt_${targetClient}_OE`);
+      const counterSnap = await transaction.get(counterRef);
+      const counter = counterSnap.exists() ? counterSnap.data() as StrategyCounter : undefined;
+
+      if (canReleaseSequence(sequence, counter)) {
+        transaction.set(counterRef, {
+          ...counter,
+          lastIssuedSequence: sequence! - 1,
+          updatedAt: new Date().toISOString()
+        }, { merge: true });
+      }
+      transaction.delete(ref);
+    });
     return true;
+  },
+
+  repairLatestStrategicObjectiveGap: async (
+    objectiveId: string,
+    fromSequence: number,
+    toSequence: number,
+    clientId?: string
+  ): Promise<StrategicObjective> => {
+    const targetClient = normalizeClientId(clientId);
+    if (fromSequence !== toSequence + 1 || toSequence < 1) {
+      throw new Error('La reparación sólo permite cerrar el hueco inmediatamente anterior al último código emitido.');
+    }
+
+    const [objectivesSnap, contributionsSnap, relationshipsSnap] = await Promise.all([
+      getDocs(query(collection(db, OBJECTIVES_COLLECTION), where('clientId', '==', targetClient))),
+      getDocs(query(collection(db, CONTRIBUTION_OBJECTIVES_COLLECTION), where('clientId', '==', targetClient))),
+      getDocs(query(collection(db, RELATIONSHIPS_COLLECTION), where('clientId', '==', targetClient)))
+    ]);
+    const targetCode = formatOECode(toSequence);
+    if (objectivesSnap.docs.some(d => d.id !== objectiveId && (d.data() as StrategicObjective).code === targetCode)) {
+      throw new Error(`No es posible reparar: el código ${targetCode} ya existe.`);
+    }
+    if (contributionsSnap.docs.some(d => (d.data() as ContributionObjective).primaryStrategicObjectiveId === objectiveId)) {
+      throw new Error('No es posible reparar: el objetivo tiene objetivos de contribución vinculados.');
+    }
+    if (relationshipsSnap.docs.some(d => {
+      const rel = d.data() as StrategicObjectiveRelationship;
+      return rel.sourceStrategicObjectiveId === objectiveId || rel.targetStrategicObjectiveId === objectiveId;
+    })) {
+      throw new Error('No es posible reparar: el objetivo participa en relaciones estratégicas.');
+    }
+
+    return runTransaction(db, async transaction => {
+      const objectiveRef = doc(db, OBJECTIVES_COLLECTION, objectiveId);
+      const counterRef = doc(db, COUNTERS_COLLECTION, `cnt_${targetClient}_OE`);
+      const [objectiveSnap, counterSnap] = await Promise.all([
+        transaction.get(objectiveRef),
+        transaction.get(counterRef)
+      ]);
+      if (!objectiveSnap.exists()) throw new Error('No es posible reparar: el objetivo no existe.');
+      if (!counterSnap.exists()) throw new Error('No es posible reparar: el contador no existe.');
+
+      const objective = objectiveSnap.data() as StrategicObjective;
+      const counter = counterSnap.data() as StrategyCounter;
+      if (normalizeClientId(objective.clientId) !== targetClient || parseOESequence(objective.code) !== fromSequence) {
+        throw new Error('No es posible reparar: el objetivo ya no coincide con el último código esperado.');
+      }
+      if (counter.lastIssuedSequence !== fromSequence) {
+        throw new Error('No es posible reparar: el objetivo no es la última secuencia emitida.');
+      }
+
+      const updatedAt = new Date().toISOString();
+      const repaired = { ...objective, id: objectiveId, code: targetCode, updatedAt };
+      transaction.set(objectiveRef, repaired, { merge: true });
+      transaction.set(counterRef, { ...counter, lastIssuedSequence: toSequence, updatedAt }, { merge: true });
+      return repaired;
+    });
   },
 
   // -----------------------------
@@ -398,19 +497,35 @@ export const strategyService = {
       throw new Error(`Acceso denegado: El objetivo de contribución pertenece al cliente "${existing.clientId}".`);
     }
 
-    // Borrar el documento de OC (IMPORTANTE: El contador en tbl_strategyCounters NO se decrementa ni se elimina)
-    await deleteDoc(ref);
-
-    // Eliminar también sus asignaciones asociadas
     const assignmentsRef = collection(db, ASSIGNMENTS_COLLECTION);
     const q = query(assignmentsRef, where('contributionObjectiveId', '==', ocId), where('clientId', '==', targetClient));
     const asgnSnap = await getDocs(q);
-
     if (!asgnSnap.empty) {
-      const batch = writeBatch(db);
-      asgnSnap.docs.forEach(d => batch.delete(d.ref));
-      await batch.commit();
+      throw new Error('No es posible eliminar el objetivo de contribución porque tiene indicadores asignados. Elimine las asignaciones primero.');
     }
+
+    await runTransaction(db, async transaction => {
+      const currentSnap = await transaction.get(ref);
+      if (!currentSnap.exists()) return;
+
+      const current = currentSnap.data() as ContributionObjective;
+      if (current.clientId && normalizeClientId(current.clientId) !== targetClient) {
+        throw new Error(`Acceso denegado: El objetivo de contribución pertenece al cliente "${current.clientId}".`);
+      }
+
+      const scope = current.areaConfigId || 'GENERAL';
+      const counterRef = doc(db, COUNTERS_COLLECTION, `cnt_${targetClient}_OC_${scope}`);
+      const counterSnap = await transaction.get(counterRef);
+      const counter = counterSnap.exists() ? counterSnap.data() as StrategyCounter : undefined;
+      if (canReleaseSequence(current.sequenceNumber, counter)) {
+        transaction.set(counterRef, {
+          ...counter,
+          lastIssuedSequence: current.sequenceNumber - 1,
+          updatedAt: new Date().toISOString()
+        }, { merge: true });
+      }
+      transaction.delete(ref);
+    });
 
     return true;
   },

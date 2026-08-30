@@ -504,7 +504,7 @@ describe('v9.5.1 Strategy Map & Cause-Effect Relationships Unit Tests', () => {
             })
           }
         ]
-      });
+      }).mockResolvedValueOnce({ docs: [] });
 
       await expect(
         strategyService.deleteStrategicObjective('oe_active_src', 'IPS')
@@ -530,7 +530,7 @@ describe('v9.5.1 Strategy Map & Cause-Effect Relationships Unit Tests', () => {
             })
           }
         ]
-      });
+      }).mockResolvedValueOnce({ docs: [] });
 
       await expect(
         strategyService.deleteStrategicObjective('oe_active_tgt', 'IPS')
@@ -556,13 +556,23 @@ describe('v9.5.1 Strategy Map & Cause-Effect Relationships Unit Tests', () => {
             })
           }
         ]
-      });
+      }).mockResolvedValueOnce({ docs: [] });
 
-      mockDeleteDoc.mockResolvedValueOnce(undefined);
+      const txDelete = jest.fn();
+      mockRunTransaction.mockImplementation(async (_db, callback) => callback({
+        get: jest.fn()
+          .mockResolvedValueOnce({
+            exists: () => true,
+            data: () => ({ id: 'oe_isolated', clientId: 'IPS', code: 'OE02' })
+          })
+          .mockResolvedValueOnce({ exists: () => true, data: () => ({ lastIssuedSequence: 3 }) }),
+        set: jest.fn(),
+        delete: txDelete
+      }));
 
       const result = await strategyService.deleteStrategicObjective('oe_isolated', 'IPS');
       expect(result).toBe(true);
-      expect(mockDeleteDoc).toHaveBeenCalledTimes(1);
+      expect(txDelete).toHaveBeenCalledTimes(1);
     });
   });
 
