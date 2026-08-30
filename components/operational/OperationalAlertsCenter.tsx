@@ -302,10 +302,15 @@ export const OperationalAlertsCenter: React.FC<OperationalAlertsCenterProps> = (
                       </span>
                     </td>
 
-                    {/* TENDENCIA */}
+                    {/* RESULTADO CANÓNICO + ETIQUETA SEMÁNTICA */}
                     <td className="p-3 text-center">
-                      <span className={`text-[9px] font-black px-2 py-1 rounded-lg ${trend.color} flex items-center justify-center gap-1 w-fit mx-auto`}>
-                        <span>{trend.icon}</span> <span>{alert.performanceLabel}</span>
+                      <span className={`text-[9px] font-black px-2 py-1 rounded-lg ${trend.color} flex flex-col items-center justify-center gap-0.5 w-fit mx-auto`}>
+                        <span className="text-sm tabular-nums leading-none">
+                          {alert.dataStatus === 'SIN OBLIGACIÓN' ? '—' : `${Math.round(alert.performanceScore)}%`}
+                        </span>
+                        <span className="flex items-center gap-1 leading-none">
+                          <span>{trend.icon}</span> <span>{alert.dataStatus === 'SIN OBLIGACIÓN' ? 'NO EVALUABLE' : alert.performanceLabel}</span>
+                        </span>
                       </span>
                     </td>
 

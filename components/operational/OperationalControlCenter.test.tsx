@@ -1,6 +1,6 @@
 import React from 'react';
 import { fireEvent, render, screen } from '@testing-library/react';
-import { OperationalControlCenter } from './OperationalControlCenter';
+import { OperationalControlCenter, selectControlDashboards } from './OperationalControlCenter';
 import { buildOperationalAlerts } from '../../utils/operationalAlerts';
 
 jest.mock('../../utils/operationalAlerts', () => ({ buildOperationalAlerts: jest.fn() }));
@@ -21,6 +21,17 @@ describe('OperationalControlCenter simplificado', () => {
     expect(screen.getByText('LISTA PRIORIZADA DE ALERTAS')).toBeInTheDocument();
     expect(screen.getByText('RESUMEN EJECUTIVO DE PLANES')).toBeInTheDocument();
     expect(buildOperationalAlerts).toHaveBeenCalledWith([dashboard], dashboard.thresholds, 2026);
+  });
+
+  it('usa el mismo dashboard físico que TABLERO en una vista no agregada', () => {
+    const otherDashboard = { ...dashboard, id: 2, title: 'Otro tablero' };
+    expect(selectControlDashboards([dashboard, otherDashboard], dashboard)).toEqual([dashboard]);
+  });
+
+  it('conserva las fuentes físicas cuando el tablero visible es agregado', () => {
+    const aggregate = { ...dashboard, id: 'agg-direccion', isAggregate: true };
+    const sources = [dashboard, { ...dashboard, id: 2 }];
+    expect(selectControlDashboards(sources, aggregate)).toBe(sources);
   });
 
   it('oculta la navegación redundante sin eliminar el acceso al historial', () => {

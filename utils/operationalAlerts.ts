@@ -166,7 +166,7 @@ export const buildOperationalAlerts = (
         captureRate: m.captureRate,
         stalenessDays: m.stalenessDays,
         missingPeriods: m.missingPeriods,
-        performanceScore: m.performanceScore,
+        performanceScore: m.sourcePerformanceScore ?? m.performanceScore,
         realOperationalScore: m.realOperationalScore,
         isOvertRisk,
         isHiddenRisk,

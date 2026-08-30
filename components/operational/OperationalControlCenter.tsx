@@ -8,10 +8,18 @@ import type { ActionPlanControlSummary } from './TransversalActionPlansControl';
 
 interface OperationalControlCenterProps { dashboards: Dashboard[]; currentDashboard: Dashboard; globalThresholds: ComplianceThresholds; year: number; }
 
+export const selectControlDashboards = (dashboards: Dashboard[], currentDashboard: Dashboard): Dashboard[] => {
+  const isAggregate = currentDashboard.isAggregate === true
+    || currentDashboard.id === -1
+    || String(currentDashboard.id).startsWith('agg-');
+
+  return isAggregate && dashboards.length > 0 ? dashboards : [currentDashboard];
+};
+
 export const OperationalControlCenter: React.FC<OperationalControlCenterProps> = ({ dashboards, currentDashboard, globalThresholds, year }) => {
   const [historyVisible, setHistoryVisible] = useState(false);
   const [planSummary, setPlanSummary] = useState<ActionPlanControlSummary>({ active: 0, overdue: 0 });
-  const relevantDashboards = useMemo(() => dashboards.length > 0 ? dashboards : [currentDashboard], [dashboards, currentDashboard]);
+  const relevantDashboards = useMemo(() => selectControlDashboards(dashboards, currentDashboard), [dashboards, currentDashboard]);
   const alerts = useMemo(() => buildOperationalAlerts(relevantDashboards, globalThresholds, year), [relevantDashboards, globalThresholds, year]);
   const attentionAlerts = alerts.filter(alert => alert.severity !== 'BAJO CONTROL' && alert.severity !== 'SIN OBLIGACIÓN');
   const delayedAlerts = alerts.filter(alert => alert.dataStatus === 'DATOS INCOMPLETOS' || alert.dataStatus === 'DATOS VENCIDOS' || alert.dataStatus === 'SIN DATOS');

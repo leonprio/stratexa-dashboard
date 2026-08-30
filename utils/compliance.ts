@@ -920,7 +920,9 @@ export const calculateOperationalMetrics = (
   const missingPeriods = expectedPeriods - capturedPeriods;
   const captureRate = expectedPeriods > 0 ? (capturedPeriods / expectedPeriods) * 100 : 100;
 
-  // 5. Calcular performanceScore tradicional (acotado a meses capturados)
+  // 5. Conservar el score operativo sobre periodos capturados para clasificar
+  // riesgo oculto, y exponer por separado el cumplimiento canónico de TABLERO.
+  const sourcePerformance = calculateCompliance(shielded, globalThresholds, year, mode, [], contextItems);
   const itemForPerformance = {
     ...shielded,
     monthlyGoals: shielded.monthlyGoals.map((g, m) => {
@@ -928,9 +930,7 @@ export const calculateOperationalMetrics = (
       if (!isExpected) return g;
 
       const val = monthlyProgress[m];
-      const isCaptured = isOperationalPeriodCaptured(val, g);
-
-      return isCaptured ? g : null;
+      return isOperationalPeriodCaptured(val, g) ? g : null;
     })
   };
   const traditional = calculateCompliance(itemForPerformance, globalThresholds, year, mode, [], contextItems);
@@ -1004,6 +1004,7 @@ export const calculateOperationalMetrics = (
     missingPeriods,
     captureRate,
     performanceScore,
+    sourcePerformanceScore: sourcePerformance.overallPercentage,
     realOperationalScore,
     stalenessDays,
     performanceStatus,
