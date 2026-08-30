@@ -59,6 +59,12 @@ describe('Firestore Security Rules — Strategy Module (v9.5.0 Foundation)', () 
           globalRole: 'Admin'
         });
 
+        await setDoc(doc(db, 'tbl_users', 'admin_leon'), {
+          uid: 'admin_leon',
+          clientId: 'LEÓN',
+          globalRole: 'Admin'
+        });
+
         // Usuario 3: Usuario normal multi-tenant (IPS y CLIENT_A)
         await setDoc(doc(db, 'tbl_users', 'user_multi'), {
           uid: 'user_multi',
@@ -328,6 +334,56 @@ describe('Firestore Security Rules — Strategy Module (v9.5.0 Foundation)', () 
     const superAdminDb = testEnv.authenticatedContext('super_admin', { email: 'leon@leonprior.com' }).firestore();
     const ref = doc(superAdminDb, 'tbl_strategicPerspectives', 'persp_ips');
     await assertFails(updateDoc(ref, { clientId: '^IPS$' }));
+  });
+
+  describe('first strategy counter initialization', () => {
+    const counterPayload = { id: 'cnt_LEÓN_OE', clientId: 'LEÓN', scope: 'OE', lastIssuedSequence: 1 };
+
+    it('allows SuperAdmin get/create/update for LEON counter', async () => {
+      const db = testEnv.authenticatedContext('super_admin', { email: 'leon@leonprior.com' }).firestore();
+      const ref = doc(db, 'tbl_strategyCounters', 'cnt_LEÓN_OE');
+      await assertSucceeds(getDoc(ref));
+      await assertSucceeds(setDoc(ref, counterPayload));
+      await assertSucceeds(updateDoc(ref, { lastIssuedSequence: 2 }));
+    });
+
+    it('allows LEON tenant Admin get/create for LEON counter', async () => {
+      const db = testEnv.authenticatedContext('admin_leon').firestore();
+      const ref = doc(db, 'tbl_strategyCounters', 'cnt_LEÓN_OE');
+      await assertSucceeds(getDoc(ref));
+      await assertSucceeds(setDoc(ref, counterPayload));
+    });
+
+    it('denies IPS Admin get/create for LEON counter', async () => {
+      const db = testEnv.authenticatedContext('admin_ips').firestore();
+      const ref = doc(db, 'tbl_strategyCounters', 'cnt_LEÓN_OE');
+      await assertFails(getDoc(ref));
+      await assertFails(setDoc(ref, counterPayload));
+    });
+
+    it('denies normal and anonymous users', async () => {
+      const normalRef = doc(testEnv.authenticatedContext('user_ips').firestore(), 'tbl_strategyCounters', 'cnt_IPS_OE');
+      const anonymousRef = doc(testEnv.unauthenticatedContext().firestore(), 'tbl_strategyCounters', 'cnt_IPS_OE');
+      await assertFails(getDoc(normalRef));
+      await assertFails(getDoc(anonymousRef));
+    });
+
+    it('denies invalid counter IDs', async () => {
+      const db = testEnv.authenticatedContext('admin_leon').firestore();
+      const ref = doc(db, 'tbl_strategyCounters', 'invalid_LEÓN');
+      await assertFails(getDoc(ref));
+      await assertFails(setDoc(ref, { ...counterPayload, id: 'invalid_LEÓN' }));
+    });
+
+    it('allows SuperAdmin create of automatic OE01 for accented tenant id', async () => {
+      const db = testEnv.authenticatedContext('super_admin', { email: 'leon@leonprior.com' }).firestore();
+      const ref = doc(db, 'tbl_strategicObjectives', 'oe_auto_1');
+      await assertSucceeds(setDoc(ref, {
+        id: 'oe_auto_1', clientId: 'LEÓN', perspectiveId: 'FINANCIERA', code: 'OE01',
+        title: 'Maximizar el crecimiento de ventas y la rentabilidad', description: '', order: 1,
+        createdAt: '2026-08-30T21:00:00.000Z', updatedAt: '2026-08-30T21:00:00.000Z'
+      }));
+    });
   });
 
   // 🛡️ PRUEBAS DE SEGURIDAD PARA RELACIONES (tbl_strategicObjectiveRelationships) (25..39)

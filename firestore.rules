@@ -34,7 +34,7 @@ service cloud.firestore {
 
     // 🛡️ REGLA DE SEGURIDAD CONTRA INYECCIÓN REGEX: Valida que el ID del tenant sea alfanumérico seguro sin metacaracteres
     function isSafeClientId(id) {
-      return id is string && id.size() > 0 && id.size() <= 64 && id.matches('^[a-zA-Z0-9_-]+$');
+      return id is string && id.size() > 0 && id.size() <= 64 && id.matches('^[a-zA-Z0-9ÁÉÍÓÚÜÑáéíóúüñ_-]+$');
     }
 
     function isTenantUser(targetClientId) {
@@ -54,6 +54,19 @@ service cloud.firestore {
     function isTenantAdmin(targetClientId) {
       return isSuperAdmin() || (
         isStratexaAdmin() && isTenantUser(targetClientId)
+      );
+    }
+
+    function isStrategyCounterIdForClient(counterId, targetClientId) {
+      return isSafeClientId(targetClientId) &&
+        counterId.matches('^cnt_' + targetClientId + '_(OE|OC_.+)$');
+    }
+
+    function canInitializeStrategyCounter(counterId) {
+      return isSuperAdmin() || (
+        isStratexaAdmin() &&
+        isSafeClientId(getUserProfile().clientId) &&
+        isStrategyCounterIdForClient(counterId, getUserProfile().clientId)
       );
     }
 
@@ -123,9 +136,17 @@ service cloud.firestore {
     }
 
     match /tbl_strategyCounters/{docId} {
-      allow read: if isTableroUser() && (resource == null || isTenantUser(resource.data.clientId));
-      allow create: if isTableroUser() && isSafeClientId(request.resource.data.clientId) && isTenantAdmin(request.resource.data.clientId);
-      allow update: if isTableroUser() && isSafeClientId(resource.data.clientId) && isTenantAdmin(resource.data.clientId) && request.resource.data.clientId == resource.data.clientId;
+      allow get: if canInitializeStrategyCounter(docId);
+      allow list: if isTableroUser() && isTenantAdmin(resource.data.clientId);
+      allow create: if isTableroUser() &&
+        isSafeClientId(request.resource.data.clientId) &&
+        isStrategyCounterIdForClient(docId, request.resource.data.clientId) &&
+        isTenantAdmin(request.resource.data.clientId);
+      allow update: if isTableroUser() &&
+        isSafeClientId(resource.data.clientId) &&
+        isStrategyCounterIdForClient(docId, resource.data.clientId) &&
+        isTenantAdmin(resource.data.clientId) &&
+        request.resource.data.clientId == resource.data.clientId;
       allow delete: if isTableroUser() && isTenantAdmin(resource.data.clientId);
     }
 
