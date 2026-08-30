@@ -2389,6 +2389,10 @@ Esto corregirá cualquier inconsistencia en colores (ej. Amarillo vs Rojo).`)) {
                   layout={viewMode}
                   year={selectedYear}
                   allDashboards={dashboards}
+                  objectives={objectives}
+                  perspectives={perspectives}
+                  contributions={contributionObjectives}
+                  assignments={assignments}
                   onUpdateMetadata={(isGlobalAdmin || isDirector) ? handleUpdateMetadata : undefined as any}
                   isDirector={isDirector}
                   onOpenWeights={() => setActiveAdminSection("weights")}

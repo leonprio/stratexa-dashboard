@@ -17,6 +17,8 @@ import { CurrentPeriodFocus } from "./CurrentPeriodFocus";
 import { exportDashboardToExcel } from '../utils/exportUtils';
 import { exportToExecutiveExcelJS } from '../utils/ExecutiveOperationalExport';
 import { OperationalControlCenter } from "./operational/OperationalControlCenter";
+import { ObjectivesView } from './ObjectivesView';
+import type { StrategicObjective, StrategicPerspective, ContributionObjective, ContributionIndicatorAssignment } from '../strategyTypes';
 import { scrollToTop, scrollToElementBelowHeader, scheduleScroll } from "../utils/scrollUtils";
 
 interface DashboardViewProps {
@@ -41,6 +43,10 @@ interface DashboardViewProps {
   allDashboards?: DashboardType[];
   isDirector?: boolean;
   onOpenWeights?: () => void;
+  objectives?: StrategicObjective[];
+  perspectives?: StrategicPerspective[];
+  contributions?: ContributionObjective[];
+  assignments?: ContributionIndicatorAssignment[];
 }
 
 /**
@@ -64,6 +70,7 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(({
   allDashboards = [],
   isDirector,
   onOpenWeights,
+  objectives = [], perspectives = [], contributions = [], assignments = [],
 }) => {
   const [isAnalysisOpen, setIsAnalysisOpen] = useState(false);
   const [analysisResult, setAnalysisResult] = useState<AIAnalysisResult | null>(null);
@@ -86,7 +93,7 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(({
   }, [allDashboards, safeItems]);
 
   const [selectedItemId, setSelectedItemId] = useState<number | string | null>(null);
-  const [activeView, setActiveView] = useState<"dashboard" | "reports" | "control">("dashboard");
+  const [activeView, setActiveView] = useState<"dashboard" | "objectives" | "reports" | "control">("dashboard");
 
   const isAggregate = (typeof dashboard.id === 'string' && dashboard.id.startsWith('agg-')) || dashboard.id === -1 || dashboard.isAggregate === true;
 
@@ -372,6 +379,11 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(({
                 <span>📊</span> <span className="hidden sm:inline">Tablero</span>
               </button>
               <button
+                onClick={() => setActiveView("objectives")}
+                aria-label="Ver Objetivos Estratégicos"
+                className={`px-4 sm:px-6 py-2 rounded-xl text-[9px] font-extrabold uppercase tracking-widest transition-all duration-500 flex items-center gap-2 ${activeView === 'objectives' ? 'bg-violet-600 text-white' : 'text-slate-500 hover:text-slate-300 hover:bg-white/5'}`}
+              ><span>🎯</span> <span className="hidden sm:inline">Objetivos</span></button>
+              <button
                 onClick={() => setActiveView("reports")}
                 aria-label="Ver Centro de Reportes"
                 className={`px-4 sm:px-6 py-2 rounded-xl text-[9px] font-extrabold uppercase tracking-widest transition-all duration-500 flex items-center gap-2 ${activeView === 'reports' ? 'bg-indigo-600 text-white shadow-[0_0_20px_rgba(79,70,229,0.5)]' : 'text-slate-500 hover:text-slate-300 hover:bg-white/5'}`}
@@ -461,6 +473,8 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(({
             isGlobalAdmin={isGlobalAdmin}
           />
         </div>
+      ) : activeView === 'objectives' ? (
+        <ObjectivesView dashboard={dashboard} objectives={objectives} perspectives={perspectives} contributions={contributions} assignments={assignments} year={year || new Date().getFullYear()} />
       ) : activeView === 'reports' ? (
         <ReportCenter
           items={safeItems}
