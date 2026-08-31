@@ -57,6 +57,8 @@ export const StrategyConfigModal: React.FC<StrategyConfigModalProps> = ({
   const [oePerspectiveId, setOePerspectiveId] = useState<string>(perspectives[0]?.id || 'FINANCIERA');
   const [oeTitle, setOeTitle] = useState<string>('');
   const [oeDescription, setOeDescription] = useState<string>('');
+  const [editingOEId, setEditingOEId] = useState<string | null>(null);
+  const [pendingDeleteOE, setPendingDeleteOE] = useState<StrategicObjective | null>(null);
 
   // Form State: Área y Códigos Estables
   const [selectedAreaForConfig, setSelectedAreaForConfig] = useState<string>('');
@@ -147,18 +149,21 @@ export const StrategyConfigModal: React.FC<StrategyConfigModalProps> = ({
       setLoading(true);
       setErrorMsg(null);
 
+      const currentObjective = editingOEId ? objectives.find(o => o.id === editingOEId) : undefined;
       const countInPerspective = objectives.filter(o => o.perspectiveId === oePerspectiveId).length;
       await strategyService.saveStrategicObjective({
+        id: editingOEId || undefined,
         perspectiveId: oePerspectiveId,
-        code: 'AUTOMÁTICO',
+        code: currentObjective?.code || 'AUTOMÁTICO',
         title: oeTitle.trim(),
         description: oeDescription.trim(),
-        order: countInPerspective + 1,
+        order: currentObjective?.order || countInPerspective + 1,
         clientId: selectedClientId
       });
 
       setOeTitle('');
       setOeDescription('');
+      setEditingOEId(null);
       setSuccessMsg('Objetivo Estratégico (OE) guardado correctamente.');
       await onRefreshData();
     } catch (err: any) {
@@ -168,16 +173,31 @@ export const StrategyConfigModal: React.FC<StrategyConfigModalProps> = ({
     }
   };
 
-  // Eliminar OE
-  const handleDeleteOE = async (oeId: string) => {
-    if (!isAdmin) return;
-    if (!confirm('¿Eliminar este Objetivo Estratégico?')) return;
+  const startEditOE = (objective: StrategicObjective) => {
+    setEditingOEId(objective.id);
+    setOePerspectiveId(objective.perspectiveId);
+    setOeTitle(objective.title);
+    setOeDescription(objective.description || '');
+    setErrorMsg(null);
+    setSuccessMsg(null);
+  };
 
+  const cancelEditOE = () => {
+    setEditingOEId(null);
+    setOeTitle('');
+    setOeDescription('');
+  };
+
+  // Eliminar OE, después de confirmación inline propia de la aplicación.
+  const handleDeleteOE = async () => {
+    if (!isAdmin || !pendingDeleteOE) return;
     try {
       setLoading(true);
-      await strategyService.deleteStrategicObjective(oeId, selectedClientId);
+      setErrorMsg(null);
+      await strategyService.deleteStrategicObjective(pendingDeleteOE.id, selectedClientId);
       await onRefreshData();
       setSuccessMsg('Objetivo Estratégico eliminado.');
+      setPendingDeleteOE(null);
     } catch (err: any) {
       setErrorMsg(err.message);
     } finally {
@@ -484,9 +504,9 @@ export const StrategyConfigModal: React.FC<StrategyConfigModalProps> = ({
 
               {/* Form de creación de OE */}
               <div className="lg:col-span-1 bg-slate-950 p-5 rounded-xl border border-slate-800 space-y-4">
-                <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                  <Plus className="w-4 h-4 text-emerald-400" />
-                  Nuevo Objetivo Estratégico
+                  <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                    <Plus className="w-4 h-4 text-emerald-400" />
+                  {editingOEId ? 'Editar Objetivo Estratégico' : 'Nuevo Objetivo Estratégico'}
                 </h3>
 
                 <form onSubmit={handleSaveOE} className="space-y-4">
@@ -503,10 +523,10 @@ export const StrategyConfigModal: React.FC<StrategyConfigModalProps> = ({
                     </select>
                   </div>
 
-                  <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-2">
+                    <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-2">
                     <div className="text-xs font-semibold text-slate-300">CÓDIGO</div>
-                    <div className="text-sm font-mono font-bold text-emerald-400">AUTOMÁTICO</div>
-                    <div className="text-[10px] text-slate-500">Se asigna de forma segura al guardar.</div>
+                    <div className="text-sm font-mono font-bold text-emerald-400">{editingOEId ? objectives.find(o => o.id === editingOEId)?.code : 'AUTOMÁTICO'}</div>
+                    <div className="text-[10px] text-slate-500">{editingOEId ? 'Código canónico de sólo lectura.' : 'Se asigna de forma segura al guardar.'}</div>
                   </div>
 
                   <div>
@@ -537,8 +557,13 @@ export const StrategyConfigModal: React.FC<StrategyConfigModalProps> = ({
                     disabled={loading}
                     className="w-full py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold transition-all disabled:opacity-50"
                   >
-                    {loading ? 'Guardando...' : 'Crear Objetivo Estratégico'}
+                    {loading ? 'Guardando...' : editingOEId ? 'Guardar cambios del objetivo' : 'Crear Objetivo Estratégico'}
                   </button>
+                  {editingOEId && (
+                    <button type="button" onClick={cancelEditOE} className="w-full py-2 text-xs font-bold text-slate-400 hover:text-white">
+                      Cancelar edición
+                    </button>
+                  )}
                 </form>
               </div>
 
@@ -577,13 +602,24 @@ export const StrategyConfigModal: React.FC<StrategyConfigModalProps> = ({
                                 )}
                               </div>
 
-                              <button
-                                onClick={() => handleDeleteOE(obj.id)}
-                                className="text-slate-500 hover:text-red-400 p-1.5 rounded transition-colors shrink-0"
-                                title="Eliminar OE"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </button>
+                              <div className="flex items-center gap-1 shrink-0">
+                                <button
+                                  onClick={() => startEditOE(obj)}
+                                  className="text-slate-400 hover:text-emerald-400 p-1.5 rounded transition-colors"
+                                  title="Editar OE"
+                                  aria-label={`Editar ${obj.code}`}
+                                >
+                                  <Edit2 className="w-4 h-4" />
+                                </button>
+                                <button
+                                  onClick={() => setPendingDeleteOE(obj)}
+                                  className="text-slate-500 hover:text-red-400 p-1.5 rounded transition-colors"
+                                  title="Eliminar OE"
+                                  aria-label={`Eliminar ${obj.code}`}
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </div>
                             </div>
                           ))}
                         </div>
@@ -877,6 +913,25 @@ export const StrategyConfigModal: React.FC<StrategyConfigModalProps> = ({
           )}
 
         </div>
+
+        {pendingDeleteOE && (
+          <div className="absolute inset-0 z-10 flex items-center justify-center bg-slate-950/80 p-6">
+            <div className="w-full max-w-md rounded-xl border border-red-500/30 bg-slate-900 p-5 shadow-2xl space-y-4">
+              <h3 className="text-base font-bold text-white">Eliminar objetivo estratégico</h3>
+              <p className="text-xs text-slate-300">
+                ¿Confirmas eliminar <strong className="text-emerald-400">{pendingDeleteOE.code}</strong> — {pendingDeleteOE.title}?
+              </p>
+              <div className="flex justify-end gap-2">
+                <button type="button" onClick={() => setPendingDeleteOE(null)} className="px-4 py-2 rounded-lg bg-slate-800 text-slate-200 text-xs font-bold">
+                  Cancelar
+                </button>
+                <button type="button" onClick={handleDeleteOE} disabled={loading} className="px-4 py-2 rounded-lg bg-red-600 text-white text-xs font-bold disabled:opacity-50">
+                  Eliminar
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Footer */}
         <div className="p-4 border-t border-slate-800 bg-slate-950 flex justify-end">

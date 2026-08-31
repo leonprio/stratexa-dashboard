@@ -65,6 +65,11 @@ export const ContributionMatrixView: React.FC<ContributionMatrixViewProps> = ({
   const [showConfigModal, setShowConfigModal] = useState(false);
   const [selectedAreaFilter, setSelectedAreaFilter] = useState<string>('TODAS');
 
+  const handleCloseConfig = async () => {
+    setShowConfigModal(false);
+    await onRefreshData();
+  };
+
   // Obtener todas las áreas únicas activas de los tableros
   const activeAreas = useMemo(() => {
     const set = new Set<string>();
@@ -445,7 +450,7 @@ export const ContributionMatrixView: React.FC<ContributionMatrixViewProps> = ({
           dashboards={dashboards}
           selectedClientId={selectedClientId}
           currentUser={currentUser}
-          onClose={() => setShowConfigModal(false)}
+          onClose={handleCloseConfig}
           onRefreshData={onRefreshData}
         />
       )}
