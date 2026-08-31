@@ -13,6 +13,7 @@ import { Dashboard as DashboardType, User, GlobalUserRole } from '../../types';
 import { calculateCompliance } from '../../utils/compliance';
 import { StrategyConfigModal } from './StrategyConfigModal';
 import { strategyService } from '../../services/strategyService';
+import { resolveStrategicKpiOwnership } from '../../strategyKpiOwnership';
 
 export interface OEDetailModalProps {
   objective: StrategicObjective | null;
@@ -71,12 +72,10 @@ export const OEDetailModal: React.FC<OEDetailModalProps> = ({
   const canManageOE = currentUser?.globalRole === GlobalUserRole.Admin && Boolean(selectedClientId && onRefreshData);
 
   const allKpis = dashboards.flatMap(d => (d.items || []).map(item => ({ dashboard: d, item, canonical: getCanonicalKpiIdentity(item, d.id) })));
+  const ownership = resolveStrategicKpiOwnership(dashboards, allObjectives, contributions, assignments);
   const currentDirectKeys = new Set(assignments.filter(a => a.strategicObjectiveId === objective?.id).map(a => `${a.dashboardId}_${a.itemId}`));
   const ocOwnerById = new Map(contributions.map(oc => [oc.id, oc.primaryStrategicObjectiveId]));
-  const occupiedByOtherOE = new Set(assignments.filter(a => {
-    const owner = a.strategicObjectiveId || (a.contributionObjectiveId ? ocOwnerById.get(a.contributionObjectiveId) : undefined);
-    return owner && owner !== objective?.id;
-  }).map(a => `${a.dashboardId}_${a.itemId}`));
+  const occupiedByOtherOE = new Set(ownership.canonicalKpis.filter(k => ownership.ownershipByCanonicalKpi.get(k.identity)?.strategicObjectiveId !== objective?.id && ownership.ownershipByCanonicalKpi.has(k.identity)).map(k => `${k.dashboard.id}_${k.item.id}`));
   const viaCurrentOC = new Set(assignments.filter(a => a.contributionObjectiveId && ocOwnerById.get(a.contributionObjectiveId) === objective?.id).map(a => `${a.dashboardId}_${a.itemId}`));
   const visibleKpis = allKpis.filter(({ dashboard, item, canonical }) => {
     const key = `${dashboard.id}_${item.id}`;

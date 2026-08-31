@@ -8,6 +8,7 @@ import {
 import { Dashboard as DashboardType } from '../../types';
 import { calculateCompliance } from '../../utils/compliance';
 import { CheckCircle2, AlertTriangle, Info, TrendingUp, Layers, Target } from 'lucide-react';
+import { resolveStrategicKpiOwnership } from '../../strategyKpiOwnership';
 
 export interface StrategicObjectiveNodeProps {
   objective: StrategicObjective;
@@ -55,6 +56,8 @@ export const StrategicObjectiveNode: React.FC<StrategicObjectiveNodeProps> = ({
 
   // Derivar métricas operativas de enriquecimiento opcional (ÚNICAMENTE cuando existen OCs)
   const enrichmentData = useMemo(() => {
+    const ownership = resolveStrategicKpiOwnership(dashboards, [objective], oeContributions, assignments);
+    const aligned = ownership.kpisByStrategicObjective.get(objective.id) || [];
     const ocIds = new Set(oeContributions.map(c => c.id));
     const direct = assignments.filter(a => a.strategicObjectiveId === objective.id);
     const uniqueAreas = new Set(oeContributions.map(c => c.areaName.trim().toUpperCase()));
@@ -85,12 +88,10 @@ export const StrategicObjectiveNode: React.FC<StrategicObjectiveNodeProps> = ({
       hasContributions: oeContributions.length > 0 || direct.length > 0,
       ocCount: oeContributions.length,
       areaCount: uniqueAreas.size,
-      kpiCount: oeAssignments.length + direct.length,
+      kpiCount: aligned.length,
       statusCounts: { green, yellow, red },
-      directKpis: direct.map(a => {
-        const dashboard = dashboards.find(d => String(d.id) === String(a.dashboardId));
-        const item = dashboard?.items?.find(i => String(i.id) === String(a.itemId));
-        return item ? String(item.indicator || item.name || '') : '';
+      directKpis: aligned.filter(k => assignments.some(a => a.strategicObjectiveId === objective.id && String(a.dashboardId) === String(k.dashboard.id) && String(a.itemId) === String(k.item.id))).map(k => {
+        return String(k.item.indicator || k.item.name || '');
       }).filter(Boolean),
       contributionKpis: oeAssignments.map(a => {
         const dashboard = dashboards.find(d => String(d.id) === String(a.dashboardId));
