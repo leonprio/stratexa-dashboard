@@ -84,6 +84,8 @@ export const OEDetailModal: React.FC<OEDetailModalProps> = ({
     const text = `${item.indicator || item.name || ''} ${dashboard.title || ''}`.toLowerCase();
     return text.includes(kpiSearch.toLowerCase());
   }).filter((candidate, index, list) => list.findIndex(other => other.canonical === candidate.canonical) === index);
+  const availableKpis = visibleKpis.filter(({ dashboard, item }) => !currentDirectKeys.has(`${dashboard.id}_${item.id}`));
+  const selectedDirectKpis = visibleKpis.filter(({ dashboard, item }) => currentDirectKeys.has(`${dashboard.id}_${item.id}`));
   const openDirectAlignment = () => {
     setDirectKpis(Array.from(currentDirectKeys));
     setKpiSearch('');
@@ -448,7 +450,9 @@ export const OEDetailModal: React.FC<OEDetailModalProps> = ({
             <p className="text-xs text-slate-500">Selecciona los KPI que deben aparecer directamente bajo este objetivo.</p>
             <input value={kpiSearch} onChange={e => setKpiSearch(e.target.value)} placeholder="Buscar indicador..." className="w-full rounded-lg border border-slate-200 p-2 text-xs text-slate-800" />
             <div className="max-h-64 overflow-y-auto space-y-1 rounded-lg border border-slate-200 p-2">
-              {visibleKpis.length === 0 ? <p className="p-4 text-center text-xs text-slate-500">No hay indicadores disponibles.</p> : visibleKpis.map(({ dashboard, item }) => { const key = `${dashboard.id}_${item.id}`; return <label key={key} className="flex items-center gap-2 rounded-lg p-2 text-xs text-slate-700 hover:bg-slate-50"><input type="checkbox" checked={directKpis.includes(key)} onChange={() => setDirectKpis(prev => prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key])} /><span><strong>{item.indicator || item.name}</strong><span className="ml-2 text-slate-400">({dashboard.title})</span></span></label>; })}
+              {selectedDirectKpis.map(({ dashboard, item }) => { const key = `${dashboard.id}_${item.id}`; return <label key={key} className="flex items-center gap-2 rounded-lg p-2 text-xs text-slate-700 hover:bg-slate-50"><input type="checkbox" checked={directKpis.includes(key)} onChange={() => setDirectKpis(prev => prev.filter(k => k !== key))} /><span><strong>{item.indicator || item.name}</strong></span></label>; })}
+              {availableKpis.map(({ dashboard, item }) => { const key = `${dashboard.id}_${item.id}`; return <label key={key} className="flex items-center gap-2 rounded-lg p-2 text-xs text-slate-700 hover:bg-slate-50"><input type="checkbox" checked={directKpis.includes(key)} onChange={() => setDirectKpis(prev => prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key])} /><span><strong>{item.indicator || item.name}</strong></span></label>; })}
+              {selectedDirectKpis.length === 0 && availableKpis.length === 0 && <p className="p-4 text-center text-xs text-slate-500">No hay indicadores disponibles.</p>}
             </div>
             {oeError && <p className="text-xs text-red-600">{oeError}</p>}
             <div className="flex justify-end gap-2"><button type="button" onClick={() => setShowDirectAlignment(false)} className="px-4 py-2 rounded-lg bg-slate-100 text-slate-700 text-xs font-bold">CANCELAR</button><button type="button" onClick={saveDirectAlignment} disabled={loadingOE} className="px-4 py-2 rounded-lg bg-indigo-600 text-white text-xs font-bold">{loadingOE ? 'GUARDANDO...' : 'GUARDAR ALINEACIÓN'}</button></div>

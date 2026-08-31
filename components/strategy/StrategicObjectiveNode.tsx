@@ -128,11 +128,12 @@ export const StrategicObjectiveNode: React.FC<StrategicObjectiveNodeProps> = ({
       onClick={onClick}
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
-      className={`relative cursor-pointer transition-all duration-200 rounded-xl bg-white p-3.5 border ${borderStyle} ${shadowStyle} ${ringStyle} min-w-[220px] max-w-[280px] flex flex-col justify-between select-none`}
+      className={`relative cursor-pointer transition-all duration-200 rounded-xl bg-white p-2.5 border ${borderStyle} ${shadowStyle} ${ringStyle} min-w-[220px] md:min-w-[680px] max-w-[820px] flex flex-row items-center gap-4 select-none`}
       style={{ borderLeftWidth: '5px', borderLeftColor: nodeColor }}
     >
+      <div className="min-w-[190px] max-w-[230px] shrink-0">
       {/* Cabecera: Código OE + Badge de Causa/Efecto */}
-      <div className="flex items-center justify-between gap-2 mb-1.5">
+      <div className="flex items-center justify-between gap-2 mb-1">
         <span
           className="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold tracking-wide"
           style={{ backgroundColor: `${nodeColor}15`, color: nodeColor }}
@@ -156,13 +157,15 @@ export const StrategicObjectiveNode: React.FC<StrategicObjectiveNodeProps> = ({
       <h4 className="text-xs font-semibold text-slate-800 line-clamp-2 leading-tight mb-1">
         {objective.title}
       </h4>
+      </div>
 
       {/* Pie Enriquecido condicional (Solo Escenario B con OCs) */}
       {enrichmentData.hasContributions ? (
-        <div className="mt-1 pt-1 border-t border-slate-100 text-[10px] text-slate-500 space-y-1">
-          <div className="font-bold uppercase tracking-wide text-indigo-600">Indicadores alineados · {enrichmentData.kpiCount}</div>
-          {enrichmentData.directKpis.length > 0 && <div><span className="font-semibold text-slate-600">Directos: </span>{enrichmentData.directKpis.slice(0, 4).map(kpi => <span key={kpi} className="mr-1">• {kpi}</span>)}{enrichmentData.directKpis.length > 4 && <span>+{enrichmentData.directKpis.length - 4} más</span>}</div>}
-          {enrichmentData.ocCount > 0 && <div className="font-semibold text-slate-600">{enrichmentData.ocCount} OC</div>}
+        <div className="flex flex-wrap items-center gap-2 flex-1 min-w-0">
+          {enrichmentData.directKpis.slice(0, 4).map(kpi => <span key={kpi} className="rounded-lg border border-indigo-100 bg-indigo-50 px-2 py-1 text-[10px] font-semibold text-indigo-700 truncate max-w-[180px]">{kpi}</span>)}
+          {enrichmentData.directKpis.length > 4 && <span className="text-[10px] font-bold text-slate-500">+{enrichmentData.directKpis.length - 4} MÁS</span>}
+          {enrichmentData.directKpis.length === 0 && enrichmentData.kpiCount === 0 && <span className="text-[10px] text-slate-400">Sin indicadores alineados</span>}
+          {enrichmentData.ocCount > 0 && <span className="text-[10px] font-semibold text-slate-500">{enrichmentData.ocCount} OC</span>}
         </div>
       ) : (
         /* Escenario A: Sin OCs ni KPIs -> Render limpio sin advertencias de error */
