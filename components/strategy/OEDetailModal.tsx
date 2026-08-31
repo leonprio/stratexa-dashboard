@@ -8,13 +8,15 @@ import {
   ContributionIndicatorAssignment,
   AreaStrategyConfig
 } from '../../strategyTypes';
-import { Dashboard as DashboardType, User } from '../../types';
+import { Dashboard as DashboardType, User, GlobalUserRole } from '../../types';
 import { calculateCompliance } from '../../utils/compliance';
 import { StrategyConfigModal } from './StrategyConfigModal';
+import { strategyService } from '../../services/strategyService';
 
 export interface OEDetailModalProps {
   objective: StrategicObjective | null;
   perspective?: StrategicPerspective;
+  perspectives?: StrategicPerspective[];
   allObjectives: StrategicObjective[];
   relationships: StrategicObjectiveRelationship[];
   contributions?: ContributionObjective[];
@@ -40,6 +42,7 @@ export interface OEDetailModalProps {
 export const OEDetailModal: React.FC<OEDetailModalProps> = ({
   objective,
   perspective,
+  perspectives = [],
   allObjectives = [],
   relationships = [],
   contributions = [],
@@ -53,6 +56,64 @@ export const OEDetailModal: React.FC<OEDetailModalProps> = ({
   onRefreshData
 }) => {
   const [showOCManager, setShowOCManager] = useState(false);
+  const [showEditOE, setShowEditOE] = useState(false);
+  const [pendingDelete, setPendingDelete] = useState(false);
+  const [loadingOE, setLoadingOE] = useState(false);
+  const [oeError, setOeError] = useState<string | null>(null);
+  const [editPerspectiveId, setEditPerspectiveId] = useState(objective.perspectiveId);
+  const [editTitle, setEditTitle] = useState(objective.title);
+  const [editDescription, setEditDescription] = useState(objective.description || '');
+
+  const canManageOE = currentUser?.globalRole === GlobalUserRole.Admin && Boolean(selectedClientId && onRefreshData);
+
+  const openEditOE = () => {
+    setEditPerspectiveId(objective.perspectiveId);
+    setEditTitle(objective.title);
+    setEditDescription(objective.description || '');
+    setOeError(null);
+    setShowEditOE(true);
+  };
+
+  const saveEditedOE = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!canManageOE || !onRefreshData || !selectedClientId || !editTitle.trim()) return;
+    try {
+      setLoadingOE(true);
+      setOeError(null);
+      await strategyService.saveStrategicObjective({
+        id: objective.id,
+        perspectiveId: editPerspectiveId,
+        code: objective.code,
+        title: editTitle.trim(),
+        description: editDescription.trim(),
+        order: objective.order,
+        clientId: selectedClientId
+      });
+      await onRefreshData();
+      setShowEditOE(false);
+    } catch (error: any) {
+      setOeError(error.message || 'No fue posible actualizar el objetivo estratégico.');
+    } finally {
+      setLoadingOE(false);
+    }
+  };
+
+  const deleteOE = async () => {
+    if (!canManageOE || !onRefreshData || !selectedClientId) return;
+    try {
+      setLoadingOE(true);
+      setOeError(null);
+      await strategyService.deleteStrategicObjective(objective.id, selectedClientId);
+      setPendingDelete(false);
+      onClose();
+      await onRefreshData();
+    } catch (error: any) {
+      setOeError(error.message || 'No fue posible eliminar el objetivo estratégico.');
+      setPendingDelete(false);
+    } finally {
+      setLoadingOE(false);
+    }
+  };
   if (!objective) return null;
 
   const nodeColor = perspective?.color || '#3B82F6';
@@ -101,6 +162,12 @@ export const OEDetailModal: React.FC<OEDetailModalProps> = ({
             <h3 className="text-xl font-bold text-slate-900 leading-snug">
               {objective.title}
             </h3>
+            {canManageOE && (
+              <div className="flex items-center gap-2 mt-3">
+                <button type="button" onClick={openEditOE} className="px-3 py-1.5 rounded-lg bg-blue-600 text-white text-[11px] font-bold hover:bg-blue-500">EDITAR OBJETIVO</button>
+                <button type="button" onClick={() => { setOeError(null); setPendingDelete(true); }} className="px-3 py-1.5 rounded-lg bg-red-50 text-red-700 border border-red-200 text-[11px] font-bold hover:bg-red-100">ELIMINAR OBJETIVO</button>
+              </div>
+            )}
           </div>
           <button
             onClick={onClose}
@@ -174,8 +241,32 @@ export const OEDetailModal: React.FC<OEDetailModalProps> = ({
                 ) : (
                   <p className="text-xs text-emerald-700/70 italic">No impulsa directamente a otros objetivos en esta versión.</p>
                 )}
-              </div>
-            </div>
+      </div>
+      {showEditOE && (
+        <div className="absolute inset-0 z-20 flex items-center justify-center bg-slate-950/50 p-6">
+          <form onSubmit={saveEditedOE} className="w-full max-w-md rounded-xl border border-slate-200 bg-white p-5 shadow-2xl space-y-4">
+            <h3 className="text-base font-bold text-slate-900">Editar objetivo estratégico</h3>
+            <div><label className="text-xs font-semibold text-slate-600">Código</label><input value={objective.code} readOnly className="w-full mt-1 rounded-lg border border-slate-200 bg-slate-100 p-2 text-xs font-mono text-slate-600" /></div>
+            <div><label className="text-xs font-semibold text-slate-600">Perspectiva</label><select value={editPerspectiveId} onChange={e => setEditPerspectiveId(e.target.value)} className="w-full mt-1 rounded-lg border border-slate-200 p-2 text-xs text-slate-800">{perspectives.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}</select></div>
+            <div><label className="text-xs font-semibold text-slate-600">Título</label><input required value={editTitle} onChange={e => setEditTitle(e.target.value)} className="w-full mt-1 rounded-lg border border-slate-200 p-2 text-xs text-slate-800" /></div>
+            <div><label className="text-xs font-semibold text-slate-600">Descripción</label><textarea value={editDescription} onChange={e => setEditDescription(e.target.value)} rows={3} className="w-full mt-1 rounded-lg border border-slate-200 p-2 text-xs text-slate-800" /></div>
+            {oeError && <p className="text-xs text-red-600">{oeError}</p>}
+            <div className="flex justify-end gap-2"><button type="button" onClick={() => setShowEditOE(false)} className="px-4 py-2 rounded-lg bg-slate-100 text-slate-700 text-xs font-bold">CANCELAR</button><button type="submit" disabled={loadingOE} className="px-4 py-2 rounded-lg bg-blue-600 text-white text-xs font-bold">{loadingOE ? 'GUARDANDO...' : 'GUARDAR'}</button></div>
+          </form>
+        </div>
+      )}
+      {pendingDelete && (
+        <div className="absolute inset-0 z-20 flex items-center justify-center bg-slate-950/50 p-6">
+          <div className="w-full max-w-md rounded-xl border border-red-200 bg-white p-5 shadow-2xl space-y-4">
+            <h3 className="text-base font-bold text-slate-900">ELIMINAR OBJETIVO ESTRATÉGICO</h3>
+            <p className="text-xs text-slate-600"><strong>{objective.code}</strong> — {objective.title}</p>
+            <p className="text-xs text-slate-600">Esta acción eliminará el objetivo. Si tiene relaciones u Objetivos de Contribución asociados, la eliminación será bloqueada.</p>
+            {oeError && <p className="text-xs text-red-600">{oeError}</p>}
+            <div className="flex justify-end gap-2"><button type="button" onClick={() => setPendingDelete(false)} className="px-4 py-2 rounded-lg bg-slate-100 text-slate-700 text-xs font-bold">CANCELAR</button><button type="button" onClick={deleteOE} disabled={loadingOE} className="px-4 py-2 rounded-lg bg-red-600 text-white text-xs font-bold">{loadingOE ? 'ELIMINANDO...' : 'ELIMINAR'}</button></div>
+          </div>
+        </div>
+      )}
+    </div>
           </div>
 
           {/* Sección 2: Objetivos de Contribución y Despliegue Operativo */}

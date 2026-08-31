@@ -358,6 +358,7 @@ export const StrategyMapView: React.FC<StrategyMapViewProps> = ({
         <OEDetailModal
           objective={selectedOE}
           perspective={perspectives.find(p => p.id === selectedOE.perspectiveId)}
+          perspectives={perspectives}
           allObjectives={objectives}
           relationships={relationships}
           contributions={contributions}
