@@ -118,6 +118,16 @@ export const OEDetailModal: React.FC<OEDetailModalProps> = ({
       setOeError(error.message || 'No fue posible alinear los indicadores.');
     } finally { setLoadingOE(false); }
   };
+  const removeDirectLogicalKpi = async (kpi: StrategicKpiCandidate) => {
+    if (!selectedClientId || !onRefreshData) return;
+    try {
+      setLoadingOE(true);
+      await strategyService.removeDirectStrategicLogicalKpiAssignment(selectedClientId, objective.id, kpi.physicalAliases.map(alias => ({ dashboardId: alias.dashboard.id, itemId: alias.item.id })));
+      await onRefreshData();
+    } catch (error: any) {
+      setOeError(error.message || 'No fue posible desalinear el indicador.');
+    } finally { setLoadingOE(false); }
+  };
 
   const openEditOE = () => {
     setEditPerspectiveId(objective.perspectiveId);
@@ -465,7 +475,7 @@ export const OEDetailModal: React.FC<OEDetailModalProps> = ({
             <p className="text-xs text-slate-500">Selecciona los KPI que deben aparecer directamente bajo este objetivo.</p>
             <input value={kpiSearch} onChange={e => setKpiSearch(e.target.value)} placeholder="Buscar indicador..." className="w-full rounded-lg border border-slate-200 p-2 text-xs text-slate-800" />
             <div className="max-h-64 overflow-y-auto space-y-3 rounded-lg border border-slate-200 p-2">
-              <section><h4 className="px-2 pb-1 text-[10px] font-black uppercase tracking-wider text-slate-500">YA ALINEADOS CON {objective.code}</h4>{currentAlignedKpis.length === 0 && viaCurrentOC.size === 0 ? <p className="p-2 text-xs text-slate-400">Ningún indicador directo alineado.</p> : <>{currentAlignedKpis.map(({ dashboard, item }) => { const key = `${dashboard.id}_${item.id}`; return <div key={key} className="flex items-center justify-between rounded-lg bg-slate-50 p-2 text-xs text-slate-700"><strong>{item.indicator || item.name}</strong><button type="button" onClick={() => setDirectKpis(prev => prev.filter(k => k !== key))} className="text-[10px] font-bold text-red-600">QUITAR</button></div>; })}{Array.from(viaCurrentOC).map(key => { const [dashboardId, itemId] = key.split('_'); const assignment = assignments.find(a => `${a.dashboardId}_${a.itemId}` === key); const oc = assignment?.contributionObjectiveId ? contributions.find(c => c.id === assignment.contributionObjectiveId) : undefined; const candidate = allKpis.find(k => `${k.dashboard.id}_${k.item.id}` === key); return candidate ? <div key={key} className="rounded-lg bg-indigo-50 p-2 text-xs text-indigo-700"><strong>{candidate.item.indicator || candidate.item.name}</strong><span className="ml-2 text-[10px]">mediante {oc?.displayCode || 'OC'}</span></div> : null; })}</>}</section>
+              <section><h4 className="px-2 pb-1 text-[10px] font-black uppercase tracking-wider text-slate-500">YA ALINEADOS CON {objective.code}</h4>{currentAlignedKpis.length === 0 && viaCurrentOC.size === 0 ? <p className="p-2 text-xs text-slate-400">Ningún indicador directo alineado.</p> : <>{currentAlignedKpis.map(kpi => { const key = `${kpi.dashboard.id}_${kpi.item.id}`; return <div key={kpi.identity} className="flex items-center justify-between rounded-lg bg-slate-50 p-2 text-xs text-slate-700"><strong>{kpi.item.indicator || kpi.item.name}</strong><button type="button" disabled={loadingOE} onClick={() => removeDirectLogicalKpi(kpi)} className="text-[10px] font-bold text-red-600">QUITAR</button></div>; })}{Array.from(viaCurrentOC).map(key => { const assignment = assignments.find(a => `${a.dashboardId}_${a.itemId}` === key); const oc = assignment?.contributionObjectiveId ? contributions.find(c => c.id === assignment.contributionObjectiveId) : undefined; const candidate = allKpis.find(k => `${k.dashboard.id}_${k.item.id}` === key); return candidate ? <div key={key} className="rounded-lg bg-indigo-50 p-2 text-xs text-indigo-700"><strong>{candidate.item.indicator || candidate.item.name}</strong><span className="ml-2 text-[10px]">mediante {oc?.displayCode || 'OC'}</span></div> : null; })}</>}</section>
               <section><h4 className="px-2 pb-1 text-[10px] font-black uppercase tracking-wider text-slate-500">INDICADORES DISPONIBLES PARA ALINEAR</h4>{trulyAvailableKpis.length === 0 ? <p className="p-2 text-xs text-slate-400">No hay indicadores disponibles.</p> : trulyAvailableKpis.map(({ dashboard, item }) => { const key = `${dashboard.id}_${item.id}`; return <label key={key} className="flex items-center gap-2 rounded-lg p-2 text-xs text-slate-700 hover:bg-slate-50"><input type="checkbox" checked={directKpis.includes(key)} onChange={() => setDirectKpis(prev => prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key])} /><strong>{item.indicator || item.name}</strong></label>; })}</section>
             </div>
             {oeError && <p className="text-xs text-red-600">{oeError}</p>}

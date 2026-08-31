@@ -702,6 +702,25 @@ export const strategyService = {
     return true;
   },
 
+  removeDirectStrategicLogicalKpiAssignment: async (
+    clientId: string,
+    objectiveId: string,
+    aliases: { dashboardId: number | string; itemId: number | string }[]
+  ): Promise<number> => {
+    const targetClient = normalizeClientId(clientId);
+    const aliasKeys = new Set(aliases.map(alias => `${alias.dashboardId}_${alias.itemId}`));
+    const snap = await getDocs(query(collection(db, ASSIGNMENTS_COLLECTION), where('clientId', '==', targetClient)));
+    const removable = snap.docs.filter(d => {
+      const assignment = d.data() as ContributionIndicatorAssignment;
+      return assignment.strategicObjectiveId === objectiveId && aliasKeys.has(`${assignment.dashboardId}_${assignment.itemId}`);
+    });
+    if (removable.length === 0) return 0;
+    const batch = writeBatch(db);
+    removable.forEach(d => batch.delete(d.ref));
+    await batch.commit();
+    return removable.length;
+  },
+
   // -----------------------------
   // 6. Relaciones de Causa y Efecto entre Objetivos Estratégicos (Mapa Estratégico)
   // -----------------------------
