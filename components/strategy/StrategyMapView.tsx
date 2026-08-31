@@ -329,12 +329,13 @@ export const StrategyMapView: React.FC<StrategyMapViewProps> = ({
                               nodeRefs.current[oe.id] = el;
                             }}
                           >
-                            <StrategicObjectiveNode
+              <StrategicObjectiveNode
                               objective={oe}
                               perspective={persp}
                               contributions={contributions}
                               assignments={assignments}
-                              dashboards={dashboards}
+                dashboards={dashboards}
+                alignedLogicalKpis={ownership.kpisByStrategicObjective.get(oe.id) || []}
                               isSelected={isSel}
                               isHovered={isHov}
                               isCause={isCause}

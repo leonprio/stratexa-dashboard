@@ -9,6 +9,7 @@ import { Dashboard as DashboardType } from '../../types';
 import { calculateCompliance } from '../../utils/compliance';
 import { CheckCircle2, AlertTriangle, Info, TrendingUp, Layers, Target } from 'lucide-react';
 import { resolveStrategicKpiOwnership } from '../../strategyKpiOwnership';
+import type { StrategicKpiCandidate } from '../../strategyKpiOwnership';
 
 export interface StrategicObjectiveNodeProps {
   objective: StrategicObjective;
@@ -16,6 +17,7 @@ export interface StrategicObjectiveNodeProps {
   contributions?: ContributionObjective[];
   assignments?: ContributionIndicatorAssignment[];
   dashboards?: DashboardType[];
+  alignedLogicalKpis?: StrategicKpiCandidate[];
   isSelected?: boolean;
   isHovered?: boolean;
   isCause?: boolean;
@@ -39,6 +41,7 @@ export const StrategicObjectiveNode: React.FC<StrategicObjectiveNodeProps> = ({
   contributions = [],
   assignments = [],
   dashboards = [],
+  alignedLogicalKpis,
   isSelected = false,
   isHovered = false,
   isCause = false,
@@ -56,8 +59,8 @@ export const StrategicObjectiveNode: React.FC<StrategicObjectiveNodeProps> = ({
 
   // Derivar métricas operativas de enriquecimiento opcional (ÚNICAMENTE cuando existen OCs)
   const enrichmentData = useMemo(() => {
-    const ownership = resolveStrategicKpiOwnership(dashboards, [objective], oeContributions, assignments);
-    const aligned = ownership.kpisByStrategicObjective.get(objective.id) || [];
+    const ownership = alignedLogicalKpis ? null : resolveStrategicKpiOwnership(dashboards, [objective], oeContributions, assignments);
+    const aligned = alignedLogicalKpis || ownership?.kpisByStrategicObjective.get(objective.id) || [];
     const ocIds = new Set(oeContributions.map(c => c.id));
     const direct = assignments.filter(a => a.strategicObjectiveId === objective.id);
     const uniqueAreas = new Set(oeContributions.map(c => c.areaName.trim().toUpperCase()));
@@ -90,16 +93,14 @@ export const StrategicObjectiveNode: React.FC<StrategicObjectiveNodeProps> = ({
       areaCount: uniqueAreas.size,
       kpiCount: aligned.length,
       statusCounts: { green, yellow, red },
-      directKpis: aligned.filter(k => assignments.some(a => a.strategicObjectiveId === objective.id && String(a.dashboardId) === String(k.dashboard.id) && String(a.itemId) === String(k.item.id))).map(k => {
-        return String(k.item.indicator || k.item.name || '');
-      }).filter(Boolean),
+      directKpis: aligned.map(k => String(k.item.indicator || k.item.name || '')).filter(Boolean),
       contributionKpis: oeAssignments.map(a => {
         const dashboard = dashboards.find(d => String(d.id) === String(a.dashboardId));
         const item = dashboard?.items?.find(i => String(i.id) === String(a.itemId));
         return item ? { ocId: a.contributionObjectiveId || '', label: String(item.indicator || item.name || '') } : null;
       }).filter(Boolean) as { ocId: string; label: string }[]
     };
-  }, [oeContributions, assignments, dashboards, objective.id]);
+  }, [oeContributions, assignments, dashboards, objective.id, alignedLogicalKpis]);
 
   // Clases CSS dinámicas para selección/hover/causa/efecto
   let borderStyle = 'border-slate-200 hover:border-slate-400';
