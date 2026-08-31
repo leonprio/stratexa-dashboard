@@ -18,7 +18,7 @@ export const ObjectivesView: React.FC<Props> = ({ dashboard, objectives, perspec
   const linkedIds = useMemo(() => new Set(assignments.filter(a => String(a.dashboardId) === String(dashboard.id)).map(a => String(a.itemId))), [assignments, dashboard.id]);
   const rowsFor = (objectiveId: string) => {
     const contributionIds = new Set(contributions.filter(c => c.primaryStrategicObjectiveId === objectiveId && c.status !== 'inactive').map(c => c.id));
-    const itemIds = new Set(assignments.filter(a => String(a.dashboardId) === String(dashboard.id) && contributionIds.has(a.contributionObjectiveId)).map(a => String(a.itemId)));
+    const itemIds = new Set(assignments.filter(a => String(a.dashboardId) === String(dashboard.id) && (a.strategicObjectiveId === objectiveId || (a.contributionObjectiveId && contributionIds.has(a.contributionObjectiveId)))).map(a => String(a.itemId)));
     return dashboard.items.filter(item => itemIds.has(String(item.id)));
   };
   const score = (item: DashboardItem) => calculateCompliance(item, dashboard.thresholds, year, 'realTime', dashboard.items).overallPercentage;

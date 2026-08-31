@@ -89,7 +89,8 @@ export interface ContributionObjective {
 
 export interface ContributionIndicatorAssignment {
   id: string;
-  contributionObjectiveId: string;
+  contributionObjectiveId?: string;
+  strategicObjectiveId?: string;
   dashboardId: number | string;
   itemId: number | string;
   clientId: string;

@@ -649,6 +649,42 @@ export const strategyService = {
     return true;
   },
 
+  saveDirectAssignmentsForOE: async (
+    objectiveId: string,
+    items: { dashboardId: number | string; itemId: number | string }[],
+    clientId?: string
+  ): Promise<boolean> => {
+    const targetClient = normalizeClientId(clientId);
+    const objectiveRef = doc(db, OBJECTIVES_COLLECTION, objectiveId);
+    const objectiveSnap = await getDoc(objectiveRef);
+    if (!objectiveSnap.exists()) throw new Error(`Objetivo estratégico "${objectiveId}" no encontrado.`);
+    const objective = objectiveSnap.data() as StrategicObjective;
+    if (objective.clientId !== targetClient) throw new Error('Acceso denegado para este objetivo estratégico.');
+
+    const assignmentsRef = collection(db, ASSIGNMENTS_COLLECTION);
+    const q = query(assignmentsRef, where('strategicObjectiveId', '==', objectiveId), where('clientId', '==', targetClient));
+    const snap = await getDocs(q);
+    const batch = writeBatch(db);
+    snap.docs.forEach(d => batch.delete(d.ref));
+    const uniqueItems = Array.from(new Map(items.map(item => [`${item.dashboardId}_${item.itemId}`, item])).values());
+    const now = new Date().toISOString();
+    uniqueItems.forEach(item => {
+      const docId = `asgn_oe_${objectiveId}_${item.dashboardId}_${item.itemId}`;
+      const itemRef = doc(db, ASSIGNMENTS_COLLECTION, docId);
+      const data: ContributionIndicatorAssignment = {
+        id: docId,
+        strategicObjectiveId: objectiveId,
+        dashboardId: item.dashboardId,
+        itemId: item.itemId,
+        clientId: targetClient,
+        createdAt: now
+      };
+      batch.set(itemRef, JSON.parse(JSON.stringify(data)));
+    });
+    await batch.commit();
+    return true;
+  },
+
   // -----------------------------
   // 6. Relaciones de Causa y Efecto entre Objetivos Estratégicos (Mapa Estratégico)
   // -----------------------------

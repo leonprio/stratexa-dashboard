@@ -60,11 +60,37 @@ export const OEDetailModal: React.FC<OEDetailModalProps> = ({
   const [pendingDelete, setPendingDelete] = useState(false);
   const [loadingOE, setLoadingOE] = useState(false);
   const [oeError, setOeError] = useState<string | null>(null);
+  const [showDirectAlignment, setShowDirectAlignment] = useState(false);
+  const [directKpis, setDirectKpis] = useState<string[]>([]);
+  const [kpiSearch, setKpiSearch] = useState('');
   const [editPerspectiveId, setEditPerspectiveId] = useState(objective.perspectiveId);
   const [editTitle, setEditTitle] = useState(objective.title);
   const [editDescription, setEditDescription] = useState(objective.description || '');
 
   const canManageOE = currentUser?.globalRole === GlobalUserRole.Admin && Boolean(selectedClientId && onRefreshData);
+
+  const allKpis = dashboards.flatMap(d => (d.items || []).map(item => ({ dashboard: d, item })));
+  const visibleKpis = allKpis.filter(({ dashboard, item }) => {
+    const text = `${item.indicator || item.name || ''} ${dashboard.title || ''}`.toLowerCase();
+    return text.includes(kpiSearch.toLowerCase());
+  });
+  const openDirectAlignment = () => {
+    setDirectKpis(assignments.filter(a => a.strategicObjectiveId === objective?.id).map(a => `${a.dashboardId}_${a.itemId}`));
+    setKpiSearch('');
+    setOeError(null);
+    setShowDirectAlignment(true);
+  };
+  const saveDirectAlignment = async () => {
+    if (!selectedClientId || !onRefreshData) return;
+    try {
+      setLoadingOE(true);
+      await strategyService.saveDirectAssignmentsForOE(objective.id, directKpis.map(key => { const [dashboardId, itemId] = key.split('_'); return { dashboardId, itemId }; }), selectedClientId);
+      await onRefreshData();
+      setShowDirectAlignment(false);
+    } catch (error: any) {
+      setOeError(error.message || 'No fue posible alinear los indicadores.');
+    } finally { setLoadingOE(false); }
+  };
 
   const openEditOE = () => {
     setEditPerspectiveId(objective.perspectiveId);
@@ -164,7 +190,7 @@ export const OEDetailModal: React.FC<OEDetailModalProps> = ({
             </h3>
             {canManageOE && (
               <div className="flex items-center gap-2 mt-3">
-                <button type="button" onClick={() => setShowOCManager(true)} className="px-3 py-1.5 rounded-lg bg-indigo-600 text-white text-[11px] font-bold hover:bg-indigo-500">ALINEAR INDICADORES</button>
+                <button type="button" onClick={openDirectAlignment} className="px-3 py-1.5 rounded-lg bg-indigo-600 text-white text-[11px] font-bold hover:bg-indigo-500">ALINEAR INDICADORES</button>
                 <button type="button" onClick={openEditOE} className="px-3 py-1.5 rounded-lg bg-blue-600 text-white text-[11px] font-bold hover:bg-blue-500">EDITAR OBJETIVO</button>
                 <button type="button" onClick={() => { setOeError(null); setPendingDelete(true); }} className="px-3 py-1.5 rounded-lg bg-red-50 text-red-700 border border-red-200 text-[11px] font-bold hover:bg-red-100">ELIMINAR OBJETIVO</button>
               </div>
@@ -404,6 +430,20 @@ export const OEDetailModal: React.FC<OEDetailModalProps> = ({
           onClose={() => setShowOCManager(false)}
           onRefreshData={async () => { await onRefreshData(); }}
         />
+      )}
+      {showDirectAlignment && (
+        <div className="absolute inset-0 z-20 flex items-center justify-center bg-slate-950/60 p-6">
+          <div className="w-full max-w-xl rounded-xl bg-white p-5 shadow-2xl space-y-4">
+            <h3 className="text-base font-bold text-slate-900">ALINEAR INDICADORES A {objective.code}</h3>
+            <p className="text-xs text-slate-500">Selecciona los KPI que deben aparecer directamente bajo este objetivo.</p>
+            <input value={kpiSearch} onChange={e => setKpiSearch(e.target.value)} placeholder="Buscar indicador..." className="w-full rounded-lg border border-slate-200 p-2 text-xs text-slate-800" />
+            <div className="max-h-64 overflow-y-auto space-y-1 rounded-lg border border-slate-200 p-2">
+              {visibleKpis.length === 0 ? <p className="p-4 text-center text-xs text-slate-500">No hay indicadores disponibles.</p> : visibleKpis.map(({ dashboard, item }) => { const key = `${dashboard.id}_${item.id}`; return <label key={key} className="flex items-center gap-2 rounded-lg p-2 text-xs text-slate-700 hover:bg-slate-50"><input type="checkbox" checked={directKpis.includes(key)} onChange={() => setDirectKpis(prev => prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key])} /><span><strong>{item.indicator || item.name}</strong><span className="ml-2 text-slate-400">({dashboard.title})</span></span></label>; })}
+            </div>
+            {oeError && <p className="text-xs text-red-600">{oeError}</p>}
+            <div className="flex justify-end gap-2"><button type="button" onClick={() => setShowDirectAlignment(false)} className="px-4 py-2 rounded-lg bg-slate-100 text-slate-700 text-xs font-bold">CANCELAR</button><button type="button" onClick={saveDirectAlignment} disabled={loadingOE} className="px-4 py-2 rounded-lg bg-indigo-600 text-white text-xs font-bold">{loadingOE ? 'GUARDANDO...' : 'GUARDAR ALINEACIÓN'}</button></div>
+          </div>
+        </div>
       )}
     </div>
   );
