@@ -55,13 +55,10 @@ export const StrategicObjectiveNode: React.FC<StrategicObjectiveNodeProps> = ({
 
   // Derivar métricas operativas de enriquecimiento opcional (ÚNICAMENTE cuando existen OCs)
   const enrichmentData = useMemo(() => {
-    if (oeContributions.length === 0) {
-      return { hasContributions: false, ocCount: 0, areaCount: 0, kpiCount: 0, statusCounts: { green: 0, yellow: 0, red: 0 } };
-    }
-
     const ocIds = new Set(oeContributions.map(c => c.id));
+    const direct = assignments.filter(a => a.strategicObjectiveId === objective.id);
     const uniqueAreas = new Set(oeContributions.map(c => c.areaName.trim().toUpperCase()));
-    const oeAssignments = assignments.filter(a => ocIds.has(a.contributionObjectiveId));
+    const oeAssignments = assignments.filter(a => a.contributionObjectiveId && ocIds.has(a.contributionObjectiveId));
 
     let green = 0;
     let yellow = 0;
@@ -85,13 +82,23 @@ export const StrategicObjectiveNode: React.FC<StrategicObjectiveNodeProps> = ({
     });
 
     return {
-      hasContributions: true,
+      hasContributions: oeContributions.length > 0 || direct.length > 0,
       ocCount: oeContributions.length,
       areaCount: uniqueAreas.size,
-      kpiCount: oeAssignments.length,
-      statusCounts: { green, yellow, red }
+      kpiCount: oeAssignments.length + direct.length,
+      statusCounts: { green, yellow, red },
+      directKpis: direct.map(a => {
+        const dashboard = dashboards.find(d => String(d.id) === String(a.dashboardId));
+        const item = dashboard?.items?.find(i => String(i.id) === String(a.itemId));
+        return item ? String(item.indicator || item.name || '') : '';
+      }).filter(Boolean),
+      contributionKpis: oeAssignments.map(a => {
+        const dashboard = dashboards.find(d => String(d.id) === String(a.dashboardId));
+        const item = dashboard?.items?.find(i => String(i.id) === String(a.itemId));
+        return item ? { ocId: a.contributionObjectiveId || '', label: String(item.indicator || item.name || '') } : null;
+      }).filter(Boolean) as { ocId: string; label: string }[]
     };
-  }, [oeContributions, assignments, dashboards]);
+  }, [oeContributions, assignments, dashboards, objective.id]);
 
   // Clases CSS dinámicas para selección/hover/causa/efecto
   let borderStyle = 'border-slate-200 hover:border-slate-400';
@@ -152,43 +159,10 @@ export const StrategicObjectiveNode: React.FC<StrategicObjectiveNodeProps> = ({
 
       {/* Pie Enriquecido condicional (Solo Escenario B con OCs) */}
       {enrichmentData.hasContributions ? (
-        <div className="mt-2 pt-2 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500">
-          <div className="flex items-center gap-2">
-            <span className="flex items-center gap-0.5 font-medium text-slate-700" title={`${enrichmentData.ocCount} Objetivos de Contribución`}>
-              <Target className="w-3 h-3 text-slate-400" />
-              {enrichmentData.ocCount} OC
-            </span>
-            <span className="flex items-center gap-0.5" title={`${enrichmentData.areaCount} Áreas contribuyentes`}>
-              <Layers className="w-3 h-3 text-slate-400" />
-              {enrichmentData.areaCount} Áreas
-            </span>
-          </div>
-
-          {/* Badge semafórico sin promedio sintético */}
-          {enrichmentData.kpiCount > 0 ? (
-            <div className="flex items-center gap-1 font-mono text-[10px]" title="Distribución de estatus operativo de KPIs vinculados">
-              {enrichmentData.statusCounts.green > 0 && (
-                <span className="inline-flex items-center text-emerald-600 font-bold">
-                  <CheckCircle2 className="w-2.5 h-2.5 mr-0.5" />
-                  {enrichmentData.statusCounts.green}
-                </span>
-              )}
-              {enrichmentData.statusCounts.yellow > 0 && (
-                <span className="inline-flex items-center text-amber-600 font-bold">
-                  <AlertTriangle className="w-2.5 h-2.5 mr-0.5" />
-                  {enrichmentData.statusCounts.yellow}
-                </span>
-              )}
-              {enrichmentData.statusCounts.red > 0 && (
-                <span className="inline-flex items-center text-rose-600 font-bold">
-                  <Info className="w-2.5 h-2.5 mr-0.5" />
-                  {enrichmentData.statusCounts.red}
-                </span>
-              )}
-            </div>
-          ) : (
-            <span className="text-[10px] text-slate-400 italic">Sin KPIs</span>
-          )}
+        <div className="mt-2 pt-2 border-t border-slate-100 text-[10px] text-slate-500 space-y-1">
+          <div className="font-bold uppercase tracking-wide text-indigo-600">Indicadores alineados · {enrichmentData.kpiCount}</div>
+          {enrichmentData.directKpis.length > 0 && <div><span className="font-semibold text-slate-600">Directos: </span>{enrichmentData.directKpis.slice(0, 4).map((kpi, i) => <span key={kpi} className="mr-1">• {kpi}</span>)}{enrichmentData.directKpis.length > 4 && <span>+ {enrichmentData.directKpis.length - 4} más</span>}</div>}
+          {enrichmentData.ocCount > 0 && <div className="font-semibold text-slate-600">{enrichmentData.ocCount} OC · {enrichmentData.ocCount > 0 ? 'indicadores por contribución' : ''}</div>}
         </div>
       ) : (
         /* Escenario A: Sin OCs ni KPIs -> Render limpio sin advertencias de error */
