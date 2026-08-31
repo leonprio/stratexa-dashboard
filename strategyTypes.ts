@@ -294,6 +294,8 @@ export const getCanonicalKpiIdentity = (
   return semantic ? `semantic:${semantic}` : `physical:${dashboardId}:${itemId}`;
 };
 
+export const getPhysicalKpiKey = (dashboardId: number | string, itemId: number | string): string => `${dashboardId}:${itemId}`;
+
 export function formatOECode(sequenceNumber: number): string {
   return formatObjectiveCode('OE', sequenceNumber);
 }

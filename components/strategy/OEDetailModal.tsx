@@ -33,6 +33,7 @@ export interface OEDetailModalProps {
   onNavigateToDashboard?: (dashboardId: number | string, itemId: number | string) => void;
   currentObjectiveAlignedKpis?: StrategicKpiCandidate[];
   occupiedKpiIdentities?: Set<string>;
+  occupiedPhysicalKpiKeys?: Set<string>;
 }
 
 /**
@@ -61,6 +62,7 @@ export const OEDetailModal: React.FC<OEDetailModalProps> = ({
   onRefreshData,
   currentObjectiveAlignedKpis,
   occupiedKpiIdentities
+  ,occupiedPhysicalKpiKeys
 }) => {
   const [showOCManager, setShowOCManager] = useState(false);
   const [showEditOE, setShowEditOE] = useState(false);
@@ -85,13 +87,15 @@ export const OEDetailModal: React.FC<OEDetailModalProps> = ({
   const visibleKpis = allKpis.filter(({ dashboard, item, canonical }) => {
     const key = `${dashboard.id}_${item.id}`;
     if (occupiedByOtherOE.has(key) || viaCurrentOC.has(key)) return false;
-    const text = `${item.indicator || item.name || ''} ${dashboard.title || ''}`.toLowerCase();
+    const text = `${item.indicator || ''} ${dashboard.title || ''}`.toLowerCase();
     return text.includes(kpiSearch.toLowerCase());
   }).filter((candidate, index, list) => list.findIndex(other => other.canonical === candidate.canonical) === index);
   const canonicalKpis = ownership.canonicalKpis;
-  const occupied = occupiedKpiIdentities || ownership.ownershipByCanonicalKpi;
+  const occupied = occupiedKpiIdentities || ownership.occupiedCanonicalKpiIdentities;
+  const occupiedPhysical = occupiedPhysicalKpiKeys || ownership.occupiedPhysicalKpiKeys;
   const currentAlignedKpis = currentObjectiveAlignedKpis || (ownership.kpisByStrategicObjective.get(objective.id) || []);
-  const availableKpis = canonicalKpis.filter(kpi => !occupied.has(kpi.identity));
+  const availableKpis = canonicalKpis.filter(kpi => !occupiedPhysical.has(kpi.physicalKey) && !occupied.has(kpi.identity));
+  const trulyAvailableKpis = availableKpis.filter(kpi => !occupiedPhysical.has(kpi.physicalKey) && !occupied.has(kpi.identity));
   const openDirectAlignment = () => {
     setDirectKpis(Array.from(currentDirectKeys));
     setKpiSearch('');
@@ -454,10 +458,11 @@ export const OEDetailModal: React.FC<OEDetailModalProps> = ({
           <div className="w-full max-w-xl rounded-xl bg-white p-5 shadow-2xl space-y-4">
             <h3 className="text-base font-bold text-slate-900">ALINEAR INDICADORES A {objective.code}</h3>
             <p className="text-xs text-slate-500">Selecciona los KPI que deben aparecer directamente bajo este objetivo.</p>
+            {process.env.NODE_ENV !== 'production' && <details className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-[10px] text-amber-900"><summary className="cursor-pointer font-black">DIAGNÓSTICO DE ALINEACIÓN</summary><div className="mt-2 grid grid-cols-2 gap-1"><span>clientId actual</span><b>{selectedClientId}</b><span>OE actual</span><b>{objective.code}</b><span>KPI candidatos</span><b>{canonicalKpis.length}</b><span>assignments directos cargados</span><b>{assignments.filter(a => a.strategicObjectiveId).length}</b><span>assignments OC cargados</span><b>{assignments.filter(a => a.contributionObjectiveId).length}</b><span>physical keys ocupadas</span><b>{occupiedPhysical.size}</b><span>canonical identities ocupadas</span><b>{occupied.size}</b><span>KPI alineados con OE actual</span><b>{currentAlignedKpis.length}</b><span>KPI realmente disponibles</span><b>{trulyAvailableKpis.length}</b></div></details>}
             <input value={kpiSearch} onChange={e => setKpiSearch(e.target.value)} placeholder="Buscar indicador..." className="w-full rounded-lg border border-slate-200 p-2 text-xs text-slate-800" />
             <div className="max-h-64 overflow-y-auto space-y-3 rounded-lg border border-slate-200 p-2">
               <section><h4 className="px-2 pb-1 text-[10px] font-black uppercase tracking-wider text-slate-500">YA ALINEADOS CON {objective.code}</h4>{currentAlignedKpis.length === 0 && viaCurrentOC.size === 0 ? <p className="p-2 text-xs text-slate-400">Ningún indicador directo alineado.</p> : <>{currentAlignedKpis.map(({ dashboard, item }) => { const key = `${dashboard.id}_${item.id}`; return <div key={key} className="flex items-center justify-between rounded-lg bg-slate-50 p-2 text-xs text-slate-700"><strong>{item.indicator || item.name}</strong><button type="button" onClick={() => setDirectKpis(prev => prev.filter(k => k !== key))} className="text-[10px] font-bold text-red-600">QUITAR</button></div>; })}{Array.from(viaCurrentOC).map(key => { const [dashboardId, itemId] = key.split('_'); const assignment = assignments.find(a => `${a.dashboardId}_${a.itemId}` === key); const oc = assignment?.contributionObjectiveId ? contributions.find(c => c.id === assignment.contributionObjectiveId) : undefined; const candidate = allKpis.find(k => `${k.dashboard.id}_${k.item.id}` === key); return candidate ? <div key={key} className="rounded-lg bg-indigo-50 p-2 text-xs text-indigo-700"><strong>{candidate.item.indicator || candidate.item.name}</strong><span className="ml-2 text-[10px]">mediante {oc?.displayCode || 'OC'}</span></div> : null; })}</>}</section>
-              <section><h4 className="px-2 pb-1 text-[10px] font-black uppercase tracking-wider text-slate-500">INDICADORES DISPONIBLES PARA ALINEAR</h4>{availableKpis.length === 0 ? <p className="p-2 text-xs text-slate-400">No hay indicadores disponibles.</p> : availableKpis.map(({ dashboard, item }) => { const key = `${dashboard.id}_${item.id}`; return <label key={key} className="flex items-center gap-2 rounded-lg p-2 text-xs text-slate-700 hover:bg-slate-50"><input type="checkbox" checked={directKpis.includes(key)} onChange={() => setDirectKpis(prev => prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key])} /><strong>{item.indicator || item.name}</strong></label>; })}</section>
+              <section><h4 className="px-2 pb-1 text-[10px] font-black uppercase tracking-wider text-slate-500">INDICADORES DISPONIBLES PARA ALINEAR</h4>{trulyAvailableKpis.length === 0 ? <p className="p-2 text-xs text-slate-400">No hay indicadores disponibles.</p> : trulyAvailableKpis.map(({ dashboard, item }) => { const key = `${dashboard.id}_${item.id}`; return <label key={key} className="flex items-center gap-2 rounded-lg p-2 text-xs text-slate-700 hover:bg-slate-50"><input type="checkbox" checked={directKpis.includes(key)} onChange={() => setDirectKpis(prev => prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key])} /><strong>{item.indicator || item.name}</strong></label>; })}</section>
             </div>
             {oeError && <p className="text-xs text-red-600">{oeError}</p>}
             <div className="flex justify-end gap-2"><button type="button" onClick={() => setShowDirectAlignment(false)} className="px-4 py-2 rounded-lg bg-slate-100 text-slate-700 text-xs font-bold">CANCELAR</button><button type="button" onClick={saveDirectAlignment} disabled={loadingOE} className="px-4 py-2 rounded-lg bg-indigo-600 text-white text-xs font-bold">{loadingOE ? 'GUARDANDO...' : 'GUARDAR ALINEACIÓN'}</button></div>

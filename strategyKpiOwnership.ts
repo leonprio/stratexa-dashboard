@@ -1,15 +1,15 @@
 import type { Dashboard } from './types';
 import type { ContributionIndicatorAssignment, ContributionObjective, StrategicObjective } from './strategyTypes';
-import { getCanonicalKpiIdentity } from './strategyTypes';
+import { getCanonicalKpiIdentity, getPhysicalKpiKey } from './strategyTypes';
 
-export type StrategicKpiCandidate = { dashboard: Dashboard; item: any; identity: string };
+export type StrategicKpiCandidate = { dashboard: Dashboard; item: any; identity: string; physicalKey: string };
 export type StrategicKpiOwnership = { strategicObjectiveId: string; assignmentType: 'DIRECT' | 'CONTRIBUTION'; contributionObjectiveId?: string; dashboardId: number | string; itemId: number | string };
 
 export function resolveStrategicKpiOwnership(dashboards: Dashboard[], objectives: StrategicObjective[], contributions: ContributionObjective[], assignments: ContributionIndicatorAssignment[]) {
   const candidates: StrategicKpiCandidate[] = [];
   const byPhysical = new Map<string, StrategicKpiCandidate>();
   dashboards.forEach(d => (d.items || []).forEach(item => {
-    const candidate = { dashboard: d, item, identity: getCanonicalKpiIdentity(item, d.id) };
+    const candidate = { dashboard: d, item, identity: getCanonicalKpiIdentity(item, d.id), physicalKey: getPhysicalKpiKey(d.id, item.id) };
     candidates.push(candidate); byPhysical.set(`${d.id}_${item.id}`, candidate);
   }));
   const ownerByOC = new Map(contributions.map(oc => [oc.id, oc.primaryStrategicObjectiveId]));
@@ -22,5 +22,7 @@ export function resolveStrategicKpiOwnership(dashboards: Dashboard[], objectives
   const canonicalKpis = Array.from(new Map(candidates.map(c => [c.identity, c])).values());
   const kpisByStrategicObjective = new Map<string, StrategicKpiCandidate[]>();
   canonicalKpis.forEach(k => { const owner = ownershipByCanonicalKpi.get(k.identity); if (owner) kpisByStrategicObjective.set(owner.strategicObjectiveId, [...(kpisByStrategicObjective.get(owner.strategicObjectiveId) || []), k]); });
-  return { canonicalKpis, ownershipByCanonicalKpi, kpisByStrategicObjective, orphanKpis: canonicalKpis.filter(k => !ownershipByCanonicalKpi.has(k.identity)) };
+  const occupiedPhysicalKpiKeys = new Set(assignments.map(a => getPhysicalKpiKey(a.dashboardId, a.itemId)));
+  const occupiedCanonicalKpiIdentities = new Set(ownershipByCanonicalKpi.keys());
+  return { canonicalKpis, ownershipByCanonicalKpi, kpisByStrategicObjective, orphanKpis: canonicalKpis.filter(k => !ownershipByCanonicalKpi.has(k.identity)), occupiedPhysicalKpiKeys, occupiedCanonicalKpiIdentities };
 }

@@ -369,6 +369,7 @@ export const StrategyMapView: React.FC<StrategyMapViewProps> = ({
           dashboards={dashboards}
           currentObjectiveAlignedKpis={ownership.kpisByStrategicObjective.get(selectedOE.id) || []}
           occupiedKpiIdentities={occupiedKpiIdentities}
+          occupiedPhysicalKpiKeys={ownership.occupiedPhysicalKpiKeys}
           areaConfigs={areaConfigs}
           selectedClientId={selectedClientId}
           currentUser={currentUser}
