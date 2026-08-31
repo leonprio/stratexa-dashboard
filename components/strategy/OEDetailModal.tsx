@@ -14,6 +14,7 @@ import { calculateCompliance } from '../../utils/compliance';
 import { StrategyConfigModal } from './StrategyConfigModal';
 import { strategyService } from '../../services/strategyService';
 import { resolveStrategicKpiOwnership } from '../../strategyKpiOwnership';
+import type { StrategicKpiCandidate } from '../../strategyKpiOwnership';
 
 export interface OEDetailModalProps {
   objective: StrategicObjective | null;
@@ -30,6 +31,8 @@ export interface OEDetailModalProps {
   onRefreshData?: () => Promise<void>;
   onClose: () => void;
   onNavigateToDashboard?: (dashboardId: number | string, itemId: number | string) => void;
+  currentObjectiveAlignedKpis?: StrategicKpiCandidate[];
+  occupiedKpiIdentities?: Set<string>;
 }
 
 /**
@@ -55,7 +58,9 @@ export const OEDetailModal: React.FC<OEDetailModalProps> = ({
   onNavigateToDashboard,
   selectedClientId,
   currentUser,
-  onRefreshData
+  onRefreshData,
+  currentObjectiveAlignedKpis,
+  occupiedKpiIdentities
 }) => {
   const [showOCManager, setShowOCManager] = useState(false);
   const [showEditOE, setShowEditOE] = useState(false);
@@ -83,11 +88,10 @@ export const OEDetailModal: React.FC<OEDetailModalProps> = ({
     const text = `${item.indicator || item.name || ''} ${dashboard.title || ''}`.toLowerCase();
     return text.includes(kpiSearch.toLowerCase());
   }).filter((candidate, index, list) => list.findIndex(other => other.canonical === candidate.canonical) === index);
-  const currentAlignedKpis = visibleKpis.filter(({ dashboard, item }) => currentDirectKeys.has(`${dashboard.id}_${item.id}`));
-  const availableKpis = visibleKpis.filter(({ dashboard, item }) => {
-    const key = `${dashboard.id}_${item.id}`;
-    return !currentDirectKeys.has(key) && !viaCurrentOC.has(key);
-  });
+  const canonicalKpis = ownership.canonicalKpis;
+  const occupied = occupiedKpiIdentities || ownership.ownershipByCanonicalKpi;
+  const currentAlignedKpis = currentObjectiveAlignedKpis || (ownership.kpisByStrategicObjective.get(objective.id) || []);
+  const availableKpis = canonicalKpis.filter(kpi => !occupied.has(kpi.identity));
   const openDirectAlignment = () => {
     setDirectKpis(Array.from(currentDirectKeys));
     setKpiSearch('');

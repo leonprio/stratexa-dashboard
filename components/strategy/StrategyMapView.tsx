@@ -13,6 +13,7 @@ import { Dashboard as DashboardType, User } from '../../types';
 import { StrategicObjectiveNode } from './StrategicObjectiveNode';
 import { OEDetailModal } from './OEDetailModal';
 import { RelationshipEditorModal } from './RelationshipEditorModal';
+import { resolveStrategicKpiOwnership } from '../../strategyKpiOwnership';
 
 export interface StrategyMapViewProps {
   perspectives?: StrategicPerspective[];
@@ -68,6 +69,8 @@ export const StrategyMapView: React.FC<StrategyMapViewProps> = ({
   const [selectedOE, setSelectedOE] = useState<StrategicObjective | null>(null);
   const [hoveredOEId, setHoveredOEId] = useState<string | null>(null);
   const [showEditorModal, setShowEditorModal] = useState(false);
+  const ownership = useMemo(() => resolveStrategicKpiOwnership(dashboards, objectives, contributions, assignments), [dashboards, objectives, contributions, assignments]);
+  const occupiedKpiIdentities = useMemo(() => new Set(ownership.ownershipByCanonicalKpi.keys()), [ownership]);
 
   // Generador de ID de instancia único y sanitizado para marcadores SVG
   const rawInstanceId = useId();
@@ -364,6 +367,8 @@ export const StrategyMapView: React.FC<StrategyMapViewProps> = ({
           contributions={contributions}
           assignments={assignments}
           dashboards={dashboards}
+          currentObjectiveAlignedKpis={ownership.kpisByStrategicObjective.get(selectedOE.id) || []}
+          occupiedKpiIdentities={occupiedKpiIdentities}
           areaConfigs={areaConfigs}
           selectedClientId={selectedClientId}
           currentUser={currentUser}
