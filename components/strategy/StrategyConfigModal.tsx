@@ -28,6 +28,7 @@ export interface StrategyConfigModalProps {
   onClose: () => void;
   onRefreshData: () => Promise<void>;
   initialObjectiveId?: string;
+  initialSection?: ConfigSection;
 }
 
 type ConfigSection = 'perspectives' | 'objectives' | 'areaCodes' | 'contributionObjectives';
@@ -44,9 +45,10 @@ export const StrategyConfigModal: React.FC<StrategyConfigModalProps> = ({
   onClose,
   onRefreshData,
   initialObjectiveId,
+  initialSection = 'objectives',
 }) => {
   const isAdmin = currentUser?.globalRole === GlobalUserRole.Admin;
-  const [activeSection, setActiveSection] = useState<ConfigSection>('objectives');
+  const [activeSection, setActiveSection] = useState<ConfigSection>(initialSection);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
@@ -84,6 +86,19 @@ export const StrategyConfigModal: React.FC<StrategyConfigModalProps> = ({
   React.useEffect(() => {
     if (initialObjectiveId && !ocPrimaryOEId) setOcPrimaryOEId(initialObjectiveId);
   }, [initialObjectiveId, ocPrimaryOEId]);
+
+  React.useEffect(() => {
+    if (!initialObjectiveId || editingOCId) return;
+    const scopedOCs = contributionObjectives.filter(oc => oc.primaryStrategicObjectiveId === initialObjectiveId);
+    if (scopedOCs.length !== 1) return;
+    const oc = scopedOCs[0];
+    setEditingOCId(oc.id);
+    setOcAreaName(oc.areaName || 'GENERAL');
+    setOcPrimaryOEId(oc.primaryStrategicObjectiveId);
+    setOcTitle(oc.title);
+    setOcDescription(oc.description || '');
+    setSelectedKpisForOC(assignments.filter(a => a.contributionObjectiveId === oc.id).map(a => `${a.dashboardId}_${a.itemId}`));
+  }, [initialObjectiveId, contributionObjectives, assignments, editingOCId]);
 
   // Extraer todas las áreas organizacionales activas de los tableros
   const availableAreas = useMemo(() => {
@@ -813,6 +828,11 @@ export const StrategyConfigModal: React.FC<StrategyConfigModalProps> = ({
           {activeSection === 'contributionObjectives' && (
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
+              {initialObjectiveId && (
+                <div className="lg:col-span-3 rounded-lg border border-indigo-500/30 bg-indigo-500/10 px-4 py-3 text-xs text-indigo-200">
+                  Selecciona un objetivo de contribución para alinear indicadores del OE seleccionado.
+                </div>
+              )}
               {/* Form para crear OC */}
               <div className="lg:col-span-1 bg-slate-950 p-5 rounded-xl border border-slate-800 space-y-4">
                 <h3 className="text-sm font-bold text-white flex items-center gap-2">
@@ -926,9 +946,9 @@ export const StrategyConfigModal: React.FC<StrategyConfigModalProps> = ({
               <div className="lg:col-span-2 space-y-4">
                 <h3 className="text-sm font-bold text-white">Objetivos de Contribución Configurados ({contributionObjectives.length})</h3>
 
-                {contributionObjectives.length === 0 ? (
+                {contributionObjectives.filter(oc => !initialObjectiveId || oc.primaryStrategicObjectiveId === initialObjectiveId).length === 0 ? (
                   <div className="p-8 text-center bg-slate-950 rounded-xl border border-slate-800 text-slate-500 text-xs">
-                    No hay Objetivos de Contribución creados.
+                    {initialObjectiveId ? 'Este objetivo aún no tiene Objetivos de Contribución. Primero agrega un objetivo de contribución para este OE.' : 'No hay Objetivos de Contribución creados.'}
                   </div>
                 ) : (
                   <div className="space-y-3">

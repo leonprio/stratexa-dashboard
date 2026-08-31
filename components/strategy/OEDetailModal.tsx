@@ -400,6 +400,7 @@ export const OEDetailModal: React.FC<OEDetailModalProps> = ({
           selectedClientId={selectedClientId}
           currentUser={currentUser}
           initialObjectiveId={objective.id}
+          initialSection="contributionObjectives"
           onClose={() => setShowOCManager(false)}
           onRefreshData={async () => { await onRefreshData(); }}
         />
