@@ -8,3 +8,5 @@ La estrategia agrupa KPIs con `LogicalKpi` y aliases físicos para lectura y ali
 - Quitar un StrategicAssignment no elimina ActionPlans, y eliminar un ActionPlan no altera StrategicAssignments.
 - Un LogicalKpi con aliases no crea copias de ActionPlan ni de KPI Activities.
 - CONTROL conserva sus contratos de planes, vencimientos y pendientes; este límite no autoriza cambios de severidad, confianza, aging o rankings.
+
+El orden estratégico de presentación es una capa no persistente: perspectiva configurada, después OE configurado, después orden operativo estable del KPI. Los KPI no alineados quedan al final. IDs, historial y orden operativo almacenado no cambian; CONTROL conserva su orden por excepción.

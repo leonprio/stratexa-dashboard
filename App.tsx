@@ -10,6 +10,7 @@ import { LoginScreen } from "./components/LoginScreen";
 import { UserManager } from "./components/UserManager";
 import { ThresholdEditor } from "./components/ThresholdEditor";
 import { IndicatorManager } from "./components/IndicatorManager";
+import { orderDashboardItemsForStrategicPresentation } from './strategicDisplayOrder';
 import { WeightManager } from "./components/WeightManager";
 import { WeightControlCenter } from "./components/WeightControlCenter";
 import { AdvancedDataImporter } from "./components/AdvancedDataImporter";
@@ -2163,7 +2164,7 @@ Esto corregirá cualquier inconsistencia en colores (ej. Amarillo vs Rojo).`)) {
         activeAdminSection === "indicators" && (
           <IndicatorManager
             key={selectedDashboard?.id} // 🛡️ CRITICAL FIX: Force remount on dashboard change to prevent stale state
-            initialItems={selectedDashboard?.items || []}
+            initialItems={selectedDashboard ? orderDashboardItemsForStrategicPresentation(selectedDashboard.items || [], selectedDashboard.id, dashboards, perspectives, objectives, contributionObjectives, assignments) : []}
             dashboards={dashboards.filter(d => !String(d.id).startsWith('agg-') && d.id !== -1)}
             activeDashboardId={selectedDashboard?.id}
             onDashboardSelect={(id) => setSelectedDashboardId(id)}

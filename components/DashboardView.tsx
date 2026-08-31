@@ -20,6 +20,7 @@ import { OperationalControlCenter } from "./operational/OperationalControlCenter
 import { ObjectivesView } from './ObjectivesView';
 import type { StrategicObjective, StrategicPerspective, ContributionObjective, ContributionIndicatorAssignment } from '../strategyTypes';
 import { scrollToTop, scrollToElementBelowHeader, scheduleScroll } from "../utils/scrollUtils";
+import { orderDashboardItemsForStrategicPresentation } from '../strategicDisplayOrder';
 
 interface DashboardViewProps {
   dashboard: DashboardType;
@@ -81,6 +82,7 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(({
   
   // ✅ items siempre array (evita fallos y deja evidencia clara si viene vacío)
   const safeItems: DashboardItem[] = useMemo(() => dashboard.items ?? [], [dashboard]);
+  const strategicallyOrderedItems = useMemo(() => orderDashboardItemsForStrategicPresentation(safeItems, dashboard.id, allDashboards, perspectives, objectives, contributions, assignments), [safeItems, dashboard.id, allDashboards, perspectives, objectives, contributions, assignments]);
 
   // 🛡️ REGLA v6.0.2 (CONTEXT PRIORITY): Priorizar indicadores del tablero actual para evitar colisiones de IDs
   const allContextItems: DashboardItem[] = useMemo(() => {
@@ -458,7 +460,7 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(({
         <div className="dashboard-container-query">
           <Dashboard
             key={`dashboard-${(dashboard as any).id}`}
-            data={safeItems}
+            data={strategicallyOrderedItems}
             onUpdateItem={onUpdateItem}
             globalThresholds={activeThresholds}
             userRoleForDashboard={userRole}
