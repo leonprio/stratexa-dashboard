@@ -661,6 +661,23 @@ export const strategyService = {
     const objective = objectiveSnap.data() as StrategicObjective;
     if (objective.clientId !== targetClient) throw new Error('Acceso denegado para este objetivo estratégico.');
 
+    const allAssignmentsSnap = await getDocs(query(collection(db, ASSIGNMENTS_COLLECTION), where('clientId', '==', targetClient)));
+    const objectives = await strategyService.getContributionObjectives(targetClient);
+    const contributionOwner = new Map(objectives.map(oc => [oc.id, oc.primaryStrategicObjectiveId]));
+    const requested = new Set(items.map(item => `${item.dashboardId}_${item.itemId}`));
+    allAssignmentsSnap.docs.forEach(d => {
+      const assignment = d.data() as ContributionIndicatorAssignment;
+      const key = `${assignment.dashboardId}_${assignment.itemId}`;
+      if (!requested.has(key)) return;
+      const destination = assignment.strategicObjectiveId || (assignment.contributionObjectiveId ? contributionOwner.get(assignment.contributionObjectiveId) : undefined);
+      if (destination && destination !== objectiveId) {
+        throw new Error('Este indicador ya está alineado con otro objetivo estratégico.');
+      }
+      if (assignment.contributionObjectiveId && destination === objectiveId) {
+        throw new Error('Este indicador ya está alineado mediante un Objetivo de Contribución.');
+      }
+    });
+
     const assignmentsRef = collection(db, ASSIGNMENTS_COLLECTION);
     const q = query(assignmentsRef, where('strategicObjectiveId', '==', objectiveId), where('clientId', '==', targetClient));
     const snap = await getDocs(q);

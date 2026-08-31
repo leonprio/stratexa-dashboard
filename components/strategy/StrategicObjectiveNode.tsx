@@ -153,16 +153,16 @@ export const StrategicObjectiveNode: React.FC<StrategicObjectiveNodeProps> = ({
       </div>
 
       {/* Título del Objetivo Estratégico */}
-      <h4 className="text-xs font-semibold text-slate-800 line-clamp-2 leading-tight mb-2">
+      <h4 className="text-xs font-semibold text-slate-800 line-clamp-2 leading-tight mb-1">
         {objective.title}
       </h4>
 
       {/* Pie Enriquecido condicional (Solo Escenario B con OCs) */}
       {enrichmentData.hasContributions ? (
-        <div className="mt-2 pt-2 border-t border-slate-100 text-[10px] text-slate-500 space-y-1">
+        <div className="mt-1 pt-1 border-t border-slate-100 text-[10px] text-slate-500 space-y-1">
           <div className="font-bold uppercase tracking-wide text-indigo-600">Indicadores alineados · {enrichmentData.kpiCount}</div>
-          {enrichmentData.directKpis.length > 0 && <div><span className="font-semibold text-slate-600">Directos: </span>{enrichmentData.directKpis.slice(0, 4).map((kpi, i) => <span key={kpi} className="mr-1">• {kpi}</span>)}{enrichmentData.directKpis.length > 4 && <span>+ {enrichmentData.directKpis.length - 4} más</span>}</div>}
-          {enrichmentData.ocCount > 0 && <div className="font-semibold text-slate-600">{enrichmentData.ocCount} OC · {enrichmentData.ocCount > 0 ? 'indicadores por contribución' : ''}</div>}
+          {enrichmentData.directKpis.length > 0 && <div><span className="font-semibold text-slate-600">Directos: </span>{enrichmentData.directKpis.slice(0, 4).map(kpi => <span key={kpi} className="mr-1">• {kpi}</span>)}{enrichmentData.directKpis.length > 4 && <span>+{enrichmentData.directKpis.length - 4} más</span>}</div>}
+          {enrichmentData.ocCount > 0 && <div className="font-semibold text-slate-600">{enrichmentData.ocCount} OC</div>}
         </div>
       ) : (
         /* Escenario A: Sin OCs ni KPIs -> Render limpio sin advertencias de error */

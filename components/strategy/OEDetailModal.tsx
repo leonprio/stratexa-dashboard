@@ -70,12 +70,21 @@ export const OEDetailModal: React.FC<OEDetailModalProps> = ({
   const canManageOE = currentUser?.globalRole === GlobalUserRole.Admin && Boolean(selectedClientId && onRefreshData);
 
   const allKpis = dashboards.flatMap(d => (d.items || []).map(item => ({ dashboard: d, item })));
+  const currentDirectKeys = new Set(assignments.filter(a => a.strategicObjectiveId === objective?.id).map(a => `${a.dashboardId}_${a.itemId}`));
+  const ocOwnerById = new Map(contributions.map(oc => [oc.id, oc.primaryStrategicObjectiveId]));
+  const occupiedByOtherOE = new Set(assignments.filter(a => {
+    const owner = a.strategicObjectiveId || (a.contributionObjectiveId ? ocOwnerById.get(a.contributionObjectiveId) : undefined);
+    return owner && owner !== objective?.id;
+  }).map(a => `${a.dashboardId}_${a.itemId}`));
+  const viaCurrentOC = new Set(assignments.filter(a => a.contributionObjectiveId && ocOwnerById.get(a.contributionObjectiveId) === objective?.id).map(a => `${a.dashboardId}_${a.itemId}`));
   const visibleKpis = allKpis.filter(({ dashboard, item }) => {
+    const key = `${dashboard.id}_${item.id}`;
+    if (occupiedByOtherOE.has(key) || viaCurrentOC.has(key)) return false;
     const text = `${item.indicator || item.name || ''} ${dashboard.title || ''}`.toLowerCase();
     return text.includes(kpiSearch.toLowerCase());
   });
   const openDirectAlignment = () => {
-    setDirectKpis(assignments.filter(a => a.strategicObjectiveId === objective?.id).map(a => `${a.dashboardId}_${a.itemId}`));
+    setDirectKpis(Array.from(currentDirectKeys));
     setKpiSearch('');
     setOeError(null);
     setShowDirectAlignment(true);
