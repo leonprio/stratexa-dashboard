@@ -1,5 +1,6 @@
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
+import { resolveStrategicKpiOwnership } from '../strategyKpiOwnership';
 import { ObjectivesView } from './ObjectivesView';
 
 const dashboard: any = { id: 'd1', title: 'Operaciones', thresholds: { onTrack: 90, atRisk: 70 }, items: [
@@ -21,5 +22,36 @@ describe('ObjectivesView', () => {
   it('muestra explícitamente objetivos sin indicadores', () => {
     render(<ObjectivesView dashboard={{ ...dashboard, items: [] }} objectives={[objective]} perspectives={[]} contributions={[]} assignments={[]} year={2026} />);
     expect(screen.getByText('SIN INDICADORES ASOCIADOS')).toBeInTheDocument();
+  });
+
+  it('matches map logical ownership across aliases and supports map order reversal', () => {
+    const secondary: any = { ...dashboard, id: 'summary', title: 'Resumen', items: [
+      { ...dashboard.items[0], id: 'income-summary', indicator: 'INGRESOS' },
+      { ...dashboard.items[0], id: 'apps-summary', indicator: 'APLICACIONES DESARROLLADAS' },
+      { ...dashboard.items[0], id: 'activities-summary', indicator: 'ACTIVIDADES ESTRATÉGICAS' },
+    ] };
+    const primary: any = { ...dashboard, id: 'operational', items: [
+      { ...dashboard.items[0], id: 'income', indicator: 'INGRESOS' },
+      { ...dashboard.items[0], id: 'apps', indicator: 'APLICACIONES DESARROLLADAS' },
+      { ...dashboard.items[0], id: 'activities', indicator: 'ACTIVIDADES ESTRATÉGICAS' },
+    ] };
+    const objectives: any[] = [
+      { ...objective, id: 'OE01', code: 'OE01', title: 'OE01', order: 1, perspectiveId: 'P1' },
+      { ...objective, id: 'OE03', code: 'OE03', title: 'OE03', order: 1, perspectiveId: 'P3' },
+      { ...objective, id: 'OE04', code: 'OE04', title: 'OE04', order: 1, perspectiveId: 'P4' },
+    ];
+    const assignments: any[] = [
+      { strategicObjectiveId: 'OE01', dashboardId: 'summary', itemId: 'income-summary' },
+      { strategicObjectiveId: 'OE03', dashboardId: 'summary', itemId: 'apps-summary' },
+      { strategicObjectiveId: 'OE04', dashboardId: 'operational', itemId: 'activities' },
+    ];
+    const ownership = resolveStrategicKpiOwnership([primary, secondary], objectives, [], assignments);
+    expect(ownership.kpisByStrategicObjective.get('OE03')?.map(k => k.item.indicator)).toEqual(['APLICACIONES DESARROLLADAS']);
+    render(<ObjectivesView dashboard={primary} dashboards={[secondary]} objectives={objectives} perspectives={[{ id: 'P1', name: 'P1', order: 1 }, { id: 'P3', name: 'P3', order: 3 }, { id: 'P4', name: 'P4', order: 4 }] as any} contributions={[]} assignments={assignments} year={2026} />);
+    expect(screen.getByText('APLICACIONES DESARROLLADAS')).toBeInTheDocument();
+    expect(screen.getByText('ACTIVIDADES ESTRATÉGICAS')).toBeInTheDocument();
+    expect(screen.getByText('OE01').compareDocumentPosition(screen.getByText('OE04')) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: /ORDEN DEL MAPA/i }));
+    expect(screen.getByText('OE04').compareDocumentPosition(screen.getByText('OE01')) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 });

@@ -11,4 +11,6 @@ La configuración estratégica define relaciones, no desempeño.
 - El selector muestra sólo KPI lógicos sin ownership; al guardar persiste el representante canónico y conserva compatibilidad con el esquema físico existente.
 - `QUITAR` elimina assignments directos del OE actual para todos los aliases del KPI lógico y refresca ownership sin F5. Los KPI asignados mediante OC se administran desde el OC.
 
-La futura **Vista por Objetivos** será una pantalla de lectura y análisis separada. No forma parte de este módulo ni debe introducir cálculos de KPI, YTD, severidad o desempeño en Configuración Estratégica.
+La futura **Vista por Objetivos** es un consumer de la misma estructura: usa `ownership.kpisByStrategicObjective`, conserva el orden configurado de perspectivas y OE (con inversión sólo de UI) y no reconstruye relaciones por alias físico.
+
+No debe introducir cálculos de KPI, YTD, severidad o desempeño en Configuración Estratégica.

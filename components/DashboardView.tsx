@@ -474,7 +474,7 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(({
           />
         </div>
       ) : activeView === 'objectives' ? (
-        <ObjectivesView dashboard={dashboard} objectives={objectives} perspectives={perspectives} contributions={contributions} assignments={assignments} year={year || new Date().getFullYear()} />
+        <ObjectivesView dashboard={dashboard} dashboards={allDashboards} objectives={objectives} perspectives={perspectives} contributions={contributions} assignments={assignments} year={year || new Date().getFullYear()} />
       ) : activeView === 'reports' ? (
         <ReportCenter
           items={safeItems}
