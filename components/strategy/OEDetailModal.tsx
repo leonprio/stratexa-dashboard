@@ -1,14 +1,16 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { X, ArrowUpRight, ArrowDownRight, Target, Layers, CheckCircle2, AlertTriangle, Info, Compass } from 'lucide-react';
 import {
   StrategicObjective,
   StrategicPerspective,
   StrategicObjectiveRelationship,
   ContributionObjective,
-  ContributionIndicatorAssignment
+  ContributionIndicatorAssignment,
+  AreaStrategyConfig
 } from '../../strategyTypes';
-import { Dashboard as DashboardType } from '../../types';
+import { Dashboard as DashboardType, User } from '../../types';
 import { calculateCompliance } from '../../utils/compliance';
+import { StrategyConfigModal } from './StrategyConfigModal';
 
 export interface OEDetailModalProps {
   objective: StrategicObjective | null;
@@ -18,6 +20,10 @@ export interface OEDetailModalProps {
   contributions?: ContributionObjective[];
   assignments?: ContributionIndicatorAssignment[];
   dashboards?: DashboardType[];
+  areaConfigs?: AreaStrategyConfig[];
+  selectedClientId?: string;
+  currentUser?: User;
+  onRefreshData?: () => Promise<void>;
   onClose: () => void;
   onNavigateToDashboard?: (dashboardId: number | string, itemId: number | string) => void;
 }
@@ -39,9 +45,14 @@ export const OEDetailModal: React.FC<OEDetailModalProps> = ({
   contributions = [],
   assignments = [],
   dashboards = [],
+  areaConfigs = [],
   onClose,
-  onNavigateToDashboard
+  onNavigateToDashboard,
+  selectedClientId,
+  currentUser,
+  onRefreshData
 }) => {
+  const [showOCManager, setShowOCManager] = useState(false);
   if (!objective) return null;
 
   const nodeColor = perspective?.color || '#3B82F6';
@@ -256,11 +267,21 @@ export const OEDetailModal: React.FC<OEDetailModalProps> = ({
                 })}
               </div>
             ) : (
-              <div className="bg-slate-50 rounded-xl p-4 border border-dashed border-slate-200 text-center">
+              <div className="bg-slate-50 rounded-xl p-4 border border-dashed border-slate-200 text-center space-y-3">
                 <p className="text-xs text-slate-500">
-                  Este objetivo opera directamente a nivel estratégico de dirección. No tiene Objetivos de Contribución secundarios por área registrados.
+                  No hay Objetivos de Contribución registrados.
                 </p>
+                {currentUser && selectedClientId && onRefreshData && (
+                  <button type="button" onClick={() => setShowOCManager(true)} className="inline-flex items-center px-3 py-2 rounded-lg bg-blue-600 text-white text-xs font-bold hover:bg-blue-500">
+                    + AGREGAR OBJETIVO DE CONTRIBUCIÓN
+                  </button>
+                )}
               </div>
+            )}
+            {oeOCs.length > 0 && currentUser && selectedClientId && onRefreshData && (
+              <button type="button" onClick={() => setShowOCManager(true)} className="mt-3 inline-flex items-center px-3 py-2 rounded-lg bg-blue-600 text-white text-xs font-bold hover:bg-blue-500">
+                + AGREGAR OBJETIVO DE CONTRIBUCIÓN
+              </button>
             )}
           </div>
         </div>
@@ -275,6 +296,21 @@ export const OEDetailModal: React.FC<OEDetailModalProps> = ({
           </button>
         </div>
       </div>
+      {showOCManager && currentUser && selectedClientId && onRefreshData && (
+        <StrategyConfigModal
+          perspectives={perspective ? [perspective] : []}
+          objectives={allObjectives}
+          areaConfigs={areaConfigs}
+          contributionObjectives={oeOCs}
+          assignments={assignments}
+          dashboards={dashboards}
+          selectedClientId={selectedClientId}
+          currentUser={currentUser}
+          initialObjectiveId={objective.id}
+          onClose={() => setShowOCManager(false)}
+          onRefreshData={async () => { await onRefreshData(); }}
+        />
+      )}
     </div>
   );
 };

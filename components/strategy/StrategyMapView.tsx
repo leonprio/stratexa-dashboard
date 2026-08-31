@@ -4,11 +4,12 @@ import {
   StrategicPerspective,
   StrategicObjective,
   StrategicObjectiveRelationship,
+  AreaStrategyConfig,
   ContributionObjective,
   ContributionIndicatorAssignment,
   DEFAULT_PERSPECTIVES
 } from '../../strategyTypes';
-import { Dashboard as DashboardType } from '../../types';
+import { Dashboard as DashboardType, User } from '../../types';
 import { StrategicObjectiveNode } from './StrategicObjectiveNode';
 import { OEDetailModal } from './OEDetailModal';
 import { RelationshipEditorModal } from './RelationshipEditorModal';
@@ -17,10 +18,12 @@ export interface StrategyMapViewProps {
   perspectives?: StrategicPerspective[];
   objectives?: StrategicObjective[];
   relationships?: StrategicObjectiveRelationship[];
+  areaConfigs?: AreaStrategyConfig[];
   contributions?: ContributionObjective[];
   assignments?: ContributionIndicatorAssignment[];
   dashboards?: DashboardType[];
   isAdmin?: boolean;
+  currentUser?: User;
   selectedClientId: string;
   onRefreshData?: () => Promise<void>;
   onSaveRelationship?: (rel: { sourceStrategicObjectiveId: string; targetStrategicObjectiveId: string; description?: string }) => Promise<void>;
@@ -50,10 +53,12 @@ export const StrategyMapView: React.FC<StrategyMapViewProps> = ({
   perspectives = DEFAULT_PERSPECTIVES,
   objectives = [],
   relationships = [],
+  areaConfigs = [],
   contributions = [],
   assignments = [],
   dashboards = [],
   isAdmin = false,
+  currentUser,
   selectedClientId,
   onRefreshData,
   onSaveRelationship,
@@ -358,6 +363,10 @@ export const StrategyMapView: React.FC<StrategyMapViewProps> = ({
           contributions={contributions}
           assignments={assignments}
           dashboards={dashboards}
+          areaConfigs={areaConfigs}
+          selectedClientId={selectedClientId}
+          currentUser={currentUser}
+          onRefreshData={onRefreshData}
           onClose={() => setSelectedOE(null)}
           onNavigateToDashboard={onNavigateToDashboard}
         />

@@ -27,6 +27,7 @@ export interface StrategyConfigModalProps {
   currentUser?: User;
   onClose: () => void;
   onRefreshData: () => Promise<void>;
+  initialObjectiveId?: string;
 }
 
 type ConfigSection = 'perspectives' | 'objectives' | 'areaCodes' | 'contributionObjectives';
@@ -42,6 +43,7 @@ export const StrategyConfigModal: React.FC<StrategyConfigModalProps> = ({
   currentUser,
   onClose,
   onRefreshData,
+  initialObjectiveId,
 }) => {
   const isAdmin = currentUser?.globalRole === GlobalUserRole.Admin;
   const [activeSection, setActiveSection] = useState<ConfigSection>('objectives');
@@ -78,6 +80,10 @@ export const StrategyConfigModal: React.FC<StrategyConfigModalProps> = ({
   const [selectedKpisForOC, setSelectedKpisForOC] = useState<string[]>([]); // array of "dashboardId_itemId"
   const [editingOCId, setEditingOCId] = useState<string | null>(null);
   const [pendingDeleteOC, setPendingDeleteOC] = useState<ContributionObjective | null>(null);
+
+  React.useEffect(() => {
+    if (initialObjectiveId && !ocPrimaryOEId) setOcPrimaryOEId(initialObjectiveId);
+  }, [initialObjectiveId, ocPrimaryOEId]);
 
   // Extraer todas las áreas organizacionales activas de los tableros
   const availableAreas = useMemo(() => {
@@ -926,7 +932,7 @@ export const StrategyConfigModal: React.FC<StrategyConfigModalProps> = ({
                   </div>
                 ) : (
                   <div className="space-y-3">
-                    {contributionObjectives.map(oc => {
+                    {contributionObjectives.filter(oc => !initialObjectiveId || oc.primaryStrategicObjectiveId === initialObjectiveId).map(oc => {
                       const linkedOE = objectives.find(o => o.id === oc.primaryStrategicObjectiveId);
                       const ocAssignments = assignments.filter(a => a.contributionObjectiveId === oc.id);
 
