@@ -71,6 +71,9 @@ export const StrategyMapView: React.FC<StrategyMapViewProps> = ({
   const [showEditorModal, setShowEditorModal] = useState(false);
   const ownership = useMemo(() => resolveStrategicKpiOwnership(dashboards, objectives, contributions, assignments), [dashboards, objectives, contributions, assignments]);
   const occupiedKpiIdentities = useMemo(() => new Set(ownership.ownershipByCanonicalKpi.keys()), [ownership]);
+  const displayedKpis = useMemo(() => Array.from(ownership.kpisByStrategicObjective.values()).flat(), [ownership]);
+  const visibleOccupiedPhysicalKpiKeys = useMemo(() => new Set(displayedKpis.map(kpi => kpi.physicalKey)), [displayedKpis]);
+  const visibleOccupiedCanonicalKpiIdentities = useMemo(() => new Set(displayedKpis.map(kpi => kpi.identity)), [displayedKpis]);
 
   // Generador de ID de instancia único y sanitizado para marcadores SVG
   const rawInstanceId = useId();
@@ -370,6 +373,8 @@ export const StrategyMapView: React.FC<StrategyMapViewProps> = ({
           currentObjectiveAlignedKpis={ownership.kpisByStrategicObjective.get(selectedOE.id) || []}
           occupiedKpiIdentities={occupiedKpiIdentities}
           occupiedPhysicalKpiKeys={ownership.occupiedPhysicalKpiKeys}
+          visibleOccupiedPhysicalKpiKeys={visibleOccupiedPhysicalKpiKeys}
+          visibleOccupiedCanonicalKpiIdentities={visibleOccupiedCanonicalKpiIdentities}
           areaConfigs={areaConfigs}
           selectedClientId={selectedClientId}
           currentUser={currentUser}

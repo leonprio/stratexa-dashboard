@@ -34,6 +34,8 @@ export interface OEDetailModalProps {
   currentObjectiveAlignedKpis?: StrategicKpiCandidate[];
   occupiedKpiIdentities?: Set<string>;
   occupiedPhysicalKpiKeys?: Set<string>;
+  visibleOccupiedPhysicalKpiKeys?: Set<string>;
+  visibleOccupiedCanonicalKpiIdentities?: Set<string>;
 }
 
 /**
@@ -63,6 +65,8 @@ export const OEDetailModal: React.FC<OEDetailModalProps> = ({
   currentObjectiveAlignedKpis,
   occupiedKpiIdentities
   ,occupiedPhysicalKpiKeys
+  ,visibleOccupiedPhysicalKpiKeys
+  ,visibleOccupiedCanonicalKpiIdentities
 }) => {
   const [showOCManager, setShowOCManager] = useState(false);
   const [showEditOE, setShowEditOE] = useState(false);
@@ -93,9 +97,12 @@ export const OEDetailModal: React.FC<OEDetailModalProps> = ({
   const canonicalKpis = ownership.canonicalKpis;
   const occupied = occupiedKpiIdentities || ownership.occupiedCanonicalKpiIdentities;
   const occupiedPhysical = occupiedPhysicalKpiKeys || ownership.occupiedPhysicalKpiKeys;
+  const visibleOccupiedPhysical = visibleOccupiedPhysicalKpiKeys || occupiedPhysical;
+  const visibleOccupiedCanonical = visibleOccupiedCanonicalKpiIdentities || new Set(Array.from(ownership.kpisByStrategicObjective.values()).flatMap(kpis => kpis.map(kpi => kpi.identity)));
   const currentAlignedKpis = currentObjectiveAlignedKpis || (ownership.kpisByStrategicObjective.get(objective.id) || []);
-  const availableKpis = canonicalKpis.filter(kpi => !occupiedPhysical.has(kpi.physicalKey) && !occupied.has(kpi.identity));
-  const trulyAvailableKpis = availableKpis.filter(kpi => !occupiedPhysical.has(kpi.physicalKey) && !occupied.has(kpi.identity));
+  const availableKpis = canonicalKpis.filter(kpi => !occupiedPhysical.has(kpi.physicalKey) && !occupied.has(kpi.identity) && !visibleOccupiedPhysical.has(kpi.physicalKey) && !visibleOccupiedCanonical.has(kpi.identity));
+  const trulyAvailableKpis = availableKpis.filter(kpi => !occupiedPhysical.has(kpi.physicalKey) && !occupied.has(kpi.identity) && !visibleOccupiedPhysical.has(kpi.physicalKey) && !visibleOccupiedCanonical.has(kpi.identity));
+  const occupiedButAvailable = trulyAvailableKpis.filter(kpi => visibleOccupiedPhysical.has(kpi.physicalKey) || visibleOccupiedCanonical.has(kpi.identity));
   const openDirectAlignment = () => {
     setDirectKpis(Array.from(currentDirectKeys));
     setKpiSearch('');
@@ -458,7 +465,7 @@ export const OEDetailModal: React.FC<OEDetailModalProps> = ({
           <div className="w-full max-w-xl rounded-xl bg-white p-5 shadow-2xl space-y-4">
             <h3 className="text-base font-bold text-slate-900">ALINEAR INDICADORES A {objective.code}</h3>
             <p className="text-xs text-slate-500">Selecciona los KPI que deben aparecer directamente bajo este objetivo.</p>
-            {process.env.NODE_ENV !== 'production' && <details className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-[10px] text-amber-900"><summary className="cursor-pointer font-black">DIAGNÓSTICO DE ALINEACIÓN</summary><div className="mt-2 grid grid-cols-2 gap-1"><span>clientId actual</span><b>{selectedClientId}</b><span>OE actual</span><b>{objective.code}</b><span>KPI candidatos</span><b>{canonicalKpis.length}</b><span>assignments directos cargados</span><b>{assignments.filter(a => a.strategicObjectiveId).length}</b><span>assignments OC cargados</span><b>{assignments.filter(a => a.contributionObjectiveId).length}</b><span>physical keys ocupadas</span><b>{occupiedPhysical.size}</b><span>canonical identities ocupadas</span><b>{occupied.size}</b><span>KPI alineados con OE actual</span><b>{currentAlignedKpis.length}</b><span>KPI realmente disponibles</span><b>{trulyAvailableKpis.length}</b></div></details>}
+            {process.env.NODE_ENV !== 'production' && <details className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-[10px] text-amber-900"><summary className="cursor-pointer font-black">DIAGNÓSTICO DE ALINEACIÓN</summary><div className="mt-2 grid grid-cols-2 gap-1"><span>Cliente</span><b>{selectedClientId}</b><span>OE actual</span><b>{objective.code}</b><span>KPI canónicos totales</span><b>{canonicalKpis.length}</b><span>KPI visibles/ocupados en mapa</span><b>{visibleOccupiedCanonical.size}</b><span>assignments directos persistidos</span><b>{assignments.filter(a => a.strategicObjectiveId).length}</b><span>assignments OC persistidos</span><b>{assignments.filter(a => a.contributionObjectiveId).length}</b><span>KPI ocupados persistidos</span><b>{occupied.size}</b><span>KPI realmente disponibles</span><b>{trulyAvailableKpis.length}</b><span>ERRORES ocupados-pero-disponibles</span><b>{occupiedButAvailable.length}</b></div></details>}
             <input value={kpiSearch} onChange={e => setKpiSearch(e.target.value)} placeholder="Buscar indicador..." className="w-full rounded-lg border border-slate-200 p-2 text-xs text-slate-800" />
             <div className="max-h-64 overflow-y-auto space-y-3 rounded-lg border border-slate-200 p-2">
               <section><h4 className="px-2 pb-1 text-[10px] font-black uppercase tracking-wider text-slate-500">YA ALINEADOS CON {objective.code}</h4>{currentAlignedKpis.length === 0 && viaCurrentOC.size === 0 ? <p className="p-2 text-xs text-slate-400">Ningún indicador directo alineado.</p> : <>{currentAlignedKpis.map(({ dashboard, item }) => { const key = `${dashboard.id}_${item.id}`; return <div key={key} className="flex items-center justify-between rounded-lg bg-slate-50 p-2 text-xs text-slate-700"><strong>{item.indicator || item.name}</strong><button type="button" onClick={() => setDirectKpis(prev => prev.filter(k => k !== key))} className="text-[10px] font-bold text-red-600">QUITAR</button></div>; })}{Array.from(viaCurrentOC).map(key => { const [dashboardId, itemId] = key.split('_'); const assignment = assignments.find(a => `${a.dashboardId}_${a.itemId}` === key); const oc = assignment?.contributionObjectiveId ? contributions.find(c => c.id === assignment.contributionObjectiveId) : undefined; const candidate = allKpis.find(k => `${k.dashboard.id}_${k.item.id}` === key); return candidate ? <div key={key} className="rounded-lg bg-indigo-50 p-2 text-xs text-indigo-700"><strong>{candidate.item.indicator || candidate.item.name}</strong><span className="ml-2 text-[10px]">mediante {oc?.displayCode || 'OC'}</span></div> : null; })}</>}</section>

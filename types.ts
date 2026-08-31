@@ -52,6 +52,7 @@ export interface Client {
 export interface DashboardItem {
   id: number | string;
   indicator: string;
+  name?: string;
   order?: number; // 🚀 V6.2.1: Persist visual order
   weight: number; // Ponderación del indicador en porcentaje
   frequency?: 'monthly' | 'weekly';
