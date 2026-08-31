@@ -7,6 +7,7 @@ import {
   ContributionObjective,
   ContributionIndicatorAssignment,
   AreaStrategyConfig
+  ,getCanonicalKpiIdentity
 } from '../../strategyTypes';
 import { Dashboard as DashboardType, User, GlobalUserRole } from '../../types';
 import { calculateCompliance } from '../../utils/compliance';
@@ -69,7 +70,7 @@ export const OEDetailModal: React.FC<OEDetailModalProps> = ({
 
   const canManageOE = currentUser?.globalRole === GlobalUserRole.Admin && Boolean(selectedClientId && onRefreshData);
 
-  const allKpis = dashboards.flatMap(d => (d.items || []).map(item => ({ dashboard: d, item })));
+  const allKpis = dashboards.flatMap(d => (d.items || []).map(item => ({ dashboard: d, item, canonical: getCanonicalKpiIdentity(item, d.id) })));
   const currentDirectKeys = new Set(assignments.filter(a => a.strategicObjectiveId === objective?.id).map(a => `${a.dashboardId}_${a.itemId}`));
   const ocOwnerById = new Map(contributions.map(oc => [oc.id, oc.primaryStrategicObjectiveId]));
   const occupiedByOtherOE = new Set(assignments.filter(a => {
@@ -77,12 +78,12 @@ export const OEDetailModal: React.FC<OEDetailModalProps> = ({
     return owner && owner !== objective?.id;
   }).map(a => `${a.dashboardId}_${a.itemId}`));
   const viaCurrentOC = new Set(assignments.filter(a => a.contributionObjectiveId && ocOwnerById.get(a.contributionObjectiveId) === objective?.id).map(a => `${a.dashboardId}_${a.itemId}`));
-  const visibleKpis = allKpis.filter(({ dashboard, item }) => {
+  const visibleKpis = allKpis.filter(({ dashboard, item, canonical }) => {
     const key = `${dashboard.id}_${item.id}`;
     if (occupiedByOtherOE.has(key) || viaCurrentOC.has(key)) return false;
     const text = `${item.indicator || item.name || ''} ${dashboard.title || ''}`.toLowerCase();
     return text.includes(kpiSearch.toLowerCase());
-  });
+  }).filter((candidate, index, list) => list.findIndex(other => other.canonical === candidate.canonical) === index);
   const openDirectAlignment = () => {
     setDirectKpis(Array.from(currentDirectKeys));
     setKpiSearch('');

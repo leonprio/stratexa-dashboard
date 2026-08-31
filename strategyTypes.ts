@@ -284,6 +284,16 @@ export function formatOCCode(areaCode: string, sequenceNumber: number): string {
   return formatObjectiveCode(cleanCode ? `OC${cleanCode}` : 'OC', sequenceNumber);
 }
 
+/** Identidad estable para comparar un KPI sin usar su etiqueta visible. */
+export const getCanonicalKpiIdentity = (
+  item: { semanticKey?: string; parentDefinitionId?: string; id?: number | string },
+  dashboardId: number | string,
+  itemId: number | string = item.id ?? ''
+): string => {
+  const semantic = item.semanticKey?.trim() || item.parentDefinitionId?.trim();
+  return semantic ? `semantic:${semantic}` : `physical:${dashboardId}:${itemId}`;
+};
+
 export function formatOECode(sequenceNumber: number): string {
   return formatObjectiveCode('OE', sequenceNumber);
 }
