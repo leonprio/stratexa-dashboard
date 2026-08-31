@@ -76,6 +76,8 @@ export const StrategyConfigModal: React.FC<StrategyConfigModalProps> = ({
   const [ocTitle, setOcTitle] = useState<string>('');
   const [ocDescription, setOcDescription] = useState<string>('');
   const [selectedKpisForOC, setSelectedKpisForOC] = useState<string[]>([]); // array of "dashboardId_itemId"
+  const [editingOCId, setEditingOCId] = useState<string | null>(null);
+  const [pendingDeleteOC, setPendingDeleteOC] = useState<ContributionObjective | null>(null);
 
   // Extraer todas las áreas organizacionales activas de los tableros
   const availableAreas = useMemo(() => {
@@ -298,6 +300,26 @@ export const StrategyConfigModal: React.FC<StrategyConfigModalProps> = ({
     );
   };
 
+  const startEditOC = (oc: ContributionObjective) => {
+    setEditingOCId(oc.id);
+    setOcAreaName(oc.areaName || 'GENERAL');
+    setOcPrimaryOEId(oc.primaryStrategicObjectiveId);
+    setOcTitle(oc.title);
+    setOcDescription(oc.description || '');
+    setSelectedKpisForOC(assignments
+      .filter(a => a.contributionObjectiveId === oc.id)
+      .map(a => `${a.dashboardId}_${a.itemId}`));
+    setErrorMsg(null);
+    setSuccessMsg(null);
+  };
+
+  const cancelEditOC = () => {
+    setEditingOCId(null);
+    setOcTitle('');
+    setOcDescription('');
+    setSelectedKpisForOC([]);
+  };
+
   // Guardar Objetivo de Contribución (OC) y sus KPIs vinculados
   const handleSaveOC = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -315,6 +337,7 @@ export const StrategyConfigModal: React.FC<StrategyConfigModalProps> = ({
       const areaCfg = resolveAreaStrategyConfig(ocAreaName, areaConfigs);
 
       const savedOC = await strategyService.saveContributionObjective({
+        id: editingOCId || undefined,
         areaName: ocAreaName,
         areaConfigId: areaCfg?.id,
         primaryStrategicObjectiveId: ocPrimaryOEId,
@@ -334,7 +357,8 @@ export const StrategyConfigModal: React.FC<StrategyConfigModalProps> = ({
       setOcTitle('');
       setOcDescription('');
       setSelectedKpisForOC([]);
-      setSuccessMsg(`Objetivo de Contribución ${savedOC.displayCode} creado correctamente.`);
+      setSuccessMsg(`Objetivo de Contribución ${savedOC.displayCode} ${editingOCId ? 'actualizado' : 'creado'} correctamente.`);
+      setEditingOCId(null);
       await onRefreshData();
     } catch (err: any) {
       setErrorMsg(err.message || 'Error al guardar Objetivo de Contribución.');
@@ -344,15 +368,16 @@ export const StrategyConfigModal: React.FC<StrategyConfigModalProps> = ({
   };
 
   // Eliminar OC
-  const handleDeleteOC = async (ocId: string) => {
+  const handleDeleteOC = async () => {
     if (!isAdmin) return;
-    if (!confirm('¿Eliminar este Objetivo de Contribución?')) return;
+    if (!pendingDeleteOC) return;
 
     try {
       setLoading(true);
-      await strategyService.deleteContributionObjective(ocId, selectedClientId);
+      await strategyService.deleteContributionObjective(pendingDeleteOC.id, selectedClientId);
       await onRefreshData();
       setSuccessMsg('Objetivo de Contribución eliminado.');
+      setPendingDeleteOC(null);
     } catch (err: any) {
       setErrorMsg(err.message);
     } finally {
@@ -786,7 +811,7 @@ export const StrategyConfigModal: React.FC<StrategyConfigModalProps> = ({
               <div className="lg:col-span-1 bg-slate-950 p-5 rounded-xl border border-slate-800 space-y-4">
                 <h3 className="text-sm font-bold text-white flex items-center gap-2">
                   <Plus className="w-4 h-4 text-emerald-400" />
-                  Nuevo Objetivo de Contribución
+                  {editingOCId ? 'Editar Objetivo de Contribución' : 'Nuevo Objetivo de Contribución'}
                 </h3>
 
                 <form onSubmit={handleSaveOC} className="space-y-4">
@@ -881,8 +906,13 @@ export const StrategyConfigModal: React.FC<StrategyConfigModalProps> = ({
                     disabled={loading || !ocPrimaryOEId}
                     className="w-full py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold transition-all disabled:opacity-50"
                   >
-                    {loading ? 'Guardando...' : 'Crear Objetivo de Contribución (Atómico)'}
+                    {loading ? 'Guardando...' : editingOCId ? 'Guardar cambios y asignaciones' : 'Crear Objetivo de Contribución (Atómico)'}
                   </button>
+                  {editingOCId && (
+                    <button type="button" onClick={cancelEditOC} className="w-full py-2 bg-slate-800 text-slate-200 rounded-lg text-xs font-bold">
+                      Cancelar edición
+                    </button>
+                  )}
                 </form>
               </div>
 
@@ -926,15 +956,21 @@ export const StrategyConfigModal: React.FC<StrategyConfigModalProps> = ({
                             <div className="text-[11px] text-slate-500 flex items-center gap-2 pt-1">
                               <span>KPIs vinculados: <strong>{ocAssignments.length}</strong></span>
                             </div>
+                            {ocAssignments.length > 0 && (
+                              <div className="text-[11px] text-slate-400 pt-1 space-y-0.5">
+                                {ocAssignments.map(a => {
+                                  const dashboard = dashboards.find(d => String(d.id) === String(a.dashboardId));
+                                  const item = dashboard?.items?.find(i => String(i.id) === String(a.itemId));
+                                  return <div key={`${a.dashboardId}_${a.itemId}`}>• {dashboard?.title || a.dashboardId} · {item?.indicator || a.itemId}</div>;
+                                })}
+                              </div>
+                            )}
                           </div>
 
-                          <button
-                            onClick={() => handleDeleteOC(oc.id)}
-                            className="text-slate-500 hover:text-red-400 p-2 rounded transition-colors shrink-0"
-                            title="Eliminar OC"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
+                          <div className="flex items-center gap-1 shrink-0">
+                            <button onClick={() => startEditOC(oc)} className="text-slate-500 hover:text-emerald-400 p-2 rounded transition-colors" title="Editar OC"><Edit2 className="w-4 h-4" /></button>
+                            <button onClick={() => setPendingDeleteOC(oc)} className="text-slate-500 hover:text-red-400 p-2 rounded transition-colors" title="Eliminar OC"><Trash2 className="w-4 h-4" /></button>
+                          </div>
                         </div>
                       );
                     })}
@@ -961,6 +997,19 @@ export const StrategyConfigModal: React.FC<StrategyConfigModalProps> = ({
                 <button type="button" onClick={handleDeleteOE} disabled={loading} className="px-4 py-2 rounded-lg bg-red-600 text-white text-xs font-bold disabled:opacity-50">
                   Eliminar
                 </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {pendingDeleteOC && (
+          <div className="absolute inset-0 z-10 flex items-center justify-center bg-slate-950/80 p-6">
+            <div className="w-full max-w-md rounded-xl border border-red-500/30 bg-slate-900 p-5 shadow-2xl space-y-4">
+              <h3 className="text-base font-bold text-white">Eliminar objetivo de contribución</h3>
+              <p className="text-xs text-slate-300">¿Confirmas eliminar <strong className="text-emerald-400">{pendingDeleteOC.displayCode}</strong> — {pendingDeleteOC.title}?</p>
+              <div className="flex justify-end gap-2">
+                <button type="button" onClick={() => setPendingDeleteOC(null)} className="px-4 py-2 rounded-lg bg-slate-800 text-slate-200 text-xs font-bold">Cancelar</button>
+                <button type="button" onClick={handleDeleteOC} disabled={loading} className="px-4 py-2 rounded-lg bg-red-600 text-white text-xs font-bold disabled:opacity-50">Eliminar</button>
               </div>
             </div>
           </div>

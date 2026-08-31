@@ -626,9 +626,12 @@ export const strategyService = {
     // Borrar previas
     snap.docs.forEach(d => batch.delete(d.ref));
 
-    // Agregar nuevas
+    // Agregar nuevas, deduplicando por la identidad física dashboardId/itemId.
+    const uniqueItems = Array.from(
+      new Map(items.map(item => [`${item.dashboardId}_${item.itemId}`, item])).values()
+    );
     const now = new Date().toISOString();
-    items.forEach(item => {
+    uniqueItems.forEach(item => {
       const docId = `asgn_${ocId}_${item.dashboardId}_${item.itemId}`;
       const itemRef = doc(db, ASSIGNMENTS_COLLECTION, docId);
       const data: ContributionIndicatorAssignment = {

@@ -9,6 +9,7 @@ import {
 const mockGetDoc = jest.fn();
 const mockGetDocs = jest.fn();
 const mockRunTransaction = jest.fn();
+const mockWriteBatch = jest.fn();
 
 jest.mock('firebase/firestore', () => ({
   collection: jest.fn((_db, name) => ({ id: name })),
@@ -20,7 +21,7 @@ jest.mock('firebase/firestore', () => ({
   runTransaction: (...args: unknown[]) => mockRunTransaction(...args),
   setDoc: jest.fn(),
   deleteDoc: jest.fn(),
-  writeBatch: jest.fn()
+  writeBatch: (...args: unknown[]) => mockWriteBatch(...args)
 }));
 
 jest.mock('./firebase', () => ({ db: {} }));
@@ -44,6 +45,32 @@ const installTransaction = (objective: Record<string, unknown>, counter: Record<
 
 describe('strategy counter safe rollback', () => {
   beforeEach(() => jest.clearAllMocks());
+
+  it('deduplicates physical KPI assignments and supports clearing them', async () => {
+    mockGetDoc.mockResolvedValue(snapshot({ id: 'oc1', clientId: 'LEÓN' }));
+    mockGetDocs.mockResolvedValue(docsSnapshot([{ id: 'old-assignment' }]));
+    const batch = { delete: jest.fn(), set: jest.fn(), commit: jest.fn().mockResolvedValue(undefined) };
+    mockWriteBatch.mockReturnValue(batch);
+
+    await strategyService.saveAssignmentsForOC('oc1', [
+      { dashboardId: 'd1', itemId: 'k1' },
+      { dashboardId: 'd1', itemId: 'k1' },
+      { dashboardId: 'd2', itemId: 'k2' }
+    ], 'LEÓN');
+
+    expect(batch.delete).toHaveBeenCalledTimes(1);
+    expect(batch.set).toHaveBeenCalledTimes(2);
+    expect(batch.set).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'asgn_oc1_d1_k1' }),
+      expect.objectContaining({ contributionObjectiveId: 'oc1', dashboardId: 'd1', itemId: 'k1', clientId: 'LEÓN' })
+    );
+
+    batch.delete.mockClear();
+    batch.set.mockClear();
+    await strategyService.saveAssignmentsForOC('oc1', [], 'LEÓN');
+    expect(batch.delete).toHaveBeenCalledTimes(1);
+    expect(batch.set).not.toHaveBeenCalled();
+  });
 
   it.each([
     ['OE01', 'OE01'],
