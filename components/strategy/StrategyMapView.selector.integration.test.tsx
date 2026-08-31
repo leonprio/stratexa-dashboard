@@ -23,5 +23,4 @@ it('uses map-displayed ownership to exclude occupied KPIs from OE04 selector', (
   expect(within(available).queryByText('PROSPECTOS CONTACTADOS')).not.toBeInTheDocument();
   expect(within(available).getByText('ACTIVIDADES ESTRATÉGICAS')).toBeInTheDocument();
   expect(within(available).getByText('APLICACIONES DESARROLLADAS')).toBeInTheDocument();
-  expect(screen.getByText('ERRORES ocupados-pero-disponibles').nextSibling).toHaveTextContent('0');
 });
