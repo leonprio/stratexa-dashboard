@@ -38,6 +38,7 @@ import {
   deriveAreaCodeSuggestion,
   getCanonicalRelationshipId,
   formatOECode,
+  normalizeObjectiveCodeForComparison,
   parseObjectiveCodeSequence
 } from '../strategyTypes';
 
@@ -271,6 +272,51 @@ export const strategyService = {
       transaction.set(objectiveRef, repaired, { merge: true });
       transaction.set(counterRef, { ...counter, lastIssuedSequence: toSequence, updatedAt }, { merge: true });
       return repaired;
+    });
+  },
+
+  repairLegacyStrategicObjectiveCodes: async (clientId?: string): Promise<{ repaired: number; codes: Record<string, string>; counter: number }> => {
+    const targetClient = normalizeClientId(clientId);
+    const objectives = await strategyService.getStrategicObjectives(targetClient);
+    const canonicalCodes = new Set(
+      objectives
+        .filter(objective => normalizeObjectiveCodeForComparison(objective.code) === objective.code)
+        .map(objective => normalizeObjectiveCodeForComparison(objective.code))
+    );
+    const legacy = objectives
+      .filter(objective => {
+        const normalized = normalizeObjectiveCodeForComparison(objective.code);
+        return parseOESequence(normalized) !== null && normalized !== objective.code;
+      })
+      .sort((a, b) => `${a.createdAt || ''}:${a.id}`.localeCompare(`${b.createdAt || ''}:${b.id}`));
+
+    if (legacy.length === 0) {
+      const counterSnap = await getDoc(doc(db, COUNTERS_COLLECTION, `cnt_${targetClient}_OE`));
+      return { repaired: 0, codes: {}, counter: counterSnap.exists() ? (counterSnap.data() as StrategyCounter).lastIssuedSequence || 0 : 0 };
+    }
+
+    const assignments: { objective: StrategicObjective; code: string }[] = [];
+    let nextSequence = objectives.reduce((max, objective) => Math.max(max, parseOESequence(objective.code) || 0), 0) + 1;
+    legacy.forEach(objective => {
+      while (canonicalCodes.has(formatOECode(nextSequence))) nextSequence++;
+      const code = formatOECode(nextSequence++);
+      canonicalCodes.add(code);
+      assignments.push({ objective, code });
+    });
+
+    return runTransaction(db, async transaction => {
+      const counterRef = doc(db, COUNTERS_COLLECTION, `cnt_${targetClient}_OE`);
+      const counterSnap = await transaction.get(counterRef);
+      const currentCounter = counterSnap.exists() ? (counterSnap.data() as StrategyCounter).lastIssuedSequence || 0 : 0;
+      const maxSequence = assignments.reduce((max, assignment) => Math.max(max, parseOESequence(assignment.code) || 0), currentCounter);
+      assignments.forEach(({ objective, code }) => {
+        const objectiveRef = doc(db, OBJECTIVES_COLLECTION, objective.id);
+        transaction.set(objectiveRef, { ...objective, code, updatedAt: new Date().toISOString() }, { merge: true });
+      });
+      if (maxSequence > currentCounter) {
+        transaction.set(counterRef, { lastIssuedSequence: maxSequence, clientId: targetClient, scope: 'OE', id: `cnt_${targetClient}_OE`, updatedAt: new Date().toISOString() }, { merge: true });
+      }
+      return { repaired: assignments.length, codes: Object.fromEntries(assignments.map(({ objective, code }) => [objective.id, code])), counter: maxSequence };
     });
   },
 

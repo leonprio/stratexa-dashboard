@@ -10,6 +10,8 @@ import {
   deriveAreaCodeSuggestion,
   validateAreaCodeUniqueness,
   resolveAreaStrategyConfig
+  ,normalizeObjectiveCodeForComparison
+  ,parseObjectiveCodeSequence
 } from '../../strategyTypes';
 import { Dashboard as DashboardType, User, GlobalUserRole } from '../../types';
 import { strategyService } from '../../services/strategyService';
@@ -59,6 +61,7 @@ export const StrategyConfigModal: React.FC<StrategyConfigModalProps> = ({
   const [oeDescription, setOeDescription] = useState<string>('');
   const [editingOEId, setEditingOEId] = useState<string | null>(null);
   const [pendingDeleteOE, setPendingDeleteOE] = useState<StrategicObjective | null>(null);
+  const [showLegacyRepair, setShowLegacyRepair] = useState(false);
 
   // Form State: Área y Códigos Estables
   const [selectedAreaForConfig, setSelectedAreaForConfig] = useState<string>('');
@@ -186,6 +189,27 @@ export const StrategyConfigModal: React.FC<StrategyConfigModalProps> = ({
     setEditingOEId(null);
     setOeTitle('');
     setOeDescription('');
+  };
+
+  const legacyObjectives = objectives.filter(objective => {
+    const normalized = normalizeObjectiveCodeForComparison(objective.code);
+    return parseObjectiveCodeSequence(normalized, 'OE') !== null && normalized !== objective.code;
+  });
+
+  const handleRepairLegacyCodes = async () => {
+    if (!isAdmin) return;
+    try {
+      setLoading(true);
+      setErrorMsg(null);
+      await strategyService.repairLegacyStrategicObjectiveCodes(selectedClientId);
+      setShowLegacyRepair(false);
+      setSuccessMsg('Códigos normalizados correctamente.');
+      await onRefreshData();
+    } catch (err: any) {
+      setErrorMsg(err.message || 'Error al normalizar códigos.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Eliminar OE, después de confirmación inline propia de la aplicación.
@@ -571,6 +595,15 @@ export const StrategyConfigModal: React.FC<StrategyConfigModalProps> = ({
               <div className="lg:col-span-2 space-y-4">
                 <h3 className="text-sm font-bold text-white">Objetivos Estratégicos Configurados ({objectives.length})</h3>
 
+                {legacyObjectives.length > 0 && (
+                  <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 flex items-center justify-between gap-3">
+                    <p className="text-xs text-amber-200">Se detectaron códigos de formato anterior. La normalización conserva objetivos y relaciones.</p>
+                    <button type="button" onClick={() => setShowLegacyRepair(true)} className="shrink-0 rounded-lg bg-amber-600 px-3 py-2 text-[10px] font-bold text-white hover:bg-amber-500">
+                      NORMALIZAR CÓDIGOS
+                    </button>
+                  </div>
+                )}
+
                 {perspectives.map(p => {
                   const pObjectives = objectives.filter(o => o.perspectiveId === p.id);
                   return (
@@ -928,6 +961,19 @@ export const StrategyConfigModal: React.FC<StrategyConfigModalProps> = ({
                 <button type="button" onClick={handleDeleteOE} disabled={loading} className="px-4 py-2 rounded-lg bg-red-600 text-white text-xs font-bold disabled:opacity-50">
                   Eliminar
                 </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {showLegacyRepair && (
+          <div className="absolute inset-0 z-10 flex items-center justify-center bg-slate-950/80 p-6">
+            <div className="w-full max-w-md rounded-xl border border-amber-500/30 bg-slate-900 p-5 shadow-2xl space-y-4">
+              <h3 className="text-base font-bold text-white">Normalizar códigos estratégicos</h3>
+              <p className="text-xs text-slate-300">Se normalizarán {legacyObjectives.length} códigos. No se eliminarán objetivos ni relaciones.</p>
+              <div className="flex justify-end gap-2">
+                <button type="button" onClick={() => setShowLegacyRepair(false)} className="px-4 py-2 rounded-lg bg-slate-800 text-slate-200 text-xs font-bold">Cancelar</button>
+                <button type="button" onClick={handleRepairLegacyCodes} disabled={loading} className="px-4 py-2 rounded-lg bg-amber-600 text-white text-xs font-bold disabled:opacity-50">Normalizar</button>
               </div>
             </div>
           </div>

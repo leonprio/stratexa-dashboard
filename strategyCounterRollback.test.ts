@@ -218,4 +218,31 @@ describe('strategy counter safe rollback', () => {
       { merge: true }
     );
   });
+
+  it('assigns OE03 to a distinct OE-01 legacy record while preserving its identity and counter', async () => {
+    mockGetDocs
+      .mockResolvedValueOnce(docsSnapshot([
+        { id: 'oe1', clientId: 'LEÓN', code: 'OE01', title: 'Primero' },
+        { id: 'oe2', clientId: 'LEÓN', code: 'OE02', title: 'Segundo' },
+        { id: 'legacy-id', clientId: 'LEÓN', code: 'OE-01', title: 'Optimizar embudo', createdAt: '2026-01-03' }
+      ]));
+    const tx = { get: jest.fn().mockResolvedValue(snapshot({ lastIssuedSequence: 2 })), set: jest.fn(), delete: jest.fn() };
+    mockGetDocs.mockResolvedValueOnce(docsSnapshot()).mockResolvedValueOnce(docsSnapshot());
+    mockRunTransaction.mockImplementation(async (_db, callback) => callback(tx));
+
+    const result = await strategyService.repairLegacyStrategicObjectiveCodes('LEÓN');
+
+    expect(result.codes).toEqual({ 'legacy-id': 'OE03' });
+    expect(result.counter).toBe(3);
+    expect(tx.set).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'legacy-id' }),
+      expect.objectContaining({ id: 'legacy-id', code: 'OE03', title: 'Optimizar embudo' }),
+      { merge: true }
+    );
+    expect(tx.set).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'cnt_LEÓN_OE' }),
+      expect.objectContaining({ lastIssuedSequence: 3 }),
+      { merge: true }
+    );
+  });
 });
