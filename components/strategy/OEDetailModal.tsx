@@ -164,6 +164,7 @@ export const OEDetailModal: React.FC<OEDetailModalProps> = ({
             </h3>
             {canManageOE && (
               <div className="flex items-center gap-2 mt-3">
+                <button type="button" onClick={() => setShowOCManager(true)} className="px-3 py-1.5 rounded-lg bg-indigo-600 text-white text-[11px] font-bold hover:bg-indigo-500">ALINEAR INDICADORES</button>
                 <button type="button" onClick={openEditOE} className="px-3 py-1.5 rounded-lg bg-blue-600 text-white text-[11px] font-bold hover:bg-blue-500">EDITAR OBJETIVO</button>
                 <button type="button" onClick={() => { setOeError(null); setPendingDelete(true); }} className="px-3 py-1.5 rounded-lg bg-red-50 text-red-700 border border-red-200 text-[11px] font-bold hover:bg-red-100">ELIMINAR OBJETIVO</button>
               </div>
@@ -303,6 +304,7 @@ export const OEDetailModal: React.FC<OEDetailModalProps> = ({
                         </div>
                       </div>
                       <h5 className="text-sm font-semibold text-slate-800 mb-2">{oc.title}</h5>
+                      {canManageOE && <button type="button" onClick={() => setShowOCManager(true)} className="mb-2 px-2.5 py-1 rounded-md bg-indigo-50 text-indigo-700 border border-indigo-200 text-[10px] font-bold">ADMINISTRAR INDICADORES</button>}
 
                       {/* Lista de KPIs vinculados al OC */}
                       {linkedKpis.length > 0 ? (

@@ -31,6 +31,7 @@ export interface ContributionMatrixViewProps {
   onSaveRelationship?: (rel: { sourceStrategicObjectiveId: string; targetStrategicObjectiveId: string; description?: string }) => Promise<void>;
   onDeleteRelationship?: (relationshipId: string) => Promise<void>;
   onNavigateToDashboard?: (dashboardId: number | string, itemId: number | string) => void;
+  onExit?: () => void;
 }
 
 /**
@@ -57,6 +58,7 @@ export const ContributionMatrixView: React.FC<ContributionMatrixViewProps> = ({
   onSaveRelationship,
   onDeleteRelationship,
   onNavigateToDashboard,
+  onExit,
 }) => {
   const isAdmin = currentUser?.globalRole === GlobalUserRole.Admin;
 
@@ -203,6 +205,11 @@ export const ContributionMatrixView: React.FC<ContributionMatrixViewProps> = ({
 
         {/* Action Buttons */}
         <div className="flex items-center gap-3 shrink-0">
+          {onExit && (
+            <button type="button" onClick={onExit} className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg text-xs font-bold transition-all">
+              ← VOLVER AL TABLERO
+            </button>
+          )}
           {subView === 'matrix' && (
             <select
               value={selectedAreaFilter}

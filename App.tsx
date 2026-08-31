@@ -2257,6 +2257,7 @@ Esto corregirá cualquier inconsistencia en colores (ej. Amarillo vs Rojo).`)) {
               onRefreshData={loadStrategyData}
               onSaveRelationship={handleSaveRelationship}
               onDeleteRelationship={handleDeleteRelationship}
+              onExit={() => setActiveAdminSection("none")}
               onNavigateToDashboard={(dashboardId, itemId) => {
                 setActiveAdminSection("none");
                 setSelectedDashboardId(dashboardId);
