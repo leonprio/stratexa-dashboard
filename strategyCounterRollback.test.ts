@@ -1,4 +1,10 @@
 import { strategyService } from './services/strategyService';
+import {
+  formatOCCode,
+  formatOECode,
+  normalizeObjectiveCodeForComparison,
+  parseObjectiveCodeSequence
+} from './strategyTypes';
 
 const mockGetDoc = jest.fn();
 const mockGetDocs = jest.fn();
@@ -39,6 +45,25 @@ const installTransaction = (objective: Record<string, unknown>, counter: Record<
 describe('strategy counter safe rollback', () => {
   beforeEach(() => jest.clearAllMocks());
 
+  it.each([
+    ['OE01', 'OE01'],
+    ['OE 01', 'OE01'],
+    ['oe-01', 'OE01'],
+    ['OC01', 'OC01'],
+    ['OCV01', 'OCV01'],
+    ['OCF01', 'OCF01']
+  ])('canonicalizes %s and %s to one logical code', (legacy, canonical) => {
+    expect(normalizeObjectiveCodeForComparison(legacy)).toBe(canonical);
+    expect(parseObjectiveCodeSequence(legacy)).toBe(1);
+  });
+
+  it('always emits canonical no-hyphen objective codes', () => {
+    expect(formatOECode(1)).toBe('OE01');
+    expect(formatOCCode('', 1)).toBe('OC01');
+    expect(formatOCCode('V', 1)).toBe('OCV01');
+    expect(formatOCCode('F', 1)).toBe('OCF01');
+  });
+
   it('atomically deletes the last OE and decrements its counter', async () => {
     mockGetDoc.mockResolvedValue(snapshot({ id: 'oe3', clientId: 'LEÓN', code: 'OE03' }));
     mockGetDocs.mockResolvedValueOnce(docsSnapshot()).mockResolvedValueOnce(docsSnapshot());
@@ -72,6 +97,7 @@ describe('strategy counter safe rollback', () => {
   });
 
   it('reuses the released last OE sequence on the next creation without duplicating a code', async () => {
+    mockGetDocs.mockResolvedValue({ docs: [] });
     const tx = { get: jest.fn().mockResolvedValue(snapshot({ lastIssuedSequence: 2 })), set: jest.fn(), delete: jest.fn() };
     mockRunTransaction.mockImplementation(async (_db, callback) => callback(tx));
 
@@ -89,6 +115,20 @@ describe('strategy counter safe rollback', () => {
       expect.objectContaining({ lastIssuedSequence: 3 }),
       { merge: true }
     );
+  });
+
+  it('skips a legacy OE-01 even when the counter is absent or stale', async () => {
+    mockGetDocs.mockResolvedValue({
+      docs: [{ id: 'legacy', data: () => ({ id: 'legacy', clientId: 'LEÓN', code: 'OE-01', perspectiveId: 'FIN' }) }]
+    });
+    const tx = { get: jest.fn().mockResolvedValue({ exists: () => false }), set: jest.fn(), delete: jest.fn() };
+    mockRunTransaction.mockImplementation(async (_db, callback) => callback(tx));
+
+    const created = await strategyService.saveStrategicObjective({
+      clientId: 'LEÓN', perspectiveId: 'FIN', code: '', title: 'Siguiente', order: 2
+    });
+
+    expect(created.code).toBe('OE02');
   });
 
   it('blocks OE deletion when a contribution objective depends on it', async () => {

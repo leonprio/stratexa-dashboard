@@ -279,11 +279,31 @@ export function generateNextOCSequence(
  * Ej: ("V", 1) -> "OCV01"; sin área -> "OC01"
  */
 export function formatOCCode(areaCode: string, sequenceNumber: number): string {
-  const cleanCode = (areaCode || '').trim().toUpperCase();
-  const seqStr = String(sequenceNumber).padStart(2, '0');
-  return cleanCode ? `OC${cleanCode}${seqStr}` : `OC${seqStr}`;
+  const cleanCode = normalizeObjectiveCodeForComparison(areaCode || '').replace(/^OC/, '');
+  return formatObjectiveCode(cleanCode ? `OC${cleanCode}` : 'OC', sequenceNumber);
 }
 
 export function formatOECode(sequenceNumber: number): string {
-  return `OE${String(sequenceNumber).padStart(2, '0')}`;
+  return formatObjectiveCode('OE', sequenceNumber);
+}
+
+/** Canonical comparison form: OE-01, OE 01, oe01 all become OE01. */
+export function normalizeObjectiveCodeForComparison(code: string): string {
+  return (code || '').trim().toUpperCase().replace(/[\s-]+/g, '');
+}
+
+/** Formats any supported objective prefix without visual separators. */
+export function formatObjectiveCode(prefix: string, sequenceNumber: number): string {
+  const cleanPrefix = normalizeObjectiveCodeForComparison(prefix);
+  return `${cleanPrefix}${String(sequenceNumber).padStart(2, '0')}`;
+}
+
+/** Safely extracts the numeric sequence from OE/OC-family codes. */
+export function parseObjectiveCodeSequence(code: string, expectedPrefix?: string): number | null {
+  const normalized = normalizeObjectiveCodeForComparison(code);
+  const match = /^([A-Z]+)(\d+)$/.exec(normalized);
+  if (!match || !match[1].startsWith('OE') && !match[1].startsWith('OC')) return null;
+  if (expectedPrefix && !match[1].startsWith(normalizeObjectiveCodeForComparison(expectedPrefix))) return null;
+  const sequence = Number(match[2]);
+  return Number.isSafeInteger(sequence) && sequence > 0 ? sequence : null;
 }

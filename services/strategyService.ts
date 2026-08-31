@@ -37,7 +37,8 @@ import {
   formatOCCode,
   deriveAreaCodeSuggestion,
   getCanonicalRelationshipId,
-  formatOECode
+  formatOECode,
+  parseObjectiveCodeSequence
 } from '../strategyTypes';
 
 const COLLECTION_PREFIX = 'tbl_';
@@ -55,10 +56,7 @@ const normalizeClientId = (clientId?: string): string => {
   return clientId.trim().toUpperCase();
 };
 
-const parseOESequence = (code?: string): number | null => {
-  const match = /^OE-?(\d+)$/.exec((code || '').trim().toUpperCase());
-  return match ? Number(match[1]) : null;
-};
+const parseOESequence = (code?: string): number | null => parseObjectiveCodeSequence(code || '', 'OE');
 
 const canReleaseSequence = (deletedSequence: number | null, counter?: StrategyCounter): boolean =>
   deletedSequence !== null &&
@@ -141,10 +139,14 @@ export const strategyService = {
       await setDoc(ref, JSON.parse(JSON.stringify(updated)), { merge: true });
       return updated;
     }
+    const existingObjectives = await strategyService.getStrategicObjectives(targetClient);
+    const existingMaxSequence = existingObjectives.reduce((max, item) =>
+      Math.max(max, parseOESequence(item.code) || 0), 0);
     return runTransaction(db, async transaction => {
       const counterRef = doc(db, COUNTERS_COLLECTION, `cnt_${targetClient}_OE`);
       const counterSnap = await transaction.get(counterRef);
-      const nextSeq = ((counterSnap.exists() ? (counterSnap.data() as StrategyCounter).lastIssuedSequence : 0) || 0) + 1;
+      const counterSequence = counterSnap.exists() ? (counterSnap.data() as StrategyCounter).lastIssuedSequence || 0 : 0;
+      const nextSeq = Math.max(counterSequence, existingMaxSequence) + 1;
       const docId = `oe_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
       const ref = doc(db, OBJECTIVES_COLLECTION, docId);
       const now = new Date().toISOString();
@@ -384,7 +386,11 @@ export const strategyService = {
     const q = query(ref, where('clientId', '==', targetClient));
     const snap = await getDocs(q);
 
-    const list = snap.docs.map(d => ({ id: d.id, ...d.data() } as ContributionObjective));
+    const list = snap.docs.map(d => {
+      const objective = { id: d.id, ...d.data() } as ContributionObjective;
+      const sequence = parseObjectiveCodeSequence(objective.displayCode, 'OC') || objective.sequenceNumber;
+      return { ...objective, displayCode: formatOCCode(objective.areaCode || '', sequence) };
+    });
     return list.sort((a, b) => a.displayCode.localeCompare(b.displayCode));
   },
 
@@ -436,6 +442,11 @@ export const strategyService = {
       return updatedOC;
     }
 
+    const existingOCs = await strategyService.getContributionObjectives(targetClient);
+    const existingMaxSequence = existingOCs
+      .filter(oc => (oc.areaConfigId || 'GENERAL') === (resolvedAreaConfigId || 'GENERAL'))
+      .reduce((max, oc) => Math.max(max, parseObjectiveCodeSequence(oc.displayCode, 'OC') || Number(oc.sequenceNumber) || 0), 0);
+
     // 🛡️ REGLA DE CONCURRENCIA ESTRICTA: Transacción 100% interna sin getDocs externo previo
     const result = await runTransaction(db, async (transaction) => {
       const scope = resolvedAreaConfigId || 'GENERAL';
@@ -447,7 +458,7 @@ export const strategyService = {
         lastSeq = (counterSnap.data() as StrategyCounter).lastIssuedSequence || 0;
       }
 
-      const nextSeq = lastSeq + 1;
+      const nextSeq = Math.max(lastSeq, existingMaxSequence) + 1;
       const displayCode = formatOCCode(resolvedAreaCode, nextSeq);
       const newDocId = `oc_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
       const ocRef = doc(db, CONTRIBUTION_OBJECTIVES_COLLECTION, newDocId);
