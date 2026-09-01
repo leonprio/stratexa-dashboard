@@ -50,8 +50,9 @@ describe('ObjectivesView', () => {
     render(<ObjectivesView dashboard={primary} dashboards={[secondary]} objectives={objectives} perspectives={[{ id: 'P1', name: 'P1', order: 1 }, { id: 'P3', name: 'P3', order: 3 }, { id: 'P4', name: 'P4', order: 4 }] as any} contributions={[]} assignments={assignments} year={2026} />);
     expect(screen.getByText('APLICACIONES DESARROLLADAS')).toBeInTheDocument();
     expect(screen.getByText('ACTIVIDADES ESTRATÉGICAS')).toBeInTheDocument();
-    expect(screen.getByText('OE01').compareDocumentPosition(screen.getByText('OE04')) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    const headings = screen.getAllByRole('heading', { level: 3 });
+    expect(headings.map(node => node.textContent)).toEqual(['OE01', 'OE03', 'OE04']);
     fireEvent.click(screen.getByRole('button', { name: /ORDEN DEL MAPA/i }));
-    expect(screen.getByText('OE04').compareDocumentPosition(screen.getByText('OE01')) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.getAllByRole('heading', { level: 3 }).map(node => node.textContent)).toEqual(['OE04', 'OE03', 'OE01']);
   });
 });
