@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { OperationalAlertsCenter } from './OperationalAlertsCenter';
 import { buildOperationalAlerts } from '../../utils/operationalAlerts';
 
@@ -7,7 +7,7 @@ jest.mock('../../utils/operationalAlerts', () => ({ ...jest.requireActual('../..
 
 describe('OperationalAlertsCenter UX ejecutiva', () => {
   beforeEach(() => (buildOperationalAlerts as jest.Mock).mockReturnValue([{
-    id: 1, indicator: 'REUNIONES CON PROSPECTOS', direction: 'GENERAL', area: 'COMERCIAL', severity: 'CRÍTICO', trend: 'CRÍTICO', agingLabel: '61d+ (Crítico)', reliabilityScore: 35, captureRate: 50, stalenessDays: 122, missingPeriods: 4, performanceScore: 53, realOperationalScore: 27, isOvertRisk: true, isHiddenRisk: false, isDeteriorating: true, dataStatus: 'DATOS VENCIDOS', performanceLabel: 'CRÍTICO', traceability: { lastUpdatedAt: 'MAY / 2026', lastUpdatedBy: 'SIN RESPONSABLE REGISTRADO', lastOperationalChange: 'Última captura: MAY' }
+    id: 1, dashboardId: 10, indicator: 'REUNIONES CON PROSPECTOS', direction: 'GENERAL', area: 'COMERCIAL', severity: 'CRÍTICO', trend: 'CRÍTICO', agingLabel: '61d+ (Crítico)', reliabilityScore: 35, captureRate: 50, stalenessDays: 122, missingPeriods: 4, performanceScore: 53, realOperationalScore: 27, isOvertRisk: true, isHiddenRisk: false, isDeteriorating: true, dataStatus: 'DATOS VENCIDOS', performanceLabel: 'CRÍTICO', traceability: { lastUpdatedAt: 'MAY / 2026', lastUpdatedBy: 'SIN RESPONSABLE REGISTRADO', lastOperationalChange: 'Última captura: MAY' }
   }]));
 
   it('mantiene badges en una línea y separa estado, datos y aging', () => {
@@ -20,6 +20,26 @@ describe('OperationalAlertsCenter UX ejecutiva', () => {
     expect(screen.queryByText('61d+ (Crítico)')).not.toBeInTheDocument();
     expect(screen.getByText('Última captura: MAY')).toBeInTheDocument();
     expect(screen.getByText('Responsable: SIN REGISTRAR')).toBeInTheDocument();
+  });
+
+  it('navigates with the exact operational dashboardId and itemId', () => {
+    const onNavigateToKpi = jest.fn();
+    render(<OperationalAlertsCenter dashboards={[]} globalThresholds={{ onTrack: 90, atRisk: 80 }} year={2026} compact onNavigateToKpi={onNavigateToKpi} />);
+    fireEvent.click(screen.getByText('REUNIONES CON PROSPECTOS'));
+    expect(onNavigateToKpi).toHaveBeenCalledWith(10, 1);
+    expect(screen.getByText('REVISAR →')).toBeInTheDocument();
+  });
+
+  it('keeps hidden-risk KPIs actionable with their exact physical identity', () => {
+    (buildOperationalAlerts as jest.Mock).mockReturnValue([{
+      id: 'apps-developed', dashboardId: 'dashboard-leon', indicator: 'APLICACIONES DESARROLLADAS', direction: 'GENERAL', area: 'COMERCIAL', severity: 'RIESGO OCULTO', trend: 'ESTABLE', agingLabel: '155 días', reliabilityScore: 16, captureRate: 22, stalenessDays: 155, missingPeriods: 7, performanceScore: 100, realOperationalScore: 22, isOvertRisk: false, isHiddenRisk: true, isDeteriorating: false, dataStatus: 'DATOS VENCIDOS', performanceLabel: 'AL DÍA', traceability: { lastUpdatedAt: 'S8 / 2026', lastUpdatedBy: 'SIN RESPONSABLE REGISTRADO', lastOperationalChange: 'Última captura: S8' }
+    }]);
+    const onNavigateToKpi = jest.fn();
+    render(<OperationalAlertsCenter dashboards={[]} globalThresholds={{ onTrack: 90, atRisk: 80 }} year={2026} compact onNavigateToKpi={onNavigateToKpi} />);
+    fireEvent.keyDown(screen.getByRole('row', { name: /APLICACIONES DESARROLLADAS/ }), { key: 'Enter' });
+    expect(onNavigateToKpi).toHaveBeenCalledWith('dashboard-leon', 'apps-developed');
+    expect(screen.getByText('100%')).toBeInTheDocument();
+    expect(screen.getAllByText('RIESGO OCULTO').length).toBeGreaterThan(0);
   });
 
   it('muestra el porcentaje canónico junto con la etiqueta semántica', () => {

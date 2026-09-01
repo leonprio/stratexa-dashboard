@@ -81,8 +81,13 @@ export const firebaseService = {
         return true;
     },
 
-    deleteActionPlan: async (id: string): Promise<boolean> => {
-        await deleteDoc(doc(db, ACTION_PLANS_COLLECTION, id));
+    deleteActionPlan: async (clientId: string, id: string): Promise<boolean> => {
+        const ref = doc(db, ACTION_PLANS_COLLECTION, id);
+        const snap = await getDoc(ref);
+        if (!snap.exists()) return false;
+        const storedClientId = String(snap.data().clientId || '').trim().toUpperCase();
+        if (storedClientId !== clientId.trim().toUpperCase()) throw new Error('ActionPlan fuera del alcance del cliente activo.');
+        await deleteDoc(ref);
         return true;
     },
 

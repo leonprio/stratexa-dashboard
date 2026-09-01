@@ -9,6 +9,7 @@ export type OperationalDataStatus = 'AL DÍA' | 'DATOS INCOMPLETOS' | 'DATOS VEN
 
 export interface OperationalAlert {
   id: string | number;
+  dashboardId: string | number;
   indicator: string;
   direction: string;
   area: string;
@@ -156,6 +157,7 @@ export const buildOperationalAlerts = (
 
       alerts.push({
         id: item.id,
+        dashboardId: d.id,
         indicator: item.indicator,
         direction: identity.direction,
         area: identity.area,

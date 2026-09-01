@@ -7,13 +7,15 @@ interface OperationalAlertsCenterProps {
   globalThresholds: ComplianceThresholds;
   year: number;
   compact?: boolean;
+  onNavigateToKpi?: (dashboardId: number | string, itemId: number | string) => void;
 }
 
 export const OperationalAlertsCenter: React.FC<OperationalAlertsCenterProps> = ({
   dashboards,
   globalThresholds,
   year,
-  compact = false
+  compact = false,
+  onNavigateToKpi
 }) => {
   const [selectedSeverity, setSelectedSeverity] = useState<string>('TODAS');
   const [selectedDirection, setSelectedDirection] = useState<string>('TODAS');
@@ -283,12 +285,13 @@ export const OperationalAlertsCenter: React.FC<OperationalAlertsCenterProps> = (
                 const trend = getTrendIconAndColor(alert.trend);
 
                 return (
-                  <tr key={`${alert.id}-${idx}`} className="hover:bg-white/5 border-b border-white/5 transition-colors">
+                  <tr key={`${alert.id}-${idx}`} onClick={() => onNavigateToKpi?.(alert.dashboardId, alert.id)} className="group cursor-pointer hover:bg-white/5 border-b border-white/5 transition-colors" tabIndex={0} onKeyDown={event => { if (event.key === 'Enter' || event.key === ' ') onNavigateToKpi?.(alert.dashboardId, alert.id); }}>
                     
                     {/* ORIGEN Y NOMBRE DE KPI */}
                     <td className="p-3 text-[11px] font-black text-white uppercase tracking-tight max-w-[260px]">
                       <div className="flex flex-col">
                         <span className="truncate">{alert.indicator}</span>
+                        <span className="mt-1 text-[8px] font-black text-cyan-400 opacity-70 group-hover:opacity-100">REVISAR →</span>
                         <span className="text-[7px] text-slate-500 font-bold uppercase tracking-widest mt-0.5">
                           {alert.direction} • {alert.area}
                         </span>

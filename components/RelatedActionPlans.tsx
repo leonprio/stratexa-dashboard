@@ -101,6 +101,7 @@ export const RelatedActionPlans: React.FC<Props> = ({
     "loading",
   );
   const [draft, setDraft] = useState<ActionPlan | null>(null);
+  const [deleteConfirmation, setDeleteConfirmation] = useState(false);
   const load = async () => {
     setState("loading");
     try {
@@ -162,6 +163,18 @@ export const RelatedActionPlans: React.FC<Props> = ({
     try {
       if (draft.id) await firebaseService.updateActionPlan(draft.id, changes);
       else await firebaseService.createActionPlan(changes);
+      setDraft(null);
+      await load();
+    } catch {
+      setState("error");
+    }
+  };
+  const removePlan = async () => {
+    if (!draft?.id || !clientId) return;
+    setState("saving");
+    try {
+      await firebaseService.deleteActionPlan(clientId, draft.id);
+      setDeleteConfirmation(false);
       setDraft(null);
       await load();
     } catch {
@@ -419,6 +432,11 @@ export const RelatedActionPlans: React.FC<Props> = ({
             </div>
           </div>
           <div className="mt-5 flex justify-end gap-3">
+            {draft.id && !deleteConfirmation && (
+              <button type="button" onClick={() => setDeleteConfirmation(true)} className="mr-auto rounded-lg border border-rose-500/30 px-4 py-2 text-xs font-bold text-rose-300 hover:bg-rose-500/10">
+                Eliminar plan
+              </button>
+            )}
             <button
               onClick={() => setDraft(null)}
               className="text-xs text-slate-400"
@@ -433,6 +451,16 @@ export const RelatedActionPlans: React.FC<Props> = ({
               {state === "saving" ? "Guardando…" : "Guardar plan"}
             </button>
           </div>
+          {draft.id && deleteConfirmation && (
+            <div className="mt-4 rounded-xl border border-rose-500/30 bg-rose-500/10 p-4" role="alertdialog" aria-label="¿Eliminar este plan?">
+              <p className="text-sm font-black text-rose-200">¿Eliminar este plan?</p>
+              <p className="mt-1 text-xs text-slate-300">Se eliminará el plan y sus actividades. El indicador y su historial no se modificarán.</p>
+              <div className="mt-3 flex justify-end gap-3">
+                <button type="button" onClick={() => setDeleteConfirmation(false)} className="px-3 py-2 text-xs font-bold text-slate-300">Cancelar</button>
+                <button type="button" disabled={state === "saving"} onClick={() => void removePlan()} className="rounded-lg bg-rose-600 px-4 py-2 text-xs font-black text-white disabled:opacity-50">{state === "saving" ? "Eliminando…" : "Eliminar plan"}</button>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </section>

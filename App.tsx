@@ -107,7 +107,7 @@ export default function App() {
   const [pendingKpiNavigation, setPendingKpiNavigation] = useState<{
     dashboardId: number | string;
     itemId: number | string;
-    source: 'objectives';
+    source: 'objectives' | 'control';
   } | null>(null);
   const [loadingDashboards, setLoadingDashboards] = useState<boolean>(false);
   const [settings, setSettings] = useState<SystemSettings | undefined>(undefined);
@@ -2291,11 +2291,12 @@ Esto corregirá cualquier inconsistencia en colores (ej. Amarillo vs Rojo).`)
                 contributions={contributionObjectives}
                 assignments={assignments}
                 requestedItemId={pendingKpiNavigation && String(pendingKpiNavigation.dashboardId) === String(selectedDashboard.id) ? pendingKpiNavigation.itemId : null}
-                onNavigateToKpi={(dashboardId, itemId) => {
+                requestedNavigationSource={pendingKpiNavigation?.source}
+                onNavigateToKpi={(dashboardId, itemId, source = 'objectives') => {
                   setPendingKpiNavigation({
                     dashboardId,
                     itemId,
-                    source: 'objectives'
+                    source
                   });
                   setSelectedDashboardId(dashboardId);
                 }}
