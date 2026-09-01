@@ -1,5 +1,6 @@
 import { calculateActionPlanProgress } from './utils/actionPlanLogic';
 import type { ActionPlanActivity } from './types';
+import { normalizeActionImpact } from './components/RelatedActionPlans';
 
 const activity = (progress: number, impact?: ActionPlanActivity['impact']): ActionPlanActivity => ({ id: String(progress), title: 'Acción', progress, impact, result: 'Evidencia', createdAt: '', updatedAt: '' });
 
@@ -11,5 +12,9 @@ describe('ActionPlan activity impact contract', () => {
 
   it('keeps legacy activities without impact compatible', () => {
     expect(calculateActionPlanProgress([activity(50)])).toBe(50);
+    expect(normalizeActionImpact()).toBe('NOT_EVALUATED');
+    expect(normalizeActionImpact('positive')).toBe('FAVORABLE');
+    expect(normalizeActionImpact('low')).toBe('PARTIAL');
+    expect(normalizeActionImpact('none')).toBe('LOW_OR_NONE');
   });
 });

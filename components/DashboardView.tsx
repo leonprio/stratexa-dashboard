@@ -100,7 +100,15 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(({
   const [selectedItemId, setSelectedItemId] = useState<number | string | null>(null);
   const [activeView, setActiveView] = useState<"dashboard" | "objectives" | "reports" | "control">("dashboard");
   const [returnToObjectives, setReturnToObjectives] = useState(false);
-  useEffect(() => { if (requestedItemId !== null && requestedItemId !== undefined && safeItems.some(item => String(item.id) === String(requestedItemId))) { setActiveView('dashboard'); setSelectedItemId(requestedItemId); setReturnToObjectives(true); onNavigationConsumed?.(); } }, [requestedItemId, onNavigationConsumed, safeItems]);
+  const [navigationError, setNavigationError] = useState('');
+  useEffect(() => {
+    if (requestedItemId === null || requestedItemId === undefined) return;
+    if (safeItems.some(item => String(item.id) === String(requestedItemId))) {
+      setNavigationError(''); setActiveView('dashboard'); setSelectedItemId(requestedItemId); setReturnToObjectives(true); onNavigationConsumed?.();
+    } else {
+      setNavigationError('No fue posible abrir el indicador seleccionado.'); setActiveView('objectives'); setReturnToObjectives(false); onNavigationConsumed?.();
+    }
+  }, [requestedItemId, onNavigationConsumed, safeItems]);
 
   const isAggregate = (typeof dashboard.id === 'string' && dashboard.id.startsWith('agg-')) || dashboard.id === -1 || dashboard.isAggregate === true;
 
@@ -431,7 +439,7 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(({
 
       {/* SELECTED ITEM FOCUS SECTION */}
       {selectedItem && (
-        <div className="mb-8" id="gestion-detallada-focus">
+        <div className={`mb-8 ${returnToObjectives ? 'rounded-2xl ring-2 ring-cyan-500/40 ring-offset-4 ring-offset-slate-950' : ''}`} id="gestion-detallada-focus">
           <CurrentPeriodFocus
             item={selectedItem}
             globalThresholds={activeThresholds}
@@ -464,6 +472,7 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(({
         </div>
       )}
 
+      {navigationError && <div className="mb-3 rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-xs text-rose-300">{navigationError}</div>}
       {returnToObjectives && activeView === 'dashboard' && <button type="button" onClick={() => { setSelectedItemId(null); setActiveView('objectives'); setReturnToObjectives(false); }} className="mb-3 rounded-lg border border-violet-500/30 px-3 py-2 text-[10px] font-black text-violet-300">← VOLVER A OBJETIVOS</button>}
       {/* MAIN CONTENT VIEW */}
       {activeView === 'dashboard' ? (

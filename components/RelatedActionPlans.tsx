@@ -24,6 +24,13 @@ const traffic: Record<string, string> = {
   yellow: "bg-amber-400",
   neutral: "bg-slate-600",
 };
+export const normalizeActionImpact = (impact?: ActionPlanActivity['impact']) => impact === 'FAVORABLE' || impact === 'positive' ? 'FAVORABLE' : impact === 'PARTIAL' || impact === 'low' ? 'PARTIAL' : impact === 'LOW_OR_NONE' || impact === 'none' ? 'LOW_OR_NONE' : 'NOT_EVALUATED';
+const impactVisual = (impact?: ActionPlanActivity['impact']) => ({
+  NOT_EVALUATED: { label: 'Por evaluar', icon: '⚪', className: 'text-slate-400' },
+  FAVORABLE: { label: 'Impacto favorable', icon: '🟢', className: 'text-emerald-300' },
+  PARTIAL: { label: 'Impacto parcial', icon: '🟡', className: 'text-amber-300' },
+  LOW_OR_NONE: { label: 'Bajo / sin impacto', icon: '🔴', className: 'text-rose-300' },
+}[normalizeActionImpact(impact)]);
 const monthNames = [
   "Enero",
   "Febrero",
@@ -208,6 +215,9 @@ export const RelatedActionPlans: React.FC<Props> = ({
                 <p className="mt-1 text-[10px] uppercase tracking-widest text-slate-600">
                   Origen: {origin(p)}
                 </p>
+                <div className="mt-2 flex flex-wrap gap-1">
+                  {(p.activities || []).map(activity => { const visual = impactVisual(activity.impact); return <span key={activity.id} className={`rounded border border-white/10 px-2 py-1 text-[9px] font-bold uppercase ${visual.className}`}>{visual.icon} {visual.label}</span>; })}
+                </div>
               </div>
               {canEdit && (
                 <button
@@ -383,13 +393,14 @@ export const RelatedActionPlans: React.FC<Props> = ({
                   </div>
                   <div className="mt-2 max-w-xs">
                     <Field label="Impacto">
-                      <select value={a.impact || 'NOT_EVALUATED'} onChange={e => updateActivity(a.id, 'impact', e.target.value)} className={control}>
-                        <option value="NOT_EVALUATED">Por evaluar</option>
-                        <option value="FAVORABLE">Impacto favorable</option>
-                        <option value="PARTIAL">Impacto parcial</option>
-                        <option value="LOW_OR_NONE">Bajo / sin impacto</option>
+                      <select value={normalizeActionImpact(a.impact)} onChange={e => updateActivity(a.id, 'impact', e.target.value)} className={control}>
+                        <option value="NOT_EVALUATED">⚪ Por evaluar</option>
+                        <option value="FAVORABLE">🟢 Impacto favorable</option>
+                        <option value="PARTIAL">🟡 Impacto parcial</option>
+                        <option value="LOW_OR_NONE">🔴 Bajo / sin impacto</option>
                       </select>
                     </Field>
+                    {(() => { const visual = impactVisual(a.impact); return <span className={`mt-1 inline-flex rounded border border-white/10 px-2 py-1 text-[9px] font-bold uppercase ${visual.className}`}>{visual.icon} {visual.label}</span>; })()}
                   </div>
                   <div className="mt-2 flex items-center gap-2 text-[10px] uppercase tracking-widest text-slate-500">
                     <span
