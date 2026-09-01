@@ -49,6 +49,7 @@ export const ObjectivesView: React.FC<Props> = ({
   onNavigateToKpi,
 }) => {
   const [descending, setDescending] = useState(false);
+  const [expandedTrend, setExpandedTrend] = useState<string | null>(null);
   const [plansByObjective, setPlansByObjective] = useState<
     Map<string, ActionPlan[]>
   >(new Map());
@@ -154,7 +155,7 @@ export const ObjectivesView: React.FC<Props> = ({
           Sin Objetivos Estratégicos configurados.
         </div>
       )}
-      <div className="grid gap-4 xl:grid-cols-2">
+      <div className="grid items-start gap-4 xl:grid-cols-2">
         {objectiveRows.map(({ objective, items }) => {
           const readings = items.map((kpi) => reading(kpi.item, kpi.dashboard));
           const statuses = readings.map(({ status }) => status);
@@ -171,7 +172,7 @@ export const ObjectivesView: React.FC<Props> = ({
           return (
             <article
               key={objective.id}
-              className="rounded-2xl border border-white/10 bg-slate-900/60 p-5 shadow-xl"
+              className="self-start rounded-2xl border border-white/10 bg-slate-900/60 p-5 shadow-xl"
             >
               <div className="flex items-start justify-between gap-3">
                 <div>
@@ -210,6 +211,10 @@ export const ObjectivesView: React.FC<Props> = ({
                 ) : (
                   items.slice(0, 5).map((kpi) => {
                     const kpiReading = reading(kpi.item, kpi.dashboard);
+                    const trendId = `${objective.id}-${kpi.identity}`;
+                    const isTrendExpanded = expandedTrend === trendId;
+                    const trendSeries = kpiReading.series.slice(-8);
+                    const lastPointColor = kpiReading.status === "BAJO CONTROL" ? "#34d399" : kpiReading.status === "REQUIERE ATENCIÓN" ? "#fbbf24" : kpiReading.status === "CRÍTICO" ? "#fb7185" : "#94a3b8";
                     const visual = statusVisual[kpiReading.status];
                     const trendLabel =
                       kpiReading.trend === "MEJORA"
@@ -220,12 +225,14 @@ export const ObjectivesView: React.FC<Props> = ({
                             ? "→ Estable"
                             : "Sin tendencia";
                     return (
-                      <button
-                        type="button"
+                      <div
+                        role="button"
+                        tabIndex={0}
                         key={kpi.identity}
                         onClick={() =>
                           onNavigateToKpi?.(kpi.dashboard.id, kpi.item.id)
                         }
+                        onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") onNavigateToKpi?.(kpi.dashboard.id, kpi.item.id); }}
                         className="grid w-full cursor-pointer grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-xl border border-white/5 bg-slate-950/40 px-3 py-2.5 text-left transition hover:border-cyan-500/30 hover:bg-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/60 md:grid-cols-[auto_minmax(0,1fr)_auto_auto_auto]"
                       >
                         <span
@@ -241,11 +248,16 @@ export const ObjectivesView: React.FC<Props> = ({
                             : `${kpiReading.score}%`}{" "}
                           · {kpiReading.status}
                         </span>
-                        <span className="col-start-2 text-[9px] font-semibold text-slate-500 md:col-auto md:whitespace-nowrap">
-                          {trendLabel} ·{" "}
+                        <span className="col-start-2 flex flex-wrap items-center gap-1 text-[9px] font-semibold text-slate-500 md:col-auto md:whitespace-nowrap">
+                          {trendLabel} ·{" "}{kpiReading.series.length >= 2 && <button type="button" aria-expanded={isTrendExpanded} aria-controls={`trend-${trendId}`} className="rounded px-1 text-cyan-300 underline decoration-cyan-500/40 underline-offset-2 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-cyan-400" onClick={(event) => { event.stopPropagation(); setExpandedTrend(isTrendExpanded ? null : trendId); }}>TENDENCIA</button>} ·{" "}
                           <b className="text-cyan-300">REVISAR</b>
                         </span>
-                      </button>
+                        {isTrendExpanded && <div id={`trend-${trendId}`} className="col-span-full rounded-lg border border-cyan-500/15 bg-slate-950/50 px-3 py-2" aria-label={`Tendencia de ${kpi.item.indicator}`}>
+                          <div className="flex flex-wrap items-center justify-between gap-2"><span className="text-[9px] font-black uppercase tracking-widest text-slate-500">Historia de cumplimiento</span><span className="text-[10px] font-semibold text-slate-300">Actual: {kpiReading.series.at(-1)?.value ?? "—"}%{kpiReading.series.length >= 2 ? ` · ${kpiReading.series.at(-1)!.value - kpiReading.series.at(-2)!.value >= 0 ? "↑" : "↓"} ${Math.abs(kpiReading.series.at(-1)!.value - kpiReading.series.at(-2)!.value)} pts vs periodo anterior` : ""}</span></div>
+                          <svg viewBox="0 0 320 96" role="img" aria-label={`Gráfico histórico de ${kpi.item.indicator}`} className="mt-2 h-24 w-full"><polyline fill="none" stroke="#94a3b8" strokeOpacity=".55" strokeWidth="1.5" strokeDasharray="4 5" strokeLinejoin="round" strokeLinecap="round" points={trendSeries.map((point, index) => `${(index / (trendSeries.length - 1)) * 300 + 10},${86 - ((point.value - Math.min(...trendSeries.map((item) => item.value))) / (Math.max(...trendSeries.map((item) => item.value)) - Math.min(...trendSeries.map((item) => item.value)) || 1)) * 72}`).join(" ")} />{trendSeries.map((point, index) => <circle key={`${point.periodIndex}-${index}`} cx={(index / (trendSeries.length - 1)) * 300 + 10} cy={86 - ((point.value - Math.min(...trendSeries.map((item) => item.value))) / (Math.max(...trendSeries.map((item) => item.value)) - Math.min(...trendSeries.map((item) => item.value)) || 1)) * 72} r={index === trendSeries.length - 1 ? "4" : "2"} fill={index === trendSeries.length - 1 ? lastPointColor : "#64748b"} fillOpacity={index === trendSeries.length - 1 ? "1" : ".45"} />)}</svg>
+                          <div className="flex justify-between text-[8px] text-slate-600"><span>P{(trendSeries[0]?.periodIndex ?? 0) + 1}</span><span>P{(trendSeries.at(-1)?.periodIndex ?? 0) + 1}</span></div>
+                        </div>}
+                      </div>
                     );
                   })
                 )}

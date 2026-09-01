@@ -122,6 +122,22 @@ describe("ObjectivesView", () => {
     expect(screen.queryByRole("img", { name: /periodos evaluables/ })).not.toBeInTheDocument();
   });
 
+  it("expande y contrae la tendencia bajo demanda", () => {
+    const historyDashboard = { ...dashboard, items: [{ ...dashboard.items[0], monthlyProgress: [70, 80, 84], monthlyGoals: [100, 100, 100] }] };
+    render(<ObjectivesView dashboard={historyDashboard} objectives={[objective]} perspectives={[]} contributions={[]} assignments={[{ strategicObjectiveId: "oe1", dashboardId: "d1", itemId: "k1" } as any]} year={2026} />);
+    const toggle = screen.getByRole("button", { name: "TENDENCIA" });
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    fireEvent.click(toggle);
+    expect(toggle).toHaveAttribute("aria-expanded", "true");
+    const chart = screen.getByRole("img", { name: /Gráfico histórico de KPI asociado/ });
+    expect(chart).toBeInTheDocument();
+    expect(chart.querySelector("polyline")).toHaveAttribute("stroke-dasharray", "4 5");
+    expect(chart.querySelector("circle:last-of-type")).toHaveAttribute("fill", "#fbbf24");
+    expect(screen.getByText(/Actual: 84%/)).toBeInTheDocument();
+    fireEvent.click(toggle);
+    expect(screen.queryByRole("img", { name: /Gráfico histórico de KPI asociado/ })).not.toBeInTheDocument();
+  });
+
   it("muestra diagnóstico ejecutivo, ejecución y decisión deterministas", () => {
     render(
       <ObjectivesView
