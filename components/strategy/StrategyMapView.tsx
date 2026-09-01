@@ -372,6 +372,7 @@ export const StrategyMapView: React.FC<StrategyMapViewProps> = ({
           assignments={assignments}
           dashboards={dashboards}
           currentObjectiveAlignedKpis={ownership.kpisByStrategicObjective.get(selectedOE.id) || []}
+          ownershipResolution={ownership}
           occupiedKpiIdentities={occupiedKpiIdentities}
           occupiedPhysicalKpiKeys={ownership.occupiedPhysicalKpiKeys}
           visibleOccupiedPhysicalKpiKeys={visibleOccupiedPhysicalKpiKeys}

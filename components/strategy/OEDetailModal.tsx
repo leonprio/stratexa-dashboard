@@ -13,7 +13,7 @@ import { calculateCompliance } from '../../utils/compliance';
 import { StrategyConfigModal } from './StrategyConfigModal';
 import { strategyService } from '../../services/strategyService';
 import { getAvailableStrategicKpis, resolveStrategicKpiOwnership } from '../../strategyKpiOwnership';
-import type { StrategicKpiCandidate } from '../../strategyKpiOwnership';
+import type { StrategicKpiCandidate, StrategicKpiOwnershipResolution } from '../../strategyKpiOwnership';
 
 export interface OEDetailModalProps {
   objective: StrategicObjective | null;
@@ -35,6 +35,7 @@ export interface OEDetailModalProps {
   occupiedPhysicalKpiKeys?: Set<string>;
   visibleOccupiedPhysicalKpiKeys?: Set<string>;
   visibleOccupiedCanonicalKpiIdentities?: Set<string>;
+  ownershipResolution?: StrategicKpiOwnershipResolution;
 }
 
 /**
@@ -61,7 +62,8 @@ export const OEDetailModal: React.FC<OEDetailModalProps> = ({
   selectedClientId,
   currentUser,
   onRefreshData,
-  currentObjectiveAlignedKpis
+  currentObjectiveAlignedKpis,
+  ownershipResolution
 }) => {
   const [showOCManager, setShowOCManager] = useState(false);
   const [showEditOE, setShowEditOE] = useState(false);
@@ -78,7 +80,7 @@ export const OEDetailModal: React.FC<OEDetailModalProps> = ({
   const canManageOE = currentUser?.globalRole === GlobalUserRole.Admin && Boolean(selectedClientId && onRefreshData);
 
   const allKpis = dashboards.flatMap(d => (d.items || []).map(item => ({ dashboard: d, item })));
-  const ownership = resolveStrategicKpiOwnership(dashboards, allObjectives, contributions, assignments);
+  const ownership = ownershipResolution || resolveStrategicKpiOwnership(dashboards, allObjectives, contributions, assignments);
   const currentDirectKeys = new Set(assignments.filter(a => a.strategicObjectiveId === objective?.id).map(a => `${a.dashboardId}_${a.itemId}`));
   const ocOwnerById = new Map(contributions.map(oc => [oc.id, oc.primaryStrategicObjectiveId]));
   const viaCurrentOC = new Set(assignments.filter(a => a.contributionObjectiveId && ocOwnerById.get(a.contributionObjectiveId) === objective?.id).map(a => `${a.dashboardId}_${a.itemId}`));

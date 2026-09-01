@@ -16,7 +16,7 @@ function logicalIdentity(item: any, dashboard: Dashboard): string {
   if (definitionId) return `definition:${String(definitionId).trim()}`;
   if (item.semanticKey?.trim()) return `semantic:${item.semanticKey.trim()}`;
   if (item.parentDefinitionId?.trim()) return `parent:${item.parentDefinitionId.trim()}`;
-  const label = normalizeLogicalKpiLabel(item.indicator || item.name || '');
+  const label = normalizeLogicalKpiLabel(item.indicator || item.name || '').replace(/\s+\((COMERCIAL Y VENTAS|LOGISTICA Y TRANSPORTE|OPERACIONES Y ALMACEN)\)$/, '');
   return `label:${label || `${dashboard.title}:${item.id}`}`;
 }
 

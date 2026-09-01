@@ -6,6 +6,7 @@ La configuración estratégica define relaciones, no desempeño.
 - `ContributionObjective` es opcional y puede vincularse a un objetivo estratégico mediante `primaryStrategicObjectiveId`.
 - `LogicalKpi` representa un indicador de negocio único. Sus `physicalAliases` son las representaciones `dashboardId + itemId` equivalentes que existen en tableros operativos o derivados.
 - `ownership` resuelve cada KPI lógico a un único objetivo estratégico. Un assignment `DIRECT` usa `strategicObjectiveId`; un assignment `CONTRIBUTION` llega al OE a través del OC.
+- Los selectores de alineación renderizados DEBEN consumir ownership client-wide antes de aplicar el scope de candidatos por área; un KPI ocupado vía cualquier OE/OC nunca es `AVAILABLE` en otro destino.
 - La exclusividad se aplica al KPI lógico completo: si un alias está asignado, todos sus aliases quedan ocupados. Un conflicto legacy entre OEs se detecta y no se resuelve silenciosamente.
 - El mapa consume `ownership.kpisByStrategicObjective` y muestra una sola representación lógica por OE, manteniendo el layout horizontal.
 - Un `LogicalKpi` sólo puede tener un destino estratégico activo; sus `physicalAliases` no representan disponibilidades independientes.
