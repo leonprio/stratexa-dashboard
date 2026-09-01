@@ -10,3 +10,5 @@ La estrategia agrupa KPIs con `LogicalKpi` y aliases físicos para lectura y ali
 - CONTROL conserva sus contratos de planes, vencimientos y pendientes; este límite no autoriza cambios de severidad, confianza, aging o rankings.
 
 El orden estratégico de presentación es una capa no persistente: perspectiva configurada, después OE configurado, después orden operativo estable del KPI. Los KPI no alineados quedan al final. IDs, historial y orden operativo almacenado no cambian; CONTROL conserva su orden por excepción.
+
+La navegación profunda desde Objetivos usa exclusivamente `dashboardId + itemId`, abre el representante operativo autorizado y mantiene cliente/año/período. Los conteos de planes provienen de ActionPlan transversal y se deduplican por `ActionPlan.id`; pendientes no consolidados se muestran como neutrales. Impacto mide efecto (`NOT_EVALUATED`, `FAVORABLE`, `PARTIAL`, `LOW_OR_NONE`) y permanece independiente del avance y de KPI/YTD.

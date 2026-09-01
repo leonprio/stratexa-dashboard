@@ -99,7 +99,8 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(({
 
   const [selectedItemId, setSelectedItemId] = useState<number | string | null>(null);
   const [activeView, setActiveView] = useState<"dashboard" | "objectives" | "reports" | "control">("dashboard");
-  useEffect(() => { if (requestedItemId !== null && requestedItemId !== undefined) { setActiveView('dashboard'); setSelectedItemId(requestedItemId); onNavigationConsumed?.(); } }, [requestedItemId, onNavigationConsumed]);
+  const [returnToObjectives, setReturnToObjectives] = useState(false);
+  useEffect(() => { if (requestedItemId !== null && requestedItemId !== undefined && safeItems.some(item => String(item.id) === String(requestedItemId))) { setActiveView('dashboard'); setSelectedItemId(requestedItemId); setReturnToObjectives(true); onNavigationConsumed?.(); } }, [requestedItemId, onNavigationConsumed, safeItems]);
 
   const isAggregate = (typeof dashboard.id === 'string' && dashboard.id.startsWith('agg-')) || dashboard.id === -1 || dashboard.isAggregate === true;
 
@@ -380,6 +381,7 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(({
               <button
                 onClick={() => setActiveView("dashboard")}
                 aria-label="Ver Tablero de Indicadores"
+                title="Indicadores y resultados"
                 className={`px-4 sm:px-6 py-2 rounded-xl text-[9px] font-extrabold uppercase tracking-widest transition-all duration-500 flex items-center gap-2 ${activeView === 'dashboard' ? 'bg-cyan-600 text-white shadow-[0_0_20px_rgba(8,145,178,0.5)]' : 'text-slate-500 hover:text-slate-300 hover:bg-white/5'}`}
               >
                 <span>📊</span> <span className="hidden sm:inline">Tablero</span>
@@ -387,11 +389,13 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(({
               <button
                 onClick={() => setActiveView("objectives")}
                 aria-label="Ver Objetivos Estratégicos"
+                title="Lectura estratégica"
                 className={`px-4 sm:px-6 py-2 rounded-xl text-[9px] font-extrabold uppercase tracking-widest transition-all duration-500 flex items-center gap-2 ${activeView === 'objectives' ? 'bg-violet-600 text-white' : 'text-slate-500 hover:text-slate-300 hover:bg-white/5'}`}
               ><span>🎯</span> <span className="hidden sm:inline">Objetivos</span></button>
               <button
                 onClick={() => setActiveView("reports")}
                 aria-label="Ver Centro de Reportes"
+                title="Síntesis ejecutiva"
                 className={`px-4 sm:px-6 py-2 rounded-xl text-[9px] font-extrabold uppercase tracking-widest transition-all duration-500 flex items-center gap-2 ${activeView === 'reports' ? 'bg-indigo-600 text-white shadow-[0_0_20px_rgba(79,70,229,0.5)]' : 'text-slate-500 hover:text-slate-300 hover:bg-white/5'}`}
               >
                 <span>📑</span> <span className="hidden sm:inline">Reporte</span>
@@ -399,6 +403,7 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(({
               <button
                 onClick={() => setActiveView("control")}
                 aria-label="Ver Control Operativo"
+                title="Atención e intervención"
                 className={`px-4 sm:px-6 py-2 rounded-xl text-[9px] font-extrabold uppercase tracking-widest transition-all duration-500 flex items-center gap-2 min-h-[44px] ${activeView === 'control' ? 'bg-emerald-600 text-white shadow-[0_0_20px_rgba(16,185,129,0.5)]' : 'text-slate-500 hover:text-slate-300 hover:bg-white/5'}`}
               >
                 <span>⚙️</span> <span className="hidden sm:inline">Control</span>
@@ -459,6 +464,7 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(({
         </div>
       )}
 
+      {returnToObjectives && activeView === 'dashboard' && <button type="button" onClick={() => { setSelectedItemId(null); setActiveView('objectives'); setReturnToObjectives(false); }} className="mb-3 rounded-lg border border-violet-500/30 px-3 py-2 text-[10px] font-black text-violet-300">← VOLVER A OBJETIVOS</button>}
       {/* MAIN CONTENT VIEW */}
       {activeView === 'dashboard' ? (
         <div className="dashboard-container-query">

@@ -1,6 +1,6 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { calculateCompliance } from "../utils/compliance";
-import type { Dashboard, DashboardItem } from "../types";
+import type { ActionPlan, Dashboard, DashboardItem } from "../types";
 import type {
   ContributionIndicatorAssignment,
   ContributionObjective,
@@ -8,6 +8,7 @@ import type {
   StrategicPerspective,
 } from "../strategyTypes";
 import { resolveStrategicKpiOwnership } from "../strategyKpiOwnership";
+import { firebaseService } from "../services/firebaseService";
 
 type Props = {
   dashboard: Dashboard;
@@ -43,6 +44,7 @@ export const ObjectivesView: React.FC<Props> = ({
   onNavigateToKpi,
 }) => {
   const [descending, setDescending] = useState(false);
+  const [plansByObjective, setPlansByObjective] = useState<Map<string, ActionPlan[]>>(new Map());
   const sourceDashboards = useMemo(
     () =>
       Array.from(
@@ -95,6 +97,15 @@ export const ObjectivesView: React.FC<Props> = ({
     items: ownership.kpisByStrategicObjective.get(objective.id) || [],
   }));
   const unlinked = ownership.orphanKpis;
+  useEffect(() => {
+    let active = true;
+    void Promise.all(objectives.map(async objective => {
+      const kpis = ownership.kpisByStrategicObjective.get(objective.id) || [];
+      const plans = (await Promise.all(kpis.flatMap(kpi => kpi.physicalAliases.map(alias => firebaseService.getActionPlansForIndicator(alias.item.id, alias.dashboard.clientId || dashboard.clientId).catch(() => []))))).flat();
+      return [objective.id, Array.from(new Map(plans.map(plan => [plan.id, plan])).values()).filter(plan => !['completed', 'cancelled'].includes(plan.status))] as const;
+    })).then(entries => { if (active) setPlansByObjective(new Map(entries)); });
+    return () => { active = false; };
+  }, [objectives, ownership, dashboard.clientId]);
   return (
     <section className="space-y-5" aria-label="Vista por objetivos">
       <div className="flex items-end justify-between gap-3">
@@ -139,9 +150,8 @@ export const ObjectivesView: React.FC<Props> = ({
           const perspective = perspectives.find(
             (p) => p.id === objective.perspectiveId,
           );
-          const plans = items.filter((kpi) =>
-            Boolean(kpi.item.actionPlan),
-          ).length;
+          const relatedPlans = plansByObjective.get(objective.id) || [];
+          const plans = relatedPlans.length;
           const countText = items.length
             ? `${items.length} indicadores · ${statuses.filter((value) => value === "BAJO CONTROL").length} bajo control · ${statuses.filter((value) => value === "REQUIERE ATENCIÓN").length} requieren atención · ${statuses.filter((value) => value === "CRÍTICO").length} críticos`
             : "Sin indicadores asociados";
@@ -210,15 +220,14 @@ export const ObjectivesView: React.FC<Props> = ({
               <div className="mt-4 flex gap-5 border-t border-white/5 pt-3 text-[10px] font-black uppercase tracking-widest text-slate-500">
                 {plans > 0 ? (
                   <button type="button" className="hover:text-cyan-300" onClick={() => {
-                    const target = items.find(kpi => Boolean(kpi.item.actionPlan));
+                    const plan = relatedPlans[0];
+                    const target = plan ? items.find(kpi => kpi.physicalAliases.some(alias => String(alias.item.id) === String(plan.indicatorId))) : undefined;
                     if (target) onNavigateToKpi?.(target.dashboard.id, target.item.id);
                   }}>
                     Planes activos <b className="text-cyan-300">{plans}</b>
                   </button>
                 ) : <span>Planes activos <b className="text-cyan-300">0</b></span>}
-                <span>
-                  Pendientes <b className="text-amber-300">0</b>
-                </span>
+                <span>Pendientes <b className="text-slate-400">sin consolidar</b></span>
               </div>
             </article>
           );

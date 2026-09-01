@@ -14,3 +14,5 @@ La configuración estratégica define relaciones, no desempeño.
 La futura **Vista por Objetivos** es un consumer de la misma estructura: usa `ownership.kpisByStrategicObjective`, conserva el orden configurado de perspectivas y OE (con inversión sólo de UI) y no reconstruye relaciones por alias físico.
 
 No debe introducir cálculos de KPI, YTD, severidad o desempeño en Configuración Estratégica.
+
+La lectura estratégica sólo usa dashboards ya autorizados para el usuario. Puede mostrar el contexto mínimo del OE, pero KPI, OC y planes permanecen sujetos a tenant y área; los aliases físicos nunca amplían permisos.
