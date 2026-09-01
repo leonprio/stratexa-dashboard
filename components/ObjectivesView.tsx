@@ -9,9 +9,11 @@ import type {
 import { resolveStrategicKpiOwnership } from "../strategyKpiOwnership";
 import { firebaseService } from "../services/firebaseService";
 import {
+  buildObjectiveExecutiveDiagnosis,
+  buildObjectiveExecutionSummary,
+  buildObjectiveNextDecision,
   buildExecutiveKpiReading,
   objectiveExecutiveStatus,
-  type HistoricalCompliancePoint,
 } from "../objectivesReading";
 
 type Props = {
@@ -35,48 +37,6 @@ const statusVisual = {
   "NO EVALUABLE": "bg-slate-400 text-slate-300 border-slate-500/30",
   "DATOS PENDIENTES": "bg-slate-400 text-slate-300 border-slate-500/30",
 } as const;
-
-const Sparkline = ({ points }: { points: HistoricalCompliancePoint[] }) => {
-  if (points.length < 2)
-    return (
-      <span className="text-[9px] text-slate-600">
-        Sin historial suficiente
-      </span>
-    );
-  const values = points.map((point) => point.value);
-  const min = Math.min(...values);
-  const max = Math.max(...values);
-  const range = max - min || 1;
-  const path = points
-    .map((point, index) => {
-      const x = points.length === 1 ? 48 : (index / (points.length - 1)) * 96;
-      const y = 28 - ((point.value - min) / range) * 24;
-      return `${index === 0 ? "M" : "L"}${x.toFixed(1)},${y.toFixed(1)}`;
-    })
-    .join(" ");
-  return (
-    <svg
-      role="img"
-      aria-label={`Historial de cumplimiento, ${points.length} periodos evaluables`}
-      viewBox="0 0 96 32"
-      className="h-8 w-24 shrink-0"
-    >
-      <path
-        d={path}
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2"
-        className="text-slate-400"
-      />
-      <circle
-        cx="96"
-        cy={(28 - ((values[values.length - 1] - min) / range) * 24).toFixed(1)}
-        r="2.5"
-        className="fill-cyan-300"
-      />
-    </svg>
-  );
-};
 
 export const ObjectivesView: React.FC<Props> = ({
   dashboard,
@@ -204,9 +164,10 @@ export const ObjectivesView: React.FC<Props> = ({
           );
           const relatedPlans = plansByObjective.get(objective.id) || [];
           const plans = relatedPlans.length;
-          const countText = items.length
-            ? `${items.length} indicadores · ${statuses.filter((value) => value === "BAJO CONTROL").length} bajo control · ${statuses.filter((value) => value === "REQUIERE ATENCIÓN").length} requieren atención · ${statuses.filter((value) => value === "CRÍTICO").length} críticos`
-            : "Sin indicadores asociados";
+          const diagnosis = buildObjectiveExecutiveDiagnosis(items.map((kpi, index) => ({ indicator: kpi.item.indicator, score: readings[index].score, status: readings[index].status })));
+          const execution = buildObjectiveExecutionSummary(relatedPlans);
+          const decision = buildObjectiveNextDecision(items.map((kpi, index) => ({ indicator: kpi.item.indicator, score: readings[index].score, status: readings[index].status })), relatedPlans, execution);
+          const priorityKpi = items.find((kpi, index) => readings[index].status === "CRÍTICO") || items.find((kpi, index) => readings[index].status === "REQUIERE ATENCIÓN");
           return (
             <article
               key={objective.id}
@@ -234,9 +195,10 @@ export const ObjectivesView: React.FC<Props> = ({
                   {status}
                 </span>
               </div>
-              <p className="mt-2 text-[10px] font-semibold text-slate-400">
-                {countText}
-              </p>
+              <div className="mt-4 rounded-xl border border-white/5 bg-slate-950/40 p-3">
+                <p className="text-[9px] font-black uppercase tracking-widest text-slate-500">Diagnóstico ejecutivo</p>
+                <p className="mt-1 text-sm leading-5 text-slate-300">{diagnosis}</p>
+              </div>
               <div className="mt-5 space-y-2">
                 <p className="text-[9px] font-black uppercase tracking-widest text-slate-500">
                   KPIs relacionados
@@ -273,15 +235,12 @@ export const ObjectivesView: React.FC<Props> = ({
                         <span className="truncate text-xs font-bold text-slate-200">
                           {kpi.item.indicator}
                         </span>
-                        <span
-                          className={`whitespace-nowrap rounded-lg border px-2 py-1 text-[9px] font-black uppercase ${visual.split(" ").slice(1).join(" ")}`}
-                        >
+                        <span className={`whitespace-nowrap rounded-lg border px-2 py-1 text-[9px] font-black uppercase ${visual.split(" ").slice(1).join(" ")}`}>
                           {kpiReading.score === null
                             ? "—"
                             : `${kpiReading.score}%`}{" "}
                           · {kpiReading.status}
                         </span>
-                        <Sparkline points={kpiReading.series} />
                         <span className="col-start-2 text-[9px] font-semibold text-slate-500 md:col-auto md:whitespace-nowrap">
                           {trendLabel} ·{" "}
                           <b className="text-cyan-300">REVISAR</b>
@@ -296,7 +255,9 @@ export const ObjectivesView: React.FC<Props> = ({
                   </p>
                 )}
               </div>
-              <div className="mt-4 flex gap-5 border-t border-white/5 pt-3 text-[10px] font-black uppercase tracking-widest text-slate-500">
+              <div className="mt-4 rounded-xl border border-cyan-500/15 bg-cyan-500/5 p-3">
+                <p className="text-[9px] font-black uppercase tracking-widest text-cyan-300">Ejecución</p>
+                <div className="mt-2 flex flex-wrap gap-x-4 gap-y-2 text-[10px] font-black uppercase tracking-widest text-slate-400">
                 {plans > 0 ? (
                   <button
                     type="button"
@@ -319,13 +280,21 @@ export const ObjectivesView: React.FC<Props> = ({
                     Planes activos <b className="text-cyan-300">{plans}</b>
                   </button>
                 ) : (
-                  <span>
-                    Planes activos <b className="text-cyan-300">0</b>
-                  </span>
+                  <span>Planes activos <b className="text-cyan-300">0</b></span>
                 )}
-                <span>
-                  Pendientes <b className="text-slate-400">sin consolidar</b>
-                </span>
+                <span>Acciones activas <b className="text-cyan-300">{execution.activeActivities}</b></span>
+                <span>Vencidas <b className="text-amber-300">{execution.overdueActivities}</b></span>
+                </div>
+                {(execution.impact.favorable + execution.impact.partial + execution.impact.low + execution.impact.notEvaluated) > 0 && (
+                  <p className="mt-2 text-[10px] font-semibold text-slate-400">Impacto: {execution.impact.favorable > 0 && `🟢 ${execution.impact.favorable} favorables `}{execution.impact.partial > 0 && `🟡 ${execution.impact.partial} parciales `}{execution.impact.low > 0 && `🔴 ${execution.impact.low} bajo/sin impacto `}{execution.impact.notEvaluated > 0 && `⚪ ${execution.impact.notEvaluated} por evaluar`}</p>
+                )}
+                {priorityKpi && status !== "BAJO CONTROL" && plans === 0 && (
+                  <div className="mt-3 flex items-center justify-between gap-3 rounded-lg border border-amber-500/20 bg-amber-500/5 px-3 py-2">
+                    <span className="text-[10px] font-black uppercase tracking-widest text-amber-300">SIN PLAN ACTIVO PARA ESTA DESVIACIÓN</span>
+                    <button type="button" className="whitespace-nowrap text-[10px] font-black uppercase text-cyan-300" onClick={() => onNavigateToKpi?.(priorityKpi.dashboard.id, priorityKpi.item.id)}>CREAR PLAN</button>
+                  </div>
+                )}
+                {decision && <div className="mt-3 border-t border-white/5 pt-2"><p className="text-[9px] font-black uppercase tracking-widest text-violet-300">Próxima decisión</p><p className="mt-1 text-xs font-semibold text-slate-300">{decision.label}</p></div>}
               </div>
             </article>
           );

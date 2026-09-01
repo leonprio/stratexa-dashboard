@@ -90,7 +90,7 @@ describe("ObjectivesView", () => {
     expect(screen.getByText("SIN INDICADORES")).toBeInTheDocument();
   });
 
-  it("muestra sparkline sólo con al menos dos periodos evaluables y separa estado de tendencia", () => {
+  it("mantiene la tendencia textual sin renderizar sparklines permanentes", () => {
     const historyDashboard = {
       ...dashboard,
       items: [
@@ -119,9 +119,25 @@ describe("ObjectivesView", () => {
     );
     expect(screen.getByText(/78% · REQUIERE ATENCIÓN/)).toBeInTheDocument();
     expect(screen.getByText(/↑ Mejora/)).toBeInTheDocument();
-    expect(
-      screen.getByRole("img", { name: /3 periodos evaluables/ }),
-    ).toBeInTheDocument();
+    expect(screen.queryByRole("img", { name: /periodos evaluables/ })).not.toBeInTheDocument();
+  });
+
+  it("muestra diagnóstico ejecutivo, ejecución y decisión deterministas", () => {
+    render(
+      <ObjectivesView
+        dashboard={dashboard}
+        objectives={[objective]}
+        perspectives={[]}
+        contributions={[]}
+        assignments={[{ strategicObjectiveId: "oe1", dashboardId: "d1", itemId: "k1" } as any]}
+        year={2026}
+      />,
+    );
+    expect(screen.getByText("Diagnóstico ejecutivo")).toBeInTheDocument();
+    expect(screen.getByText(/principal brecha está en KPI asociado/)).toBeInTheDocument();
+    expect(screen.getByText("Ejecución")).toBeInTheDocument();
+    expect(screen.getByText("SIN PLAN ACTIVO PARA ESTA DESVIACIÓN")).toBeInTheDocument();
+    expect(screen.queryByText("PRÓXIMA DECISIÓN", { exact: true })).not.toBeInTheDocument();
   });
 
   it("matches map logical ownership across aliases and supports map order reversal", () => {

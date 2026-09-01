@@ -1,4 +1,5 @@
 import type {
+  ActionPlan,
   ComplianceStatus,
   ComplianceThresholds,
   DashboardItem,
@@ -21,6 +22,63 @@ export type ExecutiveTrend =
   | "DETERIORO"
   | "SIN TENDENCIA";
 export type HistoricalCompliancePoint = { periodIndex: number; value: number };
+
+export type ObjectiveExecutionSummary = {
+  activePlans: number;
+  activeActivities: number;
+  overdueActivities: number;
+  impact: { favorable: number; partial: number; low: number; notEvaluated: number };
+};
+
+export function buildObjectiveExecutionSummary(
+  plans: ActionPlan[],
+  now: Date = new Date(),
+): ObjectiveExecutionSummary {
+  const uniquePlans = Array.from(new Map(plans.map((plan) => [plan.id, plan])).values());
+  const activities = uniquePlans.flatMap((plan) => plan.activities || []);
+  const impact = { favorable: 0, partial: 0, low: 0, notEvaluated: 0 };
+  for (const activity of activities) {
+    if (activity.impact === "FAVORABLE" || activity.impact === "positive") impact.favorable++;
+    else if (activity.impact === "PARTIAL") impact.partial++;
+    else if (activity.impact === "LOW_OR_NONE" || activity.impact === "low" || activity.impact === "none") impact.low++;
+    else impact.notEvaluated++;
+  }
+  return {
+    activePlans: uniquePlans.length,
+    activeActivities: activities.filter((activity) => activity.progress < 100).length,
+    overdueActivities: activities.filter((activity) => activity.progress < 100 && activity.targetDate && new Date(activity.targetDate) < now).length,
+    impact,
+  };
+}
+
+export function buildObjectiveExecutiveDiagnosis(
+  readings: Array<{ indicator: string; score: number | null; status: ExecutiveKpiStatus }>,
+): string {
+  const evaluable = readings.filter((reading) => reading.score !== null && reading.status !== "NO EVALUABLE");
+  if (!evaluable.length) return "No existen indicadores evaluables suficientes para determinar la condición.";
+  const outsideControl = evaluable.filter((reading) => reading.status !== "BAJO CONTROL");
+  if (!outsideControl.length) {
+    return evaluable.length < readings.length
+      ? "No existen indicadores evaluables suficientes para determinar la condición."
+      : "Todos los indicadores evaluables están bajo control.";
+  }
+  const priority = outsideControl.filter((reading) => reading.status === "CRÍTICO");
+  const candidates = priority.length ? priority : outsideControl.filter((reading) => reading.status === "REQUIERE ATENCIÓN");
+  const worst = [...candidates].sort((a, b) => (a.score ?? 0) - (b.score ?? 0))[0];
+  return `${outsideControl.length} de ${evaluable.length} indicadores requieren atención. La principal brecha está en ${worst.indicator} (${worst.score}%).`;
+}
+
+export function buildObjectiveNextDecision(
+  readings: Array<{ indicator: string; score: number | null; status: ExecutiveKpiStatus }>,
+  plans: ActionPlan[],
+  execution: ObjectiveExecutionSummary,
+): { label: string; indicator?: string } | null {
+  const critical = readings.filter((reading) => reading.status === "CRÍTICO").sort((a, b) => (a.score ?? 0) - (b.score ?? 0))[0];
+  if (critical) return plans.length ? { label: `Revisar ejecución e impacto del plan asociado a ${critical.indicator}.`, indicator: critical.indicator } : { label: `Crear un plan para atender ${critical.indicator}.`, indicator: critical.indicator };
+  const attention = readings.filter((reading) => reading.status === "REQUIERE ATENCIÓN").sort((a, b) => (a.score ?? 0) - (b.score ?? 0))[0];
+  if (attention && execution.overdueActivities > 0) return { label: `Resolver actividades vencidas asociadas a ${attention.indicator}.`, indicator: attention.indicator };
+  return null;
+}
 
 export const executiveStatusFromCompliance = (
   status: ComplianceStatus,
