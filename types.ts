@@ -136,6 +136,7 @@ export interface ActionPlanActivity {
   targetDate?: string;
   progress: number;
   result?: string;
+  impact?: 'NOT_EVALUATED' | 'FAVORABLE' | 'PARTIAL' | 'LOW_OR_NONE' | 'positive' | 'low' | 'none';
   createdAt: string;
   updatedAt: string;
 }

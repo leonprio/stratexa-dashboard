@@ -121,6 +121,7 @@ const SHIELD_ID = "GOLD MASTER";
   const [selectedDashboardId, setSelectedDashboardId] = useState<number | string | null>(() => {
     return localStorage.getItem("selectedDashboardId");
   });
+  const [pendingKpiNavigation, setPendingKpiNavigation] = useState<{ dashboardId: number | string; itemId: number | string } | null>(null);
   const [loadingDashboards, setLoadingDashboards] = useState<boolean>(false);
   const [settings, setSettings] = useState<SystemSettings | undefined>(undefined);
   const [selectedClientId, setSelectedClientId] = useState<string>(() => {
@@ -2395,6 +2396,9 @@ Esto corregirá cualquier inconsistencia en colores (ej. Amarillo vs Rojo).`)) {
                   perspectives={perspectives}
                   contributions={contributionObjectives}
                   assignments={assignments}
+                  requestedItemId={pendingKpiNavigation && String(pendingKpiNavigation.dashboardId) === String(selectedDashboard.id) ? pendingKpiNavigation.itemId : null}
+                  onNavigateToKpi={(dashboardId, itemId) => { setPendingKpiNavigation({ dashboardId, itemId }); setSelectedDashboardId(dashboardId); }}
+                  onNavigationConsumed={() => setPendingKpiNavigation(null)}
                   onUpdateMetadata={(isGlobalAdmin || isDirector) ? handleUpdateMetadata : undefined as any}
                   isDirector={isDirector}
                   onOpenWeights={() => setActiveAdminSection("weights")}

@@ -48,6 +48,9 @@ interface DashboardViewProps {
   perspectives?: StrategicPerspective[];
   contributions?: ContributionObjective[];
   assignments?: ContributionIndicatorAssignment[];
+  requestedItemId?: number | string | null;
+  onNavigateToKpi?: (dashboardId: number | string, itemId: number | string) => void;
+  onNavigationConsumed?: () => void;
 }
 
 /**
@@ -71,7 +74,7 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(({
   allDashboards = [],
   isDirector,
   onOpenWeights,
-  objectives = [], perspectives = [], contributions = [], assignments = [],
+  objectives = [], perspectives = [], contributions = [], assignments = [], requestedItemId, onNavigateToKpi, onNavigationConsumed,
 }) => {
   const [isAnalysisOpen, setIsAnalysisOpen] = useState(false);
   const [analysisResult, setAnalysisResult] = useState<AIAnalysisResult | null>(null);
@@ -96,6 +99,7 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(({
 
   const [selectedItemId, setSelectedItemId] = useState<number | string | null>(null);
   const [activeView, setActiveView] = useState<"dashboard" | "objectives" | "reports" | "control">("dashboard");
+  useEffect(() => { if (requestedItemId !== null && requestedItemId !== undefined) { setActiveView('dashboard'); setSelectedItemId(requestedItemId); onNavigationConsumed?.(); } }, [requestedItemId, onNavigationConsumed]);
 
   const isAggregate = (typeof dashboard.id === 'string' && dashboard.id.startsWith('agg-')) || dashboard.id === -1 || dashboard.isAggregate === true;
 
@@ -476,7 +480,7 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(({
           />
         </div>
       ) : activeView === 'objectives' ? (
-        <ObjectivesView dashboard={dashboard} dashboards={allDashboards} objectives={objectives} perspectives={perspectives} contributions={contributions} assignments={assignments} year={year || new Date().getFullYear()} />
+        <ObjectivesView dashboard={dashboard} dashboards={allDashboards} objectives={objectives} perspectives={perspectives} contributions={contributions} assignments={assignments} year={year || new Date().getFullYear()} onNavigateToKpi={onNavigateToKpi} />
       ) : activeView === 'reports' ? (
         <ReportCenter
           items={safeItems}
