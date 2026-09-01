@@ -8,7 +8,8 @@ La configuración estratégica define relaciones, no desempeño.
 - `ownership` resuelve cada KPI lógico a un único objetivo estratégico. Un assignment `DIRECT` usa `strategicObjectiveId`; un assignment `CONTRIBUTION` llega al OE a través del OC.
 - La exclusividad se aplica al KPI lógico completo: si un alias está asignado, todos sus aliases quedan ocupados. Un conflicto legacy entre OEs se detecta y no se resuelve silenciosamente.
 - El mapa consume `ownership.kpisByStrategicObjective` y muestra una sola representación lógica por OE, manteniendo el layout horizontal.
-- El selector muestra sólo KPI lógicos sin ownership; al guardar persiste el representante canónico y conserva compatibilidad con el esquema físico existente.
+- Un `LogicalKpi` sólo puede tener un destino estratégico activo; sus `physicalAliases` no representan disponibilidades independientes.
+- El selector muestra sólo KPI lógicos sin ownership; al guardar conserva la identidad física seleccionada y valida todos sus aliases contra el ownership persistido actual.
 - `QUITAR` elimina assignments directos del OE actual para todos los aliases del KPI lógico y refresca ownership sin F5. Los KPI asignados mediante OC se administran desde el OC.
 
 La futura **Vista por Objetivos** es un consumer de la misma estructura: usa `ownership.kpisByStrategicObjective`, conserva el orden configurado de perspectivas y OE (con inversión sólo de UI) y no reconstruye relaciones por alias físico.

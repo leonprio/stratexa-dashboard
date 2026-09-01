@@ -15,6 +15,7 @@ import {
 } from '../../strategyTypes';
 import { Dashboard as DashboardType, User, GlobalUserRole } from '../../types';
 import { strategyService } from '../../services/strategyService';
+import { resolveStrategicKpiOwnership } from '../../strategyKpiOwnership';
 
 export interface StrategyConfigModalProps {
   perspectives: StrategicPerspective[];
@@ -293,11 +294,12 @@ export const StrategyConfigModal: React.FC<StrategyConfigModalProps> = ({
   };
 
   // Obtener KPIs disponibles para el área seleccionada en OC
+  const strategicKpiOwnership = useMemo(() => resolveStrategicKpiOwnership(dashboards, objectives, contributionObjectives, assignments), [dashboards, objectives, contributionObjectives, assignments]);
   const areaDashboardsAndItems = useMemo(() => {
     if (!ocAreaName) return [];
     const normArea = ocAreaName.trim().toUpperCase();
     const areaCfg = resolveAreaStrategyConfig(normArea, areaConfigs);
-    const result: { dashboard: DashboardType; item: any }[] = [];
+    const areaPhysicalKeys = new Set<string>();
 
     dashboards.forEach(d => {
       const dAreaNorm = (d.area || '').trim().toUpperCase();
@@ -305,13 +307,19 @@ export const StrategyConfigModal: React.FC<StrategyConfigModalProps> = ({
 
       if (isMatch) {
         (d.items || []).forEach(it => {
-          result.push({ dashboard: d, item: it });
+          areaPhysicalKeys.add(`${d.id}_${it.id}`);
         });
       }
     });
 
-    return result;
-  }, [dashboards, ocAreaName, areaConfigs]);
+    return strategicKpiOwnership.canonicalKpis.flatMap(candidate => {
+      const areaAlias = candidate.physicalAliases.find(alias => areaPhysicalKeys.has(`${alias.dashboard.id}_${alias.item.id}`));
+      if (!areaAlias) return [];
+      const owner = strategicKpiOwnership.ownershipByCanonicalKpi.get(candidate.identity);
+      if (owner && owner.contributionObjectiveId !== editingOCId) return [];
+      return [{ dashboard: areaAlias.dashboard, item: areaAlias.item, candidate }];
+    });
+  }, [ocAreaName, areaConfigs, strategicKpiOwnership, editingOCId]);
 
   // Toggle KPI selección
   const toggleKpiSelection = (dashId: number | string, itemId: number | string) => {
@@ -369,8 +377,10 @@ export const StrategyConfigModal: React.FC<StrategyConfigModalProps> = ({
 
       // Guardar asignación de KPIs seleccionados
       const kpiItems = selectedKpisForOC.map(key => {
-        const [dId, iId] = key.split('_');
-        return { dashboardId: dId, itemId: iId };
+        const candidate = strategicKpiOwnership.canonicalKpis.find(kpi => kpi.physicalAliases.some(alias => `${alias.dashboard.id}_${alias.item.id}` === key));
+        const selectedAlias = candidate?.physicalAliases.find(alias => `${alias.dashboard.id}_${alias.item.id}` === key);
+        if (!selectedAlias) throw new Error('No fue posible resolver la identidad canónica del indicador.');
+        return { dashboardId: selectedAlias.dashboard.id, itemId: selectedAlias.item.id, physicalAliases: candidate.physicalAliases.map(alias => ({ dashboardId: alias.dashboard.id, itemId: alias.item.id })) };
       });
 
       await strategyService.saveAssignmentsForOC(savedOC.id, kpiItems, selectedClientId);

@@ -5,6 +5,7 @@ import { getPhysicalKpiKey } from './strategyTypes';
 export type LogicalKpiAlias = { dashboard: Dashboard; item: any; physicalKey: string; sourceType?: string };
 export type StrategicKpiCandidate = { dashboard: Dashboard; item: any; identity: string; logicalKpiId: string; physicalKey: string; physicalAliases: LogicalKpiAlias[] };
 export type StrategicKpiOwnership = { strategicObjectiveId: string; assignmentType: 'DIRECT' | 'CONTRIBUTION'; contributionObjectiveId?: string; dashboardId: number | string; itemId: number | string };
+export type StrategicKpiOwnershipResolution = ReturnType<typeof resolveStrategicKpiOwnership>;
 
 export function normalizeLogicalKpiLabel(value: string = ''): string {
   return value.trim().toLocaleUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ');
@@ -60,4 +61,11 @@ export function resolveStrategicKpiOwnership(dashboards: Dashboard[], objectives
   const occupiedPhysicalKpiKeys = new Set(assignments.map(a => getPhysicalKpiKey(a.dashboardId, a.itemId)));
   const occupiedCanonicalKpiIdentities = new Set(ownershipByCanonicalKpi.keys());
   return { canonicalKpis, ownershipByCanonicalKpi, logicalKpiConflicts, kpisByStrategicObjective, orphanKpis: canonicalKpis.filter(k => !ownershipByCanonicalKpi.has(k.identity)), occupiedPhysicalKpiKeys, occupiedCanonicalKpiIdentities };
+}
+
+export function getAvailableStrategicKpis(ownership: StrategicKpiOwnershipResolution): StrategicKpiCandidate[] {
+  return ownership.canonicalKpis.filter(candidate => {
+    if (ownership.occupiedCanonicalKpiIdentities.has(candidate.identity)) return false;
+    return candidate.physicalAliases.every(alias => !ownership.occupiedPhysicalKpiKeys.has(alias.physicalKey));
+  });
 }

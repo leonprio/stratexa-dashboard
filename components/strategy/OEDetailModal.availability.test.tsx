@@ -11,10 +11,12 @@ const kpi = (id: string, indicator: string) => ({ id, indicator, weight: 100, mo
 
 it('renders only physically and canonically free KPIs as available', () => {
   const dashboard = { id: 'd', title: 'Operativo', items: [kpi('income', 'INGRESOS'), kpi('prospects', 'PROSPECTOS CONTACTADOS'), kpi('apps', 'APLICACIONES DESARROLLADAS'), kpi('activities', 'ACTIVIDADES ESTRATÉGICAS')] } as any;
+  const summary = { id: 'summary', title: 'Resumen', items: [{ ...kpi('income-copy', 'INGRESOS'), semanticKey: 'income' }] } as any;
+  dashboard.items[0].semanticKey = 'income';
   const objectives = [{ id: 'OE01', code: 'OE01', title: 'OE01', perspectiveId: 'FIN' }, { id: 'OE03', code: 'OE03', title: 'OE03', perspectiveId: 'FIN' }] as any;
   const assignments = [{ id: 'a1', strategicObjectiveId: 'OE01', dashboardId: 'd', itemId: 'income', clientId: 'LEÓN' }, { id: 'a3', strategicObjectiveId: 'OE03', dashboardId: 'd', itemId: 'prospects', clientId: 'LEÓN' }] as any;
-  const ownership = resolveStrategicKpiOwnership([dashboard], objectives, [], assignments);
-  render(<OEDetailModal objective={objectives[1]} perspective={{ id: 'FIN', name: 'Fin' } as any} allObjectives={objectives} relationships={[]} contributions={[]} assignments={assignments} dashboards={[dashboard]} selectedClientId="LEÓN" currentUser={{ globalRole: GlobalUserRole.Admin } as any} onRefreshData={jest.fn()} onClose={jest.fn()} currentObjectiveAlignedKpis={ownership.kpisByStrategicObjective.get('OE03')} occupiedKpiIdentities={ownership.occupiedCanonicalKpiIdentities} occupiedPhysicalKpiKeys={ownership.occupiedPhysicalKpiKeys} />);
+  const ownership = resolveStrategicKpiOwnership([dashboard, summary], objectives, [], assignments);
+  render(<OEDetailModal objective={objectives[1]} perspective={{ id: 'FIN', name: 'Fin' } as any} allObjectives={objectives} relationships={[]} contributions={[]} assignments={assignments} dashboards={[dashboard, summary]} selectedClientId="LEÓN" currentUser={{ globalRole: GlobalUserRole.Admin } as any} onRefreshData={jest.fn()} onClose={jest.fn()} currentObjectiveAlignedKpis={ownership.kpisByStrategicObjective.get('OE03')} occupiedKpiIdentities={ownership.occupiedCanonicalKpiIdentities} occupiedPhysicalKpiKeys={ownership.occupiedPhysicalKpiKeys} />);
   fireEvent.click(screen.getByRole('button', { name: 'ALINEAR INDICADORES' }));
   const aligned = screen.getByText('YA ALINEADOS CON OE03').parentElement!;
   const available = screen.getByText('INDICADORES DISPONIBLES PARA ALINEAR').parentElement!;

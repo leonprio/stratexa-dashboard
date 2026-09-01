@@ -7,13 +7,12 @@ import {
   ContributionObjective,
   ContributionIndicatorAssignment,
   AreaStrategyConfig
-  ,getCanonicalKpiIdentity
 } from '../../strategyTypes';
 import { Dashboard as DashboardType, User, GlobalUserRole } from '../../types';
 import { calculateCompliance } from '../../utils/compliance';
 import { StrategyConfigModal } from './StrategyConfigModal';
 import { strategyService } from '../../services/strategyService';
-import { resolveStrategicKpiOwnership } from '../../strategyKpiOwnership';
+import { getAvailableStrategicKpis, resolveStrategicKpiOwnership } from '../../strategyKpiOwnership';
 import type { StrategicKpiCandidate } from '../../strategyKpiOwnership';
 
 export interface OEDetailModalProps {
@@ -62,11 +61,7 @@ export const OEDetailModal: React.FC<OEDetailModalProps> = ({
   selectedClientId,
   currentUser,
   onRefreshData,
-  currentObjectiveAlignedKpis,
-  occupiedKpiIdentities
-  ,occupiedPhysicalKpiKeys
-  ,visibleOccupiedPhysicalKpiKeys
-  ,visibleOccupiedCanonicalKpiIdentities
+  currentObjectiveAlignedKpis
 }) => {
   const [showOCManager, setShowOCManager] = useState(false);
   const [showEditOE, setShowEditOE] = useState(false);
@@ -82,25 +77,13 @@ export const OEDetailModal: React.FC<OEDetailModalProps> = ({
 
   const canManageOE = currentUser?.globalRole === GlobalUserRole.Admin && Boolean(selectedClientId && onRefreshData);
 
-  const allKpis = dashboards.flatMap(d => (d.items || []).map(item => ({ dashboard: d, item, canonical: getCanonicalKpiIdentity(item, d.id) })));
+  const allKpis = dashboards.flatMap(d => (d.items || []).map(item => ({ dashboard: d, item })));
   const ownership = resolveStrategicKpiOwnership(dashboards, allObjectives, contributions, assignments);
   const currentDirectKeys = new Set(assignments.filter(a => a.strategicObjectiveId === objective?.id).map(a => `${a.dashboardId}_${a.itemId}`));
   const ocOwnerById = new Map(contributions.map(oc => [oc.id, oc.primaryStrategicObjectiveId]));
-  const occupiedByOtherOE = new Set(ownership.canonicalKpis.filter(k => ownership.ownershipByCanonicalKpi.get(k.identity)?.strategicObjectiveId !== objective?.id && ownership.ownershipByCanonicalKpi.has(k.identity)).map(k => `${k.dashboard.id}_${k.item.id}`));
   const viaCurrentOC = new Set(assignments.filter(a => a.contributionObjectiveId && ocOwnerById.get(a.contributionObjectiveId) === objective?.id).map(a => `${a.dashboardId}_${a.itemId}`));
-  const visibleKpis = allKpis.filter(({ dashboard, item, canonical }) => {
-    const key = `${dashboard.id}_${item.id}`;
-    if (occupiedByOtherOE.has(key) || viaCurrentOC.has(key)) return false;
-    const text = `${item.indicator || ''} ${dashboard.title || ''}`.toLowerCase();
-    return text.includes(kpiSearch.toLowerCase());
-  }).filter((candidate, index, list) => list.findIndex(other => other.canonical === candidate.canonical) === index);
-  const canonicalKpis = ownership.canonicalKpis;
-  const occupied = occupiedKpiIdentities || ownership.occupiedCanonicalKpiIdentities;
-  const occupiedPhysical = occupiedPhysicalKpiKeys || ownership.occupiedPhysicalKpiKeys;
-  const visibleOccupiedPhysical = visibleOccupiedPhysicalKpiKeys || occupiedPhysical;
-  const visibleOccupiedCanonical = visibleOccupiedCanonicalKpiIdentities || new Set(Array.from(ownership.kpisByStrategicObjective.values()).flatMap(kpis => kpis.map(kpi => kpi.identity)));
   const currentAlignedKpis = currentObjectiveAlignedKpis || (ownership.kpisByStrategicObjective.get(objective.id) || []);
-  const trulyAvailableKpis = canonicalKpis.filter(kpi => !occupied.has(kpi.identity) && !visibleOccupiedCanonical.has(kpi.identity));
+  const trulyAvailableKpis = getAvailableStrategicKpis(ownership).filter(kpi => `${kpi.item.indicator || kpi.item.name || ''} ${kpi.dashboard.title || ''}`.toLowerCase().includes(kpiSearch.toLowerCase()));
   const openDirectAlignment = () => {
     setDirectKpis(Array.from(currentDirectKeys));
     setKpiSearch('');
@@ -111,7 +94,12 @@ export const OEDetailModal: React.FC<OEDetailModalProps> = ({
     if (!selectedClientId || !onRefreshData) return;
     try {
       setLoadingOE(true);
-      await strategyService.saveDirectAssignmentsForOE(objective.id, directKpis.map(key => { const [dashboardId, itemId] = key.split('_'); return { dashboardId, itemId }; }), selectedClientId);
+      await strategyService.saveDirectAssignmentsForOE(objective.id, directKpis.map(key => {
+        const candidate = ownership.canonicalKpis.find(kpi => kpi.physicalAliases.some(alias => `${alias.dashboard.id}_${alias.item.id}` === key));
+        const selectedAlias = candidate?.physicalAliases.find(alias => `${alias.dashboard.id}_${alias.item.id}` === key);
+        if (!selectedAlias) throw new Error('No fue posible resolver la identidad canónica del indicador.');
+        return { dashboardId: selectedAlias.dashboard.id, itemId: selectedAlias.item.id, physicalAliases: candidate.physicalAliases.map(alias => ({ dashboardId: alias.dashboard.id, itemId: alias.item.id })) };
+      }), selectedClientId);
       await onRefreshData();
       setShowDirectAlignment(false);
     } catch (error: any) {

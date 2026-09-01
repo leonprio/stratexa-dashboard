@@ -1,4 +1,4 @@
-import { buildLogicalKpiCatalog, resolveStrategicKpiOwnership } from './strategyKpiOwnership';
+import { buildLogicalKpiCatalog, getAvailableStrategicKpis, resolveStrategicKpiOwnership } from './strategyKpiOwnership';
 
 const item = (id: string, indicator: string, semanticKey?: string) => ({ id, indicator, semanticKey, weight: 100, monthlyGoals: [1], monthlyProgress: [1], unit: 'u', type: 'accumulative', goalType: 'maximize' });
 
@@ -38,5 +38,21 @@ describe('strategic KPI physical and canonical availability', () => {
     expect(result.canonicalKpis).toHaveLength(1);
     expect(result.kpisByStrategicObjective.get('oe1')).toHaveLength(1);
     expect(result.orphanKpis).toHaveLength(0);
+    expect(getAvailableStrategicKpis(result)).toHaveLength(0);
+  });
+
+  it('keeps the same canonical truth for direct and contribution assignments', () => {
+    const dashboards = [
+      { id: 'd1', title: 'Operativo', items: [item('income', 'INGRESOS', 'income'), item('free', 'KPI LIBRE', 'free')] },
+      { id: 'summary', title: 'Resumen', items: [item('income-copy', 'INGRESOS', 'income')] }
+    ] as any;
+    const objectives = [{ id: 'oe1' }, { id: 'oe2' }] as any;
+    const contributions = [{ id: 'oc2', primaryStrategicObjectiveId: 'oe2' }] as any;
+    const direct = resolveStrategicKpiOwnership(dashboards, objectives, contributions, [{ id: 'a1', strategicObjectiveId: 'oe1', dashboardId: 'summary', itemId: 'income-copy', clientId: 'LEÓN' }]);
+    const viaContribution = resolveStrategicKpiOwnership(dashboards, objectives, contributions, [{ id: 'a2', contributionObjectiveId: 'oc2', dashboardId: 'd1', itemId: 'income', clientId: 'LEÓN' }]);
+    expect(direct.kpisByStrategicObjective.get('oe1')?.map(kpi => kpi.identity)).toEqual(['semantic:income']);
+    expect(viaContribution.kpisByStrategicObjective.get('oe2')?.map(kpi => kpi.identity)).toEqual(['semantic:income']);
+    expect(getAvailableStrategicKpis(direct).map(kpi => kpi.identity)).toEqual(['semantic:free']);
+    expect(getAvailableStrategicKpis(viaContribution).map(kpi => kpi.identity)).toEqual(['semantic:free']);
   });
 });

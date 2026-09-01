@@ -72,6 +72,34 @@ describe('strategy counter safe rollback', () => {
     expect(batch.set).not.toHaveBeenCalled();
   });
 
+  it('rejects a direct assignment when any physical alias belongs to another OE', async () => {
+    mockGetDoc.mockResolvedValue(snapshot({ id: 'oe2', clientId: 'LEÓN' }));
+    mockGetDocs
+      .mockResolvedValueOnce(docsSnapshot([{ id: 'used', strategicObjectiveId: 'oe1', dashboardId: 'summary', itemId: 'income-copy', clientId: 'LEÓN' }]))
+      .mockResolvedValueOnce(docsSnapshot());
+
+    await expect(strategyService.saveDirectAssignmentsForOE('oe2', [{
+      dashboardId: 'operational',
+      itemId: 'income',
+      physicalAliases: [{ dashboardId: 'operational', itemId: 'income' }, { dashboardId: 'summary', itemId: 'income-copy' }]
+    }], 'LEÓN')).rejects.toThrow('Este indicador ya está alineado con otro objetivo estratégico.');
+    expect(mockWriteBatch).not.toHaveBeenCalled();
+  });
+
+  it('rejects an OC assignment when an alias is already owned by a direct OE', async () => {
+    mockGetDoc.mockResolvedValue(snapshot({ id: 'oc2', clientId: 'LEÓN', primaryStrategicObjectiveId: 'oe2' }));
+    mockGetDocs
+      .mockResolvedValueOnce(docsSnapshot([{ id: 'used', strategicObjectiveId: 'oe1', dashboardId: 'summary', itemId: 'income-copy', clientId: 'LEÓN' }]))
+      .mockResolvedValueOnce(docsSnapshot());
+
+    await expect(strategyService.saveAssignmentsForOC('oc2', [{
+      dashboardId: 'operational',
+      itemId: 'income',
+      physicalAliases: [{ dashboardId: 'operational', itemId: 'income' }, { dashboardId: 'summary', itemId: 'income-copy' }]
+    }], 'LEÓN')).rejects.toThrow('Este indicador ya está alineado con otro objetivo estratégico.');
+    expect(mockWriteBatch).not.toHaveBeenCalled();
+  });
+
   it.each([
     ['OE01', 'OE01'],
     ['OE 01', 'OE01'],

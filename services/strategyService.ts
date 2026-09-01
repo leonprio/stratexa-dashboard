@@ -601,7 +601,7 @@ export const strategyService = {
 
   saveAssignmentsForOC: async (
     ocId: string,
-    items: { dashboardId: number | string; itemId: number | string }[],
+    items: { dashboardId: number | string; itemId: number | string; physicalAliases?: { dashboardId: number | string; itemId: number | string }[] }[],
     clientId?: string
   ): Promise<boolean> => {
     const targetClient = normalizeClientId(clientId);
@@ -616,6 +616,17 @@ export const strategyService = {
     if (ocData.clientId !== targetClient) {
       throw new Error(`Acceso denegado: El objetivo de contribución pertenece al cliente "${ocData.clientId}".`);
     }
+
+    const allAssignmentsSnap = await getDocs(query(collection(db, ASSIGNMENTS_COLLECTION), where('clientId', '==', targetClient)));
+    const contributions = await strategyService.getContributionObjectives(targetClient);
+    const contributionOwner = new Map(contributions.map(oc => [oc.id, oc.primaryStrategicObjectiveId]));
+    const requestedAliasKeys = new Set(items.flatMap(item => (item.physicalAliases?.length ? item.physicalAliases : [item]).map(alias => `${alias.dashboardId}_${alias.itemId}`)));
+    allAssignmentsSnap.docs.forEach(d => {
+      const assignment = d.data() as ContributionIndicatorAssignment;
+      if (assignment.contributionObjectiveId === ocId || !requestedAliasKeys.has(`${assignment.dashboardId}_${assignment.itemId}`)) return;
+      const destination = assignment.strategicObjectiveId || (assignment.contributionObjectiveId ? contributionOwner.get(assignment.contributionObjectiveId) : undefined);
+      if (destination) throw new Error('Este indicador ya está alineado con otro objetivo estratégico.');
+    });
 
     const assignmentsRef = collection(db, ASSIGNMENTS_COLLECTION);
     const q = query(assignmentsRef, where('contributionObjectiveId', '==', ocId), where('clientId', '==', targetClient));
@@ -651,7 +662,7 @@ export const strategyService = {
 
   saveDirectAssignmentsForOE: async (
     objectiveId: string,
-    items: { dashboardId: number | string; itemId: number | string }[],
+    items: { dashboardId: number | string; itemId: number | string; physicalAliases?: { dashboardId: number | string; itemId: number | string }[] }[],
     clientId?: string
   ): Promise<boolean> => {
     const targetClient = normalizeClientId(clientId);
@@ -664,7 +675,7 @@ export const strategyService = {
     const allAssignmentsSnap = await getDocs(query(collection(db, ASSIGNMENTS_COLLECTION), where('clientId', '==', targetClient)));
     const objectives = await strategyService.getContributionObjectives(targetClient);
     const contributionOwner = new Map(objectives.map(oc => [oc.id, oc.primaryStrategicObjectiveId]));
-    const requested = new Set(items.map(item => `${item.dashboardId}_${item.itemId}`));
+    const requested = new Set(items.flatMap(item => (item.physicalAliases?.length ? item.physicalAliases : [item]).map(alias => `${alias.dashboardId}_${alias.itemId}`)));
     allAssignmentsSnap.docs.forEach(d => {
       const assignment = d.data() as ContributionIndicatorAssignment;
       const key = `${assignment.dashboardId}_${assignment.itemId}`;
