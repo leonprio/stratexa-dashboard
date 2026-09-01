@@ -1,26 +1,21 @@
-import React, { useMemo, useState, useEffect, useCallback } from "react";
-import {
-  Dashboard as DashboardType,
-  DashboardRole,
-  DashboardItem,
-  SystemSettings,
-  User,
-} from "../types";
-import { Dashboard } from "./Dashboard";
-import { aiService, AIAnalysisResult } from "../services/aiService";
-import { AIAnalysisModal } from "./AIAnalysisModal";
-import { DashboardMetadataModal } from "./DashboardMetadataModal";
-import { PowerPointExportModal } from "./PowerPointExportModal";
-import { calculateDashboardWeightedScore, getStatusForPercentage, calculateCapturePct, hasApplicableGoals } from "../utils/compliance";
-import { ReportCenter } from "./ReportCenter";
-import { CurrentPeriodFocus } from "./CurrentPeriodFocus";
+import React, { useMemo, useState, useEffect, useCallback } from 'react';
+import { Dashboard as DashboardType, DashboardRole, DashboardItem, SystemSettings, User } from '../types';
+import { Dashboard } from './Dashboard';
+import { aiService, AIAnalysisResult } from '../services/aiService';
+import { AIAnalysisModal } from './AIAnalysisModal';
+import { DashboardMetadataModal } from './DashboardMetadataModal';
+import { PowerPointExportModal } from './PowerPointExportModal';
+import { calculateDashboardWeightedScore, getStatusForPercentage, calculateCapturePct, hasApplicableGoals } from '../utils/compliance';
+import { ReportCenter } from './ReportCenter';
+import { CurrentPeriodFocus } from './CurrentPeriodFocus';
 import { exportDashboardToExcel } from '../utils/exportUtils';
 import { exportToExecutiveExcelJS } from '../utils/ExecutiveOperationalExport';
-import { OperationalControlCenter } from "./operational/OperationalControlCenter";
+import { OperationalControlCenter } from './operational/OperationalControlCenter';
 import { ObjectivesView } from './ObjectivesView';
 import type { StrategicObjective, StrategicPerspective, ContributionObjective, ContributionIndicatorAssignment } from '../strategyTypes';
-import { scrollToTop, scrollToElementBelowHeader, scheduleScroll } from "../utils/scrollUtils";
+import { scrollToTop, scrollToElementBelowHeader, scheduleScroll } from '../utils/scrollUtils';
 import { orderDashboardItemsForStrategicPresentation } from '../strategicDisplayOrder';
+import { findDashboardItemById } from '../dashboardItemNavigation';
 
 interface DashboardViewProps {
   dashboard: DashboardType;
@@ -28,18 +23,10 @@ interface DashboardViewProps {
   userRole: DashboardRole | null;
   isGlobalAdmin: boolean;
   currentUser: User;
-  onUpdateMetadata?: (
-    id: number | string,
-    title: string,
-    subtitle: string,
-    group: string,
-    area: string,
-    superGroup?: string,
-    targetIndicatorCount?: number
-  ) => Promise<void>;
+  onUpdateMetadata?: (id: number | string, title: string, subtitle: string, group: string, area: string, superGroup?: string, targetIndicatorCount?: number) => Promise<void>;
   existingGroups?: string[];
   settings?: SystemSettings;
-  layout?: "grid" | "compact";
+  layout?: 'grid' | 'compact';
   year?: number;
   allDashboards?: DashboardType[];
   isDirector?: boolean;
@@ -56,33 +43,18 @@ interface DashboardViewProps {
 /**
  * Vista detallada de un tablero individual o consolidado.
  * Proporciona visualización de KPIs, análisis de IA, herramientas de exportación y gestión de metadatos.
- * 
+ *
  * @component
  * @version v9.4.18-INDICATOR-SCROLL-UX
  */
-export const DashboardView: React.FC<DashboardViewProps> = React.memo(({
-  dashboard,
-  onUpdateItem,
-  userRole,
-  isGlobalAdmin,
-  currentUser,
-  onUpdateMetadata,
-  existingGroups = [],
-  settings,
-  layout = "grid",
-  year,
-  allDashboards = [],
-  isDirector,
-  onOpenWeights,
-  objectives = [], perspectives = [], contributions = [], assignments = [], requestedItemId, onNavigateToKpi, onNavigationConsumed,
-}) => {
+export const DashboardView: React.FC<DashboardViewProps> = React.memo(({ dashboard, onUpdateItem, userRole, isGlobalAdmin, currentUser, onUpdateMetadata, existingGroups = [], settings, layout = 'grid', year, allDashboards = [], isDirector, onOpenWeights, objectives = [], perspectives = [], contributions = [], assignments = [], requestedItemId, onNavigateToKpi, onNavigationConsumed }) => {
   const [isAnalysisOpen, setIsAnalysisOpen] = useState(false);
   const [analysisResult, setAnalysisResult] = useState<AIAnalysisResult | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisError, setAnalysisError] = useState<string | null>(null);
   const [isEditingMetadata, setIsEditingMetadata] = useState(false);
   const [isExportingPPTX, setIsExportingPPTX] = useState(false);
-  
+
   // ✅ items siempre array (evita fallos y deja evidencia clara si viene vacío)
   const safeItems: DashboardItem[] = useMemo(() => dashboard.items ?? [], [dashboard]);
   const strategicallyOrderedItems = useMemo(() => orderDashboardItemsForStrategicPresentation(safeItems, dashboard.id, allDashboards, perspectives, objectives, contributions, assignments), [safeItems, dashboard.id, allDashboards, perspectives, objectives, contributions, assignments]);
@@ -92,21 +64,27 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(({
     const local = safeItems;
     if (!allDashboards || allDashboards.length === 0) return local;
 
-    const globals = allDashboards.flatMap(d => d.items || []);
+    const globals = allDashboards.flatMap((d) => d.items || []);
     // Poner 'local' primero asegura que .find(id) devuelva el de este tablero.
     return [...local, ...globals];
   }, [allDashboards, safeItems]);
 
   const [selectedItemId, setSelectedItemId] = useState<number | string | null>(null);
-  const [activeView, setActiveView] = useState<"dashboard" | "objectives" | "reports" | "control">("dashboard");
+  const [activeView, setActiveView] = useState<'dashboard' | 'objectives' | 'reports' | 'control'>('dashboard');
   const [returnToObjectives, setReturnToObjectives] = useState(false);
   const [navigationError, setNavigationError] = useState('');
   useEffect(() => {
     if (requestedItemId === null || requestedItemId === undefined) return;
-    if (safeItems.some(item => String(item.id) === String(requestedItemId))) {
-      setNavigationError(''); setActiveView('dashboard'); setSelectedItemId(requestedItemId); setReturnToObjectives(true); onNavigationConsumed?.();
+    if (safeItems.some((item) => String(item.id) === String(requestedItemId))) {
+      setNavigationError('');
+      setActiveView('dashboard');
+      setSelectedItemId(requestedItemId);
+      setReturnToObjectives(true);
     } else {
-      setNavigationError('No fue posible abrir el indicador seleccionado.'); setActiveView('objectives'); setReturnToObjectives(false); onNavigationConsumed?.();
+      setNavigationError('No fue posible abrir el indicador seleccionado.');
+      setActiveView('objectives');
+      setReturnToObjectives(false);
+      onNavigationConsumed?.();
     }
   }, [requestedItemId, onNavigationConsumed, safeItems]);
 
@@ -134,8 +112,7 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(({
   }, [dashboard]);
 
   const selectedItem = useMemo(() => {
-    if (selectedItemId === null) return null;
-    return safeItems.find((it) => it.id === selectedItemId) || null;
+    return findDashboardItemById(safeItems, selectedItemId);
   }, [selectedItemId, safeItems]);
 
   const handleCloseFocus = useCallback(() => {
@@ -146,11 +123,11 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(({
   }, []);
 
   const displayTitle = useMemo(() => {
-    const t = (dashboard as any).title || "";
+    const t = (dashboard as any).title || '';
     // 🛡️ REGLA v7.9.1-INTEGRITY: Limpiar títulos redundantes en la vista principal
-    if (isAggregate || t.toUpperCase().includes("SÍNTESIS") || t.toUpperCase().includes("RESUMEN")) {
-      const g = (dashboard as any).group || "DIRECCIÓN DE OPERACIONES";
-      const cleanGroup = g.toUpperCase().replace("SÍNTESIS", "").replace("GLOBAL", "").trim();
+    if (isAggregate || t.toUpperCase().includes('SÍNTESIS') || t.toUpperCase().includes('RESUMEN')) {
+      const g = (dashboard as any).group || 'DIRECCIÓN DE OPERACIONES';
+      const cleanGroup = g.toUpperCase().replace('SÍNTESIS', '').replace('GLOBAL', '').trim();
       return `CONSOLIDADO: ${cleanGroup}`;
     }
     return t;
@@ -175,10 +152,10 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(({
       group: d.group ?? null,
       subtitle: d.subtitle ?? null,
       itemsCount: Array.isArray(safeItems) ? safeItems.length : -1,
-      hasItemsProp: Object.prototype.hasOwnProperty.call(d, "items"),
+      hasItemsProp: Object.prototype.hasOwnProperty.call(d, 'items'),
       keys,
-      hasItemsByMonth: Object.prototype.hasOwnProperty.call(d, "itemsByMonth"),
-      hasIndicators: Object.prototype.hasOwnProperty.call(d, "indicators"),
+      hasItemsByMonth: Object.prototype.hasOwnProperty.call(d, 'itemsByMonth'),
+      hasIndicators: Object.prototype.hasOwnProperty.call(d, 'indicators')
     };
   }, [dashboard, safeItems, year]);
 
@@ -186,9 +163,7 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(({
     return (
       <div className="p-6 rounded-2xl bg-slate-900/40 border border-slate-800 text-slate-200">
         <div className="text-lg font-semibold">Tablero no disponible</div>
-        <div className="mt-2 text-slate-400">
-          No se recibió información del tablero. Esto suele pasar si aún se están cargando datos.
-        </div>
+        <div className="mt-2 text-slate-400">No se recibió información del tablero. Esto suele pasar si aún se están cargando datos.</div>
       </div>
     );
   }
@@ -200,12 +175,12 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(({
     try {
       const result = await aiService.analyzeDashboard({
         ...dashboard,
-        items: safeItems,
+        items: safeItems
       } as any);
       setAnalysisResult(result);
     } catch (error) {
-      console.error("Error analyzing dashboard:", error);
-      setAnalysisError("No se pudo completar el análisis. Intenta de nuevo.");
+      console.error('Error analyzing dashboard:', error);
+      setAnalysisError('No se pudo completar el análisis. Intenta de nuevo.');
       setAnalysisResult(null);
     } finally {
       setIsAnalyzing(false);
@@ -219,10 +194,10 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(({
     if (isDirector) {
       const allowedGroups = new Set<string>();
       if (currentUser?.group) allowedGroups.add(currentUser.group.trim().toUpperCase());
-      if (currentUser?.subGroups) currentUser.subGroups.forEach(g => allowedGroups.add(g.trim().toUpperCase()));
-      if (currentUser?.superGroups) currentUser.superGroups.forEach(g => allowedGroups.add(g.trim().toUpperCase()));
-      
-      const dGroup = (dashboard.group || "").trim().toUpperCase();
+      if (currentUser?.subGroups) currentUser.subGroups.forEach((g) => allowedGroups.add(g.trim().toUpperCase()));
+      if (currentUser?.superGroups) currentUser.superGroups.forEach((g) => allowedGroups.add(g.trim().toUpperCase()));
+
+      const dGroup = (dashboard.group || '').trim().toUpperCase();
       return allowedGroups.has(dGroup);
     }
     const hasDirectAccess = userRole !== null;
@@ -233,24 +208,21 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(({
   const handleExportExecutiveExcelJS = async () => {
     try {
       setIsExportingExcel(true);
-      const buffer = await exportToExecutiveExcelJS(
-        allDashboards.length > 0 ? allDashboards : [dashboard],
-        currentUser || null,
-        dashboard.clientId || "IPS",
-        year || new Date().getFullYear()
-      );
+      const buffer = await exportToExecutiveExcelJS(allDashboards.length > 0 ? allDashboards : [dashboard], currentUser || null, dashboard.clientId || 'IPS', year || new Date().getFullYear());
 
-      const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+      const blob = new Blob([buffer], {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      });
       const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
+      const a = document.createElement('a');
       a.href = url;
-      a.download = `reporte_ejecutivo_${dashboard.clientId || "IPS"}_${year || new Date().getFullYear()}_${new Date().toISOString().split('T')[0]}.xlsx`;
+      a.download = `reporte_ejecutivo_${dashboard.clientId || 'IPS'}_${year || new Date().getFullYear()}_${new Date().toISOString().split('T')[0]}.xlsx`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
     } catch (err: any) {
-      alert("❌ Error al generar el reporte operativo ejecutivo: " + err.message);
+      alert('❌ Error al generar el reporte operativo ejecutivo: ' + err.message);
     } finally {
       setIsExportingExcel(false);
     }
@@ -258,7 +230,7 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(({
 
   const handleTogglePrecision = () => {
     // Ciclo: 0 -> 1 -> 2 -> 0
-    setLocalDecimalPrecision(prev => (prev === 0 ? 1 : prev === 1 ? 2 : 0));
+    setLocalDecimalPrecision((prev) => (prev === 0 ? 1 : prev === 1 ? 2 : 0));
   };
 
   const hasGoals = useMemo(() => {
@@ -272,18 +244,11 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(({
         <div className="flex items-center gap-6">
           <div className="flex flex-col">
             <div className="flex items-center gap-3">
-              <h2
-                className="text-2xl font-black text-white uppercase tracking-tight leading-none cursor-help"
-                title={isGlobalAdmin ? `Tablero #${(dashboard as any).orderNumber || 'N/A'}` : undefined}
-              >
+              <h2 className="text-2xl font-black text-white uppercase tracking-tight leading-none cursor-help" title={isGlobalAdmin ? `Tablero #${(dashboard as any).orderNumber || 'N/A'}` : undefined}>
                 {displayTitle}
               </h2>
               {isGlobalAdmin && (
-                <button
-                  onClick={() => setIsEditingMetadata(true)}
-                  className="p-2 bg-cyan-500/10 hover:bg-cyan-500 border border-cyan-500/30 rounded-xl text-cyan-400 hover:text-white transition-all hover:scale-110 flex items-center gap-2"
-                  title="Configurar Metadatos"
-                >
+                <button onClick={() => setIsEditingMetadata(true)} className="p-2 bg-cyan-500/10 hover:bg-cyan-500 border border-cyan-500/30 rounded-xl text-cyan-400 hover:text-white transition-all hover:scale-110 flex items-center gap-2" title="Configurar Metadatos">
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
                     <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
                   </svg>
@@ -294,17 +259,13 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(({
             <div className="flex items-center gap-3">
               <div className="flex items-center gap-2">
                 <span className={`w-2 h-2 rounded-full ${isAggregate ? 'bg-indigo-500 shadow-[0_0_8px_#6366f1]' : 'bg-cyan-500 shadow-[0_0_8px_#22d3ee]'}`} />
-                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em]">
-                  {isAggregate ? 'Tablero Consolidado' : 'Dashboard Operativo'}
-                </span>
+                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em]">{isAggregate ? 'Tablero Consolidado' : 'Dashboard Operativo'}</span>
               </div>
               {(dashboard as any).area && (
                 <>
                   <span className="text-slate-700 font-black text-[10px]">•</span>
                   <div className="flex items-center gap-1.5 bg-orange-500/10 border border-orange-500/30 px-2 py-0.5 rounded-full">
-                    <span className="text-[9px] font-black text-orange-400 uppercase tracking-widest">
-                      Área: {(dashboard as any).area}
-                    </span>
+                    <span className="text-[9px] font-black text-orange-400 uppercase tracking-widest">Área: {(dashboard as any).area}</span>
                   </div>
                 </>
               )}
@@ -317,19 +278,9 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(({
           <div className="flex items-center gap-3 glass-panel px-4 py-1.5 rounded-xl shadow-xl border border-white/5">
             <div className="flex flex-col items-end">
               <span className="text-[8px] sm:text-[9px] font-black text-slate-500 uppercase tracking-widest leading-none mb-1">Cumplimiento Global</span>
-              {hasGoals ? (
-                <span className={`text-2xl sm:text-3xl font-black tabular-nums leading-none ${totalStatus === 'OnTrack' ? 'text-emerald-400' : totalStatus === 'AtRisk' ? 'text-amber-400' : 'text-rose-400'}`}>
-                  {Math.round(totalScore)}%
-                </span>
-              ) : (
-                <span className="text-sm sm:text-base font-black text-slate-400 uppercase tracking-wider leading-none">
-                  SIN META
-                </span>
-              )}
+              {hasGoals ? <span className={`text-2xl sm:text-3xl font-black tabular-nums leading-none ${totalStatus === 'OnTrack' ? 'text-emerald-400' : totalStatus === 'AtRisk' ? 'text-amber-400' : 'text-rose-400'}`}>{Math.round(totalScore)}%</span> : <span className="text-sm sm:text-base font-black text-slate-400 uppercase tracking-wider leading-none">SIN META</span>}
             </div>
-            {hasGoals && (
-              <div className={`w-5 h-5 sm:w-6 sm:h-6 rounded-full border-2 border-slate-950/50 ${totalStatus === 'OnTrack' ? 'bg-emerald-500' : totalStatus === 'AtRisk' ? 'bg-amber-500' : 'bg-rose-500'}`} />
-            )}
+            {hasGoals && <div className={`w-5 h-5 sm:w-6 sm:h-6 rounded-full border-2 border-slate-950/50 ${totalStatus === 'OnTrack' ? 'bg-emerald-500' : totalStatus === 'AtRisk' ? 'bg-amber-500' : 'bg-rose-500'}`} />}
           </div>
 
           {/* CAPTURA BADGE */}
@@ -338,91 +289,54 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(({
               <div className="flex flex-col items-end">
                 <span className="text-[8px] sm:text-[9px] font-black text-slate-500 uppercase tracking-widest leading-none mb-1">Captura</span>
                 <div className="flex items-center gap-2">
-                  <span className={`text-base sm:text-lg font-black tracking-tight ${capturePct === 100 ? 'text-emerald-400' : 'text-amber-400'}`}>
-                    {capturePct}%
-                  </span>
+                  <span className={`text-base sm:text-lg font-black tracking-tight ${capturePct === 100 ? 'text-emerald-400' : 'text-amber-400'}`}>{capturePct}%</span>
                 </div>
               </div>
             </div>
           )}
 
           <div className="flex flex-wrap items-center justify-center gap-2">
-            {false && <button
-              onClick={handleAnalyze}
-              className="group flex items-center gap-2 bg-gradient-to-br from-indigo-500 via-purple-600 to-fuchsia-600 hover:from-indigo-400 hover:to-fuchsia-500 text-white px-3 py-2 rounded-xl text-[8px] font-black uppercase tracking-widest transition-all border border-white/20 active:scale-95 whitespace-nowrap"
-            >
-              <span className="text-sm">✨</span>
-              <span>Audit IA</span>
-            </button>}
+                {false && <button onClick={handleAnalyze} className="group flex items-center gap-2 bg-gradient-to-br from-indigo-500 via-purple-600 to-fuchsia-600 hover:from-indigo-400 hover:to-fuchsia-500 text-white px-3 py-2 rounded-xl text-[8px] font-black uppercase tracking-widest transition-all border border-white/20 active:scale-95 whitespace-nowrap">
+                <span className="text-sm">✨</span>
+                <span>Audit IA</span>
+                  </button>}
 
             {false && (isGlobalAdmin || currentUser.canExportPPT) && (
-              <button
-                onClick={() => setIsExportingPPTX(true)}
-                className="flex items-center gap-2 bg-gradient-to-r from-orange-600 to-orange-500 hover:from-orange-500 hover:to-orange-400 text-white px-3 py-2 rounded-xl text-[8px] font-black uppercase tracking-widest transition-all shadow-lg active:scale-95"
-              >
+              <button onClick={() => setIsExportingPPTX(true)} className="flex items-center gap-2 bg-gradient-to-r from-orange-600 to-orange-500 hover:from-orange-500 hover:to-orange-400 text-white px-3 py-2 rounded-xl text-[8px] font-black uppercase tracking-widest transition-all shadow-lg active:scale-95">
                 <span className="text-sm">📊</span>
                 <span className="hidden sm:inline">Exportar </span>PPTX
               </button>
             )}
 
             {canExportExecutive && (
-              <button
-                onClick={handleExportExecutiveExcelJS}
-                disabled={isExportingExcel}
-                className="flex items-center gap-2 bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 disabled:from-slate-700 disabled:to-slate-800 text-white px-3 py-2 rounded-xl text-[8px] font-black uppercase tracking-widest transition-all shadow-lg active:scale-95 border border-white/10"
-              >
+              <button onClick={handleExportExecutiveExcelJS} disabled={isExportingExcel} className="flex items-center gap-2 bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 disabled:from-slate-700 disabled:to-slate-800 text-white px-3 py-2 rounded-xl text-[8px] font-black uppercase tracking-widest transition-all shadow-lg active:scale-95 border border-white/10">
                 <span>{isExportingExcel ? '⏳ ...' : '📗'}</span>
                 <span>{isExportingExcel ? 'Exportando' : 'Exportar Excel'}</span>
               </button>
             )}
 
             {/* PRECISION TOGGLE */}
-            <button
-              onClick={handleTogglePrecision}
-              className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white px-3 py-2 rounded-xl text-[8px] font-black uppercase tracking-widest transition-all border border-white/5 min-w-[50px] justify-center"
-              title="Alternar decimales visibles (0, 1 o 2)"
-            >
+            <button onClick={handleTogglePrecision} className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white px-3 py-2 rounded-xl text-[8px] font-black uppercase tracking-widest transition-all border border-white/5 min-w-[50px] justify-center" title="Alternar decimales visibles (0, 1 o 2)">
               <span className="text-sm font-black">{localDecimalPrecision === 2 ? '.00' : localDecimalPrecision === 1 ? '.0' : '0'}</span>
             </button>
 
             <div className="flex bg-slate-900/95 p-0.5 rounded-xl border border-white/10 shadow-2xl backdrop-blur-xl">
-              <button
-                onClick={() => setActiveView("dashboard")}
-                aria-label="Ver Tablero de Indicadores"
-                title="Indicadores y resultados"
-                className={`px-4 sm:px-6 py-2 rounded-xl text-[9px] font-extrabold uppercase tracking-widest transition-all duration-500 flex items-center gap-2 ${activeView === 'dashboard' ? 'bg-cyan-600 text-white shadow-[0_0_20px_rgba(8,145,178,0.5)]' : 'text-slate-500 hover:text-slate-300 hover:bg-white/5'}`}
-              >
+              <button onClick={() => setActiveView('dashboard')} aria-label="Ver Tablero de Indicadores" title="Indicadores y resultados" className={`px-4 sm:px-6 py-2 rounded-xl text-[9px] font-extrabold uppercase tracking-widest transition-all duration-500 flex items-center gap-2 ${activeView === 'dashboard' ? 'bg-cyan-600 text-white shadow-[0_0_20px_rgba(8,145,178,0.5)]' : 'text-slate-500 hover:text-slate-300 hover:bg-white/5'}`}>
                 <span>📊</span> <span className="hidden sm:inline">Tablero</span>
               </button>
-              <button
-                onClick={() => setActiveView("objectives")}
-                aria-label="Ver Objetivos Estratégicos"
-                title="Lectura estratégica"
-                className={`px-4 sm:px-6 py-2 rounded-xl text-[9px] font-extrabold uppercase tracking-widest transition-all duration-500 flex items-center gap-2 ${activeView === 'objectives' ? 'bg-violet-600 text-white' : 'text-slate-500 hover:text-slate-300 hover:bg-white/5'}`}
-              ><span>🎯</span> <span className="hidden sm:inline">Objetivos</span></button>
-              <button
-                onClick={() => setActiveView("reports")}
-                aria-label="Ver Centro de Reportes"
-                title="Síntesis ejecutiva"
-                className={`px-4 sm:px-6 py-2 rounded-xl text-[9px] font-extrabold uppercase tracking-widest transition-all duration-500 flex items-center gap-2 ${activeView === 'reports' ? 'bg-indigo-600 text-white shadow-[0_0_20px_rgba(79,70,229,0.5)]' : 'text-slate-500 hover:text-slate-300 hover:bg-white/5'}`}
-              >
+              <button onClick={() => setActiveView('objectives')} aria-label="Ver Objetivos Estratégicos" title="Lectura estratégica" className={`px-4 sm:px-6 py-2 rounded-xl text-[9px] font-extrabold uppercase tracking-widest transition-all duration-500 flex items-center gap-2 ${activeView === 'objectives' ? 'bg-violet-600 text-white' : 'text-slate-500 hover:text-slate-300 hover:bg-white/5'}`}>
+                <span>🎯</span> <span className="hidden sm:inline">Objetivos</span>
+              </button>
+              <button onClick={() => setActiveView('reports')} aria-label="Ver Centro de Reportes" title="Síntesis ejecutiva" className={`px-4 sm:px-6 py-2 rounded-xl text-[9px] font-extrabold uppercase tracking-widest transition-all duration-500 flex items-center gap-2 ${activeView === 'reports' ? 'bg-indigo-600 text-white shadow-[0_0_20px_rgba(79,70,229,0.5)]' : 'text-slate-500 hover:text-slate-300 hover:bg-white/5'}`}>
                 <span>📑</span> <span className="hidden sm:inline">Reporte</span>
               </button>
-              <button
-                onClick={() => setActiveView("control")}
-                aria-label="Ver Control Operativo"
-                title="Atención e intervención"
-                className={`px-4 sm:px-6 py-2 rounded-xl text-[9px] font-extrabold uppercase tracking-widest transition-all duration-500 flex items-center gap-2 min-h-[44px] ${activeView === 'control' ? 'bg-emerald-600 text-white shadow-[0_0_20px_rgba(16,185,129,0.5)]' : 'text-slate-500 hover:text-slate-300 hover:bg-white/5'}`}
-              >
+              <button onClick={() => setActiveView('control')} aria-label="Ver Control Operativo" title="Atención e intervención" className={`px-4 sm:px-6 py-2 rounded-xl text-[9px] font-extrabold uppercase tracking-widest transition-all duration-500 flex items-center gap-2 min-h-[44px] ${activeView === 'control' ? 'bg-emerald-600 text-white shadow-[0_0_20px_rgba(16,185,129,0.5)]' : 'text-slate-500 hover:text-slate-300 hover:bg-white/5'}`}>
                 <span>⚙️</span> <span className="hidden sm:inline">Control</span>
               </button>
             </div>
 
             {isAggregate && isGlobalAdmin && onOpenWeights && (
-              <button
-                onClick={onOpenWeights}
-                className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-3 rounded-2xl text-[9px] font-black uppercase tracking-widest transition-all"
-              >
+              <button onClick={onOpenWeights} className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-3 rounded-2xl text-[9px] font-black uppercase tracking-widest transition-all">
                 <span className="text-base">⚖️</span>
                 <span>Pesos</span>
               </button>
@@ -431,27 +345,12 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(({
         </div>
       </div>
 
-      {analysisError && (
-        <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-200">
-          {analysisError}
-        </div>
-      )}
+      {analysisError && <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-200">{analysisError}</div>}
 
       {/* SELECTED ITEM FOCUS SECTION */}
       {selectedItem && (
         <div className={`mb-8 ${returnToObjectives ? 'rounded-2xl ring-2 ring-cyan-500/40 ring-offset-4 ring-offset-slate-950' : ''}`} id="gestion-detallada-focus">
-          <CurrentPeriodFocus
-            item={selectedItem}
-            globalThresholds={activeThresholds}
-            year={year}
-            onUpdateItem={onUpdateItem}
-            canEdit={(userRole === DashboardRole.Editor && !isAggregate) || isGlobalAdmin}
-            onClose={handleCloseFocus}
-            allDashboardItems={safeItems}
-            decimalPrecision={localDecimalPrecision as 0 | 1 | 2}
-            dashboardId={dashboard.id}
-            clientId={dashboard.clientId || currentUser.clientId}
-          />
+          <CurrentPeriodFocus item={selectedItem} globalThresholds={activeThresholds} year={year} onUpdateItem={onUpdateItem} canEdit={(userRole === DashboardRole.Editor && !isAggregate) || isGlobalAdmin} onClose={handleCloseFocus} allDashboardItems={safeItems} decimalPrecision={localDecimalPrecision as 0 | 1 | 2} dashboardId={dashboard.id} clientId={dashboard.clientId || currentUser.clientId} />
         </div>
       )}
 
@@ -462,10 +361,7 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(({
           <h3 className="text-xl font-bold text-white">Tablero Sin Indicadores</h3>
           <p className="text-slate-400 max-w-md mt-2 mb-6 text-sm">Este tablero aún no tiene indicadores asignados.</p>
           {isGlobalAdmin && (
-            <button
-               onClick={() => (window as any).openIndicatorManager?.()}
-               className="px-6 py-2 bg-cyan-600 hover:bg-cyan-500 text-white font-bold rounded-lg text-xs uppercase tracking-widest transition-all"
-            >
+            <button onClick={() => (window as any).openIndicatorManager?.()} className="px-6 py-2 bg-cyan-600 hover:bg-cyan-500 text-white font-bold rounded-lg text-xs uppercase tracking-widest transition-all">
               + Gestionar KPIs
             </button>
           )}
@@ -473,26 +369,23 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(({
       )}
 
       {navigationError && <div className="mb-3 rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-xs text-rose-300">{navigationError}</div>}
-      {returnToObjectives && activeView === 'dashboard' && <button type="button" onClick={() => { setSelectedItemId(null); setActiveView('objectives'); setReturnToObjectives(false); }} className="mb-3 rounded-lg border border-violet-500/30 px-3 py-2 text-[10px] font-black text-violet-300">← VOLVER A OBJETIVOS</button>}
+      {returnToObjectives && activeView === 'dashboard' && (
+        <button
+          type="button"
+          onClick={() => {
+            setSelectedItemId(null);
+            setActiveView('objectives');
+            setReturnToObjectives(false);
+          }}
+          className="mb-3 rounded-lg border border-violet-500/30 px-3 py-2 text-[10px] font-black text-violet-300"
+        >
+          ← VOLVER A OBJETIVOS
+        </button>
+      )}
       {/* MAIN CONTENT VIEW */}
       {activeView === 'dashboard' ? (
         <div className="dashboard-container-query">
-          <Dashboard
-            key={`dashboard-${(dashboard as any).id}`}
-            data={strategicallyOrderedItems}
-            onUpdateItem={onUpdateItem}
-            globalThresholds={activeThresholds}
-            userRoleForDashboard={userRole}
-            layout={layout}
-            year={year}
-            allDashboards={allDashboards}
-            isAggregate={isAggregate}
-            selectedItemId={selectedItemId}
-            onSelectItem={setSelectedItemId}
-            decimalPrecision={localDecimalPrecision}
-            allContextItems={allContextItems}
-            isGlobalAdmin={isGlobalAdmin}
-          />
+          <Dashboard key={`dashboard-${(dashboard as any).id}`} data={strategicallyOrderedItems} onUpdateItem={onUpdateItem} globalThresholds={activeThresholds} userRoleForDashboard={userRole} layout={layout} year={year} allDashboards={allDashboards} isAggregate={isAggregate} selectedItemId={selectedItemId} onSelectItem={setSelectedItemId} decimalPrecision={localDecimalPrecision} allContextItems={allContextItems} isGlobalAdmin={isGlobalAdmin} />
         </div>
       ) : activeView === 'objectives' ? (
         <ObjectivesView dashboard={dashboard} dashboards={allDashboards} objectives={objectives} perspectives={perspectives} contributions={contributions} assignments={assignments} year={year || new Date().getFullYear()} onNavigateToKpi={onNavigateToKpi} />
@@ -504,60 +397,42 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(({
           allDashboards={allDashboards}
           currentDashboardId={dashboard.id}
           user={currentUser}
-          onClose={() => setActiveView("dashboard")}
+          onClose={() => setActiveView('dashboard')}
           onEditItem={(id) => {
             setSelectedItemId(id);
-            setActiveView("dashboard");
+            setActiveView('dashboard');
           }}
         />
       ) : (
-        <OperationalControlCenter
-          dashboards={allDashboards}
-          currentDashboard={dashboard}
-          globalThresholds={activeThresholds}
-          year={year || 2026}
-        />
+        <OperationalControlCenter dashboards={allDashboards} currentDashboard={dashboard} globalThresholds={activeThresholds} year={year || 2026} />
       )}
 
       {/* MODALS */}
-      <AIAnalysisModal
-        isOpen={isAnalysisOpen}
-        onClose={() => setIsAnalysisOpen(false)}
-        analysis={analysisResult}
-        isLoading={isAnalyzing}
-        title={(dashboard as any).title}
-      />
+      <AIAnalysisModal isOpen={isAnalysisOpen} onClose={() => setIsAnalysisOpen(false)} analysis={analysisResult} isLoading={isAnalyzing} title={(dashboard as any).title} />
 
       {(isGlobalAdmin || isDirector) && onUpdateMetadata && (
         <DashboardMetadataModal
           isOpen={isEditingMetadata}
           onClose={() => setIsEditingMetadata(false)}
           currentTitle={(dashboard as any).title}
-          currentSubtitle={(dashboard as any).subtitle || ""}
+          currentSubtitle={(dashboard as any).subtitle || ''}
           currentGroup={(dashboard as any).group}
-          currentArea={(dashboard as any).area || ""}
-          currentSuperGroup={(dashboard as any).superGroup || ""}
+          currentArea={(dashboard as any).area || ''}
+          currentSuperGroup={(dashboard as any).superGroup || ''}
           currentTargetIndicatorCount={(dashboard as any).targetIndicatorCount}
           totalIndicatorsCount={safeItems.length}
           onSave={async (title, subtitle, group, area, superGroup, targetCount) => {
             await (onUpdateMetadata as any)((dashboard as any).id, title, subtitle, group, area, superGroup, targetCount);
           }}
           existingGroups={existingGroups}
-          groupLabel={settings?.groupLabel || "Agrupación"}
-          dashboardLabel={settings?.dashboardLabel || "Tablero"}
+          groupLabel={settings?.groupLabel || 'Agrupación'}
+          dashboardLabel={settings?.dashboardLabel || 'Tablero'}
         />
       )}
 
-      <PowerPointExportModal
-        isOpen={isExportingPPTX}
-        onClose={() => setIsExportingPPTX(false)}
-        dashboards={allDashboards.length > 0 ? allDashboards : [dashboard]}
-        globalThresholds={activeThresholds}
-        year={year}
-        title={(dashboard as any).title}
-      />
+      <PowerPointExportModal isOpen={isExportingPPTX} onClose={() => setIsExportingPPTX(false)} dashboards={allDashboards.length > 0 ? allDashboards : [dashboard]} globalThresholds={activeThresholds} year={year} title={(dashboard as any).title} />
     </div>
   );
 });
 
-DashboardView.displayName = "DashboardView";
+DashboardView.displayName = 'DashboardView';

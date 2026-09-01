@@ -2,6 +2,10 @@
 
 La estrategia agrupa KPIs con `LogicalKpi` y aliases físicos para lectura y alineación. No reemplaza las identidades operativas.
 
+## Lectura ejecutiva
+
+La condición visible de cada KPI reutiliza `calculateCompliance`; no existe un score alterno en Objetivos. La tendencia compara exclusivamente los dos últimos periodos evaluables de la serie mensual de cumplimiento (`real` contra `meta`) resuelta por `resolveItemValues`. Periodos futuros, faltantes y `0/0` se excluyen: con menos de dos puntos se informa `SIN TENDENCIA` y no se dibuja una línea. El LogicalKpi usa su representante operativo canónico para lectura y navegación.
+
 - Un `DashboardItem` conserva KPI, meta, real y YTD.
 - Las KPI Activities son obligaciones históricas por periodo; resolver o reprogramar no duplica su entidad ni reescribe el incumplimiento anterior. La reprogramación mantiene una sola actividad física y su `rescheduleHistory`.
 - `ActionPlan` es transversal e independiente del periodo. Sus `activities[]` no son KPI Activities; crear, quitar o mover un plan no cambia KPI/YTD ni alineaciones estratégicas.

@@ -68,7 +68,8 @@ describe("ObjectivesView", () => {
     );
     expect(screen.getByText("Fortalecer resultados")).toBeInTheDocument();
     expect(screen.getByText("KPI asociado")).toBeInTheDocument();
-    expect(screen.getByText(/81% · ESTABLE/)).toBeInTheDocument();
+    expect(screen.getByText(/81% · REQUIERE ATENCIÓN/)).toBeInTheDocument();
+    expect(screen.getByText(/Sin tendencia/)).toBeInTheDocument();
     expect(screen.getByText(/KPIs SIN OBJETIVO ASOCIADO/)).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: /KPI asociado/ }));
     expect(onNavigateToKpi).toHaveBeenCalledWith("d1", "k1");
@@ -86,6 +87,41 @@ describe("ObjectivesView", () => {
       />,
     );
     expect(screen.getByText("SIN INDICADORES ASOCIADOS")).toBeInTheDocument();
+    expect(screen.getByText("SIN INDICADORES")).toBeInTheDocument();
+  });
+
+  it("muestra sparkline sólo con al menos dos periodos evaluables y separa estado de tendencia", () => {
+    const historyDashboard = {
+      ...dashboard,
+      items: [
+        {
+          ...dashboard.items[0],
+          monthlyProgress: [70, 80, 84],
+          monthlyGoals: [100, 100, 100],
+        },
+      ],
+    };
+    render(
+      <ObjectivesView
+        dashboard={historyDashboard}
+        objectives={[objective]}
+        perspectives={[]}
+        contributions={[]}
+        assignments={[
+          {
+            strategicObjectiveId: "oe1",
+            dashboardId: "d1",
+            itemId: "k1",
+          } as any,
+        ]}
+        year={2026}
+      />,
+    );
+    expect(screen.getByText(/78% · REQUIERE ATENCIÓN/)).toBeInTheDocument();
+    expect(screen.getByText(/↑ Mejora/)).toBeInTheDocument();
+    expect(
+      screen.getByRole("img", { name: /3 periodos evaluables/ }),
+    ).toBeInTheDocument();
   });
 
   it("matches map logical ownership across aliases and supports map order reversal", () => {
