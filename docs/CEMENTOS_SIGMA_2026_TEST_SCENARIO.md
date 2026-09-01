@@ -30,3 +30,22 @@ El seed escribe sólo Sigma y requiere `--execute`; por defecto es dry-run. La f
 Backups generados: `docs/backups/CEMENTOS_SIGMA_STRATEGY_LEGACY_*.json` y `docs/backups/CEMENTOS_SIGMA_2025_OPERATIONAL_SNAPSHOT_*.json`.
 
 La capa estratégica queda sin KPI alineados deliberadamente: el mapa no muestra KPI y los nueve KPI quedan disponibles para el flujo de asignación posterior. La futura Vista por Objetivos debe consumir las mismas relaciones y no recalcular desempeño.
+
+## SEED ASSIGNMENT CLEANUP
+
+El baseline posterior reveló nueve assignments residuales hacia el agregado virtual `agg-GENERAL-2026`. Fueron respaldados en `CEMENTOS_SIGMA_SEED_ASSIGNMENTS_2026_2026-09-01T20-33-27-861Z.json` y eliminados exclusivamente por ID. Los OE, OC, dashboards y subcolecciones de KPI no fueron eliminados.
+
+## DISTRIBUTED OWNERSHIP CERTIFICATION
+
+Matriz controlada final:
+
+| KPI lógico | Área | Destino | Ruta |
+|---|---|---|---|
+| Ventas | Comercial y Ventas | OE01 | DIRECT |
+| Margen de Contribución Neto | Comercial y Ventas | OC01 → OE01 | OC |
+| Cumplimiento de Entregas | Logística y Transporte | OC03 → OE02 | OC |
+| Rotación de Inventario | Operaciones y Almacén | OC05 → OE04 | OC |
+
+La matriz dejó 4 KPI ocupados y 5 huérfanos lógicos; no se asignaron aliases duplicados. El ciclo controlado eliminó temporalmente el assignment comercial y lo recreó en el mismo OC, dejando 4 assignments finales. Por construcción, el ownership es client-wide y la disponibilidad de OC permanece area-scoped: cada área ofrece inicialmente 3 KPI y, tras ocupar uno, 2 libres. Los KPI ocupados no deben aparecer en ningún selector incompatible, incluido OE05.
+
+Conteo de escrituras estratégicas: 9 deletes seed, 5 creates de assignment (4 iniciales + 1 reassign) y 1 delete de unassign. `FIRESTORE_ASSIGNMENT_WRITES=6` operaciones totales de asignación; `OPERATIONAL_2025_WRITES=0`; `OPERATIONAL_2026_WRITES=0`; relaciones causa–efecto permanecen en 0. Snapshot de integridad: `CEMENTOS_SIGMA_DISTRIBUTED_OWNERSHIP_SNAPSHOT_2026-09-01T20-33-27-861Z.json`.
