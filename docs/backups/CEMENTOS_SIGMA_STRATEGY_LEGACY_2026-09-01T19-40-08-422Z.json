@@ -1,0 +1,183 @@
+{
+  "scenario": "CEMENTOS_SIGMA_2026_TEST_SCENARIO",
+  "clientId": "CEMENTOS_SIGMA",
+  "extractedAt": "2026-09-01T19:40:08.422Z",
+  "collections": {
+    "tbl_strategicPerspectives": [],
+    "tbl_strategicObjectives": [
+      {
+        "id": "oe_1788289308250_dgfwy",
+        "payload": {
+          "createdAt": "2026-09-01T19:01:48.250Z",
+          "clientId": "CEMENTOS_SIGMA",
+          "code": "OE01",
+          "perspectiveId": "FINANCIERA",
+          "description": "",
+          "id": "oe_1788289308250_dgfwy",
+          "title": "Maximizar la rentabilidad operativa y optimizar los costos de distribución.",
+          "order": 1,
+          "updatedAt": "2026-09-01T19:01:48.250Z"
+        }
+      },
+      {
+        "id": "oe_1788289319252_fazm5",
+        "payload": {
+          "createdAt": "2026-09-01T19:01:59.252Z",
+          "clientId": "CEMENTOS_SIGMA",
+          "code": "OE02",
+          "perspectiveId": "CLIENTE",
+          "description": "",
+          "id": "oe_1788289319252_fazm5",
+          "title": "Garantizar el abasto oportuno y fidelizar la cartera de clientes.",
+          "order": 1,
+          "updatedAt": "2026-09-01T19:01:59.252Z"
+        }
+      },
+      {
+        "id": "oe_1788289336864_lo28a",
+        "payload": {
+          "createdAt": "2026-09-01T19:02:16.864Z",
+          "clientId": "CEMENTOS_SIGMA",
+          "code": "OE03",
+          "description": "",
+          "id": "oe_1788289336864_lo28a",
+          "title": "Eficientar la cadena de suministro, desde el almacén hasta la entrega final.",
+          "order": 2,
+          "perspectiveId": "PROCESOS_INTERNOS",
+          "updatedAt": "2026-09-01T19:02:44.848Z"
+        }
+      },
+      {
+        "id": "oe_1788289385677_eu9mz",
+        "payload": {
+          "createdAt": "2026-09-01T19:03:05.677Z",
+          "clientId": "CEMENTOS_SIGMA",
+          "code": "OE04",
+          "perspectiveId": "APRENDIZAJE_CRECIMIENTO",
+          "description": "",
+          "id": "oe_1788289385677_eu9mz",
+          "title": "Garantizar un entorno de trabajo seguro y un equipo operativo capacitado.",
+          "order": 1,
+          "updatedAt": "2026-09-01T19:03:05.677Z"
+        }
+      }
+    ],
+    "tbl_contributionObjectives": [],
+    "tbl_contributionIndicatorAssignments": [
+      {
+        "id": "asgn_oe_oe_1788289308250_dgfwy_agg-GENERAL-2025_-101",
+        "payload": {
+          "clientId": "CEMENTOS_SIGMA",
+          "strategicObjectiveId": "oe_1788289308250_dgfwy",
+          "id": "asgn_oe_oe_1788289308250_dgfwy_agg-GENERAL-2025_-101",
+          "createdAt": "2026-09-01T19:05:05.070Z",
+          "dashboardId": "agg-GENERAL-2025",
+          "itemId": "-101"
+        }
+      },
+      {
+        "id": "asgn_oe_oe_1788289308250_dgfwy_agg-GENERAL-2025_-104",
+        "payload": {
+          "clientId": "CEMENTOS_SIGMA",
+          "id": "asgn_oe_oe_1788289308250_dgfwy_agg-GENERAL-2025_-104",
+          "dashboardId": "agg-GENERAL-2025",
+          "createdAt": "2026-09-01T19:05:05.070Z",
+          "strategicObjectiveId": "oe_1788289308250_dgfwy",
+          "itemId": "-104"
+        }
+      },
+      {
+        "id": "asgn_oe_oe_1788289319252_fazm5_agg-GENERAL-2025_-103",
+        "payload": {
+          "clientId": "CEMENTOS_SIGMA",
+          "itemId": "-103",
+          "dashboardId": "agg-GENERAL-2025",
+          "createdAt": "2026-09-01T19:05:16.866Z",
+          "strategicObjectiveId": "oe_1788289319252_fazm5",
+          "id": "asgn_oe_oe_1788289319252_fazm5_agg-GENERAL-2025_-103"
+        }
+      },
+      {
+        "id": "asgn_oe_oe_1788289319252_fazm5_agg-GENERAL-2025_-105",
+        "payload": {
+          "clientId": "CEMENTOS_SIGMA",
+          "dashboardId": "agg-GENERAL-2025",
+          "strategicObjectiveId": "oe_1788289319252_fazm5",
+          "itemId": "-105",
+          "id": "asgn_oe_oe_1788289319252_fazm5_agg-GENERAL-2025_-105",
+          "createdAt": "2026-09-01T19:05:16.866Z"
+        }
+      },
+      {
+        "id": "asgn_oe_oe_1788289336864_lo28a_agg-GENERAL-2025_-100",
+        "payload": {
+          "strategicObjectiveId": "oe_1788289336864_lo28a",
+          "dashboardId": "agg-GENERAL-2025",
+          "createdAt": "2026-09-01T19:05:31.372Z",
+          "itemId": "-100",
+          "id": "asgn_oe_oe_1788289336864_lo28a_agg-GENERAL-2025_-100",
+          "clientId": "CEMENTOS_SIGMA"
+        }
+      },
+      {
+        "id": "asgn_oe_oe_1788289336864_lo28a_agg-GENERAL-2025_-102",
+        "payload": {
+          "dashboardId": "agg-GENERAL-2025",
+          "id": "asgn_oe_oe_1788289336864_lo28a_agg-GENERAL-2025_-102",
+          "createdAt": "2026-09-01T19:05:31.372Z",
+          "clientId": "CEMENTOS_SIGMA",
+          "strategicObjectiveId": "oe_1788289336864_lo28a",
+          "itemId": "-102"
+        }
+      },
+      {
+        "id": "asgn_oe_oe_1788289336864_lo28a_agg-GENERAL-2025_-106",
+        "payload": {
+          "strategicObjectiveId": "oe_1788289336864_lo28a",
+          "createdAt": "2026-09-01T19:05:31.372Z",
+          "id": "asgn_oe_oe_1788289336864_lo28a_agg-GENERAL-2025_-106",
+          "dashboardId": "agg-GENERAL-2025",
+          "itemId": "-106",
+          "clientId": "CEMENTOS_SIGMA"
+        }
+      },
+      {
+        "id": "asgn_oe_oe_1788289336864_lo28a_agg-GENERAL-2025_-107",
+        "payload": {
+          "dashboardId": "agg-GENERAL-2025",
+          "clientId": "CEMENTOS_SIGMA",
+          "createdAt": "2026-09-01T19:05:31.372Z",
+          "id": "asgn_oe_oe_1788289336864_lo28a_agg-GENERAL-2025_-107",
+          "strategicObjectiveId": "oe_1788289336864_lo28a",
+          "itemId": "-107"
+        }
+      },
+      {
+        "id": "asgn_oe_oe_1788289385677_eu9mz_agg-GENERAL-2025_-108",
+        "payload": {
+          "createdAt": "2026-09-01T19:06:17.569Z",
+          "clientId": "CEMENTOS_SIGMA",
+          "id": "asgn_oe_oe_1788289385677_eu9mz_agg-GENERAL-2025_-108",
+          "strategicObjectiveId": "oe_1788289385677_eu9mz",
+          "itemId": "-108",
+          "dashboardId": "agg-GENERAL-2025"
+        }
+      }
+    ],
+    "tbl_strategyCounters": [
+      {
+        "id": "cnt_CEMENTOS_SIGMA_OE",
+        "payload": {
+          "clientId": "CEMENTOS_SIGMA",
+          "scope": "OE",
+          "id": "cnt_CEMENTOS_SIGMA_OE",
+          "lastIssuedSequence": 4,
+          "updatedAt": "2026-09-01T19:03:05.677Z"
+        }
+      }
+    ],
+    "tbl_areaStrategyConfigs": [],
+    "tbl_areaCodeReservations": [],
+    "tbl_strategicObjectiveRelationships": []
+  }
+}
