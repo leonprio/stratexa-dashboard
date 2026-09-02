@@ -133,7 +133,8 @@ describe("ObjectivesView", () => {
     expect(chart).toBeInTheDocument();
     expect(chart.querySelector("polyline")).toHaveAttribute("stroke-dasharray", "4 5");
     expect(chart.querySelector("circle:last-of-type")).toHaveAttribute("fill", "#fbbf24");
-    expect(screen.getByText(/Actual: 84%/)).toBeInTheDocument();
+    expect(screen.getByText("Actual")).toBeInTheDocument();
+    expect(screen.getByText("78%", { exact: true })).toBeInTheDocument();
     fireEvent.click(toggle);
     expect(screen.queryByRole("img", { name: /Gráfico histórico de KPI asociado/ })).not.toBeInTheDocument();
   });
@@ -277,5 +278,24 @@ describe("ObjectivesView", () => {
         .getAllByRole("heading", { level: 3 })
         .map((node) => node.textContent),
     ).toEqual(["OE04", "OE03", "OE01"]);
+  });
+
+  it("expone KPI directos y KPI vía OC sin mezclarlos", () => {
+    const viewDashboard: any = {
+      ...dashboard,
+      area: "OPERACIONES",
+      items: [
+        { ...dashboard.items[0], id: "direct", indicator: "Costo directo", semanticKey: "direct-kpi" },
+        { ...dashboard.items[1], id: "via", indicator: "KPI vía OC", semanticKey: "via-kpi" },
+      ],
+    };
+    render(<ObjectivesView dashboard={viewDashboard} objectives={[objective]} perspectives={[]} contributions={[{ ...contribution, areaName: "OPERACIONES" }, { id: "oc-empty", title: "OC vacío", areaName: "OPERACIONES", primaryStrategicObjectiveId: "oe1" } as any]} assignments={[{ strategicObjectiveId: "oe1", dashboardId: "d1", itemId: "direct" } as any, { contributionObjectiveId: "oc1", dashboardId: "d1", itemId: "via" } as any]} year={2026} />);
+    fireEvent.click(screen.getByRole("tab", { name: "CONTRIBUCIÓN" }));
+    expect(screen.getByText("Indicadores directos")).toBeInTheDocument();
+    expect(screen.getByText("Costo directo")).toBeInTheDocument();
+    expect(screen.getByText("KPI vía OC")).toBeInTheDocument();
+    expect(screen.getByText("OC vacío")).toBeInTheDocument();
+    expect(screen.getByText("SIN INDICADORES")).toBeInTheDocument();
+    expect(screen.getByText("Lectura de indicadores directos y contribuciones por área.")).toBeInTheDocument();
   });
 });

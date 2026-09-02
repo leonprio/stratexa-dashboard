@@ -6,7 +6,8 @@ import type {
   StrategicObjective,
   StrategicPerspective,
 } from "../strategyTypes";
-import { resolveStrategicKpiOwnership } from "../strategyKpiOwnership";
+import { classifyStrategicContributionKpis, resolveStrategicKpiOwnership } from "../strategyKpiOwnership";
+import { ContributionExecutiveCell } from "./strategy/ContributionExecutiveCell";
 import { firebaseService } from "../services/firebaseService";
 import {
   buildObjectiveExecutiveDiagnosis,
@@ -14,6 +15,7 @@ import {
   buildObjectiveNextDecision,
   buildExecutiveKpiReading,
   objectiveExecutiveStatus,
+  resolveStrategicStatus,
 } from "../objectivesReading";
 
 type Props = {
@@ -37,6 +39,8 @@ const statusVisual = {
   "NO EVALUABLE": "bg-slate-400 text-slate-300 border-slate-500/30",
   "DATOS PENDIENTES": "bg-slate-400 text-slate-300 border-slate-500/30",
 } as const;
+const formatExecutivePercent = (value: number | null | undefined) =>
+  value == null ? "—" : `${Math.round(value)}%`;
 
 export const ObjectivesView: React.FC<Props> = ({
   dashboard,
@@ -48,6 +52,8 @@ export const ObjectivesView: React.FC<Props> = ({
   year,
   onNavigateToKpi,
 }) => {
+  const [readingMode, setReadingMode] = useState<"objectives" | "areas" | "contribution" | "plans">("objectives");
+  const [planFilter, setPlanFilter] = useState("TODOS");
   const [descending, setDescending] = useState(false);
   const [expandedTrend, setExpandedTrend] = useState<string | null>(null);
   const [plansByObjective, setPlansByObjective] = useState<
@@ -71,6 +77,10 @@ export const ObjectivesView: React.FC<Props> = ({
         assignments,
       ),
     [sourceDashboards, objectives, contributions, assignments],
+  );
+  const contributionPresentation = useMemo(
+    () => classifyStrategicContributionKpis(ownership, contributions, assignments),
+    [ownership, contributions, assignments],
   );
   const orderedObjectives = useMemo(
     () =>
@@ -150,12 +160,51 @@ export const ObjectivesView: React.FC<Props> = ({
           ORDEN DEL MAPA {descending ? "↓" : "↑"}
         </button>
       </div>
+      <div className="flex flex-wrap gap-1 rounded-xl border border-white/10 bg-slate-950/40 p-1" role="tablist" aria-label="Modo de lectura ejecutiva">
+        {([['objectives', 'POR OBJETIVOS'], ['areas', 'POR ÁREAS'], ['contribution', 'CONTRIBUCIÓN'], ['plans', 'PLANES']] as const).map(([mode, label]) => (
+          <button key={mode} type="button" role="tab" aria-selected={readingMode === mode} onClick={() => setReadingMode(mode)} className={`rounded-lg px-3 py-2 text-[10px] font-black tracking-widest transition ${readingMode === mode ? 'bg-indigo-600 text-white shadow' : 'text-slate-400 hover:bg-white/5 hover:text-white'}`}>
+            {label}
+          </button>
+        ))}
+      </div>
+      {readingMode === "contribution" && <p className="text-[10px] text-slate-500">Lectura de indicadores directos y contribuciones por área.</p>}
       {objectiveRows.length === 0 && (
         <div className="rounded-2xl border border-white/10 bg-slate-900/50 p-8 text-center text-sm text-slate-400">
           Sin Objetivos Estratégicos configurados.
         </div>
       )}
-      <div className="grid items-start gap-4 xl:grid-cols-2">
+      {readingMode === "contribution" && (() => {
+        const areas = Array.from(new Set([
+          ...objectiveRows.flatMap(row => row.items.map(item => item.dashboard.area || "Área no definida")),
+          ...contributions.filter(oc => objectiveRows.some(row => row.objective.id === oc.primaryStrategicObjectiveId)).map(oc => oc.areaName || "Área no definida"),
+        ])).sort();
+        const sameArea = (left: string | undefined, right: string) => String(left || "").trim().toUpperCase() === right.trim().toUpperCase();
+        const cells = (objective: StrategicObjective, area: string) => contributions.filter(oc => oc.primaryStrategicObjectiveId === objective.id && sameArea(oc.areaName, area)).map(oc => {
+          const kpis = (contributionPresentation.contributionKpisByContributionObjective.get(oc.id) || []).map(k => ({ identity: k.identity, item: k.item, dashboard: k.dashboard, score: reading(k.item, k.dashboard).score, status: reading(k.item, k.dashboard).status }));
+          return <ContributionExecutiveCell key={oc.id} code={oc.displayCode || "OC"} title={oc.title} kpis={kpis} status={kpis.length ? resolveStrategicStatus(kpis.map(k => k.status) as any).status : "NO EVALUABLE"} />;
+        });
+        return <div className="space-y-3" aria-label="Matriz de contribución ejecutiva">
+          <div className="flex flex-wrap items-center gap-3 rounded-xl border border-white/10 bg-slate-950/30 px-3 py-2 text-[9px] font-black uppercase tracking-widest text-slate-400" aria-label="Leyenda de contribución">
+            <span className="text-cyan-300">DIRECTO AL OE</span><span className="font-normal normal-case tracking-normal text-slate-500">alineado directamente al OE</span>
+            <span className="text-violet-300">VÍA OC</span><span className="font-normal normal-case tracking-normal text-slate-500">alineado mediante un Objetivo de Contribución del Área</span>
+          </div>
+          <div className="overflow-x-auto rounded-2xl border border-white/10"><div className="min-w-[760px]"><div className="grid" style={{ gridTemplateColumns: `minmax(260px, 1.2fr) repeat(${areas.length}, minmax(170px, 1fr))` }}><div className="p-4 text-[9px] font-black uppercase tracking-widest text-slate-500">Objetivo estratégico</div>{areas.map(area => <div key={area} className="border-l border-white/5 p-4 text-xs font-black uppercase text-white">{area}</div>)}</div>{objectiveRows.map(({ objective, items }) => { const directKpis = contributionPresentation.directKpisByStrategicObjective.get(objective.id) || []; return <div key={objective.id} className="grid border-t border-white/5" style={{ gridTemplateColumns: `minmax(260px, 1.2fr) repeat(${areas.length}, minmax(170px, 1fr))` }}><div className="p-4"><p className="text-[9px] uppercase tracking-widest text-indigo-300">{perspectives.find(p => p.id === objective.perspectiveId)?.name || "Perspectiva"}</p><p className="mt-1 text-sm font-black text-white">{objective.code} · {objective.title}</p><p className="mt-1 text-[9px] font-black uppercase text-slate-500">{resolveStrategicStatus(items.map(item => reading(item.item, item.dashboard).status) as any).status}</p>{directKpis.length > 0 && <div className="mt-4 border-t border-cyan-500/15 pt-3"><p className="text-[9px] font-black uppercase tracking-widest text-cyan-300">Indicadores directos</p><div className="mt-2 space-y-1">{directKpis.map(kpi => { const kpiReading = reading(kpi.item, kpi.dashboard); const visual = statusVisual[kpiReading.status]; return <div key={kpi.identity} className="flex items-center justify-between gap-2 text-[10px]"><span className="flex min-w-0 items-center gap-1 text-slate-200"><span aria-hidden="true" className={`h-1.5 w-1.5 shrink-0 rounded-full ${visual.split(" ")[0]}`} /><span className="truncate">{kpi.item.indicator || kpi.item.name}</span></span><span className="shrink-0 text-right text-slate-400">{formatExecutivePercent(kpiReading.score)} · {kpiReading.status}</span></div>; })}</div></div>}</div>{areas.map(area => <div key={`${objective.id}-${area}`} className="border-l border-white/5 p-3">{cells(objective, area).length ? cells(objective, area) : <span className="text-[10px] uppercase tracking-widest text-slate-600">—</span>}</div>)}</div>; })}</div></div></div>;
+      })()}
+      {false && readingMode === "contribution" && (() => {
+        const areaMap = new Map<string, { items: typeof objectiveRows[number]["items"]; statuses: string[] }>();
+        objectiveRows.forEach(({ items }) => items.forEach((kpi) => {
+          const area = kpi.dashboard.area || "Área no definida";
+          const current = areaMap.get(area) || { items: [], statuses: [] };
+          if (!current.items.some((item) => item.identity === kpi.identity)) current.items.push(kpi);
+          current.statuses.push(reading(kpi.item, kpi.dashboard).status);
+          areaMap.set(area, current);
+        }));
+        const areas = Array.from(areaMap.keys()).sort();
+        const sameArea = (left: string | undefined, right: string) => String(left || "").trim().toUpperCase() === right.trim().toUpperCase();
+        const statusLabel = (statuses: string[]) => resolveStrategicStatus(statuses as any).status;
+        return <div className="space-y-3" aria-label="Matriz de contribución ejecutiva"><div className="overflow-x-auto rounded-2xl border border-white/10 bg-slate-950/30"><div className="min-w-[760px]"><div className="grid border-b border-white/10 bg-slate-900/70" style={{ gridTemplateColumns: `minmax(260px, 1.2fr) repeat(${areas.length}, minmax(170px, 1fr))` }}><div className="p-4 text-[9px] font-black uppercase tracking-widest text-slate-500">Objetivo estratégico</div>{areas.map((area) => <div key={area} className="border-l border-white/5 p-4"><p className="text-xs font-black uppercase text-white">{area}</p><p className="mt-1 text-[9px] uppercase text-slate-500">{statusLabel(areaMap.get(area)?.statuses || [])}</p></div>)}</div>{objectiveRows.map(({ objective, items }) => { const oeStatus = statusLabel(items.map((item) => reading(item.item, item.dashboard).status)); const perspective = perspectives.find((item) => item.id === objective.perspectiveId); return <div key={objective.id} className="grid border-b border-white/5 last:border-0" style={{ gridTemplateColumns: `minmax(260px, 1.2fr) repeat(${areas.length}, minmax(170px, 1fr))` }}><div className="p-4"><p className="text-[9px] uppercase tracking-widest text-indigo-300">{perspective?.name || "Perspectiva"} · {oeStatus}</p><p className="mt-1 text-sm font-black text-white">{objective.code} · {objective.title}</p></div>{areas.map((area) => { const areaItems = areaMap.get(area)?.items || []; const areaKey = area.trim().toUpperCase(); const linked = contributions.filter((oc) => oc.primaryStrategicObjectiveId === objective.id && sameArea(oc.areaName, areaKey)); return <div key={`${objective.id}-${area}`} className="border-l border-white/5 p-3">{linked.length ? linked.map((oc) => { const ocAssignments = assignments.filter((assignment) => assignment.contributionObjectiveId === oc.id && areaItems.some((item) => String(item.dashboard.id) === String(assignment.dashboardId) && String(item.item.id) === String(assignment.itemId))); const ocStatuses = ocAssignments.flatMap((assignment) => areaItems.filter((item) => String(item.dashboard.id) === String(assignment.dashboardId) && String(item.item.id) === String(assignment.itemId)).map((item) => reading(item.item, item.dashboard).status)); return <div key={oc.id} className="rounded-xl border border-violet-500/25 bg-violet-500/5 p-3"><p className="text-xs font-black text-violet-200">● {oc.displayCode || "OC"}</p><p className="mt-1 line-clamp-2 text-xs font-semibold text-slate-200">{oc.title}</p><p className="mt-2 text-[9px] font-black uppercase text-slate-400">{ocAssignments.length} KPI · {statusLabel(ocStatuses)}</p></div>; }) : <span className="text-[10px] uppercase tracking-widest text-slate-600">No contribuye</span>}</div>; })}</div>; })}</div></div></div>;
+      })()}
+      {readingMode === "objectives" && <div className="grid items-start gap-4 xl:grid-cols-2">
         {objectiveRows.map(({ objective, items }) => {
           const readings = items.map((kpi) => reading(kpi.item, kpi.dashboard));
           const statuses = readings.map(({ status }) => status);
@@ -196,7 +245,7 @@ export const ObjectivesView: React.FC<Props> = ({
                   {status}
                 </span>
               </div>
-              <div className="mt-4 rounded-xl border border-white/5 bg-slate-950/40 p-3">
+              <div className="mt-4 border-t border-white/5 pt-3">
                 <p className="text-[9px] font-black uppercase tracking-widest text-slate-500">Diagnóstico ejecutivo</p>
                 <p className="mt-1 text-sm leading-5 text-slate-300">{diagnosis}</p>
               </div>
@@ -211,6 +260,7 @@ export const ObjectivesView: React.FC<Props> = ({
                 ) : (
                   items.slice(0, 5).map((kpi) => {
                     const kpiReading = reading(kpi.item, kpi.dashboard);
+                    const targetAvailable = (kpi.item.monthlyGoals || []).some((goal, index) => Number.isFinite(Number(goal)) && Number(goal) !== 0 && Number(kpi.item.monthlyProgress?.[index]) !== 0);
                     const trendId = `${objective.id}-${kpi.identity}`;
                     const isTrendExpanded = expandedTrend === trendId;
                     const trendSeries = kpiReading.series.slice(-8);
@@ -233,7 +283,7 @@ export const ObjectivesView: React.FC<Props> = ({
                           onNavigateToKpi?.(kpi.dashboard.id, kpi.item.id)
                         }
                         onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") onNavigateToKpi?.(kpi.dashboard.id, kpi.item.id); }}
-                        className="grid w-full cursor-pointer grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-xl border border-white/5 bg-slate-950/40 px-3 py-2.5 text-left transition hover:border-cyan-500/30 hover:bg-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/60 md:grid-cols-[auto_minmax(0,1fr)_auto_auto_auto]"
+                        className="grid w-full cursor-pointer grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 border-b border-white/5 px-1 py-2.5 text-left transition hover:bg-slate-900/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/60 md:grid-cols-[auto_minmax(0,1fr)_auto_auto_auto]"
                       >
                         <span
                           aria-hidden="true"
@@ -245,7 +295,7 @@ export const ObjectivesView: React.FC<Props> = ({
                         <span className={`whitespace-nowrap rounded-lg border px-2 py-1 text-[9px] font-black uppercase ${visual.split(" ").slice(1).join(" ")}`}>
                           {kpiReading.score === null
                             ? "—"
-                            : `${kpiReading.score}%`}{" "}
+                            : formatExecutivePercent(kpiReading.score)}{" "}
                           · {kpiReading.status}
                         </span>
                         <span className="col-start-2 flex flex-wrap items-center gap-1 text-[9px] font-semibold text-slate-500 md:col-auto md:whitespace-nowrap">
@@ -253,7 +303,7 @@ export const ObjectivesView: React.FC<Props> = ({
                           <b className="text-cyan-300">REVISAR</b>
                         </span>
                         {isTrendExpanded && <div id={`trend-${trendId}`} className="col-span-full rounded-lg border border-cyan-500/15 bg-slate-950/50 px-3 py-2" aria-label={`Tendencia de ${kpi.item.indicator}`}>
-                          <div className="flex flex-wrap items-center justify-between gap-2"><span className="text-[9px] font-black uppercase tracking-widest text-slate-500">Historia de cumplimiento</span><span className="text-[10px] font-semibold text-slate-300">Actual: {kpiReading.series.at(-1)?.value ?? "—"}%{kpiReading.series.length >= 2 ? ` · ${kpiReading.series.at(-1)!.value - kpiReading.series.at(-2)!.value >= 0 ? "↑" : "↓"} ${Math.abs(kpiReading.series.at(-1)!.value - kpiReading.series.at(-2)!.value)} pts vs periodo anterior` : ""}</span></div>
+                          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4"><div className="rounded-md bg-white/5 px-2 py-1"><span className="block text-[8px] font-black uppercase text-slate-500">Actual</span><b className="text-sm text-white">{formatExecutivePercent(kpiReading.score)}</b></div><div className="rounded-md bg-white/5 px-2 py-1"><span className="block text-[8px] font-black uppercase text-slate-500">Meta</span><b className="text-sm text-cyan-300">{targetAvailable ? "100%" : "—"}</b></div><div className="rounded-md bg-white/5 px-2 py-1"><span className="block text-[8px] font-black uppercase text-slate-500">Brecha</span><b className="text-sm text-amber-300">{!targetAvailable || kpiReading.score == null ? "—" : `${kpiReading.score - 100} pts`}</b></div><div className="rounded-md bg-white/5 px-2 py-1"><span className="block text-[8px] font-black uppercase text-slate-500">Delta</span><b className="text-sm text-slate-200">{kpiReading.series.length >= 2 ? `${kpiReading.series.at(-1)!.value - kpiReading.series.at(-2)!.value >= 0 ? "+" : ""}${Math.round(kpiReading.series.at(-1)!.value - kpiReading.series.at(-2)!.value)} pts` : "—"}</b></div></div><div className="mt-2 flex flex-wrap items-center justify-between gap-2"><span className="text-[9px] font-black uppercase tracking-widest text-slate-500">Microtendencia · referencia meta {targetAvailable ? "100%" : "no disponible"}</span><span className="text-[10px] font-semibold text-slate-300">{kpiReading.series.length >= 2 ? (kpiReading.trend === "MEJORA" ? "↑ mejora" : kpiReading.trend === "DETERIORO" ? "↓ deterioro" : "→ estable") : "HISTORIAL INSUFICIENTE"}</span></div>
                           <svg viewBox="0 0 320 96" role="img" aria-label={`Gráfico histórico de ${kpi.item.indicator}`} className="mt-2 h-24 w-full"><polyline fill="none" stroke="#94a3b8" strokeOpacity=".55" strokeWidth="1.5" strokeDasharray="4 5" strokeLinejoin="round" strokeLinecap="round" points={trendSeries.map((point, index) => `${(index / (trendSeries.length - 1)) * 300 + 10},${86 - ((point.value - Math.min(...trendSeries.map((item) => item.value))) / (Math.max(...trendSeries.map((item) => item.value)) - Math.min(...trendSeries.map((item) => item.value)) || 1)) * 72}`).join(" ")} />{trendSeries.map((point, index) => <circle key={`${point.periodIndex}-${index}`} cx={(index / (trendSeries.length - 1)) * 300 + 10} cy={86 - ((point.value - Math.min(...trendSeries.map((item) => item.value))) / (Math.max(...trendSeries.map((item) => item.value)) - Math.min(...trendSeries.map((item) => item.value)) || 1)) * 72} r={index === trendSeries.length - 1 ? "4" : "2"} fill={index === trendSeries.length - 1 ? lastPointColor : "#64748b"} fillOpacity={index === trendSeries.length - 1 ? "1" : ".45"} />)}</svg>
                           <div className="flex justify-between text-[8px] text-slate-600"><span>P{(trendSeries[0]?.periodIndex ?? 0) + 1}</span><span>P{(trendSeries.at(-1)?.periodIndex ?? 0) + 1}</span></div>
                         </div>}
@@ -267,7 +317,7 @@ export const ObjectivesView: React.FC<Props> = ({
                   </p>
                 )}
               </div>
-              <div className="mt-4 rounded-xl border border-cyan-500/15 bg-cyan-500/5 p-3">
+              <div className="mt-4 border-t border-cyan-500/15 pt-3">
                 <p className="text-[9px] font-black uppercase tracking-widest text-cyan-300">Ejecución</p>
                 <div className="mt-2 flex flex-wrap gap-x-4 gap-y-2 text-[10px] font-black uppercase tracking-widest text-slate-400">
                 {plans > 0 ? (
@@ -306,12 +356,45 @@ export const ObjectivesView: React.FC<Props> = ({
                     <button type="button" className="whitespace-nowrap text-[10px] font-black uppercase text-cyan-300" onClick={() => onNavigateToKpi?.(priorityKpi.dashboard.id, priorityKpi.item.id)}>CREAR PLAN</button>
                   </div>
                 )}
-                {decision && <div className="mt-3 border-t border-white/5 pt-2"><p className="text-[9px] font-black uppercase tracking-widest text-violet-300">Próxima decisión</p><p className="mt-1 text-xs font-semibold text-slate-300">{decision.label}</p></div>}
+                {decision && <div className="mt-3 border-t border-white/5 pt-2"><p className="text-[9px] font-black uppercase tracking-widest text-violet-300">Próxima decisión</p><p className="mt-1 text-xs font-semibold text-slate-300">{decision.label}</p><p className="mt-1 text-[9px] text-slate-500">Basada en estado y ejecución</p></div>}
               </div>
             </article>
           );
         })}
-      </div>
+      </div>}
+      {readingMode === "areas" && (() => {
+        const areaMap = new Map<string, { items: typeof objectiveRows[number]["items"]; objectives: StrategicObjective[] }>();
+        objectiveRows.forEach(({ objective, items }) => items.forEach(item => {
+          const area = item.dashboard.area || "Área no definida";
+          const current = areaMap.get(area) || { items: [], objectives: [] };
+          if (!current.items.some(existing => existing.identity === item.identity)) current.items.push(item);
+          if (!current.objectives.some(existing => existing.id === objective.id)) current.objectives.push(objective);
+          areaMap.set(area, current);
+        }));
+        return <div className="grid items-start gap-4 xl:grid-cols-2">{Array.from(areaMap.entries()).map(([area, data]) => {
+          const readings = data.items.map(kpi => reading(kpi.item, kpi.dashboard));
+          const summary = resolveStrategicStatus(readings.map(item => item.status));
+          const areaPlans = Array.from(new Map(data.items.flatMap(kpi => plansByObjective.get(objectiveRows.find(row => row.items.some(item => item.identity === kpi.identity))?.objective.id || '') || []).map(plan => [plan.id, plan])).values());
+          const breach = data.items.find((kpi, index) => readings[index].status === "CRÍTICO" || readings[index].status === "REQUIERE ATENCIÓN");
+          const statusTone = summary.status === 'REQUIERE INTERVENCIÓN' ? 'rose' : summary.status === 'REQUIERE ATENCIÓN' ? 'amber' : summary.status === 'BAJO CONTROL' ? 'emerald' : 'slate';
+          const statusTheme = statusTone === 'rose'
+            ? { border: 'border-rose-500/30', badge: 'border-rose-400/40 text-rose-300', dot: 'bg-rose-400' }
+            : statusTone === 'amber'
+              ? { border: 'border-amber-500/30', badge: 'border-amber-400/40 text-amber-300', dot: 'bg-amber-400' }
+              : statusTone === 'emerald'
+                ? { border: 'border-emerald-500/30', badge: 'border-emerald-400/40 text-emerald-300', dot: 'bg-emerald-400' }
+                : { border: 'border-slate-500/30', badge: 'border-slate-400/40 text-slate-300', dot: 'bg-slate-400' };
+          const activeActions = areaPlans.flatMap(plan => plan.activities || []).filter(activity => activity.progress < 100);
+          const overdue = activeActions.filter(activity => activity.targetDate && new Date(activity.targetDate) < new Date()).length;
+          const areaOcs = contributions.filter(oc => oc.primaryStrategicObjectiveId && data.objectives.some(objective => objective.id === oc.primaryStrategicObjectiveId) && assignments.some(assignment => assignment.contributionObjectiveId === oc.id && data.items.some(item => String(item.dashboard.id) === String(assignment.dashboardId) && String(item.item.id) === String(assignment.itemId))));
+          return <article key={area} className={`self-start rounded-2xl border ${statusTheme.border} bg-slate-900/70 p-5 shadow-xl`}><div className="flex items-start justify-between gap-4"><div><p className="text-[9px] font-black uppercase tracking-[0.25em] text-slate-500">Área ejecutiva</p><h3 className="mt-1 text-xl font-black uppercase tracking-tight text-white">{area}</h3></div><div className={`flex items-center gap-2 rounded-xl border ${statusTheme.badge} px-3 py-2 text-[10px] font-black uppercase`}><span className={`h-3 w-3 rounded-full ${statusTheme.dot}`} />{summary.status}</div></div><div className="mt-4 flex flex-wrap gap-2 border-y border-white/5 py-3 text-[10px] font-black uppercase tracking-wide"><span className="text-rose-300">● {summary.criticalCount} críticos</span><span className="text-amber-300">● {summary.attentionCount} atención</span><span className="text-emerald-300">● {summary.underControlCount} bajo control</span></div><div className="mt-4 grid grid-cols-3 gap-2 text-center"><div><b className="block text-lg text-white">{data.objectives.length}</b><span className="text-[9px] uppercase text-slate-500">OE</span></div><div><b className="block text-lg text-white">{data.items.length}</b><span className="text-[9px] uppercase text-slate-500">KPI</span></div><div><b className="block text-lg text-cyan-300">{areaPlans.length}</b><span className="text-[9px] uppercase text-slate-500">Planes</span></div></div><div className="mt-4 space-y-4 border-t border-white/5 pt-4"><div><p className="text-[9px] font-black uppercase tracking-widest text-slate-500">Contribuye a</p><div className="mt-2 flex flex-wrap gap-2">{data.objectives.map(item => <span key={item.id} className="rounded-lg border border-indigo-500/30 px-2 py-1 text-xs font-bold text-indigo-200">{item.code}</span>)}</div></div><div><p className="text-[9px] font-black uppercase tracking-widest text-slate-500">Objetivos de contribución</p>{areaOcs.length ? <div className="mt-2 flex flex-wrap gap-2">{areaOcs.map(oc => <span key={oc.id} className="rounded-lg border border-violet-500/30 px-2 py-1 text-xs font-bold text-violet-200">{oc.displayCode || 'OC'} · {oc.title}</span>)}</div> : <p className="mt-1 text-xs text-slate-500">Sin OC asociado</p>}</div><div><p className="text-[9px] font-black uppercase tracking-widest text-slate-500">Principal brecha</p>{breach ? <button type="button" onClick={() => onNavigateToKpi?.(breach.dashboard.id, breach.item.id)} className="mt-1 text-left text-sm font-bold text-amber-300 hover:text-white">{breach.item.indicator} · {readings[data.items.indexOf(breach)]?.score ?? '—'}% · REVISAR</button> : <p className="mt-1 text-xs text-slate-400">Sin brecha prioritaria.</p>}</div><div className="flex flex-wrap items-center gap-3 text-xs text-slate-300"><span>{activeActions.length} acciones activas</span><span className={overdue ? 'font-bold text-rose-300' : ''}>{overdue} vencidas</span>{areaPlans.length > 0 && <button type="button" onClick={() => { setPlanFilter('TODOS'); setReadingMode('plans'); }} className="font-black uppercase tracking-widest text-cyan-300">VER PLANES</button>}</div></div></article>})}</div>;
+      })()}
+      {readingMode === "plans" && (() => {
+        const allPlans = Array.from(new Map(Array.from(plansByObjective.values()).flat().map(plan => [plan.id, plan])).values());
+        const plans = allPlans.filter(plan => planFilter === "TODOS" || planFilter === "COMPLETADOS" && plan.status === "completed" || planFilter === "IMPACTO POR EVALUAR" && (plan.activities || []).some(activity => !activity.impact || activity.impact === 'NOT_EVALUATED') || planFilter === "VENCIDOS" && (plan.activities || []).some(activity => activity.progress < 100 && activity.targetDate && new Date(activity.targetDate) < new Date()) || planFilter === "REQUIEREN ATENCIÓN" && (plan.activities || []).some(activity => activity.progress < 100 && activity.targetDate && new Date(activity.targetDate) < new Date()) || planFilter === "ACTIVOS" && plan.status !== "completed" && plan.status !== "cancelled");
+        const activities = plans.flatMap(plan => plan.activities || []);
+        return <div className="space-y-4"><div className="flex flex-wrap items-center gap-2"><span className="text-[9px] font-black uppercase tracking-widest text-slate-500">Filtrar planes</span><select aria-label="Filtro de planes" value={planFilter} onChange={event => setPlanFilter(event.target.value)} className="rounded-lg border border-white/10 bg-slate-950 px-3 py-2 text-xs text-slate-200">{['TODOS','REQUIEREN ATENCIÓN','VENCIDOS','IMPACTO POR EVALUAR','COMPLETADOS'].map(filter => <option key={filter} value={filter}>{filter}</option>)}</select></div><div className="grid grid-cols-2 gap-2 md:grid-cols-4"><div className="rounded-xl border border-white/10 bg-slate-900/60 p-3"><p className="text-[9px] font-black uppercase text-slate-500">Planes activos</p><p className="mt-1 text-xl font-black text-white">{allPlans.filter(plan => plan.status !== 'completed' && plan.status !== 'cancelled').length}</p></div><div className="rounded-xl border border-white/10 bg-slate-900/60 p-3"><p className="text-[9px] font-black uppercase text-slate-500">Acciones activas</p><p className="mt-1 text-xl font-black text-cyan-300">{activities.filter(activity => activity.progress < 100).length}</p></div><div className="rounded-xl border border-white/10 bg-slate-900/60 p-3"><p className="text-[9px] font-black uppercase text-slate-500">Vencidas</p><p className="mt-1 text-xl font-black text-amber-300">{activities.filter(activity => activity.progress < 100 && activity.targetDate && new Date(activity.targetDate) < new Date()).length}</p></div><div className="rounded-xl border border-white/10 bg-slate-900/60 p-3"><p className="text-[9px] font-black uppercase text-slate-500">Impacto por evaluar</p><p className="mt-1 text-xl font-black text-slate-300">{activities.filter(activity => !activity.impact || activity.impact === 'NOT_EVALUATED').length}</p></div></div>{plans.length === 0 ? <p className="rounded-xl border border-dashed border-white/10 p-6 text-center text-sm text-slate-400">No hay planes estratégicos activos.</p> : <div className="grid items-start gap-3 xl:grid-cols-2">{plans.map(plan => { const linked = objectiveRows.flatMap(row => row.items.map(kpi => ({ ...kpi, objective: row.objective }))).find(kpi => String(kpi.item.id) === String(plan.indicatorId)); const linkedAssignment = linked && assignments.find(assignment => String(assignment.dashboardId) === String(linked.dashboard.id) && String(assignment.itemId) === String(linked.item.id) && assignment.contributionObjectiveId); const linkedOc = linkedAssignment && contributions.find(oc => oc.id === linkedAssignment.contributionObjectiveId); const planActivities = plan.activities || []; const next = planActivities.filter(activity => activity.progress < 100 && activity.targetDate).sort((a,b) => String(a.targetDate).localeCompare(String(b.targetDate)))[0]; return <article key={plan.id} className="rounded-2xl border border-white/10 bg-slate-900/60 p-4"><div className="flex items-start justify-between gap-3"><div><p className="text-[9px] font-black uppercase tracking-widest text-cyan-300">Ejecución estratégica</p><h3 className="font-bold text-white">{plan.title}</h3></div><span className="text-xs font-black text-cyan-300">{plan.progress}%</span></div><p className="mt-2 text-xs text-slate-300">{linked ? `${linked.objective.code} · ${linked.item.indicator} · ${linked.dashboard.area || 'Área no definida'}` : 'SIN OBJETIVO ESTRATÉGICO'}</p>{linkedOc && <p className="mt-1 text-xs text-indigo-300">{linkedOc.displayCode} · {linkedOc.title}</p>}<p className="mt-2 text-xs text-slate-400">{plan.responsible || 'Sin responsable'} · {planActivities.filter(activity => activity.progress < 100).length} acciones activas · {planActivities.filter(activity => activity.progress < 100 && activity.targetDate && new Date(activity.targetDate) < new Date()).length} vencidas</p><p className="mt-2 text-xs text-slate-400">Próximo compromiso: {next?.targetDate || 'Sin próximo compromiso'}</p>{linked && <button type="button" onClick={() => onNavigateToKpi?.(linked.dashboard.id, linked.item.id)} className="mt-3 text-[10px] font-black uppercase tracking-widest text-cyan-300">IR AL KPI</button>}</article>})}</div>}</div>;
+      })()}
       {unlinked.length > 0 && (
         <div className="rounded-2xl border border-dashed border-amber-500/30 bg-amber-500/5 p-4">
           <p className="text-[10px] font-black uppercase tracking-widest text-amber-300">
