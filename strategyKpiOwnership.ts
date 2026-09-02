@@ -1,5 +1,5 @@
 import type { Dashboard } from './types';
-import type { ContributionIndicatorAssignment, ContributionObjective, StrategicObjective } from './strategyTypes';
+import type { AreaStrategyConfig, ContributionIndicatorAssignment, ContributionObjective, StrategicObjective } from './strategyTypes';
 import { getPhysicalKpiKey } from './strategyTypes';
 
 export type LogicalKpiAlias = { dashboard: Dashboard; item: any; physicalKey: string; sourceType?: string };
@@ -10,6 +10,12 @@ export type StrategicContributionPresentation = {
   directKpisByStrategicObjective: Map<string, StrategicKpiCandidate[]>;
   contributionKpisByContributionObjective: Map<string, StrategicKpiCandidate[]>;
 };
+
+export function canonicalAreaIdentity(areaName: string | undefined, configs: AreaStrategyConfig[] = []): string {
+  const normalized = normalizeLogicalKpiLabel(areaName || 'AREA_NO_DEFINIDA');
+  const config = configs.find(candidate => [candidate.areaName, candidate.code, ...(candidate.aliases || [])].some(alias => normalizeLogicalKpiLabel(alias) === normalized));
+  return config?.id || config?.code || normalized;
+}
 
 export function normalizeLogicalKpiLabel(value: string = ''): string {
   return value.trim().toLocaleUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ');

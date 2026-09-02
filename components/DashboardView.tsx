@@ -12,7 +12,7 @@ import { exportDashboardToExcel } from '../utils/exportUtils';
 import { exportToExecutiveExcelJS } from '../utils/ExecutiveOperationalExport';
 import { OperationalControlCenter } from './operational/OperationalControlCenter';
 import { ObjectivesView } from './ObjectivesView';
-import type { StrategicObjective, StrategicPerspective, ContributionObjective, ContributionIndicatorAssignment } from '../strategyTypes';
+import type { AreaStrategyConfig, StrategicObjective, StrategicPerspective, ContributionObjective, ContributionIndicatorAssignment } from '../strategyTypes';
 import { scrollToTop, scrollToElementBelowHeader, scheduleScroll } from '../utils/scrollUtils';
 import { orderDashboardItemsForStrategicPresentation } from '../strategicDisplayOrder';
 import { findDashboardItemById } from '../dashboardItemNavigation';
@@ -35,10 +35,11 @@ interface DashboardViewProps {
   perspectives?: StrategicPerspective[];
   contributions?: ContributionObjective[];
   assignments?: ContributionIndicatorAssignment[];
+  areaConfigs?: AreaStrategyConfig[];
   requestedItemId?: number | string | null;
-  onNavigateToKpi?: (dashboardId: number | string, itemId: number | string, source?: 'objectives' | 'control') => void;
+  onNavigateToKpi?: (dashboardId: number | string, itemId: number | string, source?: 'objectives' | 'areas' | 'contribution' | 'plans' | 'control') => void;
   onNavigationConsumed?: () => void;
-  requestedNavigationSource?: 'objectives' | 'control';
+  requestedNavigationSource?: 'objectives' | 'areas' | 'contribution' | 'plans' | 'control';
 }
 
 /**
@@ -48,7 +49,7 @@ interface DashboardViewProps {
  * @component
  * @version v9.4.18-INDICATOR-SCROLL-UX
  */
-export const DashboardView: React.FC<DashboardViewProps> = React.memo(({ dashboard, onUpdateItem, userRole, isGlobalAdmin, currentUser, onUpdateMetadata, existingGroups = [], settings, layout = 'grid', year, allDashboards = [], isDirector, onOpenWeights, objectives = [], perspectives = [], contributions = [], assignments = [], requestedItemId, requestedNavigationSource = 'objectives', onNavigateToKpi, onNavigationConsumed }) => {
+export const DashboardView: React.FC<DashboardViewProps> = React.memo(({ dashboard, onUpdateItem, userRole, isGlobalAdmin, currentUser, onUpdateMetadata, existingGroups = [], settings, layout = 'grid', year, allDashboards = [], isDirector, onOpenWeights, objectives = [], perspectives = [], contributions = [], assignments = [], areaConfigs = [], requestedItemId, requestedNavigationSource = 'objectives', onNavigateToKpi, onNavigationConsumed }) => {
   const [isAnalysisOpen, setIsAnalysisOpen] = useState(false);
   const [analysisResult, setAnalysisResult] = useState<AIAnalysisResult | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -72,7 +73,7 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(({ dashboa
 
   const [selectedItemId, setSelectedItemId] = useState<number | string | null>(null);
   const [activeView, setActiveView] = useState<'dashboard' | 'objectives' | 'reports' | 'control'>('dashboard');
-  const [returnContext, setReturnContext] = useState<'objectives' | 'control' | null>(null);
+  const [returnContext, setReturnContext] = useState<'objectives' | 'areas' | 'contribution' | 'plans' | 'control' | null>(null);
   const [navigationError, setNavigationError] = useState('');
   useEffect(() => {
     if (requestedItemId === null || requestedItemId === undefined) return;
@@ -375,12 +376,12 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(({ dashboa
           type="button"
           onClick={() => {
             setSelectedItemId(null);
-            setActiveView(returnContext);
+            setActiveView(returnContext === 'control' ? 'control' : 'objectives');
             setReturnContext(null);
           }}
           className="mb-3 rounded-lg border border-violet-500/30 px-3 py-2 text-[10px] font-black text-violet-300"
         >
-          ← VOLVER A {returnContext === 'control' ? 'CONTROL' : 'OBJETIVOS'}
+          ← VOLVER A {returnContext === 'control' ? 'CONTROL' : returnContext === 'contribution' ? 'CONTRIBUCIÓN' : returnContext === 'areas' ? 'POR ÁREAS' : returnContext === 'plans' ? 'PLANES' : 'POR OBJETIVOS'}
         </button>
       )}
       {/* MAIN CONTENT VIEW */}
@@ -389,7 +390,7 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(({ dashboa
           <Dashboard key={`dashboard-${(dashboard as any).id}`} data={strategicallyOrderedItems} onUpdateItem={onUpdateItem} globalThresholds={activeThresholds} userRoleForDashboard={userRole} layout={layout} year={year} allDashboards={allDashboards} isAggregate={isAggregate} selectedItemId={selectedItemId} onSelectItem={setSelectedItemId} decimalPrecision={localDecimalPrecision} allContextItems={allContextItems} isGlobalAdmin={isGlobalAdmin} />
         </div>
       ) : activeView === 'objectives' ? (
-        <ObjectivesView dashboard={dashboard} dashboards={allDashboards} objectives={objectives} perspectives={perspectives} contributions={contributions} assignments={assignments} year={year || new Date().getFullYear()} onNavigateToKpi={onNavigateToKpi} />
+         <ObjectivesView dashboard={dashboard} dashboards={allDashboards} objectives={objectives} perspectives={perspectives} contributions={contributions} assignments={assignments} areaConfigs={areaConfigs} year={year || new Date().getFullYear()} initialReadingMode={returnContext === 'areas' || returnContext === 'contribution' || returnContext === 'plans' ? returnContext : 'objectives'} onNavigateToKpi={onNavigateToKpi} />
       ) : activeView === 'reports' ? (
         <ReportCenter
           items={safeItems}

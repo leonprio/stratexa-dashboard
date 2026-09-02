@@ -129,14 +129,17 @@ describe("ObjectivesView", () => {
     expect(toggle).toHaveAttribute("aria-expanded", "false");
     fireEvent.click(toggle);
     expect(toggle).toHaveAttribute("aria-expanded", "true");
-    const chart = screen.getByRole("img", { name: /Gráfico histórico de KPI asociado/ });
+    const chart = screen.getByRole("img", { name: /Actual vs meta de KPI asociado/ });
     expect(chart).toBeInTheDocument();
-    expect(chart.querySelector("polyline")).toHaveAttribute("stroke-dasharray", "4 5");
-    expect(chart.querySelector("circle:last-of-type")).toHaveAttribute("fill", "#fbbf24");
+    expect(chart.querySelectorAll("polyline")).toHaveLength(2);
+    expect(chart.querySelectorAll("text")[0]).toHaveTextContent("META 100%");
     expect(screen.getByText("Actual")).toBeInTheDocument();
-    expect(screen.getByText("78%", { exact: true })).toBeInTheDocument();
+    expect(screen.getByText("Meta")).toBeInTheDocument();
+    expect(screen.getByText("Brecha")).toBeInTheDocument();
+    expect(screen.getByText("Cambio vs periodo anterior")).toBeInTheDocument();
+    expect(screen.getByText("84%", { exact: true })).toBeInTheDocument();
     fireEvent.click(toggle);
-    expect(screen.queryByRole("img", { name: /Gráfico histórico de KPI asociado/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("img", { name: /Actual vs meta de KPI asociado/ })).not.toBeInTheDocument();
   });
 
   it("muestra diagnóstico ejecutivo, ejecución y decisión deterministas", () => {
@@ -297,5 +300,7 @@ describe("ObjectivesView", () => {
     expect(screen.getByText("OC vacío")).toBeInTheDocument();
     expect(screen.getByText("SIN INDICADORES")).toBeInTheDocument();
     expect(screen.getByText("Lectura de indicadores directos y contribuciones por área.")).toBeInTheDocument();
+    const reviewButtons = screen.getAllByRole("button", { name: "REVISAR KPI" });
+    expect(reviewButtons).toHaveLength(2);
   });
 });

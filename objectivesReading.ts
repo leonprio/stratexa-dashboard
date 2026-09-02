@@ -22,6 +22,25 @@ export type ExecutiveTrend =
   | "DETERIORO"
   | "SIN TENDENCIA";
 export type HistoricalCompliancePoint = { periodIndex: number; value: number };
+export type ExecutiveTargetGapReading = {
+  actual: number | null;
+  target: number | null;
+  gap: number | null;
+  delta: number | null;
+  deltaLabel: "MEJORA" | "DETERIORO" | "ESTABLE" | "HISTORIAL INSUFICIENTE";
+  series: HistoricalCompliancePoint[];
+  targetSeries: Array<{ periodIndex: number; value: number }>;
+};
+export type StrategicStatus = "REQUIERE INTERVENCIÓN" | "REQUIERE ATENCIÓN" | "BAJO CONTROL" | "DATOS PENDIENTES" | "NO EVALUABLE" | "SIN INDICADORES";
+export type StrategicStatusSummary = {
+  status: StrategicStatus;
+  criticalCount: number;
+  attentionCount: number;
+  underControlCount: number;
+  notEvaluableCount: number;
+  pendingDataCount: number;
+  totalLogicalKpi: number;
+};
 
 export type ObjectiveExecutionSummary = {
   activePlans: number;
@@ -173,13 +192,58 @@ export function buildExecutiveKpiReading(
   };
 }
 
+export function buildExecutiveTargetGapReading(
+  item: DashboardItem,
+  contextItems: DashboardItem[],
+  year: number,
+  now: Date = new Date(),
+): ExecutiveTargetGapReading {
+  const { monthlyProgress, monthlyGoals } = resolveItemValues(item, contextItems, year);
+  const lastAllowedPeriod = year < now.getFullYear() ? 11 : year === now.getFullYear() ? now.getMonth() : -1;
+  const points = monthlyGoals.flatMap((goal, periodIndex) => {
+    const progress = monthlyProgress[periodIndex];
+    if (periodIndex > lastAllowedPeriod || goal == null || progress == null) return [];
+    const numericGoal = Number(goal);
+    const numericProgress = Number(progress);
+    if (!Number.isFinite(numericGoal) || !Number.isFinite(numericProgress) || (numericGoal === 0 && numericProgress === 0)) return [];
+    return [{ periodIndex, actual: numericProgress, target: numericGoal, compliance: calculateMonthlyCompliancePercentage(numericProgress, numericGoal, item.goalType === "minimize") }];
+  });
+  const latest = points.at(-1);
+  const previous = points.at(-2);
+  const lowerIsBetter = item.goalType === "minimize";
+  const gap = latest ? (lowerIsBetter ? latest.target - latest.actual : latest.actual - latest.target) : null;
+  const delta = latest && previous ? latest.compliance - previous.compliance : null;
+  const deltaLabel = delta == null ? "HISTORIAL INSUFICIENTE" : delta > 0 ? "MEJORA" : delta < 0 ? "DETERIORO" : "ESTABLE";
+  return {
+    actual: latest?.actual ?? null,
+    target: latest?.target ?? null,
+    gap,
+    delta,
+    deltaLabel,
+    series: points.map(point => ({ periodIndex: point.periodIndex, value: point.compliance })),
+    targetSeries: points.map(point => ({ periodIndex: point.periodIndex, value: 100 })),
+  };
+}
+
+export function resolveStrategicStatus(statuses: ExecutiveKpiStatus[]): StrategicStatusSummary {
+  const summary = {
+    criticalCount: statuses.filter(status => status === "CRÍTICO").length,
+    attentionCount: statuses.filter(status => status === "REQUIERE ATENCIÓN").length,
+    underControlCount: statuses.filter(status => status === "BAJO CONTROL").length,
+    notEvaluableCount: statuses.filter(status => status === "NO EVALUABLE").length,
+    pendingDataCount: statuses.filter(status => status === "DATOS PENDIENTES").length,
+    totalLogicalKpi: statuses.length,
+  };
+  const evaluableCount = summary.criticalCount + summary.attentionCount + summary.underControlCount;
+  const status: StrategicStatus = !statuses.length ? "SIN INDICADORES"
+    : summary.criticalCount > 0 ? "REQUIERE INTERVENCIÓN"
+    : summary.attentionCount > 0 ? "REQUIERE ATENCIÓN"
+    : evaluableCount > 0 && summary.underControlCount === evaluableCount ? "BAJO CONTROL"
+    : evaluableCount === 0 && summary.pendingDataCount > 0 ? "DATOS PENDIENTES"
+    : "NO EVALUABLE";
+  return { status, ...summary };
+}
+
 export function objectiveExecutiveStatus(statuses: ExecutiveKpiStatus[]) {
-  if (statuses.length === 0) return "SIN INDICADORES" as const;
-  if (statuses.includes("CRÍTICO")) return "REQUIERE INTERVENCIÓN" as const;
-  if (statuses.includes("REQUIERE ATENCIÓN"))
-    return "REQUIERE ATENCIÓN" as const;
-  const evaluable = statuses.filter((status) => status === "BAJO CONTROL");
-  if (evaluable.length > 0 && evaluable.length === statuses.length)
-    return "BAJO CONTROL" as const;
-  return "DATOS PENDIENTES" as const;
+  return resolveStrategicStatus(statuses).status;
 }
