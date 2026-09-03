@@ -24,13 +24,65 @@ const traffic: Record<string, string> = {
   yellow: "bg-amber-400",
   neutral: "bg-slate-600",
 };
-export const normalizeActionImpact = (impact?: ActionPlanActivity['impact']) => impact === 'FAVORABLE' || impact === 'positive' ? 'FAVORABLE' : impact === 'PARTIAL' || impact === 'low' ? 'PARTIAL' : impact === 'LOW_OR_NONE' || impact === 'none' ? 'LOW_OR_NONE' : 'NOT_EVALUATED';
-const impactVisual = (impact?: ActionPlanActivity['impact']) => ({
-  NOT_EVALUATED: { label: 'Por evaluar', icon: '⚪', className: 'text-slate-400' },
-  FAVORABLE: { label: 'Impacto favorable', icon: '🟢', className: 'text-emerald-300' },
-  PARTIAL: { label: 'Impacto parcial', icon: '🟡', className: 'text-amber-300' },
-  LOW_OR_NONE: { label: 'Bajo / sin impacto', icon: '🔴', className: 'text-rose-300' },
-}[normalizeActionImpact(impact)]);
+export const activityProgressVisual = (progress: number) =>
+  progress >= 100
+    ? {
+        label: "Completada",
+        tone: "emerald",
+        className: "bg-emerald-500",
+        text: "text-emerald-300",
+      }
+    : progress >= 70
+      ? {
+          label: "Próximo a completarse",
+          tone: "amber",
+          className: "bg-amber-400",
+          text: "text-amber-300",
+        }
+      : progress > 0
+        ? {
+            label: "En ejecución",
+            tone: "cyan",
+            className: "bg-cyan-500",
+            text: "text-cyan-300",
+          }
+        : {
+            label: "Pendiente",
+            tone: "neutral",
+            className: "bg-slate-500",
+            text: "text-slate-300",
+          };
+export const normalizeActionImpact = (impact?: ActionPlanActivity["impact"]) =>
+  impact === "FAVORABLE" || impact === "positive"
+    ? "FAVORABLE"
+    : impact === "PARTIAL" || impact === "low"
+      ? "PARTIAL"
+      : impact === "LOW_OR_NONE" || impact === "none"
+        ? "LOW_OR_NONE"
+        : "NOT_EVALUATED";
+const impactVisual = (impact?: ActionPlanActivity["impact"]) =>
+  ({
+    NOT_EVALUATED: {
+      label: "Por evaluar",
+      icon: "⚪",
+      className: "text-slate-400",
+    },
+    FAVORABLE: {
+      label: "Impacto favorable",
+      icon: "🟢",
+      className: "text-emerald-300",
+    },
+    PARTIAL: {
+      label: "Impacto parcial",
+      icon: "🟡",
+      className: "text-amber-300",
+    },
+    LOW_OR_NONE: {
+      label: "Bajo / sin impacto",
+      icon: "🔴",
+      className: "text-rose-300",
+    },
+  })[normalizeActionImpact(impact)];
 const monthNames = [
   "Enero",
   "Febrero",
@@ -86,6 +138,9 @@ interface Props {
   periodType: ActionPlanOriginPeriodType;
   periodIndex: number;
   canEdit: boolean;
+  initialPlanId?: number | string;
+  onCancelEdit?: () => void;
+  onSaved?: () => void;
 }
 export const RelatedActionPlans: React.FC<Props> = ({
   indicatorId,
@@ -95,6 +150,9 @@ export const RelatedActionPlans: React.FC<Props> = ({
   periodType,
   periodIndex,
   canEdit,
+  initialPlanId,
+  onCancelEdit,
+  onSaved,
 }) => {
   const [plans, setPlans] = useState<ActionPlan[]>([]);
   const [state, setState] = useState<"loading" | "saving" | "saved" | "error">(
@@ -116,6 +174,14 @@ export const RelatedActionPlans: React.FC<Props> = ({
   useEffect(() => {
     void load();
   }, [indicatorId, clientId]);
+  useEffect(() => {
+    if (!initialPlanId || !canEdit || draft || state === "loading") return;
+    const requested = plans.find(
+      (plan) => String(plan.id) === String(initialPlanId),
+    );
+    if (requested)
+      setDraft({ ...requested, activities: requested.activities || [] });
+  }, [initialPlanId, canEdit, draft, plans, state]);
   const origin = (p: ActionPlan) =>
     p.originPeriodType === "weekly"
       ? `Semana ${(p.originPeriodIndex || 0) + 1} · ${p.originYear}`
@@ -165,6 +231,7 @@ export const RelatedActionPlans: React.FC<Props> = ({
       else await firebaseService.createActionPlan(changes);
       setDraft(null);
       await load();
+      onSaved?.();
     } catch {
       setState("error");
     }
@@ -229,7 +296,17 @@ export const RelatedActionPlans: React.FC<Props> = ({
                   Origen: {origin(p)}
                 </p>
                 <div className="mt-2 flex flex-wrap gap-1">
-                  {(p.activities || []).map(activity => { const visual = impactVisual(activity.impact); return <span key={activity.id} className={`rounded border border-white/10 px-2 py-1 text-[9px] font-bold uppercase ${visual.className}`}>{visual.icon} {visual.label}</span>; })}
+                  {(p.activities || []).map((activity) => {
+                    const visual = impactVisual(activity.impact);
+                    return (
+                      <span
+                        key={activity.id}
+                        className={`rounded border border-white/10 px-2 py-1 text-[9px] font-bold uppercase ${visual.className}`}
+                      >
+                        {visual.icon} {visual.label}
+                      </span>
+                    );
+                  })}
                 </div>
               </div>
               {canEdit && (
@@ -322,14 +399,15 @@ export const RelatedActionPlans: React.FC<Props> = ({
                   key={a.id}
                   className="rounded-lg border border-slate-700/70 bg-slate-950/50 p-3"
                 >
-                  <div className="grid gap-2 md:grid-cols-[2fr,1fr,150px,100px,2fr,24px] md:items-end">
+                  <div className="grid gap-3 md:grid-cols-[minmax(0,2fr),minmax(150px,1fr),150px,120px,24px] md:items-end">
                     <Field label="Actividad">
-                      <input
+                      <textarea
                         value={a.title}
                         onChange={(e) =>
                           updateActivity(a.id, "title", e.target.value)
                         }
-                        className={control}
+                        rows={2}
+                        className={`${control} min-h-16 resize-y`}
                       />
                     </Field>
                     <Field label="Responsable">
@@ -352,37 +430,48 @@ export const RelatedActionPlans: React.FC<Props> = ({
                       />
                     </Field>
                     <Field label="Avance (%)">
-                      <div className="relative">
-                        <input
-                          type="number"
-                          min="0"
-                          max="100"
-                          value={a.progress}
-                          onChange={(e) =>
-                            updateActivity(
-                              a.id,
-                              "progress",
-                              Math.max(
-                                0,
-                                Math.min(100, Number(e.target.value)),
-                              ),
-                            )
-                          }
-                          className={`${control} pr-7`}
-                        />
-                        <span className="absolute right-2 top-2 text-xs font-bold text-cyan-300">
-                          %
-                        </span>
+                      <div>
+                        {(() => {
+                          const visual = activityProgressVisual(a.progress);
+                          return (
+                            <>
+                              <div className="relative">
+                                <input
+                                  type="number"
+                                  min="0"
+                                  max="100"
+                                  value={a.progress}
+                                  onChange={(e) =>
+                                    updateActivity(
+                                      a.id,
+                                      "progress",
+                                      Math.max(
+                                        0,
+                                        Math.min(100, Number(e.target.value)),
+                                      ),
+                                    )
+                                  }
+                                  className={`${control} pr-7`}
+                                />
+                                <span className="absolute right-2 top-2 text-xs font-bold text-cyan-300">
+                                  %
+                                </span>
+                              </div>
+                              <div className="mt-2 h-1.5 rounded-full bg-slate-800">
+                                <div
+                                  className={`h-full rounded-full ${visual.className}`}
+                                  style={{ width: `${a.progress}%` }}
+                                />
+                              </div>
+                              <span
+                                className={`mt-1 block text-[9px] font-bold uppercase ${visual.text}`}
+                              >
+                                {a.progress}% · {visual.label}
+                              </span>
+                            </>
+                          );
+                        })()}
                       </div>
-                    </Field>
-                    <Field label="Resultado / nota">
-                      <input
-                        value={a.result || ""}
-                        onChange={(e) =>
-                          updateActivity(a.id, "result", e.target.value)
-                        }
-                        className={control}
-                      />
                     </Field>
                     <button
                       aria-label="Eliminar actividad"
@@ -404,16 +493,43 @@ export const RelatedActionPlans: React.FC<Props> = ({
                       ×
                     </button>
                   </div>
-                  <div className="mt-2 max-w-xs">
+                  <div className="mt-3 grid gap-3 md:grid-cols-[minmax(0,2fr),minmax(180px,1fr)]">
+                    <Field label="Resultado / nota">
+                      <textarea
+                        value={a.result || ""}
+                        onChange={(e) =>
+                          updateActivity(a.id, "result", e.target.value)
+                        }
+                        rows={2}
+                        className={`${control} min-h-16 resize-y`}
+                      />
+                    </Field>
                     <Field label="Impacto">
-                      <select value={normalizeActionImpact(a.impact)} onChange={e => updateActivity(a.id, 'impact', e.target.value)} className={control}>
+                      <select
+                        value={normalizeActionImpact(a.impact)}
+                        onChange={(e) =>
+                          updateActivity(a.id, "impact", e.target.value)
+                        }
+                        className={control}
+                      >
                         <option value="NOT_EVALUATED">⚪ Por evaluar</option>
                         <option value="FAVORABLE">🟢 Impacto favorable</option>
                         <option value="PARTIAL">🟡 Impacto parcial</option>
-                        <option value="LOW_OR_NONE">🔴 Bajo / sin impacto</option>
+                        <option value="LOW_OR_NONE">
+                          🔴 Bajo / sin impacto
+                        </option>
                       </select>
+                      {(() => {
+                        const visual = impactVisual(a.impact);
+                        return (
+                          <span
+                            className={`mt-1 inline-flex rounded border border-white/10 px-2 py-1 text-[9px] font-bold uppercase ${visual.className}`}
+                          >
+                            {visual.icon} {visual.label}
+                          </span>
+                        );
+                      })()}
                     </Field>
-                    {(() => { const visual = impactVisual(a.impact); return <span className={`mt-1 inline-flex rounded border border-white/10 px-2 py-1 text-[9px] font-bold uppercase ${visual.className}`}>{visual.icon} {visual.label}</span>; })()}
                   </div>
                   <div className="mt-2 flex items-center gap-2 text-[10px] uppercase tracking-widest text-slate-500">
                     <span
@@ -433,12 +549,19 @@ export const RelatedActionPlans: React.FC<Props> = ({
           </div>
           <div className="mt-5 flex justify-end gap-3">
             {draft.id && !deleteConfirmation && (
-              <button type="button" onClick={() => setDeleteConfirmation(true)} className="mr-auto rounded-lg border border-rose-500/30 px-4 py-2 text-xs font-bold text-rose-300 hover:bg-rose-500/10">
+              <button
+                type="button"
+                onClick={() => setDeleteConfirmation(true)}
+                className="mr-auto rounded-lg border border-rose-500/30 px-4 py-2 text-xs font-bold text-rose-300 hover:bg-rose-500/10"
+              >
                 Eliminar plan
               </button>
             )}
             <button
-              onClick={() => setDraft(null)}
+              onClick={() => {
+                setDraft(null);
+                onCancelEdit?.();
+              }}
               className="text-xs text-slate-400"
             >
               Cancelar
@@ -452,12 +575,34 @@ export const RelatedActionPlans: React.FC<Props> = ({
             </button>
           </div>
           {draft.id && deleteConfirmation && (
-            <div className="mt-4 rounded-xl border border-rose-500/30 bg-rose-500/10 p-4" role="alertdialog" aria-label="¿Eliminar este plan?">
-              <p className="text-sm font-black text-rose-200">¿Eliminar este plan?</p>
-              <p className="mt-1 text-xs text-slate-300">Se eliminará el plan y sus actividades. El indicador y su historial no se modificarán.</p>
+            <div
+              className="mt-4 rounded-xl border border-rose-500/30 bg-rose-500/10 p-4"
+              role="alertdialog"
+              aria-label="¿Eliminar este plan?"
+            >
+              <p className="text-sm font-black text-rose-200">
+                ¿Eliminar este plan?
+              </p>
+              <p className="mt-1 text-xs text-slate-300">
+                Se eliminará el plan y sus actividades. El indicador y su
+                historial no se modificarán.
+              </p>
               <div className="mt-3 flex justify-end gap-3">
-                <button type="button" onClick={() => setDeleteConfirmation(false)} className="px-3 py-2 text-xs font-bold text-slate-300">Cancelar</button>
-                <button type="button" disabled={state === "saving"} onClick={() => void removePlan()} className="rounded-lg bg-rose-600 px-4 py-2 text-xs font-black text-white disabled:opacity-50">{state === "saving" ? "Eliminando…" : "Eliminar plan"}</button>
+                <button
+                  type="button"
+                  onClick={() => setDeleteConfirmation(false)}
+                  className="px-3 py-2 text-xs font-bold text-slate-300"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  disabled={state === "saving"}
+                  onClick={() => void removePlan()}
+                  className="rounded-lg bg-rose-600 px-4 py-2 text-xs font-black text-white disabled:opacity-50"
+                >
+                  {state === "saving" ? "Eliminando…" : "Eliminar plan"}
+                </button>
               </div>
             </div>
           )}

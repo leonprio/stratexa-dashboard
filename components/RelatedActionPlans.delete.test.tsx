@@ -48,6 +48,15 @@ describe("RelatedActionPlans delete contract", () => {
     expect(firebaseService.deleteActionPlan).not.toHaveBeenCalled();
   });
 
+  test("initialPlanId opens the exact plan in the editable canonical form", async () => {
+    const other = { ...plan, id: "plan-2", title: "Otro plan" };
+    (firebaseService.getActionPlansForIndicator as jest.Mock).mockResolvedValue([plan, other]);
+    render(<RelatedActionPlans {...props} initialPlanId="plan-2" />);
+    expect(await screen.findByDisplayValue("Otro plan")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Guardar plan" })).toBeInTheDocument();
+    expect(screen.queryByDisplayValue("Actividad")).toBeInTheDocument();
+  });
+
   test("new unsaved plan never exposes delete", async () => {
     (firebaseService.getActionPlansForIndicator as jest.Mock).mockResolvedValue([]);
     render(<RelatedActionPlans {...props} />);

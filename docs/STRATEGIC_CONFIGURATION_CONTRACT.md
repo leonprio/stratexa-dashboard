@@ -17,4 +17,6 @@ La futura **Vista por Objetivos** es un consumer de la misma estructura: usa `ow
 
 No debe introducir cálculos de KPI, YTD, severidad o desempeño en Configuración Estratégica.
 
+La Vista por Objetivos es una superficie ejecutiva compacta: condición, diagnóstico, KPI, ejecución y decisión. La decisión se deriva de reglas deterministas visibles (AI_USED = NO). El progreso de actividades es independiente del impacto: el primero expresa avance de ejecución y el segundo resultado/efecto observado.
+
 La lectura estratégica sólo usa dashboards ya autorizados para el usuario. Puede mostrar el contexto mínimo del OE, pero KPI, OC y planes permanecen sujetos a tenant y área; los aliases físicos nunca amplían permisos.

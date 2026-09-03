@@ -15,7 +15,7 @@ import {
 } from '../../strategyTypes';
 import { Dashboard as DashboardType, User, GlobalUserRole } from '../../types';
 import { strategyService } from '../../services/strategyService';
-import { resolveStrategicKpiOwnership } from '../../strategyKpiOwnership';
+import { contributionPickerCatalog, contributionPickerCandidates, isOperationalDashboard } from '../../contributionConfiguration';
 
 export interface StrategyConfigModalProps {
   perspectives: StrategicPerspective[];
@@ -82,6 +82,8 @@ export const StrategyConfigModal: React.FC<StrategyConfigModalProps> = ({
   const [ocDescription, setOcDescription] = useState<string>('');
   const [selectedKpisForOC, setSelectedKpisForOC] = useState<string[]>([]); // array of "dashboardId_itemId"
   const [editingOCId, setEditingOCId] = useState<string | null>(null);
+  const [assignmentBaseline, setAssignmentBaseline] = useState<ContributionIndicatorAssignment[]>([]);
+  const [freshAssignments, setFreshAssignments] = useState<ContributionIndicatorAssignment[] | null>(null);
   const [pendingDeleteOC, setPendingDeleteOC] = useState<ContributionObjective | null>(null);
 
   React.useEffect(() => {
@@ -99,18 +101,19 @@ export const StrategyConfigModal: React.FC<StrategyConfigModalProps> = ({
     setOcTitle(oc.title);
     setOcDescription(oc.description || '');
     setSelectedKpisForOC(assignments.filter(a => a.contributionObjectiveId === oc.id).map(a => `${a.dashboardId}_${a.itemId}`));
+    setAssignmentBaseline(assignments.filter(a => a.contributionObjectiveId === oc.id));
   }, [initialObjectiveId, contributionObjectives, assignments, editingOCId]);
 
   // Extraer todas las áreas organizacionales activas de los tableros
   const availableAreas = useMemo(() => {
     const set = new Set<string>();
-    dashboards.forEach(d => {
+    dashboards.filter(d => isOperationalDashboard(d) && d.clientId === selectedClientId).forEach(d => {
       if (d.area && d.area.trim()) {
         set.add(d.area.trim().toUpperCase());
       }
     });
     return Array.from(set).sort();
-  }, [dashboards]);
+  }, [dashboards, selectedClientId]);
 
   // Inicialización de área seleccionada
   React.useEffect(() => {
@@ -293,33 +296,10 @@ export const StrategyConfigModal: React.FC<StrategyConfigModalProps> = ({
     }
   };
 
-  // Obtener KPIs disponibles para el área seleccionada en OC
-  const strategicKpiOwnership = useMemo(() => resolveStrategicKpiOwnership(dashboards, objectives, contributionObjectives, assignments), [dashboards, objectives, contributionObjectives, assignments]);
-  const areaDashboardsAndItems = useMemo(() => {
-    if (!ocAreaName) return [];
-    const normArea = ocAreaName.trim().toUpperCase();
-    const areaCfg = resolveAreaStrategyConfig(normArea, areaConfigs);
-    const areaPhysicalKeys = new Set<string>();
-
-    dashboards.forEach(d => {
-      const dAreaNorm = (d.area || '').trim().toUpperCase();
-      const isMatch = dAreaNorm === normArea || (areaCfg && (dAreaNorm === areaCfg.areaName.toUpperCase() || (areaCfg.aliases && areaCfg.aliases.some(a => a.toUpperCase() === dAreaNorm))));
-
-      if (isMatch) {
-        (d.items || []).forEach(it => {
-          areaPhysicalKeys.add(`${d.id}_${it.id}`);
-        });
-      }
-    });
-
-    return strategicKpiOwnership.canonicalKpis.flatMap(candidate => {
-      const areaAlias = candidate.physicalAliases.find(alias => areaPhysicalKeys.has(`${alias.dashboard.id}_${alias.item.id}`));
-      if (!areaAlias) return [];
-      const owner = strategicKpiOwnership.ownershipByCanonicalKpi.get(candidate.identity);
-      if (owner && owner.contributionObjectiveId !== editingOCId) return [];
-      return [{ dashboard: areaAlias.dashboard, item: areaAlias.item, candidate }];
-    });
-  }, [ocAreaName, areaConfigs, strategicKpiOwnership, editingOCId]);
+  const operationalCatalog = useMemo(() => contributionPickerCatalog(dashboards, selectedClientId), [dashboards, selectedClientId]);
+  const areaDashboardsAndItems = useMemo(() => contributionPickerCandidates(
+    dashboards, selectedClientId, ocAreaName, areaConfigs, editingOCId, freshAssignments || assignments,
+  ), [dashboards, selectedClientId, ocAreaName, areaConfigs, editingOCId, freshAssignments, assignments]);
 
   // Toggle KPI selección
   const toggleKpiSelection = (dashId: number | string, itemId: number | string) => {
@@ -329,17 +309,24 @@ export const StrategyConfigModal: React.FC<StrategyConfigModalProps> = ({
     );
   };
 
-  const startEditOC = (oc: ContributionObjective) => {
+  const startEditOC = async (oc: ContributionObjective) => {
+    setLoading(true);
+    let persisted: ContributionIndicatorAssignment[];
+    try { persisted = await strategyService.getAssignments(selectedClientId); }
+    catch (error: any) { setErrorMsg(error.message || 'No fue posible leer asignaciones.'); setLoading(false); return; }
+    setFreshAssignments(persisted);
+    setAssignmentBaseline(persisted.filter(a=>a.contributionObjectiveId===oc.id));
     setEditingOCId(oc.id);
     setOcAreaName(oc.areaName || 'GENERAL');
     setOcPrimaryOEId(oc.primaryStrategicObjectiveId);
     setOcTitle(oc.title);
     setOcDescription(oc.description || '');
-    setSelectedKpisForOC(assignments
+    setSelectedKpisForOC(persisted
       .filter(a => a.contributionObjectiveId === oc.id)
       .map(a => `${a.dashboardId}_${a.itemId}`));
     setErrorMsg(null);
     setSuccessMsg(null);
+    setLoading(false);
   };
 
   const cancelEditOC = () => {
@@ -365,7 +352,16 @@ export const StrategyConfigModal: React.FC<StrategyConfigModalProps> = ({
 
       const areaCfg = resolveAreaStrategyConfig(ocAreaName, areaConfigs);
 
-      const savedOC = await strategyService.saveContributionObjective({
+      const existingOC = contributionObjectives.find(oc=>oc.id===editingOCId);
+      const definitionUnchanged = existingOC && existingOC.areaName === ocAreaName && existingOC.primaryStrategicObjectiveId === ocPrimaryOEId && existingOC.title === ocTitle.trim() && (existingOC.description || '') === ocDescription.trim();
+      // Validate every selection before any definition or assignment write.
+      const kpiItems = selectedKpisForOC.map(key => {
+        const candidate = operationalCatalog.find(kpi => kpi.physicalAliases.some(alias => `${alias.dashboard.id}_${alias.item.id}` === key));
+        const selectedAlias = candidate?.physicalAliases.find(alias => `${alias.dashboard.id}_${alias.item.id}` === key);
+        if (!selectedAlias || !candidate) throw new Error('Existe una asignación virtual o no resoluble. Revisa su identidad operativa antes de guardar.');
+        return { dashboardId: selectedAlias.dashboard.id, itemId: selectedAlias.item.id, logicalKpiId: candidate.identity, year:selectedAlias.dashboard.year, physicalAliases:candidate.physicalAliases.map(alias=>({dashboardId:alias.dashboard.id,itemId:alias.item.id})) };
+      });
+      const savedOC = definitionUnchanged ? existingOC : await strategyService.saveContributionObjective({
         id: editingOCId || undefined,
         areaName: ocAreaName,
         areaConfigId: areaCfg?.id,
@@ -375,22 +371,16 @@ export const StrategyConfigModal: React.FC<StrategyConfigModalProps> = ({
         clientId: selectedClientId
       });
 
-      // Guardar asignación de KPIs seleccionados
-      const kpiItems = selectedKpisForOC.map(key => {
-        const candidate = strategicKpiOwnership.canonicalKpis.find(kpi => kpi.physicalAliases.some(alias => `${alias.dashboard.id}_${alias.item.id}` === key));
-        const selectedAlias = candidate?.physicalAliases.find(alias => `${alias.dashboard.id}_${alias.item.id}` === key);
-        if (!selectedAlias) throw new Error('No fue posible resolver la identidad canónica del indicador.');
-        return { dashboardId: selectedAlias.dashboard.id, itemId: selectedAlias.item.id, physicalAliases: candidate.physicalAliases.map(alias => ({ dashboardId: alias.dashboard.id, itemId: alias.item.id })) };
-      });
-
-      await strategyService.saveAssignmentsForOC(savedOC.id, kpiItems, selectedClientId);
+      await strategyService.saveAssignmentsForOC(savedOC.id, kpiItems, selectedClientId, {expectedAssignments: editingOCId ? assignmentBaseline : []});
+      const persisted = await strategyService.getAssignments(selectedClientId);
+      setFreshAssignments(persisted);
+      await onRefreshData();
 
       setOcTitle('');
       setOcDescription('');
       setSelectedKpisForOC([]);
       setSuccessMsg(`Objetivo de Contribución ${savedOC.displayCode} ${editingOCId ? 'actualizado' : 'creado'} correctamente.`);
       setEditingOCId(null);
-      await onRefreshData();
     } catch (err: any) {
       setErrorMsg(err.message || 'Error al guardar Objetivo de Contribución.');
     } finally {
@@ -521,7 +511,6 @@ export const StrategyConfigModal: React.FC<StrategyConfigModalProps> = ({
 
         {/* Content Body */}
         <div className="p-6 overflow-y-auto flex-1 space-y-6">
-
           {/* SECTION 0: PERSPECTIVAS BSC (4 SLOTS CONFIGURABLES) */}
           {activeSection === 'perspectives' && (
             <form onSubmit={handleSavePerspectives} className="max-w-3xl mx-auto space-y-6">
@@ -912,9 +901,10 @@ export const StrategyConfigModal: React.FC<StrategyConfigModalProps> = ({
                       <p className="text-xs text-slate-500 italic">No hay KPIs registrados en el área {ocAreaName}.</p>
                     ) : (
                       <div className="max-h-40 overflow-y-auto space-y-1 p-2 bg-slate-900 rounded-lg border border-slate-800">
-                        {areaDashboardsAndItems.map(({ dashboard, item }) => {
+                        {areaDashboardsAndItems.map(({ dashboard, item, candidate }) => {
                           const key = `${dashboard.id}_${item.id}`;
-                          const isChecked = selectedKpisForOC.includes(key);
+                          const canonicalKeys = candidate.physicalAliases.map(alias => `${alias.dashboard.id}_${alias.item.id}`);
+                          const isChecked = canonicalKeys.some(candidateKey => selectedKpisForOC.includes(candidateKey));
 
                           return (
                             <label
@@ -924,12 +914,15 @@ export const StrategyConfigModal: React.FC<StrategyConfigModalProps> = ({
                               <input
                                 type="checkbox"
                                 checked={isChecked}
-                                onChange={() => toggleKpiSelection(dashboard.id, item.id)}
+                                onChange={() => setSelectedKpisForOC(prev => isChecked
+                                  ? prev.filter(value => !canonicalKeys.includes(value))
+                                  : [...prev, key])}
                                 className="rounded border-slate-700 text-emerald-500 focus:ring-emerald-500"
                               />
-                              <span className="truncate">
+                              <span className="min-w-0 flex-1 break-words">
                                 <strong>[{dashboard.title}]</strong> {item.indicator}
                               </span>
+                              {isChecked && <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setSelectedKpisForOC(prev => prev.filter(value => !canonicalKeys.includes(value))); }} className="text-[10px] font-bold text-rose-400 hover:text-rose-300">QUITAR</button>}
                             </label>
                           );
                         })}
@@ -1004,7 +997,7 @@ export const StrategyConfigModal: React.FC<StrategyConfigModalProps> = ({
                           </div>
 
                           <div className="flex items-center gap-1 shrink-0">
-                            <button onClick={() => startEditOC(oc)} className="text-slate-500 hover:text-emerald-400 p-2 rounded transition-colors" title="Editar OC"><Edit2 className="w-4 h-4" /></button>
+                            <button disabled={loading} onClick={() => startEditOC(oc)} className="text-slate-500 hover:text-emerald-400 p-2 rounded transition-colors" title="Editar OC"><Edit2 className="w-4 h-4" /></button>
                             <button onClick={() => setPendingDeleteOC(oc)} className="text-slate-500 hover:text-red-400 p-2 rounded transition-colors" title="Eliminar OC"><Trash2 className="w-4 h-4" /></button>
                           </div>
                         </div>

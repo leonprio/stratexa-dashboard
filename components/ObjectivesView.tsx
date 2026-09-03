@@ -13,6 +13,7 @@ import {
   resolveStrategicKpiOwnership,
 } from "../strategyKpiOwnership";
 import type { StrategicKpiCandidate } from "../strategyKpiOwnership";
+import { buildContributionMatrixViewModel } from "../contributionMatrixViewModel";
 import { ContributionExecutiveCell } from "./strategy/ContributionExecutiveCell";
 import { firebaseService } from "../services/firebaseService";
 import {
@@ -40,6 +41,13 @@ type Props = {
     itemId: number | string,
     source?: "objectives" | "areas" | "contribution" | "plans" | "control",
   ) => void;
+  onNavigateToPlan?: (target: {
+    actionPlanId: number | string;
+    dashboardId: number | string;
+    itemId: number | string;
+    clientId?: string;
+    year: number;
+  }) => void;
 };
 
 const statusVisual = {
@@ -63,6 +71,7 @@ export const ObjectivesView: React.FC<Props> = ({
   year,
   initialReadingMode = "objectives",
   onNavigateToKpi,
+  onNavigateToPlan,
 }) => {
   const [readingMode, setReadingMode] = useState<
     "objectives" | "areas" | "contribution" | "plans"
@@ -70,7 +79,6 @@ export const ObjectivesView: React.FC<Props> = ({
   const [planFilter, setPlanFilter] = useState("TODOS");
   const [descending, setDescending] = useState(false);
   const [expandedTrend, setExpandedTrend] = useState<string | null>(null);
-  const [selectedPlan, setSelectedPlan] = useState<ActionPlan | null>(null);
   const [plansByObjective, setPlansByObjective] = useState<
     Map<string, ActionPlan[]>
   >(new Map());
@@ -98,6 +106,7 @@ export const ObjectivesView: React.FC<Props> = ({
       classifyStrategicContributionKpis(ownership, contributions, assignments),
     [ownership, contributions, assignments],
   );
+  const contributionMatrix = useMemo(() => buildContributionMatrixViewModel(sourceDashboards, objectives, contributions, areaConfigs, assignments), [sourceDashboards, objectives, contributions, areaConfigs, assignments]);
   const orderedObjectives = useMemo(
     () =>
       [...objectives].sort((a, b) => {
@@ -228,9 +237,9 @@ export const ObjectivesView: React.FC<Props> = ({
         ))}
       </div>
       {readingMode === "contribution" && (
-        <p className="text-[10px] text-slate-500">
-          Lectura de indicadores directos y contribuciones por área.
-        </p>
+        <div className="space-y-1 text-[10px] text-slate-500">
+          <p>Áreas, objetivos de contribución e indicadores estratégicos.</p>
+        </div>
       )}
       {objectiveRows.length === 0 && (
         <div className="rounded-2xl border border-white/10 bg-slate-900/50 p-8 text-center text-sm text-slate-400">
@@ -277,11 +286,7 @@ export const ObjectivesView: React.FC<Props> = ({
                   (oc.areaConfigId || areaIdentity(oc.areaName)) === areaKey,
               )
               .map((oc) => {
-                const kpis = (
-                  contributionPresentation.contributionKpisByContributionObjective.get(
-                    oc.id,
-                  ) || []
-                ).map((k) => ({
+                const kpis = (contributionMatrix.strategicObjectives.find(row => row.strategicObjective.id === objective.id)?.contributionObjectives.find(row => row.contributionObjective.id === oc.id)?.kpis || []).map((k) => ({
                   identity: k.identity,
                   item: k.item,
                   dashboard: k.dashboard,
@@ -312,25 +317,12 @@ export const ObjectivesView: React.FC<Props> = ({
               className="space-y-3"
               aria-label="Matriz de contribución ejecutiva"
             >
-              <div
-                className="flex flex-wrap items-center gap-3 rounded-xl border border-white/10 bg-slate-950/30 px-3 py-2 text-[9px] font-black uppercase tracking-widest text-slate-400"
-                aria-label="Leyenda de contribución"
-              >
-                <span className="text-cyan-300">DIRECTO AL OE</span>
-                <span className="font-normal normal-case tracking-normal text-slate-500">
-                  alineado directamente al OE
-                </span>
-                <span className="text-violet-300">VÍA OC</span>
-                <span className="font-normal normal-case tracking-normal text-slate-500">
-                  alineado mediante un Objetivo de Contribución del Área
-                </span>
-              </div>
               <div className="overflow-x-auto rounded-2xl border border-white/10">
-                <div className="min-w-[760px]">
+                <div className="min-w-[1180px]">
                   <div
                     className="grid"
                     style={{
-                      gridTemplateColumns: `minmax(260px, 1.2fr) repeat(${areas.length}, minmax(170px, 1fr))`,
+                      gridTemplateColumns: `minmax(360px, 32fr) repeat(${areas.length}, minmax(240px, 22.666fr))`,
                     }}
                   >
                     <div className="p-4 text-[9px] font-black uppercase tracking-widest text-slate-500">
@@ -346,16 +338,12 @@ export const ObjectivesView: React.FC<Props> = ({
                     ))}
                   </div>
                   {objectiveRows.map(({ objective, items }) => {
-                    const directKpis =
-                      contributionPresentation.directKpisByStrategicObjective.get(
-                        objective.id,
-                      ) || [];
                     return (
                       <div
                         key={objective.id}
                         className="grid border-t border-white/5"
                         style={{
-                          gridTemplateColumns: `minmax(260px, 1.2fr) repeat(${areas.length}, minmax(170px, 1fr))`,
+                          gridTemplateColumns: `minmax(360px, 32fr) repeat(${areas.length}, minmax(240px, 22.666fr))`,
                         }}
                       >
                         <div className="p-4">
@@ -377,58 +365,6 @@ export const ObjectivesView: React.FC<Props> = ({
                               ).status
                             }
                           </p>
-                          {directKpis.length > 0 && (
-                            <div className="mt-4 border-t border-cyan-500/15 pt-3">
-                              <p className="text-[9px] font-black uppercase tracking-widest text-cyan-300">
-                                Indicadores directos
-                              </p>
-                              <div className="mt-2 space-y-1">
-                                {directKpis.map((kpi) => {
-                                  const kpiReading = reading(
-                                    kpi.item,
-                                    kpi.dashboard,
-                                  );
-                                  const visual =
-                                    statusVisual[kpiReading.status];
-                                  return (
-                                    <div
-                                      key={kpi.identity}
-                                      className="flex items-center justify-between gap-2 text-[10px]"
-                                    >
-                                      <span className="flex min-w-0 items-center gap-1 text-slate-200">
-                                        <span
-                                          aria-hidden="true"
-                                          className={`h-1.5 w-1.5 shrink-0 rounded-full ${visual.split(" ")[0]}`}
-                                        />
-                                        <span className="whitespace-normal">
-                                          {kpi.item.indicator || kpi.item.name}
-                                        </span>
-                                      </span>
-                                      <span className="shrink-0 text-right text-slate-400">
-                                        {formatExecutivePercent(
-                                          kpiReading.score,
-                                        )}{" "}
-                                        · {kpiReading.status}
-                                      </span>
-                                      <button
-                                        type="button"
-                                        className="shrink-0 font-black uppercase tracking-widest text-cyan-300"
-                                        onClick={() =>
-                                          onNavigateToKpi?.(
-                                            kpi.dashboard.id,
-                                            kpi.item.id,
-                                            "contribution",
-                                          )
-                                        }
-                                      >
-                                        REVISAR KPI
-                                      </button>
-                                    </div>
-                                  );
-                                })}
-                              </div>
-                            </div>
-                          )}
                         </div>
                         {areas.map(([key]) => (
                           <div
@@ -1401,7 +1337,23 @@ export const ObjectivesView: React.FC<Props> = ({
         <PlanDirectoryFinal
           plans={visiblePlans}
           objectiveRows={objectiveRows}
-          onOpenPlan={setSelectedPlan}
+          onOpenPlan={(plan) => {
+            const owner = objectiveRows
+              .flatMap((row) => row.items)
+              .find(
+                (candidate) =>
+                  String(candidate.item.id) === String(plan.indicatorId),
+              );
+            if (owner) {
+              onNavigateToPlan?.({
+                actionPlanId: plan.id,
+                dashboardId: owner.dashboard.id,
+                itemId: owner.item.id,
+                clientId: plan.clientId || dashboard.clientId,
+                year,
+              });
+            }
+          }}
           onNavigateToKpi={(dashboardId, itemId) =>
             onNavigateToKpi?.(dashboardId, itemId, "plans")
           }
@@ -1643,45 +1595,6 @@ export const ObjectivesView: React.FC<Props> = ({
             </div>
           );
         })()}
-      {selectedPlan && (
-        <div
-          role="dialog"
-          aria-label={`Plan ${selectedPlan.title}`}
-          className="rounded-2xl border border-cyan-500/30 bg-slate-900 p-5"
-        >
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <p className="text-[9px] font-black uppercase tracking-widest text-cyan-300">
-                Detalle del plan
-              </p>
-              <h3 className="mt-1 text-lg font-black text-white">
-                {selectedPlan.title}
-              </h3>
-            </div>
-            <button
-              type="button"
-              onClick={() => setSelectedPlan(null)}
-              className="text-xs font-black uppercase text-slate-400"
-            >
-              Cerrar
-            </button>
-          </div>
-          <p className="mt-3 text-sm text-slate-300">
-            {selectedPlan.description || "Sin descripción"}
-          </p>
-          <div className="mt-4 space-y-2">
-            {(selectedPlan.activities || []).map((activity) => (
-              <div
-                key={activity.id}
-                className="rounded-lg border border-white/10 px-3 py-2 text-xs text-slate-300"
-              >
-                {activity.title || "Actividad sin título"} · {activity.progress}
-                %
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
       {unlinked.length > 0 && (
         <div className="rounded-2xl border border-dashed border-amber-500/30 bg-amber-500/5 p-4">
           <p className="text-[10px] font-black uppercase tracking-widest text-amber-300">

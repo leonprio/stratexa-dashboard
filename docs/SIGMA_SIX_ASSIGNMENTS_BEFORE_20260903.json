@@ -1,0 +1,22 @@
+{
+  "timestamp":"2026-09-03T18:41:49.548Z",
+  "client":"CEMENTOS_SIGMA",
+  "year":2026,
+  "sourceHead":"e405e56cb47babe23f5e091d9923433d307e5ff1",
+  "collection":"tbl_contributionIndicatorAssignments",
+  "baseline":{"direct":5,"viaOC":4,"objectives":9,"contribution":4,"OCCOMV01":["Margen de Contribución Neto"],"OCCOMV02":["Tasa de Retención de Clientes"],"OCLOGT01":[],"OCLOGT02":["Índice de Mermas en Tránsito"],"OCOPAL01":["Rotación de Inventario"],"OCOPAL02":[]},
+  "documents":[
+    {"id":"asgn_oe_seed_sigma_oe01_1769440535444_2","createdAt":"2026-09-03T18:16:08.577Z","clientId":"CEMENTOS_SIGMA","itemId":2,"strategicObjectiveId":"seed_sigma_oe01","dashboardId":1769440535444},
+    {"id":"asgn_oe_seed_sigma_oe02_1769440535445_1","dashboardId":1769440535445,"clientId":"CEMENTOS_SIGMA","strategicObjectiveId":"seed_sigma_oe02","itemId":1,"createdAt":"2026-09-03T17:56:43.154Z"},
+    {"id":"asgn_oe_seed_sigma_oe03_1769440535444_1","dashboardId":1769440535444,"createdAt":"2026-09-03T17:57:04.646Z","itemId":1,"strategicObjectiveId":"seed_sigma_oe03","clientId":"CEMENTOS_SIGMA"},
+    {"id":"asgn_oe_seed_sigma_oe04_1769440535446_2","clientId":"CEMENTOS_SIGMA","dashboardId":1769440535446,"strategicObjectiveId":"seed_sigma_oe04","itemId":2,"createdAt":"2026-09-03T17:55:33.598Z"},
+    {"id":"asgn_oe_seed_sigma_oe05_1769440535446_3","strategicObjectiveId":"seed_sigma_oe05","createdAt":"2026-09-03T17:53:13.494Z","dashboardId":1769440535446,"clientId":"CEMENTOS_SIGMA","itemId":3},
+    {"id":"asgn_seed_sigma_oc04_agg-GENERAL-2026_-102","dashboardId":"agg-GENERAL-2026","createdAt":"2026-09-03T16:51:59.009Z","contributionObjectiveId":"seed_sigma_oc04","itemId":-102,"clientId":"CEMENTOS_SIGMA"}
+  ],
+  "protectedAssignments":[
+    {"id":"asgn_seed_sigma_oc01_1769440535445_2","itemId":2,"dashboardId":1769440535445,"clientId":"CEMENTOS_SIGMA","contributionObjectiveId":"seed_sigma_oc01","createdAt":"2026-09-03T16:50:01.488Z"},
+    {"id":"asgn_seed_sigma_oc02_1769440535445_3","itemId":3,"contributionObjectiveId":"seed_sigma_oc02","createdAt":"2026-09-03T16:50:50.905Z","clientId":"CEMENTOS_SIGMA","dashboardId":1769440535445},
+    {"id":"sigma_test_oc_operations","itemId":"1","contributionObjectiveId":"seed_sigma_oc05","dashboardId":"1769440535446","clientId":"CEMENTOS_SIGMA"}
+  ],
+  "mermasVerified":{"dashboardId":1769440535444,"itemId":3,"indicator":"Índice de Mermas en Tránsito","identity":"label:INDICE DE MERMAS EN TRANSITO","clientId":"CEMENTOS_SIGMA","year":2026,"dashboardTitle":"Logística y Transporte","contributionObjectiveId":"seed_sigma_oc04","primaryStrategicObjectiveId":"seed_sigma_oe03","evidence":"Authenticated persisted operational catalogue and current Contribution UI under OCLOGT02. Legacy assignment contains no stored logical-name field."}
+}

@@ -294,13 +294,13 @@ describe("ObjectivesView", () => {
     };
     render(<ObjectivesView dashboard={viewDashboard} objectives={[objective]} perspectives={[]} contributions={[{ ...contribution, areaName: "OPERACIONES" }, { id: "oc-empty", title: "OC vacío", areaName: "OPERACIONES", primaryStrategicObjectiveId: "oe1" } as any]} assignments={[{ strategicObjectiveId: "oe1", dashboardId: "d1", itemId: "direct" } as any, { contributionObjectiveId: "oc1", dashboardId: "d1", itemId: "via" } as any]} year={2026} />);
     fireEvent.click(screen.getByRole("tab", { name: "CONTRIBUCIÓN" }));
-    expect(screen.getByText("Indicadores directos")).toBeInTheDocument();
-    expect(screen.getByText("Costo directo")).toBeInTheDocument();
+    expect(screen.queryByText("Indicadores directos")).not.toBeInTheDocument();
+    expect(screen.queryByText("Costo directo")).not.toBeInTheDocument();
     expect(screen.getByText("KPI vía OC")).toBeInTheDocument();
     expect(screen.getByText("OC vacío")).toBeInTheDocument();
     expect(screen.getByText("SIN INDICADORES")).toBeInTheDocument();
-    expect(screen.getByText("Lectura de indicadores directos y contribuciones por área.")).toBeInTheDocument();
-    const reviewButtons = screen.getAllByRole("button", { name: "REVISAR KPI" });
-    expect(reviewButtons).toHaveLength(2);
+    expect(screen.getByText("Áreas, objetivos de contribución e indicadores estratégicos.")).toBeInTheDocument();
+    const reviewButtons = screen.getAllByRole("button", { name: "VER KPI" });
+    expect(reviewButtons).toHaveLength(1);
   });
 });

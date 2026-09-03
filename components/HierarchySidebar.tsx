@@ -345,7 +345,13 @@ const HierarchySidebar: React.FC<HierarchySidebarProps> = React.memo(({
         }
 
         nodes.push(...orphans);
-        return nodes;
+        // Los agregados técnicos siguen disponibles para cálculos, pero no deben
+        // competir con GENERAL como una opción de navegación equivalente.
+        return nodes.flatMap(node => {
+            if (!/CONSOLIDADO DIRECTIVO/i.test(node.label)) return [node];
+            if (node.children.length > 0) return node.children;
+            return [{ ...node, label: 'GENERAL', id: 'sg-GLOBAL-GENERAL' }];
+        });
     }, [dashboards, areaFilteredDashboards, allUsers, userProfile, isGlobalAdmin, isDirector, clientNorm, selectedArea, realDashboards.length, settings]);
 
     // 🛡️ REGLA v7.8.16: Sincronización de expansión NO DESTRUCTIVA

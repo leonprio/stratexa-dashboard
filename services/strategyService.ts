@@ -21,6 +21,7 @@ import {
 } from 'firebase/firestore';
 
 import { db } from '../firebase';
+import { saveOperationalAssignmentsForOC } from './contributionAssignmentPersistence';
 
 import {
   StrategicPerspective,
@@ -599,66 +600,7 @@ export const strategyService = {
     return snap.docs.map(d => ({ id: d.id, ...d.data() } as ContributionIndicatorAssignment));
   },
 
-  saveAssignmentsForOC: async (
-    ocId: string,
-    items: { dashboardId: number | string; itemId: number | string; physicalAliases?: { dashboardId: number | string; itemId: number | string }[] }[],
-    clientId?: string
-  ): Promise<boolean> => {
-    const targetClient = normalizeClientId(clientId);
-    // Defensa en profundidad: Verificar que el OC existe y pertenece al tenant
-    const ocRef = doc(db, CONTRIBUTION_OBJECTIVES_COLLECTION, ocId);
-    const ocSnap = await getDoc(ocRef);
-    if (!ocSnap.exists()) {
-      throw new Error(`Objetivo de contribución "${ocId}" no encontrado.`);
-    }
-
-    const ocData = ocSnap.data() as ContributionObjective;
-    if (ocData.clientId !== targetClient) {
-      throw new Error(`Acceso denegado: El objetivo de contribución pertenece al cliente "${ocData.clientId}".`);
-    }
-
-    const allAssignmentsSnap = await getDocs(query(collection(db, ASSIGNMENTS_COLLECTION), where('clientId', '==', targetClient)));
-    const contributions = await strategyService.getContributionObjectives(targetClient);
-    const contributionOwner = new Map(contributions.map(oc => [oc.id, oc.primaryStrategicObjectiveId]));
-    const requestedAliasKeys = new Set(items.flatMap(item => (item.physicalAliases?.length ? item.physicalAliases : [item]).map(alias => `${alias.dashboardId}_${alias.itemId}`)));
-    allAssignmentsSnap.docs.forEach(d => {
-      const assignment = d.data() as ContributionIndicatorAssignment;
-      if (assignment.contributionObjectiveId === ocId || !requestedAliasKeys.has(`${assignment.dashboardId}_${assignment.itemId}`)) return;
-      const destination = assignment.strategicObjectiveId || (assignment.contributionObjectiveId ? contributionOwner.get(assignment.contributionObjectiveId) : undefined);
-      if (destination) throw new Error('Este indicador ya está alineado con otro objetivo estratégico.');
-    });
-
-    const assignmentsRef = collection(db, ASSIGNMENTS_COLLECTION);
-    const q = query(assignmentsRef, where('contributionObjectiveId', '==', ocId), where('clientId', '==', targetClient));
-    const snap = await getDocs(q);
-
-    const batch = writeBatch(db);
-
-    // Borrar previas
-    snap.docs.forEach(d => batch.delete(d.ref));
-
-    // Agregar nuevas, deduplicando por la identidad física dashboardId/itemId.
-    const uniqueItems = Array.from(
-      new Map(items.map(item => [`${item.dashboardId}_${item.itemId}`, item])).values()
-    );
-    const now = new Date().toISOString();
-    uniqueItems.forEach(item => {
-      const docId = `asgn_${ocId}_${item.dashboardId}_${item.itemId}`;
-      const itemRef = doc(db, ASSIGNMENTS_COLLECTION, docId);
-      const data: ContributionIndicatorAssignment = {
-        id: docId,
-        contributionObjectiveId: ocId,
-        dashboardId: item.dashboardId,
-        itemId: item.itemId,
-        clientId: targetClient,
-        createdAt: now
-      };
-      batch.set(itemRef, JSON.parse(JSON.stringify(data)));
-    });
-
-    await batch.commit();
-    return true;
-  },
+  saveAssignmentsForOC: saveOperationalAssignmentsForOC,
 
   saveDirectAssignmentsForOE: async (
     objectiveId: string,
@@ -713,23 +655,16 @@ export const strategyService = {
     return true;
   },
 
-  removeDirectStrategicLogicalKpiAssignment: async (
-    clientId: string,
-    objectiveId: string,
-    aliases: { dashboardId: number | string; itemId: number | string }[]
-  ): Promise<number> => {
-    const targetClient = normalizeClientId(clientId);
-    const aliasKeys = new Set(aliases.map(alias => `${alias.dashboardId}_${alias.itemId}`));
-    const snap = await getDocs(query(collection(db, ASSIGNMENTS_COLLECTION), where('clientId', '==', targetClient)));
-    const removable = snap.docs.filter(d => {
-      const assignment = d.data() as ContributionIndicatorAssignment;
-      return assignment.strategicObjectiveId === objectiveId && aliasKeys.has(`${assignment.dashboardId}_${assignment.itemId}`);
-    });
-    if (removable.length === 0) return 0;
-    const batch = writeBatch(db);
-    removable.forEach(d => batch.delete(d.ref));
-    await batch.commit();
-    return removable.length;
+  removeContributionIndicatorAssignment: async (clientId: string, assignmentId: string): Promise<boolean> => {
+    const ref = doc(db, ASSIGNMENTS_COLLECTION, assignmentId);
+    const snap = await getDoc(ref);
+    if (!snap.exists()) return false;
+    const assignment = snap.data() as ContributionIndicatorAssignment;
+    if (assignment.clientId !== normalizeClientId(clientId) || !assignment.contributionObjectiveId) {
+      throw new Error('Asignación de contribución no válida para este cliente.');
+    }
+    await deleteDoc(ref);
+    return true;
   },
 
   // -----------------------------

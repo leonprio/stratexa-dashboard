@@ -1,3 +1,4 @@
+import { planContributionAssignments } from './contributionConfiguration';
 import { strategyService } from './services/strategyService';
 import {
   formatOCCode,
@@ -46,30 +47,14 @@ const installTransaction = (objective: Record<string, unknown>, counter: Record<
 describe('strategy counter safe rollback', () => {
   beforeEach(() => jest.clearAllMocks());
 
-  it('deduplicates physical KPI assignments and supports clearing them', async () => {
-    mockGetDoc.mockResolvedValue(snapshot({ id: 'oc1', clientId: 'LEÓN' }));
-    mockGetDocs.mockResolvedValue(docsSnapshot([{ id: 'old-assignment' }]));
-    const batch = { delete: jest.fn(), set: jest.fn(), commit: jest.fn().mockResolvedValue(undefined) };
-    mockWriteBatch.mockReturnValue(batch);
-
-    await strategyService.saveAssignmentsForOC('oc1', [
-      { dashboardId: 'd1', itemId: 'k1' },
-      { dashboardId: 'd1', itemId: 'k1' },
-      { dashboardId: 'd2', itemId: 'k2' }
-    ], 'LEÓN');
-
-    expect(batch.delete).toHaveBeenCalledTimes(1);
-    expect(batch.set).toHaveBeenCalledTimes(2);
-    expect(batch.set).toHaveBeenCalledWith(
-      expect.objectContaining({ id: 'asgn_oc1_d1_k1' }),
-      expect.objectContaining({ contributionObjectiveId: 'oc1', dashboardId: 'd1', itemId: 'k1', clientId: 'LEÓN' })
-    );
-
-    batch.delete.mockClear();
-    batch.set.mockClear();
-    await strategyService.saveAssignmentsForOC('oc1', [], 'LEÓN');
-    expect(batch.delete).toHaveBeenCalledTimes(1);
-    expect(batch.set).not.toHaveBeenCalled();
+  it('deduplicates physical assignments and clears only the selected OC', () => {
+    const oc = {id:'oc1',clientId:'LEÓN'} as any;
+    const previous = [{id:'old',clientId:'LEÓN',contributionObjectiveId:'oc1',dashboardId:'d0',itemId:'k0'}];
+    const plan = planContributionAssignments(oc, [{dashboardId:'d1',itemId:'k1'},{dashboardId:'d1',itemId:'k1'},{dashboardId:'d2',itemId:'k2'}], previous);
+    expect(plan.create).toHaveLength(2);
+    expect(plan.remove).toEqual(previous);
+    expect(planContributionAssignments(oc, [], previous).create).toHaveLength(0);
+    expect(planContributionAssignments(oc, [], previous).remove).toEqual(previous);
   });
 
   it('rejects a direct assignment when any physical alias belongs to another OE', async () => {
@@ -86,18 +71,12 @@ describe('strategy counter safe rollback', () => {
     expect(mockWriteBatch).not.toHaveBeenCalled();
   });
 
-  it('rejects an OC assignment when an alias is already owned by a direct OE', async () => {
-    mockGetDoc.mockResolvedValue(snapshot({ id: 'oc2', clientId: 'LEÓN', primaryStrategicObjectiveId: 'oe2' }));
-    mockGetDocs
-      .mockResolvedValueOnce(docsSnapshot([{ id: 'used', strategicObjectiveId: 'oe1', dashboardId: 'summary', itemId: 'income-copy', clientId: 'LEÓN' }]))
-      .mockResolvedValueOnce(docsSnapshot());
-
-    await expect(strategyService.saveAssignmentsForOC('oc2', [{
-      dashboardId: 'operational',
-      itemId: 'income',
-      physicalAliases: [{ dashboardId: 'operational', itemId: 'income' }, { dashboardId: 'summary', itemId: 'income-copy' }]
-    }], 'LEÓN')).rejects.toThrow('Este indicador ya está alineado con otro objetivo estratégico.');
-    expect(mockWriteBatch).not.toHaveBeenCalled();
+  it('moves a DIRECT alias but rejects an alias owned by another OC', () => {
+    const oc = {id:'oc2',clientId:'LEÓN'} as any;
+    const input = [{dashboardId:'operational',itemId:'income',physicalAliases:[{dashboardId:'summary',itemId:'income-copy'}]}];
+    const direct = {id:'used',clientId:'LEÓN',strategicObjectiveId:'oe1',dashboardId:'summary',itemId:'income-copy'};
+    expect(planContributionAssignments(oc,input,[direct]).remove).toEqual([direct]);
+    expect(() => planContributionAssignments(oc,input,[{...direct,contributionObjectiveId:'oc1'}])).toThrow('otro OC');
   });
 
   it.each([
