@@ -758,6 +758,7 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(
             currentDashboard={dashboard}
             globalThresholds={activeThresholds}
             year={year || 2026}
+            onNavigateToPlan={onNavigateToPlan}
             onNavigateToKpi={(dashboardId, itemId) =>
               onNavigateToKpi?.(dashboardId, itemId, "control")
             }

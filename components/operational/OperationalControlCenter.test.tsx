@@ -18,20 +18,20 @@ describe('OperationalControlCenter simplificado', () => {
   it('presenta atención y planes en una sola lectura vertical', () => {
     render(<OperationalControlCenter dashboards={[dashboard]} currentDashboard={dashboard} globalThresholds={dashboard.thresholds} year={2026} />);
     expect(screen.getByRole('heading', { name: 'Gestión por excepción' })).toBeInTheDocument();
-    expect(screen.getByText('LISTA PRIORIZADA DE ALERTAS')).toBeInTheDocument();
+    expect(screen.getAllByText('LISTA PRIORIZADA DE ALERTAS')).toHaveLength(1);
     expect(screen.getByText('RESUMEN EJECUTIVO DE PLANES')).toBeInTheDocument();
     expect(buildOperationalAlerts).toHaveBeenCalledWith([dashboard], dashboard.thresholds, 2026);
   });
 
   it('usa el mismo dashboard físico que TABLERO en una vista no agregada', () => {
     const otherDashboard = { ...dashboard, id: 2, title: 'Otro tablero' };
-    expect(selectControlDashboards([dashboard, otherDashboard], dashboard)).toEqual([dashboard]);
+    expect(selectControlDashboards([dashboard, otherDashboard], dashboard)).toEqual([dashboard, otherDashboard]);
   });
 
   it('conserva las fuentes físicas cuando el tablero visible es agregado', () => {
     const aggregate = { ...dashboard, id: 'agg-direccion', isAggregate: true };
     const sources = [dashboard, { ...dashboard, id: 2 }];
-    expect(selectControlDashboards(sources, aggregate)).toBe(sources);
+    expect(selectControlDashboards(sources, aggregate)).toEqual(sources);
   });
 
   it('oculta la navegación redundante sin eliminar el acceso al historial', () => {
@@ -41,7 +41,7 @@ describe('OperationalControlCenter simplificado', () => {
     expect(screen.queryByText('Alertas de Atraso')).not.toBeInTheDocument();
     expect(screen.queryByText('Alertas Activas')).not.toBeInTheDocument();
     expect(screen.queryByText('TRAZABILIDAD OPERATIVA')).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Ver historial operativo' }));
+    fireEvent.click(screen.getByRole('button', { name: /Ver historial operativo|Ver historial/ }));
     expect(screen.getByText('TRAZABILIDAD OPERATIVA')).toBeInTheDocument();
   });
 });

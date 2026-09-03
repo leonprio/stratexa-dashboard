@@ -8,6 +8,7 @@ interface OperationalAlertsCenterProps {
   year: number;
   compact?: boolean;
   onNavigateToKpi?: (dashboardId: number | string, itemId: number | string) => void;
+  exceptionFilter?: 'CRÍTICO' | 'REQUIERE ATENCIÓN' | 'DATA';
 }
 
 export const OperationalAlertsCenter: React.FC<OperationalAlertsCenterProps> = ({
@@ -15,7 +16,7 @@ export const OperationalAlertsCenter: React.FC<OperationalAlertsCenterProps> = (
   globalThresholds,
   year,
   compact = false,
-  onNavigateToKpi
+  onNavigateToKpi, exceptionFilter
 }) => {
   const [selectedSeverity, setSelectedSeverity] = useState<string>('TODAS');
   const [selectedDirection, setSelectedDirection] = useState<string>('TODAS');
@@ -26,14 +27,18 @@ export const OperationalAlertsCenter: React.FC<OperationalAlertsCenterProps> = (
     return buildOperationalAlerts(dashboards, globalThresholds, year);
   }, [dashboards, globalThresholds, year]);
 
+  const exceptionAlerts = useMemo(() => exceptionFilter === 'DATA'
+    ? allAlerts.filter(a => a.severity === 'DATOS PENDIENTES' || a.severity === 'RIESGO OCULTO')
+    : exceptionFilter ? allAlerts.filter(a => a.severity === exceptionFilter) : allAlerts.filter(a => !['BAJO CONTROL', 'SIN OBLIGACIÓN'].includes(a.severity)), [allAlerts, exceptionFilter]);
+
   // Listas para poblar filtros
   const directions = useMemo(() => {
     const set = new Set<string>();
-    allAlerts.forEach(a => {
+    exceptionAlerts.forEach(a => {
       if (a.direction) set.add(a.direction.trim().toUpperCase());
     });
     return ['TODAS', ...Array.from(set).sort()];
-  }, [allAlerts]);
+  }, [exceptionAlerts]);
 
   const areas = useMemo(() => {
     const set = new Set<string>();
@@ -45,14 +50,14 @@ export const OperationalAlertsCenter: React.FC<OperationalAlertsCenterProps> = (
 
   // Alertas filtradas
   const filteredAlerts = useMemo(() => {
-    return allAlerts.filter(a => {
+    return exceptionAlerts.filter(a => {
       const matchSeverity = selectedSeverity === 'TODAS' || a.severity === selectedSeverity;
       const matchDir = selectedDirection === 'TODAS' || a.direction === selectedDirection;
       const matchArea = selectedArea === 'TODAS' || a.area === selectedArea;
 
       return matchSeverity && matchDir && matchArea;
     });
-  }, [allAlerts, selectedSeverity, selectedDirection, selectedArea]);
+  }, [exceptionAlerts, selectedSeverity, selectedDirection, selectedArea]);
 
   // Métricas analíticas ejecutivas del alerts engine
   const executiveMetrics = useMemo(() => {
@@ -105,7 +110,7 @@ export const OperationalAlertsCenter: React.FC<OperationalAlertsCenterProps> = (
   };
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-500">
+    <div className={compact ? 'animate-in fade-in duration-500' : 'space-y-8 animate-in fade-in duration-500'}>
       
       {/* SECCIÓN 1: HEADER EJECUTIVO DEL ENGINE */}
       {!compact && <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
@@ -192,28 +197,26 @@ export const OperationalAlertsCenter: React.FC<OperationalAlertsCenterProps> = (
       </div>}
 
       {/* SECCIÓN 2: ALERTS CENTER CON FILTROS E INTERFAZ PREMIUM */}
-      <div className="glass-card rounded-[2rem] p-6 border border-white/5 shadow-2xl space-y-6">
+      <div className={`glass-card border border-white/5 shadow-2xl ${compact ? 'rounded-xl p-3' : 'rounded-[2rem] p-6'} space-y-3`}>
         
         {/* FILTROS INTERACTIVOS TÁCTILES */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-white/5 pb-5">
           <div className="flex flex-col">
-            <h3 className="text-base font-black text-white uppercase tracking-wider">{compact ? 'Requiere atención' : 'Centro de Alertas Activas'}</h3>
-            <span className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-1">
-              Monitoreo ejecutivo de rezagos y deterioro en tiempo real
-            </span>
+            <h3 className="text-sm font-black text-white uppercase tracking-wider">{compact ? 'Requiere atención' : 'Centro de Alertas Activas'}</h3>
+            {!compact && <span className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-1">Monitoreo ejecutivo de rezagos y deterioro en tiempo real</span>}
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
             
             {/* Filtro Severidad */}
             <div className="flex flex-col gap-1">
-              <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest px-1">Criticidad</span>
+              <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest px-1">Tipo de excepción</span>
               <select
                 value={selectedSeverity}
                 onChange={e => setSelectedSeverity(e.target.value)}
                 className="px-3 py-2 bg-slate-950/80 border border-white/10 rounded-xl text-[10px] font-black text-slate-300 uppercase tracking-tight outline-none focus:border-cyan-500 transition-all min-h-[44px]"
               >
-                <option value="TODAS">TODAS LAS CRITICIDADES</option>
+                <option value="TODAS">TODAS LAS EXCEPCIONES</option>
                 <option value="CRÍTICO">CRÍTICO</option>
                 <option value="REQUIERE ATENCIÓN">REQUIERE ATENCIÓN</option>
                 <option value="DATOS PENDIENTES">DATOS PENDIENTES</option>
@@ -223,8 +226,9 @@ export const OperationalAlertsCenter: React.FC<OperationalAlertsCenterProps> = (
               </select>
             </div>
 
-            {/* Filtro Dirección */}
-            <div className="flex flex-col gap-1">
+            <details className="flex flex-col gap-1">
+              <summary className="min-h-[44px] cursor-pointer list-none rounded-xl border border-white/10 px-3 py-2 text-[10px] font-black uppercase tracking-tight text-slate-400">Más filtros</summary>
+              <div className="mt-1 flex flex-col gap-1">
               <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest px-1">Dirección</span>
               <select
                 value={selectedDirection}
@@ -235,7 +239,8 @@ export const OperationalAlertsCenter: React.FC<OperationalAlertsCenterProps> = (
                   <option key={dir} value={dir}>{dir === 'TODAS' ? 'TODAS LAS DIRECCIONES' : dir}</option>
                 ))}
               </select>
-            </div>
+              </div>
+            </details>
 
             {/* Filtro Área */}
             <div className="flex flex-col gap-1">
@@ -267,8 +272,8 @@ export const OperationalAlertsCenter: React.FC<OperationalAlertsCenterProps> = (
         )}
 
         {/* TABLA ULTRA DENSA DE ALERTAS Y TRAZABILIDAD */}
-        <div className="overflow-x-auto pb-4 scrollbar-hide max-w-full">
-          <table className="w-full min-w-[1120px] table-fixed border-collapse">
+        <div className="overflow-x-auto pb-1 scrollbar-hide max-w-full">
+          <table className="w-full min-w-[720px] table-fixed border-collapse">
             <thead>
               <tr className="bg-slate-950/20">
                 <th className="w-[22%] p-3 text-left text-[9px] font-black text-slate-500 uppercase tracking-widest border-b border-white/5 rounded-tl-2xl">Origen / KPI</th>
@@ -276,8 +281,8 @@ export const OperationalAlertsCenter: React.FC<OperationalAlertsCenterProps> = (
                 <th className="p-3 text-center text-[9px] font-black text-slate-500 uppercase tracking-widest border-b border-white/5">Resultado</th>
                 <th className="w-[15%] p-3 text-center text-[9px] font-black text-slate-500 uppercase tracking-widest border-b border-white/5">Datos</th>
                 <th className="p-3 text-center text-[9px] font-black text-slate-500 uppercase tracking-widest border-b border-white/5">Confiabilidad</th>
-                <th className="p-3 text-center text-[9px] font-black text-slate-500 uppercase tracking-widest border-b border-white/5">Trazabilidad operativa</th>
-                <th className="p-3 text-center text-[9px] font-black text-slate-500 uppercase tracking-widest border-b border-white/5 rounded-tr-2xl">Aging</th>
+                <th className="hidden p-3 text-center text-[9px] font-black text-slate-500 uppercase tracking-widest border-b border-white/5">Trazabilidad operativa</th>
+                <th className="hidden p-3 text-center text-[9px] font-black text-slate-500 uppercase tracking-widest border-b border-white/5 rounded-tr-2xl">Aging</th>
               </tr>
             </thead>
             <tbody>
@@ -291,7 +296,7 @@ export const OperationalAlertsCenter: React.FC<OperationalAlertsCenterProps> = (
                     <td className="p-3 text-[11px] font-black text-white uppercase tracking-tight max-w-[260px]">
                       <div className="flex flex-col">
                         <span className="truncate">{alert.indicator}</span>
-                        <span className="mt-1 text-[8px] font-black text-cyan-400 opacity-70 group-hover:opacity-100">REVISAR →</span>
+                        <span className="mt-1 text-[8px] font-black text-cyan-400 opacity-70 group-hover:opacity-100"><span>REVISAR →</span><span className="ml-2">VER KPI</span></span>
                         <span className="text-[7px] text-slate-500 font-bold uppercase tracking-widest mt-0.5">
                           {alert.direction} • {alert.area}
                         </span>
@@ -335,7 +340,7 @@ export const OperationalAlertsCenter: React.FC<OperationalAlertsCenterProps> = (
                     </td>
 
                     {/* TRAZABILIDAD (FUTURA AUTOMATIZACIÓN) */}
-                    <td className="p-3 text-center text-[9px] font-bold text-slate-400 max-w-[180px] truncate">
+                    <td className="hidden p-3 text-center text-[9px] font-bold text-slate-400 max-w-[180px] truncate">
                       <div className="flex flex-col items-start leading-tight">
                         <span className="text-white truncate max-w-full">{alert.traceability.lastOperationalChange}</span>
                         <span className="text-[8px] text-slate-400 font-black uppercase mt-0.5">Responsable: {alert.traceability.lastUpdatedBy === 'SIN RESPONSABLE REGISTRADO' ? 'SIN REGISTRAR' : alert.traceability.lastUpdatedBy}</span>
@@ -343,7 +348,7 @@ export const OperationalAlertsCenter: React.FC<OperationalAlertsCenterProps> = (
                     </td>
 
                     {/* AGING OPERATIVO */}
-                    <td className="p-3 text-center text-[10px] font-black text-white tabular-nums">
+                    <td className="hidden p-3 text-center text-[10px] font-black text-white tabular-nums">
                       <span className={`px-2 py-0.5 rounded ${alert.stalenessDays >= 60 ? 'bg-rose-500/10 text-rose-400' : 'bg-slate-900/60 text-slate-300'}`}>
                         {alert.stalenessDays > 0 ? `${alert.stalenessDays} días` : alert.dataStatus === 'SIN OBLIGACIÓN' ? 'NO APLICA' : 'AL DÍA'}
                       </span>
@@ -357,7 +362,7 @@ export const OperationalAlertsCenter: React.FC<OperationalAlertsCenterProps> = (
               {filteredAlerts.length === 0 && (
                 <tr>
                   <td
-                    colSpan={7}
+                    colSpan={5}
                     className="p-12 text-center text-[10px] font-black uppercase tracking-widest text-slate-500 bg-slate-900/10 border-b border-white/5 rounded-b-2xl"
                   >
                     🎉 Todo en orden: No se encontraron alertas operativas para el filtro actual

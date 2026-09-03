@@ -55,11 +55,10 @@ describe('OperationalAlertsCenter UX ejecutiva', () => {
     expect(screen.getAllByText('RIESGO OCULTO').length).toBeGreaterThan(0);
   });
 
-  it('muestra guion y NO EVALUABLE para 0/0', () => {
+  it('excluye KPIs sin obligación del listado ejecutivo', () => {
     (buildOperationalAlerts as jest.Mock).mockReturnValue([{ id: 9, indicator: 'NUEVAS ASESORÍAS', severity: 'SIN OBLIGACIÓN', trend: 'NO EVALUABLE', performanceScore: 0, performanceLabel: 'NO EVALUABLE', dataStatus: 'SIN OBLIGACIÓN', captureRate: 100, reliabilityScore: 100, expectedPeriods: 0, missingPeriods: 0, stalenessDays: 0, isHiddenRisk: false, traceability: { lastOperationalChange: 'KPI creado en sistema', lastUpdatedBy: 'X' } }]);
     render(<OperationalAlertsCenter dashboards={[]} globalThresholds={{ onTrack: 90, atRisk: 80 }} year={2026} compact />);
-    expect(screen.getAllByText('—').length).toBeGreaterThan(0);
-    expect(screen.getByText('NO EVALUABLE')).toBeInTheDocument();
-    expect(screen.queryByText('0%')).not.toBeInTheDocument();
+    expect(screen.queryByText('NUEVAS ASESORÍAS')).not.toBeInTheDocument();
+    expect(screen.getByText(/No se encontraron alertas operativas/)).toBeInTheDocument();
   });
 });
