@@ -745,8 +745,11 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(
             year={year}
             allDashboards={allDashboards}
             currentDashboardId={dashboard.id}
+            objectives={objectives}
             user={currentUser}
             onClose={() => setActiveView("dashboard")}
+            onNavigateToControl={() => setActiveView("control")}
+            onNavigateToObjectives={() => setActiveView("objectives")}
             onEditItem={(id) => {
               setSelectedItemId(id);
               setActiveView("dashboard");
