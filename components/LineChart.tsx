@@ -10,6 +10,7 @@ interface LineChartProps {
   status: ComplianceStatus;
   indicator?: string; // Optional indicator name for unique gradient IDs
   frequency?: 'monthly' | 'weekly';
+  compact?: boolean;
 }
 
 /**
@@ -21,7 +22,7 @@ interface LineChartProps {
  * @param {LineChartProps} props - Propiedades para los datos y configuración del gráfico.
  * @returns {JSX.Element} Gráfico SVG responsivo.
  */
-export const LineChart: React.FC<LineChartProps> = React.memo(({ progressData, goalData, unit: _unit, type, status, indicator = 'chart', frequency = 'monthly' }) => {
+export const LineChart: React.FC<LineChartProps> = React.memo(({ progressData, goalData, unit: _unit, type, status, indicator = 'chart', frequency = 'monthly', compact = false }) => {
   const isWeekly = frequency === 'weekly';
   const numPeriods = progressData.length;
   const [hoveredIdx, setHoveredIdx] = React.useState<number | null>(null);
@@ -97,8 +98,8 @@ export const LineChart: React.FC<LineChartProps> = React.memo(({ progressData, g
   const dynamicLeftPadding = Math.max(65, Math.min(110, maxLabelCharCount * 7.5 + 20));
 
   const width = 640;
-  const height = 170;
-  const padding = { top: 20, right: 30, bottom: 28, left: dynamicLeftPadding };
+  const height = compact ? 112 : 170;
+  const padding = { top: compact ? 10 : 20, right: compact ? 24 : 30, bottom: compact ? 22 : 28, left: dynamicLeftPadding };
 
   const xMaxIdx = isWeekly ? (numPeriods > 12 ? 52 : numPeriods - 1) : 11;
   const xScale = (idx: number) => padding.left + (idx / xMaxIdx) * (width - padding.left - padding.right);
@@ -146,7 +147,7 @@ export const LineChart: React.FC<LineChartProps> = React.memo(({ progressData, g
   }, [hoveredIdx, plotData, goalPlotData, labels]);
 
   return (
-    <div className="bg-slate-950/50 p-4 rounded-2xl border border-white/10 shadow-inner relative select-none">
+    <div className={`bg-slate-950/50 ${compact ? 'p-2.5' : 'p-4'} rounded-2xl border border-white/10 shadow-inner relative select-none`}>
       {/* Visual Legend Header */}
       <div className="flex items-center justify-between mb-2 px-1 text-[11px] font-bold text-slate-300">
         <div className="flex items-center gap-4">
