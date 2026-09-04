@@ -40,7 +40,7 @@ jobs:
 
       - name: Deploy Firebase Hosting preview
         run: |
-          npx firebase-tools hosting:channel:deploy "keyless-${GITHUB_RUN_ID}" \
+          npx firebase-tools@15.22.1 hosting:channel:deploy "keyless-${GITHUB_RUN_ID}" \
             --only tablero \
             --project prior-01 \
             --expires 1d
