@@ -41,9 +41,18 @@ jobs:
           node --version
           npm --version
           java -version
+          npm config get registry
           npx firebase --version
           echo "commit=${GITHUB_SHA}"
           echo "firebase_project=${FIREBASE_PROJECT_ID}"
 
       - name: Run Firestore Rules tests in isolated emulator
         run: npx firebase emulators:exec --only firestore --project "$FIREBASE_PROJECT_ID" "npx jest firestore.rules.test.ts --runInBand --testPathIgnorePatterns="
+
+      - name: Upload npm diagnostics on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: npm-debug-logs-${{ github.run_id }}
+          path: ~/.npm/_logs/**
+          if-no-files-found: ignore
