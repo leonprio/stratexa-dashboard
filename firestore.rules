@@ -7,17 +7,21 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    // The temporary bridge must tolerate custom-token contexts that omit an
+    // email claim. Canonical platform authority is intentionally email-free.
+    function hasApprovedLegacyPlatformEmail() {
+      return isAuthenticated() && request.auth.token.keys().hasAll(['email']) &&
+        request.auth.token.email in ['leon@leonprior.com', 'leonprior@gmail.com'];
+    }
+
     // Canonical platform authority. The exact-email bridge is deliberately
     // temporary and applies only to Tablero helpers in this shared project.
     function isPlatformAdmin() {
-      return request.auth != null && (
+      return isAuthenticated() && (
         (exists(/databases/$(database)/documents/tbl_platformAdmins/$(request.auth.uid)) &&
           get(/databases/$(database)/documents/tbl_platformAdmins/$(request.auth.uid)).data.uid == request.auth.uid &&
           get(/databases/$(database)/documents/tbl_platformAdmins/$(request.auth.uid)).data.status == 'active') ||
-        request.auth.token.email in [
-        'leon@leonprior.com',
-        'leonprior@gmail.com'
-        ]
+        hasApprovedLegacyPlatformEmail()
       );
     }
 
@@ -75,9 +79,7 @@ service cloud.firestore {
     function isTenantUser(targetClientId) { return canReadBusinessData(targetClientId); }
 
     function hasLegacyPlatformBusinessReadBridge() {
-      return request.auth != null && request.auth.token.email in [
-        'leon@leonprior.com', 'leonprior@gmail.com'
-      ];
+      return hasApprovedLegacyPlatformEmail();
     }
 
     function hasLegacyPlatformBusinessWriteBridge() {

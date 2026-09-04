@@ -627,4 +627,11 @@ describe('Firestore Security Rules — Strategy Module (v9.5.0 Foundation)', () 
     await assertSucceeds(getDocs(collection(testEnv.authenticatedContext('platform_canonical').firestore(), 'tbl_managedClients')));
     await assertFails(getDocs(collection(testEnv.authenticatedContext('platform_disabled').firestore(), 'tbl_managedClients')));
   });
+
+  it('platform email bridge is exact and token contexts without email are safe', async () => {
+    await seedTablero();
+    await assertFails(getDocs(collection(testEnv.authenticatedContext('no_email').firestore(), 'tbl_managedClients')));
+    await assertFails(getDocs(collection(testEnv.authenticatedContext('other_email', { email: 'other@example.test' }).firestore(), 'tbl_managedClients')));
+    await assertSucceeds(getDocs(collection(testEnv.authenticatedContext('bridge_email', { email: 'leon@leonprior.com' }).firestore(), 'tbl_managedClients')));
+  });
 });
