@@ -43,4 +43,5 @@ jobs:
           npx firebase-tools@15.22.1 hosting:channel:deploy "keyless-${GITHUB_RUN_ID}" \
             --only tablero \
             --project prior-01 \
-            --expires 1d
+            --expires 1d \
+            --debug
