@@ -623,9 +623,11 @@ describe('Firestore Security Rules — Strategy Module (v9.5.0 Foundation)', () 
       const db = context.firestore();
       await setDoc(doc(db, 'tbl_platformAdmins', 'platform_canonical'), { uid: 'platform_canonical', status: 'active', createdAt: 'seed', createdBy: 'seed', updatedAt: 'seed', updatedBy: 'seed', schemaVersion: 1 });
       await setDoc(doc(db, 'tbl_platformAdmins', 'platform_disabled'), { uid: 'platform_disabled', status: 'disabled', createdAt: 'seed', createdBy: 'seed', updatedAt: 'seed', updatedBy: 'seed', schemaVersion: 1 });
+      await setDoc(doc(db, 'tbl_platformAdmins', 'platform_malformed'), { uid: 'platform_malformed' });
     });
     await assertSucceeds(getDocs(collection(testEnv.authenticatedContext('platform_canonical').firestore(), 'tbl_managedClients')));
     await assertFails(getDocs(collection(testEnv.authenticatedContext('platform_disabled').firestore(), 'tbl_managedClients')));
+    await assertFails(getDocs(collection(testEnv.authenticatedContext('platform_malformed').firestore(), 'tbl_managedClients')));
   });
 
   it('platform email bridge is exact and token contexts without email are safe', async () => {

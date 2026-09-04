@@ -17,12 +17,11 @@ service cloud.firestore {
     // Canonical platform authority. The exact-email bridge is deliberately
     // temporary and applies only to Tablero helpers in this shared project.
     function isPlatformAdmin() {
-      return isAuthenticated() && (
-        (exists(/databases/$(database)/documents/tbl_platformAdmins/$(request.auth.uid)) &&
-          get(/databases/$(database)/documents/tbl_platformAdmins/$(request.auth.uid)).data.uid == request.auth.uid &&
-          get(/databases/$(database)/documents/tbl_platformAdmins/$(request.auth.uid)).data.status == 'active') ||
-        hasApprovedLegacyPlatformEmail()
-      );
+      return (isAuthenticated() &&
+        exists(/databases/$(database)/documents/tbl_platformAdmins/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/tbl_platformAdmins/$(request.auth.uid)).data.get('uid', '') == request.auth.uid &&
+        get(/databases/$(database)/documents/tbl_platformAdmins/$(request.auth.uid)).data.get('status', '') == 'active') ||
+        hasApprovedLegacyPlatformEmail();
     }
 
     // Validador de Pertenencia: Un usuario solo accede a su propia burbuja o si es SuperAdmin
@@ -284,7 +283,10 @@ service cloud.firestore {
       allow write: if isPlatformAdmin() || (!(id in ['main', 'MAIN']) && isTenantAdmin(id));
     }
     match /tbl_managedClients/{id} {
-      allow read: if isTableroUser() && canReadTableroTenant(id);
+      // This is a platform catalogue, not tenant business data. Keeping the
+      // platform path explicit also avoids expanding membership fallback for
+      // canonical, intentionally blind platform administrators.
+      allow read: if isPlatformAdmin() || (isTableroUser() && canReadTableroTenant(id));
       allow write: if isPlatformAdmin() || isTenantAdmin(id);
     }
     match /tbl_actionPlans/{planId} {
