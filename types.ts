@@ -224,6 +224,17 @@ export interface User {
   superGroups?: string[]; // 🏢 NIVEL 4: Grupos de Grupos permitidos (v7.2.1)
   group?: string; // Legacy fallback
   area?: string;
+  /** Canonical compatibility input; legacy fields remain until migration. */
+  memberships?: TenantMembership[];
+}
+
+export interface TenantMembership {
+  clientId: string;
+  role: 'tenant_admin' | 'director' | 'standard_user';
+  status: 'active' | 'inactive' | 'suspended';
+  hierarchyScopes?: string[];
+  dashboardScopes?: Record<string, 'viewer' | 'editor'>;
+  capabilities?: ('viewer' | 'editor' | 'metadata_editor' | 'plan_editor' | 'strategy_reader')[];
 }
 
 export type OperationalMetrics = any;

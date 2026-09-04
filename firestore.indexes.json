@@ -1,4 +1,54 @@
 {
-    "indexes": [],
+    "indexes": [
+        {
+            "collectionGroup": "tbl_dashboards",
+            "queryScope": "COLLECTION",
+            "fields": [
+                { "fieldPath": "clientId", "order": "ASCENDING" },
+                { "fieldPath": "originalId", "order": "ASCENDING" }
+            ]
+        },
+        {
+            "collectionGroup": "tbl_dashboards",
+            "queryScope": "COLLECTION",
+            "fields": [
+                { "fieldPath": "clientId", "order": "ASCENDING" },
+                { "fieldPath": "group", "order": "ASCENDING" }
+            ]
+        },
+        {
+            "collectionGroup": "tbl_actionPlans",
+            "queryScope": "COLLECTION",
+            "fields": [
+                { "fieldPath": "clientId", "order": "ASCENDING" },
+                { "fieldPath": "dashboardId", "order": "ASCENDING" },
+                { "fieldPath": "status", "order": "ASCENDING" }
+            ]
+        },
+        {
+            "collectionGroup": "tbl_actionPlans",
+            "queryScope": "COLLECTION",
+            "fields": [
+                { "fieldPath": "clientId", "order": "ASCENDING" },
+                { "fieldPath": "indicatorId", "order": "ASCENDING" }
+            ]
+        },
+        {
+            "collectionGroup": "tbl_contributionIndicatorAssignments",
+            "queryScope": "COLLECTION",
+            "fields": [
+                { "fieldPath": "clientId", "order": "ASCENDING" },
+                { "fieldPath": "contributionObjectiveId", "order": "ASCENDING" }
+            ]
+        },
+        {
+            "collectionGroup": "tbl_contributionIndicatorAssignments",
+            "queryScope": "COLLECTION",
+            "fields": [
+                { "fieldPath": "clientId", "order": "ASCENDING" },
+                { "fieldPath": "strategicObjectiveId", "order": "ASCENDING" }
+            ]
+        }
+    ],
     "fieldOverrides": []
 }

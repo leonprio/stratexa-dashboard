@@ -7,12 +7,18 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    // Validador de Super Admin Hardcodeado
-    function isSuperAdmin() {
-      return request.auth != null && request.auth.token.email in [
+    // Canonical platform authority. The exact-email bridge is deliberately
+    // temporary and applies only to Tablero helpers in this shared project.
+    function isPlatformAdmin() {
+      return request.auth != null && (
+        (exists(/databases/$(database)/documents/tbl_platformAdmins/$(request.auth.uid)) &&
+          get(/databases/$(database)/documents/tbl_platformAdmins/$(request.auth.uid)).data.uid == request.auth.uid &&
+          get(/databases/$(database)/documents/tbl_platformAdmins/$(request.auth.uid)).data.status == 'active') ||
+        request.auth.token.email in [
         'leon@leonprior.com',
         'leonprior@gmail.com'
-      ];
+        ]
+      );
     }
 
     // Validador de Pertenencia: Un usuario solo accede a su propia burbuja o si es SuperAdmin
@@ -37,24 +43,149 @@ service cloud.firestore {
       return id is string && id.size() > 0 && id.size() <= 64 && id.matches('^[a-zA-Z0-9ÁÉÍÓÚÜÑáéíóúüñ_-]+$');
     }
 
-    function isTenantUser(targetClientId) {
-      return isSuperAdmin() || (
-        isAuthenticated() &&
+    function membershipId(targetClientId) {
+      return request.auth.uid + '__' + targetClientId;
+    }
+
+    function hasCanonicalMembership(targetClientId) {
+      return isAuthenticated() && isSafeClientId(targetClientId) &&
+        exists(/databases/$(database)/documents/tbl_userMemberships/$(membershipId(targetClientId)));
+    }
+
+    function activeCanonicalMembership(targetClientId) {
+      return hasCanonicalMembership(targetClientId) &&
+        get(/databases/$(database)/documents/tbl_userMemberships/$(membershipId(targetClientId))).data.userId == request.auth.uid &&
+        get(/databases/$(database)/documents/tbl_userMemberships/$(membershipId(targetClientId))).data.clientId == targetClientId &&
+        get(/databases/$(database)/documents/tbl_userMemberships/$(membershipId(targetClientId))).data.status == 'active';
+    }
+
+    // Compatibility is available only before a canonical record exists. An
+    // inactive/suspended canonical document therefore revokes the legacy path.
+    function legacyTenantUser(targetClientId) {
+      return isAuthenticated() &&
         isSafeClientId(targetClientId) &&
         exists(/databases/$(database)/documents/tbl_users/$(request.auth.uid)) &&
+        !hasCanonicalMembership(targetClientId) &&
         (
-          getUserProfile().clientId == 'all' ||
-          getUserProfile().clientId == 'ALL' ||
           getUserProfile().clientId == targetClientId ||
           getUserProfile().clientId.matches('(.*,|^)\\s*' + targetClientId + '\\s*(,.*|$)')
-        )
-      );
+        );
+    }
+
+    function isTenantUser(targetClientId) { return canReadBusinessData(targetClientId); }
+
+    function hasLegacyPlatformBusinessReadBridge() {
+      return request.auth != null && request.auth.token.email in [
+        'leon@leonprior.com', 'leonprior@gmail.com'
+      ];
+    }
+
+    function hasLegacyPlatformBusinessWriteBridge() {
+      return hasLegacyPlatformBusinessReadBridge();
     }
 
     function isTenantAdmin(targetClientId) {
-      return isSuperAdmin() || (
-        isStratexaAdmin() && isTenantUser(targetClientId)
+      // The bridge preserves current operational SuperAdmin writes without
+      // treating canonical platform_admin identity as tenant administration.
+      return hasLegacyPlatformBusinessWriteBridge() || (activeCanonicalMembership(targetClientId) &&
+        get(/databases/$(database)/documents/tbl_userMemberships/$(membershipId(targetClientId))).data.role == 'tenant_admin') ||
+        (!hasCanonicalMembership(targetClientId) && isStratexaAdmin() && legacyTenantUser(targetClientId));
+    }
+
+    function canReadBusinessData(clientId) {
+      return hasLegacyPlatformBusinessReadBridge() || activeCanonicalMembership(clientId) || legacyTenantUser(clientId);
+    }
+    function canWriteBusinessData(clientId) {
+      return hasLegacyPlatformBusinessWriteBridge() || isTenantAdmin(clientId);
+    }
+    function canAdminPlatform() { return isPlatformAdmin(); }
+    function canAdminTenant(clientId) { return isTenantAdmin(clientId); }
+    function isSuperAdmin() { return canAdminPlatform(); }
+    function canReadTableroTenant(clientId) { return canReadBusinessData(clientId); }
+
+    function dashboardRole(data, dashboardId) {
+      let access = getUserProfile().get('dashboardAccess', {});
+      return access.get(dashboardId, access.get(string(data.get('originalId', '')), ''));
+    }
+
+    function canonicalDashboardScope(data, dashboardId) {
+      let membership = get(/databases/$(database)/documents/tbl_userMemberships/$(membershipId(data.clientId))).data;
+      return dashboardId in membership.allowedDashboardIds || string(data.get('originalId', '')) in membership.allowedDashboardIds;
+    }
+
+    function canonicalDirectorScope(data) {
+      let membership = get(/databases/$(database)/documents/tbl_userMemberships/$(membershipId(data.clientId))).data;
+      return membership.role == 'director' && (
+        data.get('directionId', '') in membership.hierarchyScopeKeys ||
+        data.get('areaId', '') in membership.hierarchyScopeKeys
       );
+    }
+
+    function directorScope(data) {
+      let user = getUserProfile();
+      let group = data.get('group', '');
+      return user.get('globalRole', '') in ['Director', 'director'] && group != '' && (
+        group == user.get('directorTitle', '') ||
+        group in user.get('subGroups', []) ||
+        (data.get('superGroup', '') != '' && data.get('superGroup', '') in user.get('superGroups', []))
+      );
+    }
+
+    function canReadDashboard(data, dashboardId) {
+      return hasLegacyPlatformBusinessReadBridge() || (canReadTableroTenant(data.clientId) && (
+        isTenantAdmin(data.clientId) ||
+        (activeCanonicalMembership(data.clientId) && (canonicalDashboardScope(data, dashboardId) || canonicalDirectorScope(data))) ||
+        (!hasCanonicalMembership(data.clientId) && (
+          getUserProfile().get('dashboardAccess', {}).get(dashboardId, '') in ['Viewer', 'Editor'] ||
+          getUserProfile().get('dashboardAccess', {}).get(string(data.get('originalId', '')), '') in ['Viewer', 'Editor'] ||
+          directorScope(data)
+        ))
+      ));
+    }
+
+    function canEditDashboard(data, dashboardId) {
+      return hasLegacyPlatformBusinessWriteBridge() || (isTenantUser(data.clientId) && (
+        isTenantAdmin(data.clientId) ||
+        (activeCanonicalMembership(data.clientId) && canonicalDashboardScope(data, dashboardId) &&
+          'editor' in get(/databases/$(database)/documents/tbl_userMemberships/$(membershipId(data.clientId))).data.capabilities) ||
+        (!hasCanonicalMembership(data.clientId) && (dashboardRole(data, dashboardId) == 'Editor' ||
+          (dashboardRole(data, dashboardId) == '' && directorScope(data))))
+      ));
+    }
+
+    function canEditActionPlan(data) {
+      let dashboardId = string(data.dashboardId);
+      let board = get(/databases/$(database)/documents/tbl_dashboards/$(dashboardId)).data;
+      return board.clientId == data.clientId && canEditDashboard(board, dashboardId);
+    }
+
+    function canManageProfile(data) {
+      // Multi-tenant directory administration needs all memberships, not one
+      // overlapping tenant. Keep it platform-only until that contract exists.
+      return isPlatformAdmin() || (isSafeClientId(data.clientId) && isTenantAdmin(data.clientId));
+    }
+
+    function validMembership(data) {
+      return data.userId is string && data.clientId is string &&
+        isSafeClientId(data.clientId) &&
+        data.membershipId == data.userId + '__' + data.clientId &&
+        data.role in ['tenant_admin', 'director', 'standard_user'] &&
+        data.status in ['active', 'inactive', 'suspended'] &&
+        data.scopeType in ['tenant', 'hierarchy', 'dashboard'] &&
+        data.allowedDashboardIds is list && data.hierarchyScopeKeys is list &&
+        data.capabilities is list && data.schemaVersion == 1 &&
+        data.createdBy is string && data.updatedBy is string;
+    }
+
+    function sameMembershipIdentity(before, after) {
+      return after.userId == before.userId && after.clientId == before.clientId &&
+        after.membershipId == before.membershipId && after.createdAt == before.createdAt &&
+        after.createdBy == before.createdBy && after.schemaVersion == before.schemaVersion;
+    }
+
+    function validTenantProfile(data) {
+      return data.globalRole in ['Admin', 'Director', 'Member'] &&
+        !(data.get('email', '').lower() in ['leon@leonprior.com', 'leonprior@gmail.com']);
     }
 
     function isStrategyCounterIdForClient(counterId, targetClientId) {
@@ -84,19 +215,84 @@ service cloud.firestore {
 
     // --- 1. AISLAMIENTO: TABLERO (tbl_*) ---
     match /tbl_users/{userId} {
-      allow read, write: if isAuthenticated() && (request.auth.uid == userId || isTableroUser());
+      allow read: if isAuthenticated() && (request.auth.uid == userId || isPlatformAdmin() || (
+        isSafeClientId(resource.data.clientId) && isTenantUser(resource.data.clientId) &&
+        getUserProfile().globalRole in ['Admin', 'admin', 'Director', 'director']
+      ));
+      allow create: if isPlatformAdmin() || (isAuthenticated() && request.auth.uid != userId &&
+        canManageProfile(request.resource.data) && validTenantProfile(request.resource.data));
+      allow update: if isPlatformAdmin() || (isAuthenticated() && request.auth.uid != userId &&
+        canManageProfile(resource.data) && validTenantProfile(request.resource.data) &&
+        request.resource.data.clientId == resource.data.clientId &&
+        request.resource.data.get('email', '') == resource.data.get('email', '') &&
+        request.resource.data.get('id', userId) == resource.data.get('id', userId));
+      // There is no current profile self-edit UX; deny self writes by default.
+      allow delete: if isPlatformAdmin() || (isAuthenticated() && request.auth.uid != userId && canManageProfile(resource.data));
+    }
+    match /tbl_platformAdmins/{uid} {
+      // This collection is platform authority only, never a business-data grant.
+      allow read: if isAuthenticated() && (request.auth.uid == uid || isPlatformAdmin());
+      allow create: if isPlatformAdmin() && request.resource.data.uid == uid &&
+        request.resource.data.status in ['active', 'disabled'] && request.resource.data.schemaVersion == 1;
+      allow update: if isPlatformAdmin() && request.resource.data.uid == resource.data.uid &&
+        request.resource.data.createdAt == resource.data.createdAt && request.resource.data.createdBy == resource.data.createdBy &&
+        request.resource.data.schemaVersion == resource.data.schemaVersion &&
+        request.resource.data.status in ['active', 'disabled'];
+      allow delete: if isPlatformAdmin();
+    }
+    match /tbl_userMemberships/{membershipIdValue} {
+      allow read: if isAuthenticated() && (resource.data.userId == request.auth.uid ||
+        isPlatformAdmin() || isTenantAdmin(resource.data.clientId));
+      // Tenant admins manage other users only in their own tenant. They cannot
+      // manufacture or alter their own authority document.
+      allow create: if validMembership(request.resource.data) && membershipIdValue == request.resource.data.membershipId &&
+        (isPlatformAdmin() || (isTenantAdmin(request.resource.data.clientId) && request.resource.data.userId != request.auth.uid));
+      allow update: if validMembership(request.resource.data) && sameMembershipIdentity(resource.data, request.resource.data) &&
+        (isPlatformAdmin() || (isTenantAdmin(resource.data.clientId) && resource.data.userId != request.auth.uid));
+      allow delete: if isPlatformAdmin() || (isTenantAdmin(resource.data.clientId) && resource.data.userId != request.auth.uid);
+    }
+    match /tbl_directions/{directionId} {
+      allow read: if isTableroUser() && isTenantUser(resource.data.clientId);
+      allow create: if isTableroUser() && isTenantAdmin(request.resource.data.clientId) &&
+        request.resource.data.id == directionId && request.resource.data.status in ['active', 'inactive'];
+      allow update: if isTableroUser() && isTenantAdmin(resource.data.clientId) &&
+        request.resource.data.clientId == resource.data.clientId && request.resource.data.id == resource.data.id;
+      allow delete: if isTableroUser() && isTenantAdmin(resource.data.clientId);
+    }
+    match /tbl_areas/{areaId} {
+      allow read: if isTableroUser() && isTenantUser(resource.data.clientId);
+      allow create: if isTableroUser() && isTenantAdmin(request.resource.data.clientId) &&
+        request.resource.data.id == areaId && request.resource.data.status in ['active', 'inactive'];
+      allow update: if isTableroUser() && isTenantAdmin(resource.data.clientId) &&
+        request.resource.data.clientId == resource.data.clientId && request.resource.data.id == resource.data.id;
+      allow delete: if isTableroUser() && isTenantAdmin(resource.data.clientId);
     }
     match /tbl_dashboards/{docId} {
-      allow read, write: if isTableroUser();
-      match /items/{itemId} { allow read, write: if isTableroUser(); }
-    }
-    match /tbl_systemSettings/{id=**} { allow read, write: if isTableroUser(); }
-    match /tbl_managedClients/{id=**} { allow read, write: if isTableroUser(); }
-    match /tbl_actionPlans/{planId} {
-      allow read: if isTableroUser() && isTenantUser(resource.data.clientId);
+      allow read: if isTableroUser() && canReadDashboard(resource.data, docId);
       allow create: if isTableroUser() && isSafeClientId(request.resource.data.clientId) && isTenantAdmin(request.resource.data.clientId);
       allow update: if isTableroUser() && isTenantAdmin(resource.data.clientId) && request.resource.data.clientId == resource.data.clientId;
       allow delete: if isTableroUser() && isTenantAdmin(resource.data.clientId);
+      match /items/{itemId} {
+        allow read: if isTableroUser() && canReadDashboard(get(/databases/$(database)/documents/tbl_dashboards/$(docId)).data, docId);
+        allow write: if isTableroUser() && canEditDashboard(get(/databases/$(database)/documents/tbl_dashboards/$(docId)).data, docId);
+      }
+    }
+    match /tbl_systemSettings/{id} {
+      allow read: if isTableroUser() && (id in ['main', 'MAIN'] || canReadTableroTenant(id));
+      allow write: if isPlatformAdmin() || (!(id in ['main', 'MAIN']) && isTenantAdmin(id));
+    }
+    match /tbl_managedClients/{id} {
+      allow read: if isTableroUser() && canReadTableroTenant(id);
+      allow write: if isPlatformAdmin() || isTenantAdmin(id);
+    }
+    match /tbl_actionPlans/{planId} {
+      allow read: if isTableroUser() && isTenantUser(resource.data.clientId);
+      allow create: if isTableroUser() && isSafeClientId(request.resource.data.clientId) && canEditActionPlan(request.resource.data);
+      allow update: if isTableroUser() && canEditActionPlan(resource.data) &&
+        request.resource.data.clientId == resource.data.clientId &&
+        request.resource.data.dashboardId == resource.data.dashboardId &&
+        request.resource.data.get('indicatorId', '') == resource.data.get('indicatorId', '');
+      allow delete: if isTableroUser() && canEditActionPlan(resource.data);
     }
 
     // --- 🎯 REGLAS DE SEGURIDAD SERVIDORA: ESTRATEGIA (v9.5.0 FOUNDATION) ---
@@ -234,6 +430,7 @@ service cloud.firestore {
     // --- 🚨 REGLA DE COMPATIBILIDAD UNIVERSAL (AISLAMIENTO INTELIGENTE) 🚨 ---
     match /{collection}/{document=**} {
       allow read, write: if isAuthenticated() && 
+        !collection.matches('^tbl_.*') &&
         !(collection in [
           'tbl_users', 'tbl_dashboards', 'tbl_systemSettings', 'tbl_managedClients',
           'tbl_strategicPerspectives', 'tbl_strategicObjectives', 'tbl_areaStrategyConfigs',

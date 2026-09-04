@@ -25,6 +25,8 @@ import {
 } from "firebase/auth";
 
 import { db, auth } from "../firebase";
+import { readTableroScope, requestedTenants, dashboardQueryConstraints } from './tableroReadScope';
+import { resolveEffectiveMemberships } from './tableroAuthorization';
 
 import type {
     User,
@@ -120,8 +122,18 @@ export const firebaseService = {
     // Users
     // -----------------------------
     getUsers: async (): Promise<User[]> => {
-        const snap = await getDocs(collection(db, USERS_COLLECTION));
-        return snap.docs.map((d) => ({ id: d.id, ...d.data() } as User));
+        const scope = await readTableroScope();
+        const ref = collection(db, USERS_COLLECTION);
+        if (scope.platform) {
+            const snap = await getDocs(ref);
+            return snap.docs.map(d => ({ ...d.data(), id: d.id } as User));
+        }
+        const effectiveRole = resolveEffectiveMemberships(scope.profile!).role;
+        if (!['tenant_admin', 'director'].includes(effectiveRole || '')) return [scope.profile!];
+        const groups = await Promise.all(requestedTenants(scope).map(client => getDocs(query(ref, where('clientId', '==', client)))));
+        const users = new Map(groups.flatMap(s => s.docs.map(d => [d.id, { ...d.data(), id: d.id } as User] as const)));
+        users.set(scope.profile!.id, scope.profile!);
+        return [...users.values()];
     },
 
     getUser: async (userId: string): Promise<User | null> => {
@@ -256,6 +268,8 @@ export const firebaseService = {
     // -----------------------------
     getSystemSettings: async (clientId: string = "main"): Promise<SystemSettings | undefined> => {
         const id = clientId.trim().toUpperCase();
+        const scope = await readTableroScope();
+        if (id !== 'MAIN') requestedTenants(scope, id);
         const ref = doc(db, SYSTEM_SETTINGS_COLLECTION, id || SYSTEM_SETTINGS_DOC_ID);
         const snap = await getDoc(ref);
 
@@ -286,12 +300,16 @@ export const firebaseService = {
     getDashboards: async (clientId?: string, year?: number): Promise<DashboardType[]> => {
         const dRef = collection(db, DASHBOARDS_COLLECTION);
 
-        // 🛡️ MÁXIMA RESILIENCIA: No usar 'where' para evitar errores de índices y de tipos (string vs number)
-        // Traemos todo lo del cliente (o todo si es admin) y filtramos en JS
-        const q = query(dRef);
-        const snap = await getDocs(q);
+        const scope = await readTableroScope();
+        const tenants = requestedTenants(scope, clientId);
+        // Global business catalogue is an explicit platform-only branch.
+        const snapshots = scope.platform && tenants.length === 0
+            ? [await getDocs(query(dRef))]
+            : await Promise.all(tenants.flatMap(tenant => dashboardQueryConstraints(scope, tenant)
+                .map(constraints => getDocs(query(dRef, ...constraints)))));
+        const documents = [...new Map(snapshots.flatMap(s => s.docs.map(d => [d.id, d] as const))).values()];
 
-        const dashboardPromises = snap.docs.map(async (docSnap) => {
+        const dashboardPromises = documents.map(async (docSnap) => {
             const data = docSnap.data();
             // 🛡️ REGLA DE INTEGRIDAD V4 (FIX CRÍTICO): El nombre del documento en Firestore es la ÚNICA fuente de verdad.
             // Si data.id es diferente, lo ignoramos para evitar colisiones y pérdida de indicadores.
@@ -494,26 +512,18 @@ export const firebaseService = {
     },
 
     getAllClients: async (): Promise<string[]> => {
-        // 1. Get from Dashboards (Discovery)
-        const qDash = query(collection(db, DASHBOARDS_COLLECTION));
-        const snapDash = await getDocs(qDash);
-        const clients = new Set<string>(["IPS"]);
-        snapDash.docs.forEach(d => {
-            const c = d.data().clientId;
-            if (c) clients.add(String(c).trim().toUpperCase());
-        });
-
-        // 2. Get from Managed Clients (Persistence)
-        const qManaged = query(collection(db, CLIENTS_COLLECTION));
-        const snapManaged = await getDocs(qManaged);
-        snapManaged.docs.forEach(d => {
-            clients.add(d.id.trim().toUpperCase());
-        });
-
-        return Array.from(clients).sort();
+        return (await firebaseService.getAllManagedClients()).map(client => client.clientId).sort();
     },
 
     getAllManagedClients: async (): Promise<{ clientId: string; displayName: string }[]> => {
+        const scope = await readTableroScope();
+        if (!scope.platform) {
+            return Promise.all(requestedTenants(scope).map(async clientId => {
+                const snap = await getDoc(doc(db, CLIENTS_COLLECTION, clientId));
+                const data = snap.exists() ? snap.data() : {};
+                return { clientId, displayName: data.displayName || data.name || clientId };
+            }));
+        }
         const map = new Map<string, string>();
         map.set("IPS", "GRUPO IPS");
 

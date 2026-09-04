@@ -59,6 +59,7 @@ import {
   reconcileClientSelectionResult,
 } from "./utils/clientReconciliation";
 import { isUniversalSuperAdmin } from "./utils/universalSuperAdmin";
+import { getAuthorizedClientIds } from "./services/tableroAuthorization";
 import {
   StrategicPerspective,
   StrategicObjective,
@@ -612,9 +613,9 @@ export default function App() {
 
         let prof: User | null = null;
         const normalizedEmail = (u.email || "").toLowerCase();
-        const isAdminEmail =
-          normalizedEmail.includes("leon@leonprior.com") ||
-          normalizedEmail.includes("leonprior@gmail.com");
+        // The temporary platform bridge is exact-email only. A substring must
+        // never grant an administrative runtime context.
+        const isAdminEmail = isUniversalSuperAdmin(undefined, u.email);
 
         if (profileSnap.exists()) {
           prof = profileSnap.data() as User;
@@ -632,7 +633,9 @@ export default function App() {
             name: "Leon Prior",
             email: normalizedEmail,
             globalRole: GlobalUserRole.Admin,
-            clientId: "IPS",
+            // Platform identity is not a fake IPS membership. Keep any legacy
+            // profile value as display/context metadata only.
+            clientId: prof?.clientId,
             dashboardAccess: prof?.dashboardAccess || {},
           };
         }
@@ -661,9 +664,9 @@ export default function App() {
           }
 
           const initialContextClient = isUniversalSuperAdmin(prof, u.email)
-            ? localStorage.getItem("selectedClientId") || prof.clientId || "IPS"
-            : prof.clientId || "IPS";
-          const currentSettings = await firebaseService.getSystemSettings(initialContextClient);
+            ? localStorage.getItem("selectedClientId") || prof.clientId || "main"
+            : prof.clientId || "main";
+          const currentSettings = await firebaseService.getSystemSettings(initialContextClient.split(',')[0].trim());
           setSettings(currentSettings);
           setStatus("ready");
         } else {
@@ -776,14 +779,13 @@ export default function App() {
         if (selectedClientId && selectedClientId !== "all") {
           target = selectedClientId.trim().toUpperCase();
         }
-      } else if (userProfile?.clientId) {
-        // 🛡️ SOPORTE MULTI-CLIENTE (v2.5.1): Si tiene varios, pedimos todo y filtramos en memoria
-        const clientString = userProfile.clientId.trim();
-        if (clientString.includes(",")) {
-          target = undefined;
-        } else {
-          target = clientString.toUpperCase();
-        }
+      } else if (userProfile) {
+        // Multi-client users query only the currently authorized tenant.
+        // Never turn a CSV/legacy membership into a global dashboard read.
+        const authorizedClients = getAuthorizedClientIds(userProfile);
+        target = authorizedClients.includes(selectedClientId.trim().toUpperCase())
+          ? selectedClientId.trim().toUpperCase()
+          : authorizedClients[0];
       }
 
       const rows = await firebaseService.getDashboards(target, year);
@@ -1550,27 +1552,13 @@ export default function App() {
       if (d.clientId) clientSet.add(d.clientId.trim().toUpperCase());
     });
 
-    // 4. Asegurar permanentes
-    clientSet.add("IPS");
-
-    // 6. Añadir clientes temporales de la sesión
+    // 4. Añadir clientes temporales de la sesión
     tempClients.forEach((c) => clientSet.add(c.trim().toUpperCase()));
 
-    // 5. Filtrar por permisos si no es admin, pero SIEMPRE incluir DEMO
+    // Tenant membership is the authority for non-platform client context.
+    // Never add IPS/DEMO or a discovery result as an authorization fallback.
     if (!hasUniversalClientContext) {
-      const allowed = new Set<string>();
-      if (userProfile?.clientId) {
-        userProfile.clientId
-          .split(",")
-          .forEach((c) => allowed.add(c.trim().toUpperCase()));
-      } else {
-        allowed.add("IPS");
-      }
-
-      // La "Zona de Práctica" universal
-      if (clientSet.has("DEMO")) allowed.add("DEMO");
-
-      return Array.from(allowed).sort();
+      return getAuthorizedClientIds(userProfile || ({} as User)).sort();
     }
 
     return Array.from(clientSet).sort();
@@ -1631,7 +1619,16 @@ export default function App() {
     setPendingKpiNavigation(null);
     setPendingActionPlanTarget(null);
     setSelectedDashboardId(null);
+    localStorage.removeItem("selectedDashboardId");
     setSelectedGroupTab("TODOS");
+    // These are all tenant-scoped result sets. Clear them before the next
+    // tenant request so A cannot transiently render while B is loading.
+    setPerspectives([]);
+    setObjectives([]);
+    setAreaConfigs([]);
+    setContributionObjectives([]);
+    setAssignments([]);
+    setRelationships([]);
     setSelectedClientId(nextClientId);
   }, [selectedClientId]);
 
@@ -2594,7 +2591,7 @@ export default function App() {
           )}
 
           <div className="flex items-center gap-2">
-            {hasUniversalClientContext && (
+            {(hasUniversalClientContext || availableManagedClients.length > 1) && (
               <select
                 value={clientSelectionReady ? selectedClientId : ""}
                 disabled={!clientSelectionReady}
@@ -2618,9 +2615,9 @@ export default function App() {
                     {c.displayName}
                   </option>
                 ))}
-                <option value="NEW_CLIENT_OPTION" className="text-yellow-400">
+                {hasUniversalClientContext && <option value="NEW_CLIENT_OPTION" className="text-yellow-400">
                   + NUEVO CLIENTE
-                </option>
+                </option>}
               </select>
             )}
 
