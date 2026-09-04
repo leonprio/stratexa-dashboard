@@ -1,6 +1,9 @@
 name: Firebase Hosting keyless preview
 
 on:
+  push:
+    branches:
+      - feature/transversal-action-plans
   workflow_dispatch:
 
 jobs:
