@@ -96,15 +96,23 @@ export function resolveEffectiveMemberships(profile: User): EffectiveMembershipR
   const canonical = (profile.memberships || []).map(canonicalMembership);
   const hasCanonicalInput = (profile.memberships || []).length > 0;
   const validCanonical = canonical.filter((x): x is TenantMembership => x !== null);
+  const legacy = legacyMemberships(profile);
   if (hasCanonicalInput) {
     const invalid = validCanonical.length !== profile.memberships!.length;
-    const legacy = legacyMemberships(profile);
+    const canonicalClientSet = new Set(validCanonical.map(m => m.clientId));
+    const nonReplacedLegacy = legacy.filter(m => !canonicalClientSet.has(m.clientId));
+    const mergedMemberships = [...validCanonical, ...nonReplacedLegacy];
     const legacyKeys = new Set(legacy.map(m => `${m.clientId}:${m.role}`));
     const canonicalKeys = new Set(validCanonical.map(m => `${m.clientId}:${m.role}`));
     const contradictoryHybrid = invalid || (legacy.length > 0 && [...legacyKeys].some(k => !canonicalKeys.has(k)));
-    return { role: validCanonical[0]?.role || null, memberships: validCanonical, source: 'canonical', contradictoryHybrid, needsMigrationReview: contradictoryHybrid };
+    return {
+      role: validCanonical[0]?.role || nonReplacedLegacy[0]?.role || null,
+      memberships: mergedMemberships,
+      source: nonReplacedLegacy.length > 0 ? (validCanonical.length > 0 ? 'canonical' : 'legacy') : 'canonical',
+      contradictoryHybrid,
+      needsMigrationReview: contradictoryHybrid,
+    };
   }
-  const legacy = legacyMemberships(profile);
   return { role: legacy[0]?.role || null, memberships: legacy, source: legacy.length ? 'legacy' : 'none', contradictoryHybrid: false, needsMigrationReview: false };
 }
 

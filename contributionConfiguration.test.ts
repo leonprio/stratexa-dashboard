@@ -7,7 +7,10 @@ const mockStore = new Map<string, any>();
 let mockFailCommit = false;
 const mockWrites: string[] = [];
 const mockSnap = (path:string) => ({id:path.split('/').pop(), exists:()=>mockStore.has(path), data:()=>mockStore.get(path)});
-jest.mock('./firebase',()=>({db:{}}));
+jest.mock('./firebase', () => ({
+  auth: { currentUser: { uid: 'mock-user', email: 'user@example.test' } },
+  db: {},
+}));
 jest.mock('firebase/firestore',()=>({
   doc:(_db:any,...parts:string[])=>parts.join('/'), collection:(_db:any,...parts:string[])=>parts.join('/'),
   where:(...args:any[])=>args, query:(ref:any,...filters:any[])=>({ref,filters}),
@@ -22,6 +25,7 @@ const cases = [
   ['Días sin Accidentes Incidentes','OCOPAL02','OPERACIONES'],
 ];
 function seed(name='Ventas', ocId='OCCOMV01',area='COMERCIAL') {
+  mockStore.set('tbl_users/mock-user', { id: 'mock-user', email: 'user@example.test', clientId: 'CLIENT', globalRole: 'admin' });
   const item={id:1,indicator:name};
   const board={id:100,clientId:'CLIENT',year:2026,area,items:[item]};
   const oc={id:ocId,clientId:'CLIENT',areaName:area,primaryStrategicObjectiveId:'OE',areaConfigId:'AREA'};
@@ -33,7 +37,12 @@ function seed(name='Ventas', ocId='OCCOMV01',area='COMERCIAL') {
   mockStore.set('tbl_contributionIndicatorAssignments/direct',direct);
   return {board,oc,direct};
 }
-beforeEach(()=>{mockStore.clear();mockWrites.length=0;mockFailCommit=false;});
+beforeEach(()=>{
+  mockStore.clear();
+  mockWrites.length=0;
+  mockFailCommit=false;
+  mockStore.set('tbl_users/mock-user', { id: 'mock-user', email: 'user@example.test', clientId: 'CLIENT', globalRole: 'admin' });
+});
 it('enforces generic Objectives/Contribution logical parity',()=>{
   expect(assertStrategicContributionParity(['a','b'],['b','a'])).toEqual({objectivesOnly:[],contributionOnly:[],duplicates:0});
   expect(()=>assertStrategicContributionParity(['a','a'],['a'])).toThrow('duplicates=1');
