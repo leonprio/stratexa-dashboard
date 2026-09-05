@@ -216,5 +216,16 @@ describe("formatIndicatorValue — contrato decimal v9.4.16", () => {
             expect(getCleanIndicatorName("% Retención (%)")).toBe("% Retención (%)");
             expect(getCleanIndicatorName("Seguimiento PAI (2024)")).toBe("Seguimiento PAI (2024)");
         });
+
+        test("remueve sólo el área contextual del título visible", () => {
+            const { getCleanIndicatorName } = require("./formatters");
+            expect(getCleanIndicatorName("VENTAS (COMERCIAL Y VENTAS)", "COMERCIAL Y VENTAS")).toBe("VENTAS");
+            expect(getCleanIndicatorName("MARGEN DE CONTRIBUCIÓN NETO (COMERCIAL Y VENTAS)", "COMERCIAL Y VENTAS")).toBe("MARGEN DE CONTRIBUCIÓN NETO");
+            expect(getCleanIndicatorName("CUMPLIMIENTO DE ENTREGAS (LOGÍSTICA Y TRANSPORTE)", "LOGÍSTICA Y TRANSPORTE")).toBe("CUMPLIMIENTO DE ENTREGAS");
+        expect(getCleanIndicatorName("MARGEN (USD)", "COMERCIAL Y VENTAS")).toBe("MARGEN (USD)");
+        expect(getCleanIndicatorName("VENTAS (COMERCIAL Y VENTAS)")).toBe("VENTAS");
+        expect(getCleanIndicatorName("MARGEN DE CONTRIBUCIÓN NETO (COMERCIAL Y VENTAS)")).toBe("MARGEN DE CONTRIBUCIÓN NETO");
+        expect(getCleanIndicatorName("CUMPLIMIENTO DE ENTREGAS (LOGÍSTICA Y TRANSPORTE)")).toBe("CUMPLIMIENTO DE ENTREGAS");
+        });
     });
 });

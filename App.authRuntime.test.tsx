@@ -12,7 +12,7 @@ jest.mock('firebase/auth', () => ({
   onAuthStateChanged: jest.fn((_auth, listener) => { mockAuthListener = listener; return jest.fn(); }),
   signOut: jest.fn(), signInWithEmailAndPassword: jest.fn(), createUserWithEmailAndPassword: jest.fn(),
 }));
-jest.mock('firebase/firestore', () => ({ doc: jest.fn(), getDoc: jest.fn(), deleteField: jest.fn(() => 'delete') }));
+jest.mock('firebase/firestore', () => ({ doc: jest.fn(), getDoc: jest.fn(), deleteField: jest.fn(() => 'delete'), getDocs: jest.fn().mockResolvedValue({ empty: true, docs: [] }), collection: jest.fn(), query: jest.fn(), where: jest.fn() }));
 jest.mock('./services/firebaseService', () => ({ firebaseService: {
   getUsers: jest.fn().mockResolvedValue([]), getSystemSettings: jest.fn().mockResolvedValue({}),
   getDashboards: jest.fn().mockResolvedValue([]), getAllManagedClients: jest.fn().mockResolvedValue([{ clientId: 'A', displayName: 'Tenant A' }]),
@@ -111,6 +111,31 @@ describe('authenticated app shell runtime bridge', () => {
     await waitFor(() => expect(firebaseService.getDashboards).toHaveBeenCalledWith('B', expect.any(Number)));
     expect((firebaseService.getDashboards as jest.Mock).mock.calls.some(([client]) => client === undefined || client === 'C')).toBe(false);
     expect(localStorage.getItem('selectedClientId')).toBe('B');
+  });
+
+  it('loads client catalog and keeps selector unlocked even if dashboard fetch fails', async () => {
+    (firebaseService.getAllManagedClients as jest.Mock).mockResolvedValue([
+      { clientId: 'A', displayName: 'Tenant A' },
+      { clientId: 'B', displayName: 'Tenant B' },
+    ]);
+    (firebaseService.getAllClients as jest.Mock).mockResolvedValue(['A', 'B']);
+    (firebaseService.getDashboards as jest.Mock).mockRejectedValue(new Error('Network dashboard failure'));
+
+    await boot({ uid: 'multi', email: 'multi@example.test', initialClient: 'A', profile: baseProfile({
+      id: 'multi', clientId: 'A,B', memberships: [
+        { clientId: 'A', role: 'standard_user', status: 'active', dashboardScopes: {} },
+        { clientId: 'B', role: 'standard_user', status: 'active', dashboardScopes: {} },
+      ],
+    }) });
+
+    await waitFor(() => {
+      const selectors = screen.getAllByRole('combobox');
+      expect(selectors.length).toBeGreaterThanOrEqual(2);
+      const clientSelect = selectors[1];
+      expect(clientSelect).not.toBeDisabled();
+      expect(screen.getByRole('option', { name: 'Tenant A' })).toBeInTheDocument();
+      expect(screen.getByRole('option', { name: 'Tenant B' })).toBeInTheDocument();
+    });
   });
 
 });

@@ -16,6 +16,7 @@ import {
   formatNumberWithCommas,
   parseFormattedNumber,
   formatIndicatorValue,
+  getCleanIndicatorName,
 } from "../utils/formatters";
 
 interface CurrentPeriodFocusProps {
@@ -848,7 +849,7 @@ export const CurrentPeriodFocus: React.FC<CurrentPeriodFocusProps> = ({
           <div className="flex items-center gap-4">
             <div className="w-1 bg-cyan-500 self-stretch rounded-full" />
             <h2 className="text-3xl md:text-4xl font-black text-white uppercase tracking-tighter italic leading-none">
-              {indicator}
+              {getCleanIndicatorName(indicator)}
             </h2>
           </div>
         </div>
@@ -1457,7 +1458,7 @@ export const CurrentPeriodFocus: React.FC<CurrentPeriodFocusProps> = ({
 
       {isActivityManagerOpen && (
         <ActivityManager
-          title={indicator}
+          title={getCleanIndicatorName(indicator)}
           subtitle={`Periodo: ${currentPeriodLabel}`}
           goalType={item.goalType}
           initialActivities={

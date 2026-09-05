@@ -22,6 +22,7 @@ interface DashboardRowProps {
   decimalPrecision?: 0 | 1 | 2;
   allDashboardItems?: DashboardItem[];
   isGlobalAdmin?: boolean; // 🛡️ v9.1.0-PRO-FINAL-SHIELDED: Blindaje explícito para admins
+  area?: string;
 }
 
 /**
@@ -31,7 +32,7 @@ interface DashboardRowProps {
  * Gestiona estados de expansión, edición y visualización de gráficos y progreso local.
  * Implementa auto-scroll reactivo cuando es seleccionado.
  */
-export const DashboardRow: React.FC<DashboardRowProps> = React.memo(({ item, onUpdateItem, globalThresholds, userRoleForDashboard, layout = 'grid', year, isAggregate = false, isSelected = false, onSelect, decimalPrecision = 2 as 0 | 1 | 2, allDashboardItems = [], isGlobalAdmin = false }) => {
+export const DashboardRow: React.FC<DashboardRowProps> = React.memo(({ item, onUpdateItem, globalThresholds, userRoleForDashboard, layout = 'grid', year, isAggregate = false, isSelected = false, onSelect, decimalPrecision = 2 as 0 | 1 | 2, allDashboardItems = [], isGlobalAdmin = false, area }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const rowRef = React.useRef<HTMLDivElement>(null);
@@ -94,6 +95,7 @@ export const DashboardRow: React.FC<DashboardRowProps> = React.memo(({ item, onU
   }
 
   const { indicator, unit, weight, monthlyProgress, monthlyGoals, type } = item;
+  const displayIndicator = getCleanIndicatorName(indicator, area);
 
   const getFormattedValueAndUnit = (val: number | null | undefined, unitStr?: string) => {
     const trimmed = (unitStr || '').trim();
@@ -126,11 +128,11 @@ export const DashboardRow: React.FC<DashboardRowProps> = React.memo(({ item, onU
             <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest">KPI</span>
           </div>
           <h4
-            title={indicator}
-            aria-label={indicator}
+            title={displayIndicator}
+            aria-label={displayIndicator}
             className="kpi-card-title-compact font-black text-white uppercase tracking-tight group-hover:text-cyan-400 transition-colors"
           >
-            {getCleanIndicatorName(indicator)}
+            {displayIndicator}
           </h4>
         </div>
 
@@ -231,10 +233,11 @@ export const DashboardRow: React.FC<DashboardRowProps> = React.memo(({ item, onU
               )}
             </div>
             <h3
-              title={indicator}
-              className="kpi-card-title-normal font-black text-white uppercase tracking-tight hover:text-cyan-400 transition-colors min-w-0"
+              title={displayIndicator}
+              aria-label={displayIndicator}
+              className="kpi-card-title-normal font-black text-white uppercase tracking-tight hover:text-cyan-400 transition-colors min-w-0 [word-break:keep-all]"
             >
-              {getCleanIndicatorName(indicator)}
+              {displayIndicator}
             </h3>
           </div>
           <div className="flex-shrink-0 flex items-center gap-3">

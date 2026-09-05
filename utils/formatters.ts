@@ -154,9 +154,19 @@ export const parseFormattedNumber = (value: string): number | null => {
  * (ej. "(SOSTENIBILIDAD)", "(CAPACIDADES)", "(PROCESOS)", "(IMPACTO Y VALOR)").
  * Preserva paréntesis legítimos de unidades o código técnico.
  */
-export const getCleanIndicatorName = (name: string | null | undefined): string => {
+export const getCleanIndicatorName = (name: string | null | undefined, area?: string | null): string => {
     if (!name) return "";
-    return name.replace(/\s*\((SOSTENIBILIDAD|CAPACIDADES|PROCESOS|IMPACTO\s+Y\s+VALOR|IMPACTO|VALOR|ESTRATEGIA|FINANCIERO|OPERACIONAL|CALIDAD|APRENDIZAJE|RESULTADOS)\)$/i, "").trim();
+    const normalizedArea = String(area || '').trim();
+    const areaSuffix = normalizedArea
+        ? new RegExp(`\\s*\\(${normalizedArea.replace(/[.*+?^${}()|[\\]\\]/g, '\\\\$&')}\\)$`, 'i')
+        : null;
+    const withoutArea = areaSuffix ? name.replace(areaSuffix, '') : name;
+    const withoutCategory = withoutArea.replace(/\s*\((SOSTENIBILIDAD|CAPACIDADES|PROCESOS|IMPACTO\s+Y\s+VALOR|IMPACTO|VALOR|ESTRATEGIA|FINANCIERO|OPERACIONAL|CALIDAD|APRENDIZAJE|RESULTADOS)\)$/i, "").trim();
+    const trailing = withoutCategory.match(/\s*\(([^()]*)\)\s*$/);
+    if (!trailing) return withoutCategory;
+    const label = trailing[1].trim();
+    const isTechnicalSuffix = /^(?:\d{4}|%|USD|MXN|EUR|GBP|JPY)$/i.test(label);
+    return isTechnicalSuffix ? withoutCategory : withoutCategory.slice(0, trailing.index).trim();
 };
 
 /**

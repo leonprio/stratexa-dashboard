@@ -13,7 +13,7 @@ import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
 } from "firebase/auth";
-import { doc, getDoc, deleteField } from "firebase/firestore";
+import { doc, getDoc, getDocs, collection, query, where, deleteField } from "firebase/firestore";
 
 import { calculateCapture } from "./components/DashboardTabs";
 import { HierarchySidebar } from "./components/HierarchySidebar";
@@ -637,7 +637,30 @@ export default function App() {
             // profile value as display/context metadata only.
             clientId: prof?.clientId,
             dashboardAccess: prof?.dashboardAccess || {},
+            memberships: prof?.memberships || (profileSnap.exists() ? profileSnap.data()?.memberships : undefined),
           };
+        }
+
+        // 🛡️ RECONCILIACIÓN DE MEMBRESÍAS CANÓNICAS DE PLATAFORMA (v9.5.3)
+        // Cargar explícitamente tbl_userMemberships para poblar la autoridad del superadministrador
+        if (prof) {
+          try {
+            const canonicalSnap = await getDocs(
+              query(
+                collection(db, "tbl_userMemberships"),
+                where("userId", "==", u.uid),
+              ),
+            );
+            if (!canonicalSnap.empty) {
+              const canonicalList = canonicalSnap.docs.map((d) => d.data());
+              prof = {
+                ...prof,
+                memberships: canonicalList as any,
+              };
+            }
+          } catch (mErr) {
+            console.error("Error al cargar membresías canónicas de usuario:", mErr);
+          }
         }
 
         if (prof) {
@@ -921,16 +944,22 @@ export default function App() {
       setLoadingDashboards(true);
       setErrorMsg("");
 
+      // 1. Cargar catálogo de clientes de forma independiente y prioritaria
       try {
-        const rows = await fetchDashboardsForYear(selectedYear);
-        if (cancelled) return;
-
         const clients = await firebaseService.getAllClients();
         const mClients = await firebaseService.getAllManagedClients();
         if (cancelled) return;
         setDbClients(clients);
         setManagedClientsList(mClients);
         setClientCatalogLoaded(true);
+      } catch (clientErr) {
+        console.error("Error loading client catalog:", clientErr);
+      }
+
+      // 2. Cargar tableros en bloque protegido independiente
+      try {
+        const rows = await fetchDashboardsForYear(selectedYear);
+        if (cancelled) return;
 
         const targetClientAgg = (
           selectedClientId ||
@@ -1547,13 +1576,23 @@ export default function App() {
         .forEach((c) => clientSet.add(c.trim().toUpperCase()));
     }
 
-    // 3. Fuente de tableros cargados (Discovery)
+    // 3. Fuente de membresías autorizadas
+    if (userProfile) {
+      getAuthorizedClientIds(userProfile).forEach((c) =>
+        clientSet.add(c.trim().toUpperCase()),
+      );
+    }
+
+    // 4. Fuente de tableros cargados (Discovery)
     allRawDashboards.forEach((d) => {
       if (d.clientId) clientSet.add(d.clientId.trim().toUpperCase());
     });
 
-    // 4. Añadir clientes temporales de la sesión
+    // 5. Añadir clientes temporales de la sesión
     tempClients.forEach((c) => clientSet.add(c.trim().toUpperCase()));
+
+    // DEMO es un alias técnico legado que no forma parte del catálogo visual de producción
+    clientSet.delete("DEMO");
 
     // Tenant membership is the authority for non-platform client context.
     // Never add IPS/DEMO or a discovery result as an authorization fallback.

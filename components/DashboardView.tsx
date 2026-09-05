@@ -716,6 +716,7 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(
               decimalPrecision={localDecimalPrecision}
               allContextItems={allContextItems}
               isGlobalAdmin={isGlobalAdmin}
+              area={dashboard.area}
             />
           </div>
         ) : activeView === "objectives" ? (
