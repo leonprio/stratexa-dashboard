@@ -68,7 +68,7 @@ service cloud.firestore {
       return isAuthenticated() &&
         isSafeClientId(targetClientId) &&
         exists(/databases/$(database)/documents/tbl_users/$(request.auth.uid)) &&
-        !hasCanonicalMembership(targetClientId) &&
+        !hasCanonicalMembership(targetClientId) && !isPlatformAdmin() &&
         (
           getUserProfile().clientId == targetClientId ||
           getUserProfile().clientId.matches('(.*,|^)\\s*' + targetClientId + '\\s*(,.*|$)')
@@ -78,7 +78,7 @@ service cloud.firestore {
     function isTenantUser(targetClientId) { return canReadBusinessData(targetClientId); }
 
     function hasLegacyPlatformBusinessReadBridge() {
-      return hasApprovedLegacyPlatformEmail();
+      return false;
     }
 
     function hasLegacyPlatformBusinessWriteBridge() {
@@ -86,11 +86,9 @@ service cloud.firestore {
     }
 
     function isTenantAdmin(targetClientId) {
-      // The bridge preserves current operational SuperAdmin writes without
-      // treating canonical platform_admin identity as tenant administration.
-      return hasLegacyPlatformBusinessWriteBridge() || (activeCanonicalMembership(targetClientId) &&
+      return (activeCanonicalMembership(targetClientId) &&
         get(/databases/$(database)/documents/tbl_userMemberships/$(membershipId(targetClientId))).data.role == 'tenant_admin') ||
-        (!hasCanonicalMembership(targetClientId) && isStratexaAdmin() && legacyTenantUser(targetClientId));
+        (legacyTenantUser(targetClientId) && getUserProfile().get('globalRole', '') in ['Admin', 'admin']);
     }
 
     function canReadBusinessData(clientId) {
@@ -154,10 +152,27 @@ service cloud.firestore {
       ));
     }
 
+    function hasTenantCapability(clientId, capability) {
+      return isTenantAdmin(clientId) || (activeCanonicalMembership(clientId) &&
+        capability in get(/databases/$(database)/documents/tbl_userMemberships/$(membershipId(clientId))).data.capabilities);
+    }
+    function canReadStrategy(clientId) {
+      return isTenantAdmin(clientId) || (activeCanonicalMembership(clientId) &&
+        get(/databases/$(database)/documents/tbl_userMemberships/$(membershipId(clientId))).data.scopeType == 'tenant' &&
+        'strategy_reader' in get(/databases/$(database)/documents/tbl_userMemberships/$(membershipId(clientId))).data.capabilities);
+    }
+    function canReadActionPlan(data) {
+      let dashboardId = string(data.dashboardId);
+      let board = get(/databases/$(database)/documents/tbl_dashboards/$(dashboardId)).data;
+      return board.clientId == data.clientId && canReadDashboard(board, dashboardId);
+    }
     function canEditActionPlan(data) {
       let dashboardId = string(data.dashboardId);
       let board = get(/databases/$(database)/documents/tbl_dashboards/$(dashboardId)).data;
-      return board.clientId == data.clientId && canEditDashboard(board, dashboardId);
+      return board.clientId == data.clientId && (isTenantAdmin(data.clientId) ||
+        (activeCanonicalMembership(data.clientId) &&
+          'plan_editor' in get(/databases/$(database)/documents/tbl_userMemberships/$(membershipId(data.clientId))).data.capabilities &&
+          (canonicalDashboardScope(board, dashboardId) || canonicalDirectorScope(board))));
     }
 
     function canManageProfile(data) {
@@ -195,8 +210,8 @@ service cloud.firestore {
     }
 
     function canInitializeStrategyCounter(counterId) {
-      return isSuperAdmin() || (
-        isStratexaAdmin() &&
+      return isAuthenticated() && (
+        isTenantAdmin(getUserProfile().clientId) &&
         isSafeClientId(getUserProfile().clientId) &&
         isStrategyCounterIdForClient(counterId, getUserProfile().clientId)
       );
@@ -290,7 +305,7 @@ service cloud.firestore {
       allow write: if isPlatformAdmin() || isTenantAdmin(id);
     }
     match /tbl_actionPlans/{planId} {
-      allow read: if isTableroUser() && isTenantUser(resource.data.clientId);
+      allow read: if isTableroUser() && canReadActionPlan(resource.data);
       allow create: if isTableroUser() && isSafeClientId(request.resource.data.clientId) && canEditActionPlan(request.resource.data);
       allow update: if isTableroUser() && canEditActionPlan(resource.data) &&
         request.resource.data.clientId == resource.data.clientId &&
@@ -301,35 +316,35 @@ service cloud.firestore {
 
     // --- 🎯 REGLAS DE SEGURIDAD SERVIDORA: ESTRATEGIA (v9.5.0 FOUNDATION) ---
     match /tbl_strategicPerspectives/{docId} {
-      allow read: if isTableroUser() && (resource == null || isTenantUser(resource.data.clientId));
+      allow read: if isTableroUser() && (resource == null || canReadStrategy(resource.data.clientId));
       allow create: if isTableroUser() && isSafeClientId(request.resource.data.clientId) && isTenantAdmin(request.resource.data.clientId);
       allow update: if isTableroUser() && isSafeClientId(resource.data.clientId) && isTenantAdmin(resource.data.clientId) && request.resource.data.clientId == resource.data.clientId;
       allow delete: if isTableroUser() && isTenantAdmin(resource.data.clientId);
     }
 
     match /tbl_strategicObjectives/{docId} {
-      allow read: if isTableroUser() && (resource == null || isTenantUser(resource.data.clientId));
+      allow read: if isTableroUser() && (resource == null || canReadStrategy(resource.data.clientId));
       allow create: if isTableroUser() && isSafeClientId(request.resource.data.clientId) && isTenantAdmin(request.resource.data.clientId);
       allow update: if isTableroUser() && isSafeClientId(resource.data.clientId) && isTenantAdmin(resource.data.clientId) && request.resource.data.clientId == resource.data.clientId;
       allow delete: if isTableroUser() && isTenantAdmin(resource.data.clientId);
     }
 
     match /tbl_areaStrategyConfigs/{docId} {
-      allow read: if isTableroUser() && (resource == null || isTenantUser(resource.data.clientId));
+      allow read: if isTableroUser() && (resource == null || canReadStrategy(resource.data.clientId));
       allow create: if isTableroUser() && isSafeClientId(request.resource.data.clientId) && isTenantAdmin(request.resource.data.clientId);
       allow update: if isTableroUser() && isSafeClientId(resource.data.clientId) && isTenantAdmin(resource.data.clientId) && request.resource.data.clientId == resource.data.clientId;
       allow delete: if isTableroUser() && isTenantAdmin(resource.data.clientId);
     }
 
     match /tbl_contributionObjectives/{docId} {
-      allow read: if isTableroUser() && (resource == null || isTenantUser(resource.data.clientId));
+      allow read: if isTableroUser() && (resource == null || canReadStrategy(resource.data.clientId));
       allow create: if isTableroUser() && isSafeClientId(request.resource.data.clientId) && isTenantAdmin(request.resource.data.clientId);
       allow update: if isTableroUser() && isSafeClientId(resource.data.clientId) && isTenantAdmin(resource.data.clientId) && request.resource.data.clientId == resource.data.clientId;
       allow delete: if isTableroUser() && isTenantAdmin(resource.data.clientId);
     }
 
     match /tbl_contributionIndicatorAssignments/{docId} {
-      allow read: if isTableroUser() && (resource == null || isTenantUser(resource.data.clientId));
+      allow read: if isTableroUser() && (resource == null || canReadStrategy(resource.data.clientId));
       allow create: if isTableroUser() && isSafeClientId(request.resource.data.clientId) && isTenantAdmin(request.resource.data.clientId);
       allow update: if isTableroUser() && isSafeClientId(resource.data.clientId) && isTenantAdmin(resource.data.clientId) && request.resource.data.clientId == resource.data.clientId;
       allow delete: if isTableroUser() && isTenantAdmin(resource.data.clientId);
@@ -351,14 +366,14 @@ service cloud.firestore {
     }
 
     match /tbl_areaCodeReservations/{docId} {
-      allow read: if isTableroUser() && (resource == null || isTenantUser(resource.data.clientId));
+      allow read: if isTableroUser() && (resource == null || canReadStrategy(resource.data.clientId));
       allow create: if isTableroUser() && isSafeClientId(request.resource.data.clientId) && isTenantAdmin(request.resource.data.clientId);
       allow update: if isTableroUser() && isSafeClientId(resource.data.clientId) && isTenantAdmin(resource.data.clientId) && request.resource.data.clientId == resource.data.clientId;
       allow delete: if isTableroUser() && isTenantAdmin(resource.data.clientId);
     }
 
     match /tbl_strategicObjectiveRelationships/{docId} {
-      allow read: if isTableroUser() && (resource == null || isTenantUser(resource.data.clientId));
+      allow read: if isTableroUser() && (resource == null || canReadStrategy(resource.data.clientId));
       allow create: if isTableroUser() &&
         isSafeClientId(request.resource.data.clientId) &&
         isTenantAdmin(request.resource.data.clientId) &&

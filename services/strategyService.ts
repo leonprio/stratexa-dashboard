@@ -21,6 +21,8 @@ import {
 } from 'firebase/firestore';
 
 import { db } from '../firebase';
+import { readTableroScope, requestedTenants } from './tableroReadScope';
+import { canAccessStrategy } from './tableroAuthorization';
 import { saveOperationalAssignmentsForOC } from './contributionAssignmentPersistence';
 
 import {
@@ -54,8 +56,16 @@ const CODE_RESERVATIONS_COLLECTION = `${COLLECTION_PREFIX}areaCodeReservations`;
 const RELATIONSHIPS_COLLECTION = `${COLLECTION_PREFIX}strategicObjectiveRelationships`;
 
 const normalizeClientId = (clientId?: string): string => {
-  if (!clientId || clientId === 'all') return 'IPS';
+  if (!clientId || /^all$/i.test(clientId)) throw new Error('Cliente explícito requerido para estrategia.');
   return clientId.trim().toUpperCase();
+};
+
+const authorizeStrategy = async (clientId?: string): Promise<string> => {
+  const tenant = normalizeClientId(clientId);
+  const scope = await readTableroScope();
+  requestedTenants(scope, tenant);
+  if (!scope.profile || !canAccessStrategy(scope.profile, tenant)) throw new Error('Capacidad strategy_reader requerida.');
+  return tenant;
 };
 
 const parseOESequence = (code?: string): number | null => parseObjectiveCodeSequence(code || '', 'OE');
@@ -71,7 +81,7 @@ export const strategyService = {
   // 1. Perspectivas Estratégicas (4 Slots Configurables)
   // -----------------------------
   getPerspectives: async (clientId?: string): Promise<StrategicPerspective[]> => {
-    const targetClient = normalizeClientId(clientId);
+    const targetClient = await authorizeStrategy(clientId);
     const ref = collection(db, PERSPECTIVES_COLLECTION);
     const q = query(ref, where('clientId', '==', targetClient));
     const snap = await getDocs(q);
@@ -85,7 +95,7 @@ export const strategyService = {
   },
 
   savePerspective: async (perspective: StrategicPerspective, clientId?: string): Promise<StrategicPerspective> => {
-    const targetClient = normalizeClientId(clientId || perspective.clientId);
+    const targetClient = await authorizeStrategy(clientId || perspective.clientId);
     const ref = doc(db, PERSPECTIVES_COLLECTION, `${targetClient}_${perspective.id}`);
 
     const data: StrategicPerspective = {
@@ -98,7 +108,7 @@ export const strategyService = {
   },
 
   saveAllPerspectives: async (perspectives: StrategicPerspective[], clientId?: string): Promise<boolean> => {
-    const targetClient = normalizeClientId(clientId);
+    const targetClient = await authorizeStrategy(clientId);
     const batch = writeBatch(db);
 
     perspectives.forEach(p => {
@@ -115,7 +125,7 @@ export const strategyService = {
   // 2. Objetivos Estratégicos (OE)
   // -----------------------------
   getStrategicObjectives: async (clientId?: string): Promise<StrategicObjective[]> => {
-    const targetClient = normalizeClientId(clientId);
+    const targetClient = await authorizeStrategy(clientId);
     const ref = collection(db, OBJECTIVES_COLLECTION);
     const q = query(ref, where('clientId', '==', targetClient));
     const snap = await getDocs(q);
@@ -130,7 +140,7 @@ export const strategyService = {
   },
 
   saveStrategicObjective: async (objective: Omit<StrategicObjective, 'id'> & { id?: string }): Promise<StrategicObjective> => {
-    const targetClient = normalizeClientId(objective.clientId);
+    const targetClient = await authorizeStrategy(objective.clientId);
     if (objective.id) {
       const ref = doc(db, OBJECTIVES_COLLECTION, objective.id);
       const snap = await getDoc(ref);
@@ -160,7 +170,7 @@ export const strategyService = {
   },
 
   deleteStrategicObjective: async (objectiveId: string, clientId?: string): Promise<boolean> => {
-    const targetClient = normalizeClientId(clientId);
+    const targetClient = await authorizeStrategy(clientId);
     const ref = doc(db, OBJECTIVES_COLLECTION, objectiveId);
     // Defensa en profundidad: Verificar pertenencia al tenant
     const snap = await getDoc(ref);
@@ -225,7 +235,7 @@ export const strategyService = {
     toSequence: number,
     clientId?: string
   ): Promise<StrategicObjective> => {
-    const targetClient = normalizeClientId(clientId);
+    const targetClient = await authorizeStrategy(clientId);
     if (fromSequence !== toSequence + 1 || toSequence < 1) {
       throw new Error('La reparación sólo permite cerrar el hueco inmediatamente anterior al último código emitido.');
     }
@@ -277,7 +287,7 @@ export const strategyService = {
   },
 
   repairLegacyStrategicObjectiveCodes: async (clientId?: string): Promise<{ repaired: number; codes: Record<string, string>; counter: number }> => {
-    const targetClient = normalizeClientId(clientId);
+    const targetClient = await authorizeStrategy(clientId);
     const objectives = await strategyService.getStrategicObjectives(targetClient);
     const canonicalCodes = new Set(
       objectives
@@ -325,7 +335,7 @@ export const strategyService = {
   // 3. Configuración y Reserva Atómica de Código de Área (con Auto-ID nativo de Firestore)
   // -----------------------------
   getAreaConfigs: async (clientId?: string): Promise<AreaStrategyConfig[]> => {
-    const targetClient = normalizeClientId(clientId);
+    const targetClient = await authorizeStrategy(clientId);
     const ref = collection(db, AREA_CONFIGS_COLLECTION);
     const q = query(ref, where('clientId', '==', targetClient));
     const snap = await getDocs(q);
@@ -339,7 +349,7 @@ export const strategyService = {
     clientId?: string,
     areaConfigId?: string
   ): Promise<AreaStrategyConfig> => {
-    const targetClient = normalizeClientId(clientId);
+    const targetClient = await authorizeStrategy(clientId);
     const normArea = areaName.trim().toUpperCase();
     const normCode = code.trim().toUpperCase();
 
@@ -428,7 +438,7 @@ export const strategyService = {
   // 4. Objetivos de Contribución (OC) con Contador Atómico Transaccional Estricto
   // -----------------------------
   getContributionObjectives: async (clientId?: string): Promise<ContributionObjective[]> => {
-    const targetClient = normalizeClientId(clientId);
+    const targetClient = await authorizeStrategy(clientId);
     const ref = collection(db, CONTRIBUTION_OBJECTIVES_COLLECTION);
     const q = query(ref, where('clientId', '==', targetClient));
     const snap = await getDocs(q);
@@ -448,7 +458,7 @@ export const strategyService = {
       areaCode?: string;
     }
   ): Promise<ContributionObjective> => {
-    const targetClient = normalizeClientId(data.clientId);
+    const targetClient = await authorizeStrategy(data.clientId);
     const normArea = (data.areaName || 'GENERAL').trim().toUpperCase();
 
     // 1. Asegurar la existencia y obtener la configuración de área relacional
@@ -544,7 +554,7 @@ export const strategyService = {
   },
 
   deleteContributionObjective: async (ocId: string, clientId?: string): Promise<boolean> => {
-    const targetClient = normalizeClientId(clientId);
+    const targetClient = await authorizeStrategy(clientId);
     const ref = doc(db, CONTRIBUTION_OBJECTIVES_COLLECTION, ocId);
     // Defensa en profundidad: Verificar pertenencia al tenant
     const snap = await getDoc(ref);
@@ -592,7 +602,7 @@ export const strategyService = {
   // 5. Asignaciones de Indicadores
   // -----------------------------
   getAssignments: async (clientId?: string): Promise<ContributionIndicatorAssignment[]> => {
-    const targetClient = normalizeClientId(clientId);
+    const targetClient = await authorizeStrategy(clientId);
     const ref = collection(db, ASSIGNMENTS_COLLECTION);
     const q = query(ref, where('clientId', '==', targetClient));
     const snap = await getDocs(q);
@@ -607,7 +617,7 @@ export const strategyService = {
     items: { dashboardId: number | string; itemId: number | string; physicalAliases?: { dashboardId: number | string; itemId: number | string }[] }[],
     clientId?: string
   ): Promise<boolean> => {
-    const targetClient = normalizeClientId(clientId);
+    const targetClient = await authorizeStrategy(clientId);
     const objectiveRef = doc(db, OBJECTIVES_COLLECTION, objectiveId);
     const objectiveSnap = await getDoc(objectiveRef);
     if (!objectiveSnap.exists()) throw new Error(`Objetivo estratégico "${objectiveId}" no encontrado.`);
@@ -656,6 +666,7 @@ export const strategyService = {
   },
 
   removeContributionIndicatorAssignment: async (clientId: string, assignmentId: string): Promise<boolean> => {
+    await authorizeStrategy(clientId);
     const ref = doc(db, ASSIGNMENTS_COLLECTION, assignmentId);
     const snap = await getDoc(ref);
     if (!snap.exists()) return false;
@@ -671,7 +682,7 @@ export const strategyService = {
   // 6. Relaciones de Causa y Efecto entre Objetivos Estratégicos (Mapa Estratégico)
   // -----------------------------
   getStrategicObjectiveRelationships: async (clientId?: string): Promise<StrategicObjectiveRelationship[]> => {
-    const targetClient = normalizeClientId(clientId);
+    const targetClient = await authorizeStrategy(clientId);
     const ref = collection(db, RELATIONSHIPS_COLLECTION);
     const q = query(ref, where('clientId', '==', targetClient));
     const snap = await getDocs(q);
@@ -683,7 +694,7 @@ export const strategyService = {
   saveStrategicObjectiveRelationship: async (
     rel: Omit<StrategicObjectiveRelationship, 'id'> & { id?: string }
   ): Promise<StrategicObjectiveRelationship> => {
-    const targetClient = normalizeClientId(rel.clientId);
+    const targetClient = await authorizeStrategy(rel.clientId);
     const sourceId = (rel.sourceStrategicObjectiveId || '').trim();
     const targetId = (rel.targetStrategicObjectiveId || '').trim();
 
@@ -741,7 +752,7 @@ export const strategyService = {
   },
 
   deleteStrategicObjectiveRelationship: async (relationshipId: string, clientId?: string): Promise<boolean> => {
-    const targetClient = normalizeClientId(clientId);
+    const targetClient = await authorizeStrategy(clientId);
     const ref = doc(db, RELATIONSHIPS_COLLECTION, relationshipId);
 
     const snap = await getDoc(ref);

@@ -94,15 +94,19 @@ export const firebaseService = {
     },
 
     getActionPlansForIndicator: async (indicatorId: number | string, clientId?: string): Promise<ActionPlan[]> => {
-        const constraints = [where('indicatorId', '==', indicatorId)];
-        if (clientId) constraints.push(where('clientId', '==', clientId.trim().toUpperCase()));
-        const snap = await getDocs(query(collection(db, ACTION_PLANS_COLLECTION), ...constraints));
-        return snap.docs.map(d => d.data() as ActionPlan).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+        if (!clientId) throw new Error('Cliente requerido para planes.');
+        const tenant = clientId.trim().toUpperCase();
+        const boards = await firebaseService.getDashboards(tenant);
+        const snapshots = await Promise.all(boards.map(board => getDocs(query(collection(db, ACTION_PLANS_COLLECTION),
+            where('clientId', '==', tenant), where('dashboardId', '==', board.id), where('indicatorId', '==', indicatorId)))));
+        return [...new Map(snapshots.flatMap(s => s.docs.map(d => [d.id, { ...d.data(), id: d.id } as ActionPlan] as const))).values()]
+            .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
     },
 
     getActiveActionPlansForDashboard: async (dashboardId: number | string, clientId?: string): Promise<ActionPlan[]> => {
-        const constraints = [where('dashboardId', '==', dashboardId), where('status', 'in', ['planned', 'in_progress'])];
-        if (clientId) constraints.push(where('clientId', '==', clientId.trim().toUpperCase()));
+        if (!clientId) throw new Error('Cliente requerido para planes.');
+        const tenant = requestedTenants(await readTableroScope(), clientId)[0];
+        const constraints = [where('clientId', '==', tenant), where('dashboardId', '==', dashboardId), where('status', 'in', ['planned', 'in_progress'])];
         const snap = await getDocs(query(collection(db, ACTION_PLANS_COLLECTION), ...constraints));
         return snap.docs.map(d => d.data() as ActionPlan);
     },
@@ -303,9 +307,7 @@ export const firebaseService = {
         const scope = await readTableroScope();
         const tenants = requestedTenants(scope, clientId);
         // Global business catalogue is an explicit platform-only branch.
-        const snapshots = scope.platform && tenants.length === 0
-            ? [await getDocs(query(dRef))]
-            : await Promise.all(tenants.flatMap(tenant => dashboardQueryConstraints(scope, tenant)
+        const snapshots = await Promise.all(tenants.flatMap(tenant => dashboardQueryConstraints(scope, tenant)
                 .map(constraints => getDocs(query(dRef, ...constraints)))));
         const documents = [...new Map(snapshots.flatMap(s => s.docs.map(d => [d.id, d] as const))).values()];
 
@@ -535,19 +537,6 @@ export const firebaseService = {
             const id = d.id.trim().toUpperCase();
             const displayName = data.displayName || data.name || id;
             map.set(id, displayName);
-        });
-
-        // 2. Get from Dashboards (Discovery for legacy)
-        const qDash = query(collection(db, DASHBOARDS_COLLECTION));
-        const snapDash = await getDocs(qDash);
-        snapDash.docs.forEach(d => {
-            const c = d.data().clientId;
-            if (c) {
-                const id = String(c).trim().toUpperCase();
-                if (!map.has(id)) {
-                    map.set(id, id);
-                }
-            }
         });
 
         return Array.from(map.entries()).map(([clientId, displayName]) => ({

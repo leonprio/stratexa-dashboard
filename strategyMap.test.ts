@@ -1,3 +1,10 @@
+// Functional persistence fixtures now run with an explicit tenant grant. Negative authorization is tested in services/releaseSecurity.test.ts and Rules.
+jest.mock('./services/tableroReadScope', () => ({
+  ...jest.requireActual('./services/tableroReadScope'),
+  readTableroScope: jest.fn(async () => ({ platform: false, tenants: ['IPS'], profile: {
+    id: 'fixture-admin', email: 'fixture@example.test', memberships: [{ clientId: 'IPS', role: 'tenant_admin', status: 'active', capabilities: [] }]
+  } })),
+}));
 import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';

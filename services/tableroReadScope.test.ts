@@ -60,13 +60,13 @@ test('canonical Director scope never unions legacy superGroups or dashboardAcces
   };
   const constraints = dashboardQueryConstraints(canonicalDirector, 'A') as any[];
   expect(constraints.flat().some(c => c?.value === 'B' || Array.isArray(c?.value) && c.value.includes('D2'))).toBe(false);
-  expect(constraints.flat()).toContainEqual({ field: 'group', op: '==', value: 'A' });
+  expect(constraints.flat()).toContainEqual({ field: 'directionId', op: '==', value: 'A' });
   expect(constraints.flat()).toContainEqual({ field: '__name__', op: 'in', value: ['D1'] });
 });
 
 test('getDashboards does not fetch global data for a tenant member', async () => {
   await firebaseService.getDashboards('A', 2026);
-  for (const [query] of (getDocs as jest.Mock).mock.calls) {
+  for (const [query] of (getDocs as jest.Mock).mock.calls.filter(([q]) => q.path === 'tbl_dashboards')) {
     expect(query.path).toBe('tbl_dashboards');
     expect(query.constraints).toContainEqual({ field:'clientId', op:'==', value:'A' });
   }
@@ -74,7 +74,7 @@ test('getDashboards does not fetch global data for a tenant member', async () =>
 
 test('cross-tenant getDashboards is rejected before collection reads', async () => {
   await expect(firebaseService.getDashboards('B')).rejects.toThrow();
-  expect(getDocs).not.toHaveBeenCalled();
+  expect((getDocs as jest.Mock).mock.calls.every(([q]) => q.path === 'tbl_userMemberships')).toBe(true);
 });
 
 test('catalogue uses only authorized document gets and user reads return own profile', async () => {
@@ -83,20 +83,19 @@ test('catalogue uses only authorized document gets and user reads return own pro
     ? { exists: () => true, data: () => scope.profile }
     : { exists: () => false });
   expect(await firebaseService.getAllManagedClients()).toEqual([{clientId:'A',displayName:'A'}]);
-  expect(getDocs).not.toHaveBeenCalled();
+  expect((getDocs as jest.Mock).mock.calls.every(([q]) => q.path === 'tbl_userMemberships')).toBe(true);
 });
 
 test('tenant Admin directory query uses tenant constraint', async () => {
   (getDoc as jest.Mock).mockResolvedValue({ exists: () => true, data: () => ({ ...scope.profile, globalRole: 'Admin' }) });
   await firebaseService.getUsers();
-  expect((getDocs as jest.Mock).mock.calls[0][0].constraints).toEqual([{field:'clientId',op:'==',value:'A'}]);
+  expect((getDocs as jest.Mock).mock.calls.find(([q]) => q.path === 'tbl_users')[0].constraints).toEqual([{field:'clientId',op:'==',value:'A'}]);
 });
 
 test('platform catalogue is explicit and uses authenticated identity', async () => {
   (auth as any).currentUser = { uid:'platform',email:'leon@leonprior.com' };
-  await firebaseService.getDashboards();
-  expect((getDocs as jest.Mock).mock.calls[0][0].constraints).toEqual([]);
-  expect(getDoc).not.toHaveBeenCalled();
+  await expect(firebaseService.getDashboards()).rejects.toThrow('membresías');
+  expect((getDocs as jest.Mock).mock.calls.every(([q]) => q.path === 'tbl_userMemberships')).toBe(true);
 });
 
 test('sequential account changes do not reuse prior scope', async () => {
@@ -104,4 +103,16 @@ test('sequential account changes do not reuse prior scope', async () => {
   (auth as any).currentUser = { uid:'other',email:'other@example.test' };
   (getDoc as jest.Mock).mockResolvedValueOnce({ exists: () => true, data: () => ({ ...scope.profile, clientId: 'B' }) });
   expect((await readTableroScope()).tenants).toEqual(['B']);
+});
+
+test('protected membership grants platform only its explicit scope and suspended records override legacy', async () => {
+ (auth as any).currentUser={uid:'platform',email:'leon@leonprior.com'};
+ (getDocs as jest.Mock).mockResolvedValue({docs:[{data:()=>({userId:'platform',clientId:'A',role:'standard_user',status:'active',scopeType:'dashboard',allowedDashboardIds:['D'],capabilities:['viewer','strategy_reader']})}]});
+ const scoped=await readTableroScope();
+ expect(scoped.tenants).toEqual(['A']);
+ expect(()=>requestedTenants(scoped,'B')).toThrow();
+ expect(scoped.profile?.memberships?.[0].capabilities).toEqual(['viewer']);
+ (auth as any).currentUser={uid:'member',email:'member@example.test'};
+ (getDocs as jest.Mock).mockResolvedValue({docs:[{data:()=>({userId:'member',clientId:'A',role:'tenant_admin',status:'suspended',scopeType:'tenant',capabilities:[]})}]});
+ expect((await readTableroScope()).tenants).toEqual([]);
 });

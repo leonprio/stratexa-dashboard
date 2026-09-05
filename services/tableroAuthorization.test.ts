@@ -30,7 +30,7 @@ describe('canonical Tablero authorization compatibility', () => {
   it('normalizes universal platform identity without creating fake tenant memberships', () => {
     const profile = legacy({ email: 'LEON@LEONPRIOR.COM', clientId: 'IPS', globalRole: GlobalUserRole.Admin });
     expect(isPlatformAdmin(profile)).toBe(true);
-    expect(resolveEffectiveMemberships(profile)).toMatchObject({ role: 'platform_admin', memberships: [] });
+    expect(resolveEffectiveMemberships(profile).memberships).toEqual([]);
     expect(getAuthorizedClientIds(profile)).toEqual([]);
   });
 
@@ -41,8 +41,9 @@ describe('canonical Tablero authorization compatibility', () => {
     expect(canReadBusinessData(blindAdmin, 'A')).toBe(false);
     const legacySupport = legacy({ email: 'leon@leonprior.com', globalRole: GlobalUserRole.Admin, clientId: undefined });
     expect(isPlatformAdmin(legacySupport)).toBe(true);
-    expect(hasLegacyPlatformBusinessReadBridge(legacySupport)).toBe(true);
-    expect(canReadBusinessData(legacySupport, 'A')).toBe(true);
+    expect(hasLegacyPlatformBusinessReadBridge(legacySupport)).toBe(false);
+    expect(canReadBusinessData(legacySupport, 'A')).toBe(false);
+    expect(canReadBusinessData({...legacySupport, memberships:[{clientId:'A',role:'standard_user',status:'active',dashboardScopes:{D1:'viewer'}}]},'A')).toBe(true);
   });
 
   it('gives valid canonical memberships precedence over legacy data', () => {

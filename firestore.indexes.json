@@ -48,6 +48,31 @@
                 { "fieldPath": "clientId", "order": "ASCENDING" },
                 { "fieldPath": "strategicObjectiveId", "order": "ASCENDING" }
             ]
+        },
+        {
+            "collectionGroup": "tbl_actionPlans",
+            "queryScope": "COLLECTION",
+            "fields": [
+                { "fieldPath": "clientId", "order": "ASCENDING" },
+                { "fieldPath": "dashboardId", "order": "ASCENDING" },
+                { "fieldPath": "indicatorId", "order": "ASCENDING" }
+            ]
+        },
+        {
+            "collectionGroup": "tbl_dashboards",
+            "queryScope": "COLLECTION",
+            "fields": [
+                { "fieldPath": "clientId", "order": "ASCENDING" },
+                { "fieldPath": "directionId", "order": "ASCENDING" }
+            ]
+        },
+        {
+            "collectionGroup": "tbl_dashboards",
+            "queryScope": "COLLECTION",
+            "fields": [
+                { "fieldPath": "clientId", "order": "ASCENDING" },
+                { "fieldPath": "areaId", "order": "ASCENDING" }
+            ]
         }
     ],
     "fieldOverrides": []

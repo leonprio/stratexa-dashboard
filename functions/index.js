@@ -16,6 +16,7 @@ initializeApp();
 setGlobalOptions({ maxInstances: 10, region: "us-central1" });
 
 const USERS_COLLECTION = "tbl_users";
+const { authorizeTenantAdministration } = require("./tenantAdministration.cjs");
 
 /**
  * Cloud Function to update a user's password
@@ -38,18 +39,8 @@ exports.updateUserPassword = onCall(async (request) => {
         throw new HttpsError("invalid-argument", "La contraseña debe tener al menos 6 caracteres.");
     }
 
-    // Verify caller is an admin in Firestore
     const db = getFirestore();
-    const callerDoc = await db.collection(USERS_COLLECTION).doc(request.auth.uid).get();
-
-    if (!callerDoc.exists) {
-        throw new HttpsError("permission-denied", "Perfil de usuario no encontrado.");
-    }
-
-    const callerData = callerDoc.data();
-    if (callerData.globalRole !== "Admin") {
-        throw new HttpsError("permission-denied", "Solo los administradores pueden cambiar contraseñas.");
-    }
+    await authorizeTenantAdministration(db, request, HttpsError, targetUserId);
 
     // Prevent changing own password through this function
     if (targetUserId === request.auth.uid) {
@@ -98,13 +89,8 @@ exports.createUser = onCall(async (request) => {
         throw new HttpsError("invalid-argument", "La contraseña debe tener al menos 6 caracteres.");
     }
 
-    // Verify caller is an admin
     const db = getFirestore();
-    const callerDoc = await db.collection(USERS_COLLECTION).doc(request.auth.uid).get();
-
-    if (!callerDoc.exists || callerDoc.data().globalRole !== "Admin") {
-        throw new HttpsError("permission-denied", "Solo los administradores pueden crear usuarios.");
-    }
+    await authorizeTenantAdministration(db, request, HttpsError);
 
     try {
         // Create user using Admin SDK (doesn't affect client session)
@@ -147,13 +133,8 @@ exports.deleteUserCompletely = onCall(async (request) => {
         throw new HttpsError("invalid-argument", "Se requiere el ID del usuario a eliminar.");
     }
 
-    // Verify caller is an admin
     const db = getFirestore();
-    const callerDoc = await db.collection(USERS_COLLECTION).doc(request.auth.uid).get();
-
-    if (!callerDoc.exists || callerDoc.data().globalRole !== "Admin") {
-        throw new HttpsError("permission-denied", "Solo los administradores pueden eliminar usuarios.");
-    }
+    await authorizeTenantAdministration(db, request, HttpsError, targetUserId);
 
     // Prevent self-deletion
     if (targetUserId === request.auth.uid) {

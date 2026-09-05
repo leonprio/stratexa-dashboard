@@ -54,6 +54,7 @@ const canonicalMembership = (membership: NonNullable<User['memberships']>[number
 };
 
 function legacyMemberships(profile: User): TenantMembership[] {
+  if (isPlatformAdmin(profile)) return [];
   const role = normalizeRole(profile.globalRole);
   const clientIds = String(profile.clientId || '').split(',').map(normalizeClient).filter(id => id && id !== 'ALL');
   if (!role || role === 'platform_admin' || clientIds.length === 0) return [];
@@ -70,7 +71,7 @@ function legacyMemberships(profile: User): TenantMembership[] {
     dashboardScopes,
     capabilities: [
       ...new Set([
-        ...(role === 'director' ? ['metadata_editor', 'plan_editor'] : []),
+        ...(role === 'director' ? ['metadata_editor'] : []),
         ...Object.values(dashboardScopes).map(x => x === 'editor' ? 'editor' : 'viewer'),
       ] as ScopeCapability[]),
     ],
@@ -82,18 +83,16 @@ export function isPlatformAdmin(profile: Pick<User, 'email' | 'globalRole'>): bo
   return platformEmails.has(String(profile.email || '').trim().toLowerCase()) || normalizeRole(profile.globalRole) === 'platform_admin';
 }
 
-/** Transitional operational-support grant. It is intentionally not inferred
- * from platform_admin and must never be treated as confidential access. */
+/** Compatibility API: email never grants business or confidential access. */
 export function hasLegacyPlatformBusinessReadBridge(profile: Pick<User, 'email'>): boolean {
-  return platformEmails.has(String(profile.email || '').trim().toLowerCase());
+  return false;
 }
 
 export function canReadBusinessData(profile: User, clientId: string): boolean {
-  return hasLegacyPlatformBusinessReadBridge(profile) || getMembershipForClient(profile, clientId) !== null;
+  return getMembershipForClient(profile, clientId) !== null;
 }
 
 export function resolveEffectiveMemberships(profile: User): EffectiveMembershipResolution {
-  if (isPlatformAdmin(profile)) return { role: 'platform_admin', memberships: [], source: 'canonical', contradictoryHybrid: false, needsMigrationReview: false };
   const canonical = (profile.memberships || []).map(canonicalMembership);
   const hasCanonicalInput = (profile.memberships || []).length > 0;
   const validCanonical = canonical.filter((x): x is TenantMembership => x !== null);
@@ -110,7 +109,6 @@ export function resolveEffectiveMemberships(profile: User): EffectiveMembershipR
 }
 
 export function getAuthorizedClientIds(profile: User): string[] {
-  if (isPlatformAdmin(profile)) return [];
   return [...new Set(resolveEffectiveMemberships(profile).memberships.filter(m => m.status === 'active').map(m => m.clientId))];
 }
 
@@ -120,11 +118,10 @@ export function getMembershipForClient(profile: User, clientId: string): TenantM
 }
 
 export function canAdminTenant(profile: User, clientId: string): boolean {
-  return isPlatformAdmin(profile) || getMembershipForClient(profile, clientId)?.role === 'tenant_admin';
+  return getMembershipForClient(profile, clientId)?.role === 'tenant_admin';
 }
 
 export function canAccessDashboard(profile: User, dashboard: Pick<Dashboard, 'id' | 'clientId' | 'group' | 'superGroup'>, capability: 'viewer' | 'editor' = 'viewer'): boolean {
-  if (isPlatformAdmin(profile)) return false; // platform management is not business-data access
   const membership = getMembershipForClient(profile, dashboard.clientId || '');
   if (!membership) return false;
   if (membership.role === 'tenant_admin') return true;
@@ -133,7 +130,7 @@ export function canAccessDashboard(profile: User, dashboard: Pick<Dashboard, 'id
   return membership.role === 'director' && membership.hierarchyScopes.includes(String(dashboard.group || dashboard.superGroup || '').trim());
 }
 
-export function canManageUsers(profile: User, targetClientId: string): boolean { return canAdminTenant(profile, targetClientId); }
+export function canManageUsers(profile: User, targetClientId: string): boolean { return isPlatformAdmin(profile) || canAdminTenant(profile, targetClientId); }
 export function canAccessStrategy(profile: User, clientId: string): boolean {
   const membership = getMembershipForClient(profile, clientId);
   return membership?.role === 'tenant_admin' || membership?.capabilities.includes('strategy_reader') || false;

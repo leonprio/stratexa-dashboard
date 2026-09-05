@@ -1,3 +1,4 @@
+import { arithmeticExpression } from './arithmeticExpression';
 import type { DashboardItem, ComplianceThresholds, OperationalMetrics } from "../types";
 import { aggregateWeeklyToMonthly, getWeekNumber } from "./weeklyUtils";
 
@@ -160,8 +161,8 @@ export const evaluateFormula = (
     if (!finalExpression || (finalExpression.trim() === "")) return 0;
 
     // 4. Evaluación segura
-    // eslint-disable-next-line no-eval
-    const result = Number(eval(finalExpression));
+    // Evaluate only bounded arithmetic.
+    const result = arithmeticExpression(finalExpression);
 
     if (isNaN(result) || !isFinite(result)) return 0;
     return result;
