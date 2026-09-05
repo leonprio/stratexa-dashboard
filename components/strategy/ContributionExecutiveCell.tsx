@@ -67,17 +67,17 @@ export const ContributionExecutiveCell: React.FC<Props> = ({
         <div className="mt-3 space-y-2 border-t border-white/5 pt-3">
           {kpis.map((kpi) => {
             const [textTone, dotTone] = tone(kpi.status).split(" ");
-            const label = kpi.item.indicator || kpi.item.name;
+            const label = kpi.item?.indicator || kpi.item?.name || "Indicador";
             return (
               <div
                 key={kpi.identity}
                 role="button"
                 tabIndex={0}
                 className="block w-full cursor-pointer rounded-lg border border-white/5 bg-slate-950/30 p-2 text-left transition hover:border-cyan-500/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400"
-                onClick={() => onNavigateToKpi?.(kpi.dashboard.id, kpi.item.id)}
+                onClick={() => onNavigateToKpi?.(kpi.dashboard?.id, kpi.item?.id)}
                 onKeyDown={(event) => {
                   if (event.key === "Enter" || event.key === " ")
-                    onNavigateToKpi?.(kpi.dashboard.id, kpi.item.id);
+                    onNavigateToKpi?.(kpi.dashboard?.id, kpi.item?.id);
                 }}
               >
                 <span className="flex items-start gap-2">
