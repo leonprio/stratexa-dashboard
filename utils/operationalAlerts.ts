@@ -1,11 +1,15 @@
 import { Dashboard, DashboardItem, ComplianceThresholds } from '../types';
-import { enrichDashboardsWithOperationalMetrics } from './operationalControl';
+import { enrichDashboardsWithOperationalMetrics, resolveOperationalIdentity } from './operationalControl';
+import { isOperationalPeriodCaptured } from './compliance';
+import { getWeekNumber } from './weeklyUtils';
 
-export type AlertSeverity = 'CRÍTICO' | 'ALTO' | 'MEDIO' | 'BAJO' | 'NINGUNO';
-export type OperationalTrend = 'MEJORANDO' | 'ESTABLE' | 'DETERIORÁNDOSE' | 'CRÍTICO';
+export type AlertSeverity = 'CRÍTICO' | 'REQUIERE ATENCIÓN' | 'DATOS PENDIENTES' | 'RIESGO OCULTO' | 'BAJO CONTROL' | 'SIN OBLIGACIÓN';
+export type OperationalTrend = 'ESTABLE' | 'DETERIORÁNDOSE' | 'CRÍTICO' | 'NO EVALUABLE';
+export type OperationalDataStatus = 'AL DÍA' | 'DATOS INCOMPLETOS' | 'DATOS VENCIDOS' | 'SIN DATOS' | 'SIN OBLIGACIÓN';
 
 export interface OperationalAlert {
   id: string | number;
+  dashboardId: string | number;
   indicator: string;
   direction: string;
   area: string;
@@ -21,6 +25,8 @@ export interface OperationalAlert {
   isOvertRisk: boolean; // Alerta Roja: 3+ periodos vencidos
   isHiddenRisk: boolean; // Riesgo Oculto: Alto desempeño + baja captura
   isDeteriorating: boolean; // Deterioro Operativo: Caída de captureRate o consistencia
+  dataStatus: OperationalDataStatus;
+  performanceLabel: 'AL DÍA' | 'DESVIACIÓN' | 'CRÍTICO' | 'NO EVALUABLE';
   traceability: {
     lastUpdatedAt: string;
     lastUpdatedBy: string;
@@ -33,26 +39,19 @@ export interface OperationalAlert {
  */
 export const calculateAlertSeverity = (item: DashboardItem): AlertSeverity => {
   const m = item.operationalMetrics;
-  if (!m) return 'NINGUNO';
+  if (!m || m.expectedPeriods === 0) return 'SIN OBLIGACIÓN';
 
   const missing = m.missingPeriods;
   const captureRate = m.captureRate;
   const performanceScore = m.performanceScore;
 
-  // 1. Alerta Crítica: 3+ periodos vencidos o retraso mayor a 60 días
-  if (missing >= 3 || m.stalenessDays >= 60) return 'CRÍTICO';
-
-  // 2. Alerta Alta: 2 periodos vencidos o Riesgo Oculto (alto kpi, baja captura)
   const isHiddenRisk = performanceScore >= 90 && captureRate < 70;
-  if (missing === 2 || isHiddenRisk || m.stalenessDays >= 30) return 'ALTO';
-
-  // 3. Alerta Media: 1 periodo vencido
-  if (missing === 1 || m.stalenessDays > 5) return 'MEDIO';
-
-  // 4. Alerta Baja: Carga irregular o rezago mínimo
-  if (captureRate < 95) return 'BAJO';
-
-  return 'NINGUNO';
+  if (m.capturedPeriods === 0) return 'DATOS PENDIENTES';
+  if (performanceScore < 70) return 'CRÍTICO';
+  if (performanceScore < 90) return 'REQUIERE ATENCIÓN';
+  if (isHiddenRisk) return 'RIESGO OCULTO';
+  if (missing > 0 || m.stalenessDays > 5) return 'DATOS PENDIENTES';
+  return 'BAJO CONTROL';
 };
 
 /**
@@ -60,27 +59,20 @@ export const calculateAlertSeverity = (item: DashboardItem): AlertSeverity => {
  */
 export const calculateOperationalTrend = (item: DashboardItem): OperationalTrend => {
   const m = item.operationalMetrics;
-  if (!m) return 'ESTABLE';
+  if (!m || m.expectedPeriods === 0 || m.capturedPeriods === 0) return 'NO EVALUABLE';
 
-  const missing = m.missingPeriods;
-  const staleness = m.stalenessDays;
-  const captureRate = m.captureRate;
-
-  // Si tiene un retraso severo acumulándose
-  if (missing >= 3 || staleness >= 60) return 'CRÍTICO';
-
-  // Simular análisis de consistencia de los últimos 3 meses esperados
-  // Si captureRate es bajo o hay retrasos en aumento, se está deteriorando
-  if (missing >= 1 && staleness >= 30) return 'DETERIORÁNDOSE';
-  if (captureRate < 75 && missing > 0) return 'DETERIORÁNDOSE';
-
-  // Si tiene retraso pero menor a 15 días y captureRate es alto
-  if (missing > 0 && staleness <= 15 && captureRate >= 85) return 'MEJORANDO';
-
-  // Totalmente al día
-  if (missing === 0 && staleness === 0 && captureRate >= 95) return 'ESTABLE';
-
+  if (m.performanceScore < 70) return 'CRÍTICO';
+  if (m.performanceScore < 90) return 'DETERIORÁNDOSE';
   return 'ESTABLE';
+};
+
+export const calculateOperationalDataStatus = (item: DashboardItem): OperationalDataStatus => {
+  const m = item.operationalMetrics;
+  if (!m || m.expectedPeriods === 0) return 'SIN OBLIGACIÓN';
+  if (m.capturedPeriods === 0) return 'SIN DATOS';
+  if (m.stalenessDays >= 30 || m.missingPeriods >= 2) return 'DATOS VENCIDOS';
+  if (m.missingPeriods > 0 || m.stalenessDays > 5) return 'DATOS INCOMPLETOS';
+  return 'AL DÍA';
 };
 
 /**
@@ -99,16 +91,14 @@ export const calculateOperationalAging = (item: DashboardItem): string => {
 
 /**
  * Calcula el score de confiabilidad operativa (operationalReliabilityScore).
- * Integra captureRate (40%), realOperationalScore (30%), freshness (20%) y penalización/bono de tendencia (10%).
+ * Mide únicamente suficiencia y actualidad de evidencia: captura (70%) y frescura (30%).
  */
 export const calculateReliabilityScore = (item: DashboardItem): number => {
   const m = item.operationalMetrics;
   if (!m) return 100;
 
   const captureRate = m.captureRate;
-  const realScore = m.realOperationalScore;
-
-  // Freshness: 0 días = 100%, 60 días o más = 0%
+  if (m.expectedPeriods === 0) return 100;
   const freshness = Math.max(0, 100 - (m.stalenessDays * 1.66));
 
   // Si está perfectamente al día (captureRate = 100 y freshness = 100), la confiabilidad es 100%
@@ -117,13 +107,7 @@ export const calculateReliabilityScore = (item: DashboardItem): number => {
   }
 
   // Bono/penalización por tendencia
-  const trend = calculateOperationalTrend(item);
-  let trendAdjustment = 0;
-  if (trend === 'MEJORANDO') trendAdjustment = 10;
-  if (trend === 'DETERIORÁNDOSE') trendAdjustment = -10;
-  if (trend === 'CRÍTICO') trendAdjustment = -20;
-
-  const rawScore = (captureRate * 0.40) + (realScore * 0.30) + (freshness * 0.20) + (trendAdjustment * 0.10);
+  const rawScore = (captureRate * 0.70) + (freshness * 0.30);
   
   // Acotar matemáticamente entre 0 y 100
   return Math.max(0, Math.min(100, Math.round(rawScore)));
@@ -144,10 +128,8 @@ export const buildOperationalAlerts = (
     // Evitar duplicar agregando tableros consolidados en el listado unitario
     if (d.isAggregate || String(d.id).includes('agg-') || d.id === -1) return;
 
-    const dirName = (d.group || 'GENERAL').trim().toUpperCase();
-    const areaName = (d.area || 'OPERACIONES').trim().toUpperCase();
-
     (d.items || []).forEach(item => {
+      const identity = resolveOperationalIdentity(d, item);
       const m = item.operationalMetrics;
       if (!m) return;
 
@@ -155,6 +137,7 @@ export const buildOperationalAlerts = (
       const trend = calculateOperationalTrend(item);
       const agingLabel = calculateOperationalAging(item);
       const reliabilityScore = calculateReliabilityScore(item);
+      const dataStatus = calculateOperationalDataStatus(item);
 
       const isOvertRisk = m.missingPeriods >= 3;
       const isHiddenRisk = m.performanceScore >= 90 && m.captureRate < 70;
@@ -162,30 +145,22 @@ export const buildOperationalAlerts = (
 
       // Simulación inmutable de trazabilidad operativa
       // Busca el último mes cargado para simular lastUpdatedAt
-      let lastMonthIdx = -1;
-      if (item.progress && typeof item.progress === 'object') {
-        const keys = Object.keys(item.progress).map(Number).sort((a, b) => b - a);
-        const validKey = keys.find(k => item.progress[k] !== null && item.progress[k] !== undefined);
-        if (validKey !== undefined) lastMonthIdx = validKey;
-      }
-
-      const months = ['ENE', 'FEB', 'MAR', 'ABR', 'MAY', 'JUN', 'JUL', 'AGO', 'SEP', 'OCT', 'NOV', 'DIC'];
-      const lastMonthName = lastMonthIdx >= 0 && lastMonthIdx < 12 ? months[lastMonthIdx] : 'N/A';
-      
-      const lastUpdatedAt = lastMonthIdx >= 0 
-        ? `Periodo ${lastMonthName} / 2026`
+      const lastCapture = findLastOperationalCapture(item, year);
+      const lastUpdatedAt = lastCapture
+        ? `${lastCapture.periodLabel} / ${year}`
         : 'Sin capturas registradas';
       
-      const lastUpdatedBy = item.responsible || 'Analista Operativo';
-      const lastOperationalChange = lastMonthIdx >= 0 
-        ? `Carga de datos periodo ${lastMonthName}`
+      const lastUpdatedBy = item.responsible || 'SIN RESPONSABLE REGISTRADO';
+      const lastOperationalChange = lastCapture
+        ? `Última captura: ${lastCapture.periodLabel}`
         : 'KPI creado en sistema';
 
       alerts.push({
         id: item.id,
+        dashboardId: d.id,
         indicator: item.indicator,
-        direction: dirName,
-        area: areaName,
+        direction: identity.direction,
+        area: identity.area,
         severity,
         trend,
         agingLabel,
@@ -193,11 +168,13 @@ export const buildOperationalAlerts = (
         captureRate: m.captureRate,
         stalenessDays: m.stalenessDays,
         missingPeriods: m.missingPeriods,
-        performanceScore: m.performanceScore,
+        performanceScore: m.sourcePerformanceScore ?? m.performanceScore,
         realOperationalScore: m.realOperationalScore,
         isOvertRisk,
         isHiddenRisk,
         isDeteriorating,
+        dataStatus,
+        performanceLabel: trend === 'NO EVALUABLE' ? 'NO EVALUABLE' : trend === 'CRÍTICO' ? 'CRÍTICO' : trend === 'DETERIORÁNDOSE' ? 'DESVIACIÓN' : 'AL DÍA',
         traceability: {
           lastUpdatedAt,
           lastUpdatedBy,
@@ -208,8 +185,21 @@ export const buildOperationalAlerts = (
   });
 
   // Ordenar por nivel de severidad y luego por días de atraso
-  const severityWeight = { 'CRÍTICO': 4, 'ALTO': 3, 'MEDIO': 2, 'BAJO': 1, 'NINGUNO': 0 };
+  const severityWeight = { 'CRÍTICO': 6, 'REQUIERE ATENCIÓN': 5, 'RIESGO OCULTO': 4, 'DATOS PENDIENTES': 3, 'BAJO CONTROL': 2, 'SIN OBLIGACIÓN': 1 };
   return alerts.sort((a, b) => {
     return (severityWeight[b.severity] || 0) - (severityWeight[a.severity] || 0) || b.stalenessDays - a.stalenessDays;
   });
+};
+
+export const findLastOperationalCapture = (item: DashboardItem, year: number, today = new Date()): { periodIndex: number; periodLabel: string } | null => {
+  const weekly = item.frequency === 'weekly';
+  const progress = weekly ? item.weeklyProgress : item.monthlyProgress;
+  const goals = weekly ? item.weeklyGoals : item.monthlyGoals;
+  if (!Array.isArray(progress) || !Array.isArray(goals)) return null;
+  const currentYear = today.getFullYear();
+  const cutoff = year < currentYear ? progress.length - 1 : year > currentYear ? -1 : weekly ? getWeekNumber(today, item.weekStart === 'Sun' ? 0 : 1) - 1 : today.getMonth();
+  for (let index = Math.min(cutoff, progress.length - 1); index >= 0; index--) {
+    if (isOperationalPeriodCaptured(progress[index], goals[index])) return { periodIndex: index, periodLabel: weekly ? `S${index + 1}` : ['ENE','FEB','MAR','ABR','MAY','JUN','JUL','AGO','SEP','OCT','NOV','DIC'][index] };
+  }
+  return null;
 };

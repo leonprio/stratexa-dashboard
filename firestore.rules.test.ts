@@ -8,11 +8,28 @@ import {
 } from '@firebase/rules-unit-testing';
 import * as fs from 'fs';
 import * as path from 'path';
-import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, updateDoc, getDocs, collection, query, where, documentId } from 'firebase/firestore';
 
 const PROJECT_ID = 'demo-stratexa-rules';
 
 let testEnv: RulesTestEnvironment;
+
+const canonicalMembership = (userId: string, clientId: string, role: 'tenant_admin' | 'director' | 'standard_user' = 'standard_user', status = 'active') => ({
+  membershipId: `${userId}__${clientId}`,
+  userId,
+  clientId,
+  role,
+  status,
+  scopeType: 'tenant',
+  allowedDashboardIds: [],
+  hierarchyScopeKeys: [],
+  capabilities: [],
+  createdAt: '2026-01-01T00:00:00.000Z',
+  createdBy: 'seed',
+  updatedAt: '2026-01-01T00:00:00.000Z',
+  updatedBy: 'seed',
+  schemaVersion: 1,
+});
 
 jest.setTimeout(30000);
 
@@ -59,6 +76,12 @@ describe('Firestore Security Rules — Strategy Module (v9.5.0 Foundation)', () 
           globalRole: 'Admin'
         });
 
+        await setDoc(doc(db, 'tbl_users', 'admin_leon'), {
+          uid: 'admin_leon',
+          clientId: 'LEÓN',
+          globalRole: 'Admin'
+        });
+
         // Usuario 3: Usuario normal multi-tenant (IPS y CLIENT_A)
         await setDoc(doc(db, 'tbl_users', 'user_multi'), {
           uid: 'user_multi',
@@ -95,6 +118,10 @@ describe('Firestore Security Rules — Strategy Module (v9.5.0 Foundation)', () 
           globalRole: 'Admin'
         });
 
+        // Explicit strategy grants replace legacy role-only reading.
+        for (const [uid, tenants] of [['user_ips',['IPS']],['user_multi',['IPS','CLIENT_A']],['user_clientB',['CLIENT_B']],['user_xabc',['XABC']]] as const) {
+          for (const tenant of tenants) await setDoc(doc(db,'tbl_userMemberships',uid+'__'+tenant), {...canonicalMembership(uid,tenant),capabilities:['strategy_reader']});
+        }
         // Documentos de estrategia iniciales
         await setDoc(doc(db, 'tbl_strategicPerspectives', 'persp_ips'), {
           id: 'persp_ips',
@@ -330,6 +357,64 @@ describe('Firestore Security Rules — Strategy Module (v9.5.0 Foundation)', () 
     await assertFails(updateDoc(ref, { clientId: '^IPS$' }));
   });
 
+  describe('first strategy counter initialization', () => {
+    const counterPayload = { id: 'cnt_LEÓN_OE', clientId: 'LEÓN', scope: 'OE', lastIssuedSequence: 1 };
+
+    it('allows platform admin with explicit LEON membership to initialize its counter', async () => {
+      await testEnv.withSecurityRulesDisabled(async context => {
+        const db=context.firestore();
+        await updateDoc(doc(db,'tbl_users','super_admin'),{clientId:'LEÓN'});
+        await setDoc(doc(db,'tbl_userMemberships','super_admin__LEÓN'),canonicalMembership('super_admin','LEÓN','tenant_admin'));
+      });
+      const db = testEnv.authenticatedContext('super_admin', { email: 'leon@leonprior.com' }).firestore();
+      const ref = doc(db, 'tbl_strategyCounters', 'cnt_LEÓN_OE');
+      await assertSucceeds(getDoc(ref));
+      await assertSucceeds(setDoc(ref, counterPayload));
+      await assertSucceeds(updateDoc(ref, { lastIssuedSequence: 2 }));
+    });
+
+    it('allows LEON tenant Admin get/create for LEON counter', async () => {
+      const db = testEnv.authenticatedContext('admin_leon').firestore();
+      const ref = doc(db, 'tbl_strategyCounters', 'cnt_LEÓN_OE');
+      await assertSucceeds(getDoc(ref));
+      await assertSucceeds(setDoc(ref, counterPayload));
+    });
+
+    it('denies IPS Admin get/create for LEON counter', async () => {
+      const db = testEnv.authenticatedContext('admin_ips').firestore();
+      const ref = doc(db, 'tbl_strategyCounters', 'cnt_LEÓN_OE');
+      await assertFails(getDoc(ref));
+      await assertFails(setDoc(ref, counterPayload));
+    });
+
+    it('denies normal and anonymous users', async () => {
+      const normalRef = doc(testEnv.authenticatedContext('user_ips').firestore(), 'tbl_strategyCounters', 'cnt_IPS_OE');
+      const anonymousRef = doc(testEnv.unauthenticatedContext().firestore(), 'tbl_strategyCounters', 'cnt_IPS_OE');
+      await assertFails(getDoc(normalRef));
+      await assertFails(getDoc(anonymousRef));
+    });
+
+    it('denies invalid counter IDs', async () => {
+      const db = testEnv.authenticatedContext('admin_leon').firestore();
+      const ref = doc(db, 'tbl_strategyCounters', 'invalid_LEÓN');
+      await assertFails(getDoc(ref));
+      await assertFails(setDoc(ref, { ...counterPayload, id: 'invalid_LEÓN' }));
+    });
+
+    it('allows explicit platform tenant membership to create OE01', async () => {
+      await testEnv.withSecurityRulesDisabled(async context => {
+        await setDoc(doc(context.firestore(),'tbl_userMemberships','super_admin__LEÓN'),canonicalMembership('super_admin','LEÓN','tenant_admin'));
+      });
+      const db = testEnv.authenticatedContext('super_admin', { email: 'leon@leonprior.com' }).firestore();
+      const ref = doc(db, 'tbl_strategicObjectives', 'oe_auto_1');
+      await assertSucceeds(setDoc(ref, {
+        id: 'oe_auto_1', clientId: 'LEÓN', perspectiveId: 'FINANCIERA', code: 'OE01',
+        title: 'Maximizar el crecimiento de ventas y la rentabilidad', description: '', order: 1,
+        createdAt: '2026-08-30T21:00:00.000Z', updatedAt: '2026-08-30T21:00:00.000Z'
+      }));
+    });
+  });
+
   // 🛡️ PRUEBAS DE SEGURIDAD PARA RELACIONES (tbl_strategicObjectiveRelationships) (25..39)
   it('25. denies unauthenticated read of objective relationships', async () => {
     const unauthDb = testEnv.unauthenticatedContext().firestore();
@@ -415,9 +500,200 @@ describe('Firestore Security Rules — Strategy Module (v9.5.0 Foundation)', () 
     await assertFails(updateDoc(ref, { targetStrategicObjectiveId: 'oe_3' }));
   });
 
+  async function seedTablero() {
+    await testEnv.withSecurityRulesDisabled(async context => {
+      const db = context.firestore();
+      for (const [uid, clientId, globalRole, dashboardAccess] of [
+        ['member_a', 'A', 'Member', { a: 'Editor', view: 'Viewer' }],
+        ['admin_a', 'A', 'Admin', {}], ['member_b', 'B', 'Member', { b: 'Editor' }],
+        ['director_a', 'A', 'Director', {}]
+      ] as const) await setDoc(doc(db, 'tbl_users', uid), { clientId, globalRole, dashboardAccess, directorTitle: 'OPERACIONES', email: `${uid}@example.test` });
+      for (const [id, clientId] of [['a','A'],['view','A'],['hidden','A'],['b','B']]) {
+        await setDoc(doc(db,'tbl_dashboards',id), { clientId, group: id === 'a' ? 'OPERACIONES' : 'OTRA' });
+        await setDoc(doc(db,'tbl_dashboards',id,'items','kpi'), { monthlyProgress: [10] });
+        await setDoc(doc(db,'tbl_actionPlans',id), { clientId, dashboardId: id, status: 'planned' });
+      }
+      for (const tenant of ['A','B']) {
+        await setDoc(doc(db,'tbl_managedClients',tenant), { displayName: tenant });
+        await setDoc(doc(db,'tbl_systemSettings',tenant), { appTitle: tenant });
+      }
+      await setDoc(doc(db,'tbl_systemSettings','main'), { appTitle: 'Global defaults' });
+    });
+  }
+
+  it.each(['tbl_dashboards','tbl_actionPlans'])('P0 denies cross-tenant read/write for %s', async name => {
+    await seedTablero();
+    const db = testEnv.authenticatedContext('member_a').firestore();
+    await assertFails(getDoc(doc(db,name,'b')));
+    await assertFails(updateDoc(doc(db,name,'b'), { title: 'denied' }));
+    await assertFails(getDocs(collection(db,name)));
+    await assertSucceeds(getDoc(doc(db,name,'a')));
+  });
+
+  it('P0 denies own role/clientId changes, others roles, unaffiliated profile creation and tenant reassignment', async () => {
+    await seedTablero();
+    const member = testEnv.authenticatedContext('member_a').firestore();
+    const admin = testEnv.authenticatedContext('admin_a').firestore();
+    for (const change of [{globalRole:'Admin'}, {clientId:'B'}, {dashboardAccess:{b:'Editor'}}])
+      await assertFails(updateDoc(doc(member,'tbl_users','member_a'),change));
+    await assertFails(updateDoc(doc(member,'tbl_users','member_b'),{globalRole:'Admin'}));
+    await assertFails(updateDoc(doc(admin,'tbl_users','member_b'),{globalRole:'Member'}));
+    await assertFails(updateDoc(doc(admin,'tbl_users','member_b'),{clientId:'A'}));
+    await assertFails(setDoc(doc(testEnv.authenticatedContext('outsider').firestore(),'tbl_users','outsider'),{globalRole:'Admin',clientId:'A'}));
+    await assertSucceeds(updateDoc(doc(admin,'tbl_users','member_a'),{name:'Updated'}));
+  });
+
+  it('P0 preserves scoped dashboard queries and Editor/Viewer permissions', async () => {
+    await seedTablero();
+    const db = testEnv.authenticatedContext('member_a').firestore();
+    await assertFails(getDoc(doc(db,'tbl_dashboards','hidden')));
+    await assertFails(getDoc(doc(db,'tbl_dashboards','b','items','kpi')));
+    await assertSucceeds(getDocs(query(collection(db,'tbl_dashboards'),where('clientId','==','A'),where(documentId(),'in',['a','view']))));
+    await assertSucceeds(updateDoc(doc(db,'tbl_dashboards','a','items','kpi'),{monthlyProgress:[11]}));
+    await assertFails(updateDoc(doc(db,'tbl_dashboards','view','items','kpi'),{monthlyProgress:[11]}));
+    await assertFails(updateDoc(doc(db,'tbl_actionPlans','a'),{status:'in_progress'}));
+    await assertFails(setDoc(doc(db,'tbl_actionPlans','new-editor-plan'),{clientId:'A',dashboardId:'a',indicatorId:'kpi',status:'planned'}));
+    await assertFails(updateDoc(doc(db,'tbl_actionPlans','view'),{status:'in_progress'}));
+    await assertFails(setDoc(doc(db,'tbl_actionPlans','cross-reference'),{clientId:'A',dashboardId:'b',status:'planned'}));
+    const admin = testEnv.authenticatedContext('admin_a').firestore();
+    await assertSucceeds(getDocs(query(collection(admin,'tbl_dashboards'),where('clientId','==','A'))));
+    await assertSucceeds(setDoc(doc(admin,'tbl_dashboards','new'),{clientId:'A'}));
+    await assertFails(updateDoc(doc(admin,'tbl_dashboards','a'),{clientId:'B'}));
+    const director = testEnv.authenticatedContext('director_a').firestore();
+    await assertSucceeds(getDocs(query(collection(director,'tbl_dashboards'),where('clientId','==','A'),where('group','==','OPERACIONES'))));
+    await assertSucceeds(updateDoc(doc(director,'tbl_dashboards','a','items','kpi'),{monthlyProgress:[12]}));
+  });
+
+  it('P0 scoped users, catalogue, settings and ActionPlan writes', async () => {
+    await seedTablero();
+    const db = testEnv.authenticatedContext('member_a').firestore();
+    const admin = testEnv.authenticatedContext('admin_a').firestore();
+    await assertFails(getDocs(collection(db,'tbl_managedClients')));
+    await assertFails(getDoc(doc(db,'tbl_managedClients','B')));
+    await assertSucceeds(getDoc(doc(db,'tbl_managedClients','A')));
+    await assertSucceeds(getDoc(doc(db,'tbl_systemSettings','main')));
+    await assertFails(updateDoc(doc(db,'tbl_systemSettings','main'),{appTitle:'denied'}));
+    await assertFails(getDoc(doc(db,'tbl_systemSettings','B')));
+    await assertSucceeds(getDocs(query(collection(admin,'tbl_users'),where('clientId','==','A'))));
+    await assertFails(getDocs(collection(admin,'tbl_users')));
+    await assertSucceeds(updateDoc(doc(admin,'tbl_actionPlans','a'),{status:'in_progress'}));
+    await assertFails(updateDoc(doc(admin,'tbl_actionPlans','a'),{clientId:'B'}));
+    await assertFails(updateDoc(doc(admin,'tbl_actionPlans','b'),{status:'completed'}));
+  });
+
+  it('P0 preserves originalId scoped queries', async () => {
+    await seedTablero();
+    await testEnv.withSecurityRulesDisabled(async context => {
+      await updateDoc(doc(context.firestore(),'tbl_users','member_a'),{dashboardAccess:{'10':'Editor'}});
+      await setDoc(doc(context.firestore(),'tbl_dashboards','clone'),{clientId:'A',originalId:10});
+    });
+    const db = testEnv.authenticatedContext('member_a').firestore();
+    await assertSucceeds(getDocs(query(collection(db,'tbl_dashboards'),where('clientId','==','A'),where('originalId','in',[10]))));
+  });
+
+  it('P0 tbl namespace denied by default; non-tbl catch-all and shared products unchanged', async () => {
+    await seedTablero();
+    const db = testEnv.authenticatedContext('outsider').firestore();
+    await assertFails(setDoc(doc(db,'tbl_unknown','x'),{value:1}));
+    await assertFails(setDoc(doc(db,'tbl_actionPlans','x'),{clientId:'A'}));
+    for (const name of ['shared_unknown','cpx_work_plans','vac_weekly_data','stx_dashboards','dashboards','weekly_data','config','clients','groups','indicators'])
+      await assertSucceeds(setDoc(doc(db,name,'compatibility_fixture'),{value:1}));
+  });
+
+  it('P0 preserves platform management and business catalogue, but not tenant mutation', async () => {
+    await seedTablero();
+    const db = testEnv.authenticatedContext('platform',{email:'leon@leonprior.com'}).firestore();
+    for (const name of ['tbl_users','tbl_managedClients']) await assertSucceeds(getDocs(collection(db,name)));
+    for (const name of ['tbl_dashboards','tbl_actionPlans']) await assertFails(getDocs(collection(db,name)));
+    await assertFails(updateDoc(doc(db,'tbl_dashboards','b'),{title:'platform managed'}));
+    await assertSucceeds(updateDoc(doc(db,'tbl_users','member_b'),{name:'platform managed'}));
+    await assertFails(updateDoc(doc(db,'tbl_dashboards','b'),{clientId:'A'}));
+  });
+
   it('39. allows same-tenant Admin update of metadata (description) on existing relationship', async () => {
     const adminDb = testEnv.authenticatedContext('admin_ips').firestore();
     const ref = doc(adminDb, 'tbl_strategicObjectiveRelationships', 'rel_IPS_oe_1_oe_2');
     await assertSucceeds(updateDoc(ref, { description: 'Updated valid rationale' }));
   });
+
+  it('canonical memberships deny self-escalation, cross-tenant administration, and inactive access', async () => {
+    await testEnv.withSecurityRulesDisabled(async context => {
+      const db = context.firestore();
+      await setDoc(doc(db, 'tbl_userMemberships', 'user_ips__IPS'), canonicalMembership('user_ips', 'IPS'));
+      await setDoc(doc(db, 'tbl_userMemberships', 'target_b__CLIENT_B'), canonicalMembership('target_b', 'CLIENT_B'));
+      await setDoc(doc(db, 'tbl_userMemberships', 'inactive_ips__IPS'), canonicalMembership('inactive_ips', 'IPS', 'standard_user', 'inactive'));
+      await setDoc(doc(db, 'tbl_users', 'inactive_ips'), { clientId: 'IPS', globalRole: 'Member' });
+    });
+    const standard = testEnv.authenticatedContext('user_ips').firestore();
+    await assertFails(getDoc(doc(standard, 'tbl_userMemberships', 'target_b__CLIENT_B')));
+    await assertFails(setDoc(doc(standard, 'tbl_userMemberships', 'user_ips__IPS'), canonicalMembership('user_ips', 'IPS', 'tenant_admin')));
+    const inactive = testEnv.authenticatedContext('inactive_ips').firestore();
+    await assertFails(getDoc(doc(inactive, 'tbl_strategicPerspectives', 'persp_ips')));
+  });
+
+  it('canonical platform authority is explicit and disabled authority is denied', async () => {
+    await testEnv.withSecurityRulesDisabled(async context => {
+      const db = context.firestore();
+      await setDoc(doc(db, 'tbl_platformAdmins', 'platform_canonical'), { uid: 'platform_canonical', status: 'active', createdAt: 'seed', createdBy: 'seed', updatedAt: 'seed', updatedBy: 'seed', schemaVersion: 1 });
+      await setDoc(doc(db, 'tbl_platformAdmins', 'platform_disabled'), { uid: 'platform_disabled', status: 'disabled', createdAt: 'seed', createdBy: 'seed', updatedAt: 'seed', updatedBy: 'seed', schemaVersion: 1 });
+      await setDoc(doc(db, 'tbl_platformAdmins', 'platform_malformed'), { uid: 'platform_malformed' });
+    });
+    await assertSucceeds(getDocs(collection(testEnv.authenticatedContext('platform_canonical').firestore(), 'tbl_managedClients')));
+    await assertFails(getDocs(collection(testEnv.authenticatedContext('platform_disabled').firestore(), 'tbl_managedClients')));
+    await assertFails(getDocs(collection(testEnv.authenticatedContext('platform_malformed').firestore(), 'tbl_managedClients')));
+  });
+
+  it('platform email bridge is exact and token contexts without email are safe', async () => {
+    await seedTablero();
+    await assertFails(getDocs(collection(testEnv.authenticatedContext('no_email').firestore(), 'tbl_managedClients')));
+    await assertFails(getDocs(collection(testEnv.authenticatedContext('other_email', { email: 'other@example.test' }).firestore(), 'tbl_managedClients')));
+    await assertSucceeds(getDocs(collection(testEnv.authenticatedContext('bridge_email', { email: 'leon@leonprior.com' }).firestore(), 'tbl_managedClients')));
+  });
+  it('P1 plans require resource scope and a separate plan_editor capability', async () => {
+    await seedTablero();
+    const db=testEnv.authenticatedContext('member_a').firestore();
+    await assertFails(getDoc(doc(db,'tbl_actionPlans','hidden')));
+    await assertFails(getDocs(query(collection(db,'tbl_actionPlans'),where('clientId','==','A'))));
+    await assertSucceeds(getDocs(query(collection(db,'tbl_actionPlans'),where('clientId','==','A'),where('dashboardId','==','a'))));
+    await assertFails(updateDoc(doc(db,'tbl_actionPlans','a'),{status:'completed'}));
+    await testEnv.withSecurityRulesDisabled(async context => {
+      await setDoc(doc(context.firestore(),'tbl_userMemberships','member_a__A'),{...canonicalMembership('member_a','A'),allowedDashboardIds:['a'],capabilities:['plan_editor']});
+    });
+    await assertSucceeds(updateDoc(doc(db,'tbl_actionPlans','a'),{status:'completed'}));
+    await assertFails(updateDoc(doc(db,'tbl_actionPlans','hidden'),{status:'completed'}));
+    await assertFails(updateDoc(doc(db,'tbl_actionPlans','b'),{status:'completed'}));
+  });
+  it('P1 membership alone cannot read strategy; explicit strategy_reader can', async () => {
+    const db=testEnv.authenticatedContext('user_ips').firestore();
+    await testEnv.withSecurityRulesDisabled(async context => {
+      await updateDoc(doc(context.firestore(),'tbl_userMemberships','user_ips__IPS'),{capabilities:[]});
+    });
+    await assertFails(getDoc(doc(db,'tbl_strategicObjectives','oe_ips')));
+    await testEnv.withSecurityRulesDisabled(async context => {
+      await updateDoc(doc(context.firestore(),'tbl_userMemberships','user_ips__IPS'),{capabilities:['strategy_reader']});
+    });
+    await assertSucceeds(getDocs(query(collection(db,'tbl_strategicObjectives'),where('clientId','==','IPS'))));
+    await assertFails(getDoc(doc(db,'tbl_strategicObjectives','oe_b1')));
+    await testEnv.withSecurityRulesDisabled(async context => {
+      await updateDoc(doc(context.firestore(),'tbl_userMemberships','user_ips__IPS'),{scopeType:'dashboard',allowedDashboardIds:['a']});
+    });
+    await assertFails(getDoc(doc(db,'tbl_strategicObjectives','oe_ips')));
+  });
+  it('P1 platform email has no business grant, explicit membership is tenant scoped and revocable', async () => {
+    await seedTablero();
+    const db=testEnv.authenticatedContext('super_admin',{email:'leon@leonprior.com'}).firestore();
+    await assertFails(getDoc(doc(db,'tbl_dashboards','a')));
+    await assertFails(getDoc(doc(db,'tbl_strategicObjectives','oe_ips')));
+    await testEnv.withSecurityRulesDisabled(async context => {
+      await setDoc(doc(context.firestore(),'tbl_userMemberships','super_admin__A'),{...canonicalMembership('super_admin','A'),allowedDashboardIds:['a'],capabilities:['viewer']});
+    });
+    await assertSucceeds(getDoc(doc(db,'tbl_dashboards','a')));
+    await assertFails(getDoc(doc(db,'tbl_dashboards','b')));
+    await assertFails(updateDoc(doc(db,'tbl_dashboards','a','items','kpi'),{monthlyProgress:[99]}));
+    await testEnv.withSecurityRulesDisabled(async context => {
+      await updateDoc(doc(context.firestore(),'tbl_userMemberships','super_admin__A'),{status:'suspended'});
+    });
+    await assertFails(getDoc(doc(db,'tbl_dashboards','a')));
+  });
+
 });

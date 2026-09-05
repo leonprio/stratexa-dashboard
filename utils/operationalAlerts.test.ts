@@ -9,6 +9,9 @@ import { DashboardItem, Dashboard } from '../types';
 
 describe('Operational Alerts Engine Tests', () => {
 
+  beforeAll(() => { jest.useFakeTimers(); jest.setSystemTime(new Date('2026-08-29T12:00:00Z')); });
+  afterAll(() => { jest.useRealTimers(); });
+
   const createMockItem = (override: Partial<DashboardItem> = {}): DashboardItem => {
     return {
       id: 101,
@@ -34,7 +37,7 @@ describe('Operational Alerts Engine Tests', () => {
     } as DashboardItem;
   };
 
-  test('Caso 1: KPI con 3 periodos vencidos debe dar alerta CRÍTICO', () => {
+  test('datos vencidos sin evidencia suficiente se clasifican DATOS PENDIENTES, no desempeño crítico', () => {
     const item = createMockItem({
       operationalMetrics: {
         expectedPeriods: 3,
@@ -54,8 +57,8 @@ describe('Operational Alerts Engine Tests', () => {
     const trend = calculateOperationalTrend(item);
     const aging = calculateOperationalAging(item);
 
-    expect(severity).toBe('CRÍTICO');
-    expect(trend).toBe('CRÍTICO');
+    expect(severity).toBe('DATOS PENDIENTES');
+    expect(trend).toBe('NO EVALUABLE');
     expect(aging).toBe('61d+ (Crítico)');
   });
 
@@ -78,7 +81,7 @@ describe('Operational Alerts Engine Tests', () => {
     const severity = calculateAlertSeverity(item);
     const isHiddenRisk = item.operationalMetrics!.performanceScore >= 90 && item.operationalMetrics!.captureRate < 70;
 
-    expect(severity).toBe('ALTO');
+    expect(severity).toBe('RIESGO OCULTO');
     expect(isHiddenRisk).toBe(true);
   });
 
@@ -90,7 +93,7 @@ describe('Operational Alerts Engine Tests', () => {
     const aging = calculateOperationalAging(item);
     const reliability = calculateReliabilityScore(item);
 
-    expect(severity).toBe('NINGUNO');
+    expect(severity).toBe('BAJO CONTROL');
     expect(trend).toBe('ESTABLE');
     expect(aging).toBe('Al día');
     expect(reliability).toBe(100);
@@ -162,10 +165,28 @@ describe('Operational Alerts Engine Tests', () => {
     // Debería generar exactamente 2 alertas (una para KPI A que está al día y otra para KPI B con rezago).
     // El consolidado nacional con id -1 debe ser totalmente omitido.
     expect(alerts.length).toBe(2);
-    expect(alerts[0].indicator).toBe('KPI B'); // KPI B debe salir de primero por orden de severidad (ALTO vs NINGUNO)
-    expect(alerts[0].direction).toBe('MEDICA');
-    expect(alerts[0].area).toBe('SERVICIOS');
-    expect(alerts[0].severity).toBe('CRÍTICO');
+    const hiddenRisk = alerts.find(alert => alert.indicator === 'KPI B');
+    expect(hiddenRisk?.direction).toBe('MEDICA');
+    expect(hiddenRisk?.area).toBe('SERVICIOS');
+    expect(hiddenRisk?.severity).toBe('RIESGO OCULTO');
+  });
+
+  test('mal desempeño certificado con captura suficiente es CRÍTICO', () => {
+    const item = createMockItem({ operationalMetrics: { ...createMockItem().operationalMetrics, expectedPeriods: 4, capturedPeriods: 4, missingPeriods: 0, captureRate: 100, performanceScore: 45, realOperationalScore: 45, stalenessDays: 0, performanceStatus: 'OffTrack' } });
+    expect(calculateAlertSeverity(item)).toBe('CRÍTICO');
+    expect(calculateOperationalTrend(item)).toBe('CRÍTICO');
+  });
+
+  test('deterioro moderado certificado requiere atención', () => {
+    const item = createMockItem({ operationalMetrics: { ...createMockItem().operationalMetrics, expectedPeriods: 4, capturedPeriods: 4, missingPeriods: 0, captureRate: 100, performanceScore: 82, realOperationalScore: 82, stalenessDays: 0, performanceStatus: 'AtRisk' } });
+    expect(calculateAlertSeverity(item)).toBe('REQUIERE ATENCIÓN');
+    expect(calculateOperationalTrend(item)).toBe('DETERIORÁNDOSE');
+  });
+
+  test('61d+ es una categoría visual y no limita los días reales', () => {
+    const item = createMockItem({ operationalMetrics: { ...createMockItem().operationalMetrics, stalenessDays: 145 } });
+    expect(calculateOperationalAging(item)).toBe('61d+ (Crítico)');
+    expect(item.operationalMetrics?.stalenessDays).toBe(145);
   });
 
 });

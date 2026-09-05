@@ -52,6 +52,7 @@ export interface Client {
 export interface DashboardItem {
   id: number | string;
   indicator: string;
+  name?: string;
   order?: number; // 🚀 V6.2.1: Persist visual order
   weight: number; // Ponderación del indicador en porcentaje
   frequency?: 'monthly' | 'weekly';
@@ -96,6 +97,26 @@ export interface DashboardItem {
       label: string;
       targetCount: number;
       completedCount: number;
+      resolution?: {
+        resolutionStatus: 'completed_later' | 'discarded' | 'rescheduled';
+        resolvedAt?: string;
+        resolvedYear?: number;
+        resolvedPeriodType?: 'monthly' | 'weekly';
+        resolvedPeriodIndex?: number;
+        resolutionNote?: string;
+        scheduledResolutionYear?: number;
+        scheduledResolutionPeriodType?: 'monthly' | 'weekly';
+        scheduledResolutionPeriodIndex?: number;
+        rescheduleHistory?: {
+          fromYear: number;
+          fromPeriodType: 'monthly' | 'weekly';
+          fromPeriodIndex: number;
+          toYear: number;
+          toPeriodType: 'monthly' | 'weekly';
+          toPeriodIndex: number;
+          changedAt: string;
+        }[];
+      };
     }[];
   };
 
@@ -104,6 +125,43 @@ export interface DashboardItem {
   operationalStartPeriod?: any;
   responsible?: string;
   progress?: any;
+}
+
+export type ActionPlanStatus = 'planned' | 'in_progress' | 'completed' | 'cancelled';
+export type ActionPlanOriginPeriodType = 'monthly' | 'weekly' | 'manual';
+export interface ActionPlanActivity {
+  id: string;
+  title: string;
+  responsible?: string;
+  targetDate?: string;
+  progress: number;
+  result?: string;
+  impact?: 'NOT_EVALUATED' | 'FAVORABLE' | 'PARTIAL' | 'LOW_OR_NONE' | 'positive' | 'low' | 'none';
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ActionPlan {
+  id: string;
+  indicatorId: number | string;
+  dashboardId: number | string;
+  clientId?: string;
+  area?: string;
+  title: string;
+  description?: string;
+  originYear: number;
+  originPeriodType: ActionPlanOriginPeriodType;
+  originPeriodIndex?: number;
+  status: ActionPlanStatus;
+  responsible?: string;
+  startDate: string;
+  targetDate?: string;
+  progress: number;
+  expectedImpact?: string;
+  createdAt: string;
+  updatedAt: string;
+  closedAt?: string;
+  activities?: ActionPlanActivity[];
 }
 
 /**
@@ -166,6 +224,17 @@ export interface User {
   superGroups?: string[]; // 🏢 NIVEL 4: Grupos de Grupos permitidos (v7.2.1)
   group?: string; // Legacy fallback
   area?: string;
+  /** Canonical compatibility input; legacy fields remain until migration. */
+  memberships?: TenantMembership[];
+}
+
+export interface TenantMembership {
+  clientId: string;
+  role: 'tenant_admin' | 'director' | 'standard_user';
+  status: 'active' | 'inactive' | 'suspended';
+  hierarchyScopes?: string[];
+  dashboardScopes?: Record<string, 'viewer' | 'editor'>;
+  capabilities?: ('viewer' | 'editor' | 'metadata_editor' | 'plan_editor' | 'strategy_reader')[];
 }
 
 export type OperationalMetrics = any;

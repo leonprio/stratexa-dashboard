@@ -4,23 +4,27 @@ import {
   StrategicPerspective,
   StrategicObjective,
   StrategicObjectiveRelationship,
+  AreaStrategyConfig,
   ContributionObjective,
   ContributionIndicatorAssignment,
   DEFAULT_PERSPECTIVES
 } from '../../strategyTypes';
-import { Dashboard as DashboardType } from '../../types';
+import { Dashboard as DashboardType, User } from '../../types';
 import { StrategicObjectiveNode } from './StrategicObjectiveNode';
 import { OEDetailModal } from './OEDetailModal';
 import { RelationshipEditorModal } from './RelationshipEditorModal';
+import { resolveStrategicKpiOwnership } from '../../strategyKpiOwnership';
 
 export interface StrategyMapViewProps {
   perspectives?: StrategicPerspective[];
   objectives?: StrategicObjective[];
   relationships?: StrategicObjectiveRelationship[];
+  areaConfigs?: AreaStrategyConfig[];
   contributions?: ContributionObjective[];
   assignments?: ContributionIndicatorAssignment[];
   dashboards?: DashboardType[];
   isAdmin?: boolean;
+  currentUser?: User;
   selectedClientId: string;
   onRefreshData?: () => Promise<void>;
   onSaveRelationship?: (rel: { sourceStrategicObjectiveId: string; targetStrategicObjectiveId: string; description?: string }) => Promise<void>;
@@ -50,10 +54,12 @@ export const StrategyMapView: React.FC<StrategyMapViewProps> = ({
   perspectives = DEFAULT_PERSPECTIVES,
   objectives = [],
   relationships = [],
+  areaConfigs = [],
   contributions = [],
   assignments = [],
   dashboards = [],
   isAdmin = false,
+  currentUser,
   selectedClientId,
   onRefreshData,
   onSaveRelationship,
@@ -63,6 +69,11 @@ export const StrategyMapView: React.FC<StrategyMapViewProps> = ({
   const [selectedOE, setSelectedOE] = useState<StrategicObjective | null>(null);
   const [hoveredOEId, setHoveredOEId] = useState<string | null>(null);
   const [showEditorModal, setShowEditorModal] = useState(false);
+  const ownership = useMemo(() => resolveStrategicKpiOwnership(dashboards, objectives, contributions, assignments), [dashboards, objectives, contributions, assignments]);
+  const occupiedKpiIdentities = useMemo(() => new Set(ownership.ownershipByCanonicalKpi.keys()), [ownership]);
+  const displayedKpis = useMemo(() => Array.from(ownership.kpisByStrategicObjective.values()).flat(), [ownership]);
+  const visibleOccupiedPhysicalKpiKeys = useMemo(() => new Set(displayedKpis.map(kpi => kpi.physicalKey)), [displayedKpis]);
+  const visibleOccupiedCanonicalKpiIdentities = useMemo(() => new Set(displayedKpis.map(kpi => kpi.identity)), [displayedKpis]);
 
   // Generador de ID de instancia único y sanitizado para marcadores SVG
   const rawInstanceId = useId();
@@ -318,12 +329,13 @@ export const StrategyMapView: React.FC<StrategyMapViewProps> = ({
                               nodeRefs.current[oe.id] = el;
                             }}
                           >
-                            <StrategicObjectiveNode
+              <StrategicObjectiveNode
                               objective={oe}
                               perspective={persp}
                               contributions={contributions}
                               assignments={assignments}
-                              dashboards={dashboards}
+                dashboards={dashboards}
+                alignedLogicalKpis={ownership.kpisByStrategicObjective.get(oe.id) || []}
                               isSelected={isSel}
                               isHovered={isHov}
                               isCause={isCause}
@@ -353,11 +365,22 @@ export const StrategyMapView: React.FC<StrategyMapViewProps> = ({
         <OEDetailModal
           objective={selectedOE}
           perspective={perspectives.find(p => p.id === selectedOE.perspectiveId)}
+          perspectives={perspectives}
           allObjectives={objectives}
           relationships={relationships}
           contributions={contributions}
           assignments={assignments}
           dashboards={dashboards}
+          currentObjectiveAlignedKpis={ownership.kpisByStrategicObjective.get(selectedOE.id) || []}
+          ownershipResolution={ownership}
+          occupiedKpiIdentities={occupiedKpiIdentities}
+          occupiedPhysicalKpiKeys={ownership.occupiedPhysicalKpiKeys}
+          visibleOccupiedPhysicalKpiKeys={visibleOccupiedPhysicalKpiKeys}
+          visibleOccupiedCanonicalKpiIdentities={visibleOccupiedCanonicalKpiIdentities}
+          areaConfigs={areaConfigs}
+          selectedClientId={selectedClientId}
+          currentUser={currentUser}
+          onRefreshData={onRefreshData}
           onClose={() => setSelectedOE(null)}
           onNavigateToDashboard={onNavigateToDashboard}
         />

@@ -1,17 +1,22 @@
 import React, { useMemo, useState } from 'react';
 import { Dashboard, DashboardItem, ComplianceThresholds } from '../../types';
-import { buildOperationalAlerts, OperationalAlert, AlertSeverity, OperationalTrend } from '../../utils/operationalAlerts';
+import { buildOperationalAlerts, AlertSeverity, OperationalTrend } from '../../utils/operationalAlerts';
 
 interface OperationalAlertsCenterProps {
   dashboards: Dashboard[];
   globalThresholds: ComplianceThresholds;
   year: number;
+  compact?: boolean;
+  onNavigateToKpi?: (dashboardId: number | string, itemId: number | string) => void;
+  exceptionFilter?: 'CRÍTICO' | 'REQUIERE ATENCIÓN' | 'DATA';
 }
 
 export const OperationalAlertsCenter: React.FC<OperationalAlertsCenterProps> = ({
   dashboards,
   globalThresholds,
-  year
+  year,
+  compact = false,
+  onNavigateToKpi, exceptionFilter
 }) => {
   const [selectedSeverity, setSelectedSeverity] = useState<string>('TODAS');
   const [selectedDirection, setSelectedDirection] = useState<string>('TODAS');
@@ -22,14 +27,18 @@ export const OperationalAlertsCenter: React.FC<OperationalAlertsCenterProps> = (
     return buildOperationalAlerts(dashboards, globalThresholds, year);
   }, [dashboards, globalThresholds, year]);
 
+  const exceptionAlerts = useMemo(() => exceptionFilter === 'DATA'
+    ? allAlerts.filter(a => a.severity === 'DATOS PENDIENTES' || a.severity === 'RIESGO OCULTO')
+    : exceptionFilter ? allAlerts.filter(a => a.severity === exceptionFilter) : allAlerts.filter(a => !['BAJO CONTROL', 'SIN OBLIGACIÓN'].includes(a.severity)), [allAlerts, exceptionFilter]);
+
   // Listas para poblar filtros
   const directions = useMemo(() => {
     const set = new Set<string>();
-    allAlerts.forEach(a => {
+    exceptionAlerts.forEach(a => {
       if (a.direction) set.add(a.direction.trim().toUpperCase());
     });
     return ['TODAS', ...Array.from(set).sort()];
-  }, [allAlerts]);
+  }, [exceptionAlerts]);
 
   const areas = useMemo(() => {
     const set = new Set<string>();
@@ -41,21 +50,21 @@ export const OperationalAlertsCenter: React.FC<OperationalAlertsCenterProps> = (
 
   // Alertas filtradas
   const filteredAlerts = useMemo(() => {
-    return allAlerts.filter(a => {
+    return exceptionAlerts.filter(a => {
       const matchSeverity = selectedSeverity === 'TODAS' || a.severity === selectedSeverity;
       const matchDir = selectedDirection === 'TODAS' || a.direction === selectedDirection;
       const matchArea = selectedArea === 'TODAS' || a.area === selectedArea;
 
       return matchSeverity && matchDir && matchArea;
     });
-  }, [allAlerts, selectedSeverity, selectedDirection, selectedArea]);
+  }, [exceptionAlerts, selectedSeverity, selectedDirection, selectedArea]);
 
   // Métricas analíticas ejecutivas del alerts engine
   const executiveMetrics = useMemo(() => {
     const total = allAlerts.length;
     const critical = allAlerts.filter(a => a.severity === 'CRÍTICO').length;
-    const high = allAlerts.filter(a => a.severity === 'ALTO').length;
-    const medium = allAlerts.filter(a => a.severity === 'MEDIO').length;
+    const high = allAlerts.filter(a => a.severity === 'REQUIERE ATENCIÓN').length;
+    const medium = allAlerts.filter(a => a.severity === 'DATOS PENDIENTES').length;
     
     // Conteo de riesgos ocultos
     const hiddenRisks = allAlerts.filter(a => a.isHiddenRisk).length;
@@ -82,68 +91,29 @@ export const OperationalAlertsCenter: React.FC<OperationalAlertsCenterProps> = (
   const getSeverityClasses = (severity: AlertSeverity): string => {
     switch (severity) {
       case 'CRÍTICO': return 'text-rose-400 bg-rose-500/10 border-rose-500/30';
-      case 'ALTO': return 'text-orange-400 bg-orange-500/10 border-orange-500/30';
-      case 'MEDIO': return 'text-amber-400 bg-amber-500/10 border-amber-500/30';
-      case 'BAJO': return 'text-cyan-400 bg-cyan-500/10 border-cyan-500/30';
-      default: return 'text-slate-400 bg-slate-500/10 border-slate-500/20';
+      case 'REQUIERE ATENCIÓN': return 'text-orange-400 bg-orange-500/10 border-orange-500/30';
+      case 'DATOS PENDIENTES': return 'text-amber-300 bg-amber-500/10 border-amber-500/30';
+      case 'RIESGO OCULTO': return 'text-violet-300 bg-violet-500/10 border-violet-500/30';
+      case 'SIN OBLIGACIÓN': return 'text-slate-300 bg-slate-500/10 border-slate-500/20';
+      default: return 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20';
     }
   };
 
   // Clasificación de color por tendencia
   const getTrendIconAndColor = (trend: OperationalTrend) => {
     switch (trend) {
-      case 'MEJORANDO': return { icon: '📈', color: 'text-emerald-400 bg-emerald-500/5' };
       case 'DETERIORÁNDOSE': return { icon: '📉', color: 'text-orange-400 bg-orange-500/5' };
       case 'CRÍTICO': return { icon: '🚨', color: 'text-rose-400 bg-rose-500/5 animate-pulse' };
+      case 'NO EVALUABLE': return { icon: '—', color: 'text-slate-400 bg-slate-500/5' };
       default: return { icon: '➡️', color: 'text-slate-400 bg-slate-500/5' };
     }
   };
 
-  // Renderizar Sparkline compacto mensual de 12 bloques (Enero a Diciembre)
-  const renderSparkline = (alert: OperationalAlert) => {
-    const months = ['E', 'F', 'M', 'A', 'M', 'J', 'J', 'A', 'S', 'O', 'N', 'D'];
-    
-    // Simular los bloques de captura
-    // Los meses con datos se pintan verdes, sin datos rojos/grises, futuros grises
-    // Usamos el número de missingPeriods para simular los bloques finales vacíos
-    const expected = alert.missingPeriods + Math.round(alert.captureRate * 0.12);
-    const captured = Math.round(alert.captureRate * 0.12);
-
-    return (
-      <div className="flex gap-1 items-center justify-center">
-        {months.map((m, idx) => {
-          let blockBg = 'bg-slate-800/40 border border-white/5';
-          let title = `Periodo ${m} - Fuera de rango`;
-
-          if (idx < expected) {
-            if (idx < captured) {
-              blockBg = 'bg-emerald-500/60 border border-emerald-500/40 shadow-[0_0_4px_rgba(16,185,129,0.3)]';
-              title = `Periodo ${m} - CAPTURADO`;
-            } else {
-              blockBg = 'bg-rose-500/60 border border-rose-500/40 animate-pulse';
-              title = `Periodo ${m} - VENCIDO SIN CAPTURA`;
-            }
-          }
-
-          return (
-            <div
-              key={idx}
-              className={`w-3.5 h-4.5 rounded-[3px] text-[7px] font-black flex items-center justify-center text-white/90 cursor-help transition-all ${blockBg}`}
-              title={title}
-            >
-              {m}
-            </div>
-          );
-        })}
-      </div>
-    );
-  };
-
   return (
-    <div className="space-y-8 animate-in fade-in duration-500">
+    <div className={compact ? 'animate-in fade-in duration-500' : 'space-y-8 animate-in fade-in duration-500'}>
       
       {/* SECCIÓN 1: HEADER EJECUTIVO DEL ENGINE */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+      {!compact && <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         
         {/* CARD 1: CONFIABILIDAD OPERATIVA PROMEDIO */}
         <div className="glass-card rounded-2xl p-5 border border-white/5 bg-slate-900/40 flex flex-col justify-between min-h-[120px] hover:scale-[1.02] transition-transform">
@@ -156,7 +126,7 @@ export const OperationalAlertsCenter: React.FC<OperationalAlertsCenterProps> = (
             </span>
           </div>
           <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest mt-2">
-            Score Nacional Consolidado
+            Score consolidado
           </span>
         </div>
 
@@ -224,40 +194,41 @@ export const OperationalAlertsCenter: React.FC<OperationalAlertsCenterProps> = (
           </span>
         </div>
 
-      </div>
+      </div>}
 
       {/* SECCIÓN 2: ALERTS CENTER CON FILTROS E INTERFAZ PREMIUM */}
-      <div className="glass-card rounded-[2rem] p-6 border border-white/5 shadow-2xl space-y-6">
+      <div className={`glass-card border border-white/5 shadow-2xl ${compact ? 'rounded-xl p-3' : 'rounded-[2rem] p-6'} space-y-3`}>
         
         {/* FILTROS INTERACTIVOS TÁCTILES */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-white/5 pb-5">
           <div className="flex flex-col">
-            <h3 className="text-base font-black text-white uppercase tracking-wider">Centro de Alertas Activas</h3>
-            <span className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-1">
-              Monitoreo ejecutivo de rezagos y deterioro en tiempo real
-            </span>
+            <h3 className="text-sm font-black text-white uppercase tracking-wider">{compact ? 'Requiere atención' : 'Centro de Alertas Activas'}</h3>
+            {!compact && <span className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-1">Monitoreo ejecutivo de rezagos y deterioro en tiempo real</span>}
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
             
             {/* Filtro Severidad */}
             <div className="flex flex-col gap-1">
-              <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest px-1">Criticidad</span>
+              <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest px-1">Tipo de excepción</span>
               <select
                 value={selectedSeverity}
                 onChange={e => setSelectedSeverity(e.target.value)}
                 className="px-3 py-2 bg-slate-950/80 border border-white/10 rounded-xl text-[10px] font-black text-slate-300 uppercase tracking-tight outline-none focus:border-cyan-500 transition-all min-h-[44px]"
               >
-                <option value="TODAS">TODAS LAS CRITICIDADES</option>
+                <option value="TODAS">TODAS LAS EXCEPCIONES</option>
                 <option value="CRÍTICO">CRÍTICO</option>
-                <option value="ALTO">ALTO / RIESGO OCULTO</option>
-                <option value="MEDIO">MEDIO</option>
-                <option value="BAJO">BAJO</option>
+                <option value="REQUIERE ATENCIÓN">REQUIERE ATENCIÓN</option>
+                <option value="DATOS PENDIENTES">DATOS PENDIENTES</option>
+                <option value="RIESGO OCULTO">RIESGO OCULTO</option>
+                <option value="BAJO CONTROL">BAJO CONTROL</option>
+                <option value="SIN OBLIGACIÓN">SIN OBLIGACIÓN</option>
               </select>
             </div>
 
-            {/* Filtro Dirección */}
-            <div className="flex flex-col gap-1">
+            <details className="flex flex-col gap-1">
+              <summary className="min-h-[44px] cursor-pointer list-none rounded-xl border border-white/10 px-3 py-2 text-[10px] font-black uppercase tracking-tight text-slate-400">Más filtros</summary>
+              <div className="mt-1 flex flex-col gap-1">
               <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest px-1">Dirección</span>
               <select
                 value={selectedDirection}
@@ -268,7 +239,8 @@ export const OperationalAlertsCenter: React.FC<OperationalAlertsCenterProps> = (
                   <option key={dir} value={dir}>{dir === 'TODAS' ? 'TODAS LAS DIRECCIONES' : dir}</option>
                 ))}
               </select>
-            </div>
+              </div>
+            </details>
 
             {/* Filtro Área */}
             <div className="flex flex-col gap-1">
@@ -300,17 +272,17 @@ export const OperationalAlertsCenter: React.FC<OperationalAlertsCenterProps> = (
         )}
 
         {/* TABLA ULTRA DENSA DE ALERTAS Y TRAZABILIDAD */}
-        <div className="overflow-x-auto pb-4 scrollbar-hide max-w-full">
-          <table className="w-full border-collapse">
+        <div className="overflow-x-auto pb-1 scrollbar-hide max-w-full">
+          <table className="w-full min-w-[720px] table-fixed border-collapse">
             <thead>
               <tr className="bg-slate-950/20">
-                <th className="p-3 text-left text-[9px] font-black text-slate-500 uppercase tracking-widest border-b border-white/5 rounded-tl-2xl">Origen / KPI</th>
-                <th className="p-3 text-center text-[9px] font-black text-slate-500 uppercase tracking-widest border-b border-white/5">Criticidad</th>
-                <th className="p-3 text-center text-[9px] font-black text-slate-500 uppercase tracking-widest border-b border-white/5">Tendencia</th>
-                <th className="p-3 text-center text-[9px] font-black text-slate-500 uppercase tracking-widest border-b border-white/5">Consistencia</th>
+                <th className="w-[22%] p-3 text-left text-[9px] font-black text-slate-500 uppercase tracking-widest border-b border-white/5 rounded-tl-2xl">Origen / KPI</th>
+                <th className="w-[15%] p-3 text-center text-[9px] font-black text-slate-500 uppercase tracking-widest border-b border-white/5">Estado</th>
+                <th className="p-3 text-center text-[9px] font-black text-slate-500 uppercase tracking-widest border-b border-white/5">Resultado</th>
+                <th className="w-[15%] p-3 text-center text-[9px] font-black text-slate-500 uppercase tracking-widest border-b border-white/5">Datos</th>
                 <th className="p-3 text-center text-[9px] font-black text-slate-500 uppercase tracking-widest border-b border-white/5">Confiabilidad</th>
-                <th className="p-3 text-center text-[9px] font-black text-slate-500 uppercase tracking-widest border-b border-white/5">Trazabilidad Operativa (Futura)</th>
-                <th className="p-3 text-center text-[9px] font-black text-slate-500 uppercase tracking-widest border-b border-white/5 rounded-tr-2xl">Aging</th>
+                <th className="hidden p-3 text-center text-[9px] font-black text-slate-500 uppercase tracking-widest border-b border-white/5">Trazabilidad operativa</th>
+                <th className="hidden p-3 text-center text-[9px] font-black text-slate-500 uppercase tracking-widest border-b border-white/5 rounded-tr-2xl">Aging</th>
               </tr>
             </thead>
             <tbody>
@@ -318,12 +290,13 @@ export const OperationalAlertsCenter: React.FC<OperationalAlertsCenterProps> = (
                 const trend = getTrendIconAndColor(alert.trend);
 
                 return (
-                  <tr key={`${alert.id}-${idx}`} className="hover:bg-white/5 border-b border-white/5 transition-colors">
+                  <tr key={`${alert.id}-${idx}`} onClick={() => onNavigateToKpi?.(alert.dashboardId, alert.id)} className="group cursor-pointer hover:bg-white/5 border-b border-white/5 transition-colors" tabIndex={0} onKeyDown={event => { if (event.key === 'Enter' || event.key === ' ') onNavigateToKpi?.(alert.dashboardId, alert.id); }}>
                     
                     {/* ORIGEN Y NOMBRE DE KPI */}
                     <td className="p-3 text-[11px] font-black text-white uppercase tracking-tight max-w-[260px]">
                       <div className="flex flex-col">
                         <span className="truncate">{alert.indicator}</span>
+                        <span className="mt-1 text-[8px] font-black text-cyan-400 opacity-70 group-hover:opacity-100"><span>REVISAR →</span><span className="ml-2">VER KPI</span></span>
                         <span className="text-[7px] text-slate-500 font-bold uppercase tracking-widest mt-0.5">
                           {alert.direction} • {alert.area}
                         </span>
@@ -332,52 +305,54 @@ export const OperationalAlertsCenter: React.FC<OperationalAlertsCenterProps> = (
 
                     {/* CRITICIDAD */}
                     <td className="p-3 text-center">
-                      <span className={`text-[9px] font-black px-2.5 py-1 rounded-lg border ${getSeverityClasses(alert.severity)}`}>
+                      <span className={`inline-flex min-w-max whitespace-nowrap text-[9px] font-black px-2.5 py-1 rounded-lg border ${getSeverityClasses(alert.severity)}`}>
                         {alert.severity}
-                        {alert.isHiddenRisk && ' • OCULTO'}
                       </span>
                     </td>
 
-                    {/* TENDENCIA */}
+                    {/* RESULTADO CANÓNICO + ETIQUETA SEMÁNTICA */}
                     <td className="p-3 text-center">
-                      <span className={`text-[9px] font-black px-2 py-1 rounded-lg ${trend.color} flex items-center justify-center gap-1 w-fit mx-auto`}>
-                        <span>{trend.icon}</span> <span>{alert.trend}</span>
+                      <span className={`text-[9px] font-black px-2 py-1 rounded-lg ${trend.color} flex flex-col items-center justify-center gap-0.5 w-fit mx-auto`}>
+                        <span className="text-sm tabular-nums leading-none">
+                          {alert.dataStatus === 'SIN OBLIGACIÓN' ? '—' : `${Math.round(alert.performanceScore)}%`}
+                        </span>
+                        <span className="flex items-center gap-1 leading-none">
+                          <span>{trend.icon}</span> <span>{alert.dataStatus === 'SIN OBLIGACIÓN' ? 'NO EVALUABLE' : alert.performanceLabel}</span>
+                        </span>
                       </span>
                     </td>
 
                     {/* SPARKLINE COMPACTO */}
                     <td className="p-3 text-center">
-                      {renderSparkline(alert)}
+                      <div className="flex flex-col items-center gap-1"><span className={`inline-flex min-w-max whitespace-nowrap rounded px-2 py-1 text-[8px] font-black ${alert.dataStatus === 'AL DÍA' ? 'text-emerald-400' : alert.dataStatus === 'DATOS INCOMPLETOS' || alert.dataStatus === 'DATOS VENCIDOS' ? 'text-amber-300' : 'text-slate-300'}`}>{alert.dataStatus}</span><span className="text-[8px] font-bold text-slate-500">{Math.round(alert.captureRate)}% captura</span></div>
                     </td>
 
                     {/* CONFIDENCE SCORE */}
                     <td className="p-3 text-center">
                       <div className="flex flex-col items-center">
                         <span className={`text-xs font-black tabular-nums tracking-tighter ${alert.reliabilityScore >= 90 ? 'text-emerald-400' : alert.reliabilityScore >= 70 ? 'text-amber-400' : 'text-rose-400'}`}>
-                          {alert.reliabilityScore}%
+                          {alert.dataStatus === 'SIN OBLIGACIÓN' ? '—' : `${alert.reliabilityScore}%`}
                         </span>
                         <span className="text-[6px] text-slate-500 font-black uppercase tracking-widest">
-                          Reliability
+                          Confiabilidad
                         </span>
                       </div>
                     </td>
 
                     {/* TRAZABILIDAD (FUTURA AUTOMATIZACIÓN) */}
-                    <td className="p-3 text-center text-[9px] font-bold text-slate-400 max-w-[180px] truncate">
+                    <td className="hidden p-3 text-center text-[9px] font-bold text-slate-400 max-w-[180px] truncate">
                       <div className="flex flex-col items-start leading-tight">
-                        <span className="text-[7px] text-slate-500 font-black uppercase">Último cambio:</span>
                         <span className="text-white truncate max-w-full">{alert.traceability.lastOperationalChange}</span>
-                        <span className="text-[6px] text-slate-500 font-black uppercase mt-0.5">
-                          Por {alert.traceability.lastUpdatedBy}
-                        </span>
+                        <span className="text-[8px] text-slate-400 font-black uppercase mt-0.5">Responsable: {alert.traceability.lastUpdatedBy === 'SIN RESPONSABLE REGISTRADO' ? 'SIN REGISTRAR' : alert.traceability.lastUpdatedBy}</span>
                       </div>
                     </td>
 
                     {/* AGING OPERATIVO */}
-                    <td className="p-3 text-center text-[10px] font-black text-white tabular-nums">
+                    <td className="hidden p-3 text-center text-[10px] font-black text-white tabular-nums">
                       <span className={`px-2 py-0.5 rounded ${alert.stalenessDays >= 60 ? 'bg-rose-500/10 text-rose-400' : 'bg-slate-900/60 text-slate-300'}`}>
-                        {alert.agingLabel}
+                        {alert.stalenessDays > 0 ? `${alert.stalenessDays} días` : alert.dataStatus === 'SIN OBLIGACIÓN' ? 'NO APLICA' : 'AL DÍA'}
                       </span>
+                      {alert.stalenessDays > 0 && <span className="mt-1 block text-[7px] font-black text-rose-400">VENCIDO</span>}
                     </td>
 
                   </tr>
@@ -387,7 +362,7 @@ export const OperationalAlertsCenter: React.FC<OperationalAlertsCenterProps> = (
               {filteredAlerts.length === 0 && (
                 <tr>
                   <td
-                    colSpan={7}
+                    colSpan={5}
                     className="p-12 text-center text-[10px] font-black uppercase tracking-widest text-slate-500 bg-slate-900/10 border-b border-white/5 rounded-b-2xl"
                   >
                     🎉 Todo en orden: No se encontraron alertas operativas para el filtro actual

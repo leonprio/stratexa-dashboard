@@ -313,6 +313,13 @@ const HierarchySidebar: React.FC<HierarchySidebarProps> = React.memo(({
             const originalName = (dashes[0]?.group || (normG === 'GENERAL' ? 'GENERAL' : normG));
             const result = buildGroupChildren(originalName);
             if (result) {
+                // GENERAL puede existir como agrupador técnico de varios
+                // tableros físicos. No debe competir con CONSOLIDADO como
+                // nodo navegable: se aplanan sus dashboards hijos.
+                if (normG === 'GENERAL' && result.node.children.length > 1 && result.node.children.every(child => !child.isAggregate)) {
+                    orphans.push(...result.node.children);
+                    return;
+                }
                 // 🛡️ UX REFLUX: Si el grupo solo tiene un tablero, lo aplanamos al nivel superior
                 if (result.node.children.length === 1 && !result.node.children[0].isAggregate) {
                     orphans.push(result.node.children[0]);
@@ -322,7 +329,7 @@ const HierarchySidebar: React.FC<HierarchySidebarProps> = React.memo(({
             }
         });
 
-        // 🛡️ Agregar Agregado Global (GENERAL) al inicio
+        // 🛡️ Agregar el único agregado global al inicio
         // 🛡️ v7.8.23: REGLA DE AISLAMIENTO — Solo mostrar SINTESIS GLOBAL si eres Admin Global (Developer) 
         // y NO tienes un supergrupo asignado que ya cumpla esa función para ti.
         const globalAgg = dashboards.find(d => String(d.id).includes('agg-global-total'));
@@ -333,7 +340,7 @@ const HierarchySidebar: React.FC<HierarchySidebarProps> = React.memo(({
             const globalMetrics = getMetricsForItems(globalItems);
             nodes.unshift({
                 id: 'sg-GLOBAL-GENERAL',
-                label: `★ CONSOLIDADO DIRECTIVO GLOBAL`,
+                label: 'CONSOLIDADO',
                 level: 'supergroup',
                 compliancePct: globalMetrics.compliancePct,
                 capturePct: globalMetrics.capturePct,
@@ -345,6 +352,8 @@ const HierarchySidebar: React.FC<HierarchySidebarProps> = React.memo(({
         }
 
         nodes.push(...orphans);
+        // Los agregados técnicos siguen disponibles para cálculos, pero el
+        // agregado global conserva un único nombre de navegación: CONSOLIDADO.
         return nodes;
     }, [dashboards, areaFilteredDashboards, allUsers, userProfile, isGlobalAdmin, isDirector, clientNorm, selectedArea, realDashboards.length, settings]);
 
@@ -408,7 +417,7 @@ const HierarchySidebar: React.FC<HierarchySidebarProps> = React.memo(({
                     const gAgg = tree.find(n => n.id === 'sg-GLOBAL-GENERAL');
                     if (gAgg?.dashboardId) onSelectDashboard(gAgg.dashboardId);
                     onToggleCollapse();
-                }} className="flex-shrink-0 w-11 h-11 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 text-lg hover:bg-amber-500/20 transition-all shadow-lg active:scale-95" title="GENERAL">🌐</button>
+                }} className="flex-shrink-0 w-11 h-11 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 text-lg hover:bg-amber-500/20 transition-all shadow-lg active:scale-95" title="CONSOLIDADO">🌐</button>
             </aside>
         );
     }

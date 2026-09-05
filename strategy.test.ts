@@ -4,6 +4,7 @@ import {
   validateAreaCodeUniqueness,
   generateNextOCSequence,
   formatOCCode,
+  formatOECode,
   resolveAreaStrategyConfig,
   AreaStrategyConfig,
   ContributionObjective,
@@ -13,6 +14,20 @@ import {
 } from './strategyTypes';
 
 describe('Strategy Foundation — Pure Helpers & Architecture Contracts', () => {
+
+  describe('Automatic objective codes', () => {
+    it('formats independent OE and OC sequences without truncation', () => {
+      expect(formatOECode(1)).toBe('OE01');
+      expect(formatOECode(2)).toBe('OE02');
+      expect(formatOECode(9)).toBe('OE09');
+      expect(formatOECode(10)).toBe('OE10');
+      expect(formatOECode(100)).toBe('OE100');
+      expect(formatOCCode('', 1)).toBe('OC01');
+      expect(formatOCCode('V', 1)).toBe('OCV01');
+      expect(formatOCCode('V', 2)).toBe('OCV02');
+      expect(formatOCCode('F', 1)).toBe('OCF01');
+    });
+  });
 
   describe('DEFAULT_PERSPECTIVES (4 Configurable BSC Slots)', () => {
     it('has exactly 4 default perspective slots with required labels', () => {
@@ -171,11 +186,11 @@ describe('Strategy Foundation — Pure Helpers & Architecture Contracts', () => 
 
       const nextComSeq = generateNextOCSequence(existingOCs, 'areacfg_com');
       expect(nextComSeq).toBe(3);
-      expect(formatOCCode('COM', nextComSeq)).toBe('COM-OC03');
+      expect(formatOCCode('COM', nextComSeq)).toBe('OCCOM03');
 
       const nextOpeSeq = generateNextOCSequence(existingOCs, 'areacfg_ope');
       expect(nextOpeSeq).toBe(2);
-      expect(formatOCCode('OPE', nextOpeSeq)).toBe('OPE-OC02');
+      expect(formatOCCode('OPE', nextOpeSeq)).toBe('OCOPE02');
     });
 
     it('does NOT reuse deleted OC sequence numbers', () => {
@@ -186,7 +201,7 @@ describe('Strategy Foundation — Pure Helpers & Architecture Contracts', () => 
 
       const nextSeq = generateNextOCSequence(existingOCs, 'areacfg_com');
       expect(nextSeq).toBe(4);
-      expect(formatOCCode('COM', nextSeq)).toBe('COM-OC04');
+      expect(formatOCCode('COM', nextSeq)).toBe('OCCOM04');
     });
   });
 
@@ -212,7 +227,7 @@ describe('Strategy Foundation — Pure Helpers & Architecture Contracts', () => 
       };
 
       expect(oc.areaConfigId).toBe('cfg-com-123');
-      expect(oc.displayCode).toBe('COM-OC01');
+      expect(oc.displayCode).toBe('OCCOM01');
     });
   });
 

@@ -10,9 +10,12 @@ import {
   deriveAreaCodeSuggestion,
   validateAreaCodeUniqueness,
   resolveAreaStrategyConfig
+  ,normalizeObjectiveCodeForComparison
+  ,parseObjectiveCodeSequence
 } from '../../strategyTypes';
 import { Dashboard as DashboardType, User, GlobalUserRole } from '../../types';
 import { strategyService } from '../../services/strategyService';
+import { contributionPickerCatalog, contributionPickerCandidates, isOperationalDashboard } from '../../contributionConfiguration';
 
 export interface StrategyConfigModalProps {
   perspectives: StrategicPerspective[];
@@ -25,6 +28,8 @@ export interface StrategyConfigModalProps {
   currentUser?: User;
   onClose: () => void;
   onRefreshData: () => Promise<void>;
+  initialObjectiveId?: string;
+  initialSection?: ConfigSection;
 }
 
 type ConfigSection = 'perspectives' | 'objectives' | 'areaCodes' | 'contributionObjectives';
@@ -40,9 +45,11 @@ export const StrategyConfigModal: React.FC<StrategyConfigModalProps> = ({
   currentUser,
   onClose,
   onRefreshData,
+  initialObjectiveId,
+  initialSection = 'objectives',
 }) => {
   const isAdmin = currentUser?.globalRole === GlobalUserRole.Admin;
-  const [activeSection, setActiveSection] = useState<ConfigSection>('objectives');
+  const [activeSection, setActiveSection] = useState<ConfigSection>(initialSection);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
@@ -55,9 +62,11 @@ export const StrategyConfigModal: React.FC<StrategyConfigModalProps> = ({
 
   // Form State: Objetivos Estratégicos (OE)
   const [oePerspectiveId, setOePerspectiveId] = useState<string>(perspectives[0]?.id || 'FINANCIERA');
-  const [oeCode, setOeCode] = useState<string>('');
   const [oeTitle, setOeTitle] = useState<string>('');
   const [oeDescription, setOeDescription] = useState<string>('');
+  const [editingOEId, setEditingOEId] = useState<string | null>(null);
+  const [pendingDeleteOE, setPendingDeleteOE] = useState<StrategicObjective | null>(null);
+  const [showLegacyRepair, setShowLegacyRepair] = useState(false);
 
   // Form State: Área y Códigos Estables
   const [selectedAreaForConfig, setSelectedAreaForConfig] = useState<string>('');
@@ -72,17 +81,39 @@ export const StrategyConfigModal: React.FC<StrategyConfigModalProps> = ({
   const [ocTitle, setOcTitle] = useState<string>('');
   const [ocDescription, setOcDescription] = useState<string>('');
   const [selectedKpisForOC, setSelectedKpisForOC] = useState<string[]>([]); // array of "dashboardId_itemId"
+  const [editingOCId, setEditingOCId] = useState<string | null>(null);
+  const [assignmentBaseline, setAssignmentBaseline] = useState<ContributionIndicatorAssignment[]>([]);
+  const [freshAssignments, setFreshAssignments] = useState<ContributionIndicatorAssignment[] | null>(null);
+  const [pendingDeleteOC, setPendingDeleteOC] = useState<ContributionObjective | null>(null);
+
+  React.useEffect(() => {
+    if (initialObjectiveId && !ocPrimaryOEId) setOcPrimaryOEId(initialObjectiveId);
+  }, [initialObjectiveId, ocPrimaryOEId]);
+
+  React.useEffect(() => {
+    if (!initialObjectiveId || editingOCId) return;
+    const scopedOCs = contributionObjectives.filter(oc => oc.primaryStrategicObjectiveId === initialObjectiveId);
+    if (scopedOCs.length !== 1) return;
+    const oc = scopedOCs[0];
+    setEditingOCId(oc.id);
+    setOcAreaName(oc.areaName || 'GENERAL');
+    setOcPrimaryOEId(oc.primaryStrategicObjectiveId);
+    setOcTitle(oc.title);
+    setOcDescription(oc.description || '');
+    setSelectedKpisForOC(assignments.filter(a => a.contributionObjectiveId === oc.id).map(a => `${a.dashboardId}_${a.itemId}`));
+    setAssignmentBaseline(assignments.filter(a => a.contributionObjectiveId === oc.id));
+  }, [initialObjectiveId, contributionObjectives, assignments, editingOCId]);
 
   // Extraer todas las áreas organizacionales activas de los tableros
   const availableAreas = useMemo(() => {
     const set = new Set<string>();
-    dashboards.forEach(d => {
+    dashboards.filter(d => isOperationalDashboard(d) && d.clientId === selectedClientId).forEach(d => {
       if (d.area && d.area.trim()) {
         set.add(d.area.trim().toUpperCase());
       }
     });
     return Array.from(set).sort();
-  }, [dashboards]);
+  }, [dashboards, selectedClientId]);
 
   // Inicialización de área seleccionada
   React.useEffect(() => {
@@ -148,21 +179,21 @@ export const StrategyConfigModal: React.FC<StrategyConfigModalProps> = ({
       setLoading(true);
       setErrorMsg(null);
 
+      const currentObjective = editingOEId ? objectives.find(o => o.id === editingOEId) : undefined;
       const countInPerspective = objectives.filter(o => o.perspectiveId === oePerspectiveId).length;
-      const generatedCode = oeCode.trim() || `OE-${String(countInPerspective + 1).padStart(2, '0')}`;
-
       await strategyService.saveStrategicObjective({
+        id: editingOEId || undefined,
         perspectiveId: oePerspectiveId,
-        code: generatedCode.toUpperCase(),
+        code: currentObjective?.code || 'AUTOMÁTICO',
         title: oeTitle.trim(),
         description: oeDescription.trim(),
-        order: countInPerspective + 1,
+        order: currentObjective?.order || countInPerspective + 1,
         clientId: selectedClientId
       });
 
-      setOeCode('');
       setOeTitle('');
       setOeDescription('');
+      setEditingOEId(null);
       setSuccessMsg('Objetivo Estratégico (OE) guardado correctamente.');
       await onRefreshData();
     } catch (err: any) {
@@ -172,16 +203,52 @@ export const StrategyConfigModal: React.FC<StrategyConfigModalProps> = ({
     }
   };
 
-  // Eliminar OE
-  const handleDeleteOE = async (oeId: string) => {
-    if (!isAdmin) return;
-    if (!confirm('¿Eliminar este Objetivo Estratégico?')) return;
+  const startEditOE = (objective: StrategicObjective) => {
+    setEditingOEId(objective.id);
+    setOePerspectiveId(objective.perspectiveId);
+    setOeTitle(objective.title);
+    setOeDescription(objective.description || '');
+    setErrorMsg(null);
+    setSuccessMsg(null);
+  };
 
+  const cancelEditOE = () => {
+    setEditingOEId(null);
+    setOeTitle('');
+    setOeDescription('');
+  };
+
+  const legacyObjectives = objectives.filter(objective => {
+    const normalized = normalizeObjectiveCodeForComparison(objective.code);
+    return parseObjectiveCodeSequence(normalized, 'OE') !== null && normalized !== objective.code;
+  });
+
+  const handleRepairLegacyCodes = async () => {
+    if (!isAdmin) return;
     try {
       setLoading(true);
-      await strategyService.deleteStrategicObjective(oeId, selectedClientId);
+      setErrorMsg(null);
+      await strategyService.repairLegacyStrategicObjectiveCodes(selectedClientId);
+      setShowLegacyRepair(false);
+      setSuccessMsg('Códigos normalizados correctamente.');
+      await onRefreshData();
+    } catch (err: any) {
+      setErrorMsg(err.message || 'Error al normalizar códigos.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Eliminar OE, después de confirmación inline propia de la aplicación.
+  const handleDeleteOE = async () => {
+    if (!isAdmin || !pendingDeleteOE) return;
+    try {
+      setLoading(true);
+      setErrorMsg(null);
+      await strategyService.deleteStrategicObjective(pendingDeleteOE.id, selectedClientId);
       await onRefreshData();
       setSuccessMsg('Objetivo Estratégico eliminado.');
+      setPendingDeleteOE(null);
     } catch (err: any) {
       setErrorMsg(err.message);
     } finally {
@@ -229,26 +296,10 @@ export const StrategyConfigModal: React.FC<StrategyConfigModalProps> = ({
     }
   };
 
-  // Obtener KPIs disponibles para el área seleccionada en OC
-  const areaDashboardsAndItems = useMemo(() => {
-    if (!ocAreaName) return [];
-    const normArea = ocAreaName.trim().toUpperCase();
-    const areaCfg = resolveAreaStrategyConfig(normArea, areaConfigs);
-    const result: { dashboard: DashboardType; item: any }[] = [];
-
-    dashboards.forEach(d => {
-      const dAreaNorm = (d.area || '').trim().toUpperCase();
-      const isMatch = dAreaNorm === normArea || (areaCfg && (dAreaNorm === areaCfg.areaName.toUpperCase() || (areaCfg.aliases && areaCfg.aliases.some(a => a.toUpperCase() === dAreaNorm))));
-
-      if (isMatch) {
-        (d.items || []).forEach(it => {
-          result.push({ dashboard: d, item: it });
-        });
-      }
-    });
-
-    return result;
-  }, [dashboards, ocAreaName, areaConfigs]);
+  const operationalCatalog = useMemo(() => contributionPickerCatalog(dashboards, selectedClientId), [dashboards, selectedClientId]);
+  const areaDashboardsAndItems = useMemo(() => contributionPickerCandidates(
+    dashboards, selectedClientId, ocAreaName, areaConfigs, editingOCId, freshAssignments || assignments,
+  ), [dashboards, selectedClientId, ocAreaName, areaConfigs, editingOCId, freshAssignments, assignments]);
 
   // Toggle KPI selección
   const toggleKpiSelection = (dashId: number | string, itemId: number | string) => {
@@ -258,13 +309,40 @@ export const StrategyConfigModal: React.FC<StrategyConfigModalProps> = ({
     );
   };
 
+  const startEditOC = async (oc: ContributionObjective) => {
+    setLoading(true);
+    let persisted: ContributionIndicatorAssignment[];
+    try { persisted = await strategyService.getAssignments(selectedClientId); }
+    catch (error: any) { setErrorMsg(error.message || 'No fue posible leer asignaciones.'); setLoading(false); return; }
+    setFreshAssignments(persisted);
+    setAssignmentBaseline(persisted.filter(a=>a.contributionObjectiveId===oc.id));
+    setEditingOCId(oc.id);
+    setOcAreaName(oc.areaName || 'GENERAL');
+    setOcPrimaryOEId(oc.primaryStrategicObjectiveId);
+    setOcTitle(oc.title);
+    setOcDescription(oc.description || '');
+    setSelectedKpisForOC(persisted
+      .filter(a => a.contributionObjectiveId === oc.id)
+      .map(a => `${a.dashboardId}_${a.itemId}`));
+    setErrorMsg(null);
+    setSuccessMsg(null);
+    setLoading(false);
+  };
+
+  const cancelEditOC = () => {
+    setEditingOCId(null);
+    setOcTitle('');
+    setOcDescription('');
+    setSelectedKpisForOC([]);
+  };
+
   // Guardar Objetivo de Contribución (OC) y sus KPIs vinculados
   const handleSaveOC = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!isAdmin) return;
 
-    if (!ocAreaName || !ocPrimaryOEId || !ocTitle.trim()) {
-      setErrorMsg('Selecciona Área, Objetivo Estratégico Primario y proporciona un título.');
+    if (!ocPrimaryOEId || !ocTitle.trim()) {
+      setErrorMsg('Selecciona Objetivo Estratégico Primario y proporciona un título.');
       return;
     }
 
@@ -274,7 +352,17 @@ export const StrategyConfigModal: React.FC<StrategyConfigModalProps> = ({
 
       const areaCfg = resolveAreaStrategyConfig(ocAreaName, areaConfigs);
 
-      const savedOC = await strategyService.saveContributionObjective({
+      const existingOC = contributionObjectives.find(oc=>oc.id===editingOCId);
+      const definitionUnchanged = existingOC && existingOC.areaName === ocAreaName && existingOC.primaryStrategicObjectiveId === ocPrimaryOEId && existingOC.title === ocTitle.trim() && (existingOC.description || '') === ocDescription.trim();
+      // Validate every selection before any definition or assignment write.
+      const kpiItems = selectedKpisForOC.map(key => {
+        const candidate = operationalCatalog.find(kpi => kpi.physicalAliases.some(alias => `${alias.dashboard.id}_${alias.item.id}` === key));
+        const selectedAlias = candidate?.physicalAliases.find(alias => `${alias.dashboard.id}_${alias.item.id}` === key);
+        if (!selectedAlias || !candidate) throw new Error('Existe una asignación virtual o no resoluble. Revisa su identidad operativa antes de guardar.');
+        return { dashboardId: selectedAlias.dashboard.id, itemId: selectedAlias.item.id, logicalKpiId: candidate.identity, year:selectedAlias.dashboard.year, physicalAliases:candidate.physicalAliases.map(alias=>({dashboardId:alias.dashboard.id,itemId:alias.item.id})) };
+      });
+      const savedOC = definitionUnchanged ? existingOC : await strategyService.saveContributionObjective({
+        id: editingOCId || undefined,
         areaName: ocAreaName,
         areaConfigId: areaCfg?.id,
         primaryStrategicObjectiveId: ocPrimaryOEId,
@@ -283,19 +371,16 @@ export const StrategyConfigModal: React.FC<StrategyConfigModalProps> = ({
         clientId: selectedClientId
       });
 
-      // Guardar asignación de KPIs seleccionados
-      const kpiItems = selectedKpisForOC.map(key => {
-        const [dId, iId] = key.split('_');
-        return { dashboardId: dId, itemId: iId };
-      });
-
-      await strategyService.saveAssignmentsForOC(savedOC.id, kpiItems, selectedClientId);
+      await strategyService.saveAssignmentsForOC(savedOC.id, kpiItems, selectedClientId, {expectedAssignments: editingOCId ? assignmentBaseline : []});
+      const persisted = await strategyService.getAssignments(selectedClientId);
+      setFreshAssignments(persisted);
+      await onRefreshData();
 
       setOcTitle('');
       setOcDescription('');
       setSelectedKpisForOC([]);
-      setSuccessMsg(`Objetivo de Contribución ${savedOC.displayCode} creado correctamente.`);
-      await onRefreshData();
+      setSuccessMsg(`Objetivo de Contribución ${savedOC.displayCode} ${editingOCId ? 'actualizado' : 'creado'} correctamente.`);
+      setEditingOCId(null);
     } catch (err: any) {
       setErrorMsg(err.message || 'Error al guardar Objetivo de Contribución.');
     } finally {
@@ -304,15 +389,16 @@ export const StrategyConfigModal: React.FC<StrategyConfigModalProps> = ({
   };
 
   // Eliminar OC
-  const handleDeleteOC = async (ocId: string) => {
+  const handleDeleteOC = async () => {
     if (!isAdmin) return;
-    if (!confirm('¿Eliminar este Objetivo de Contribución?')) return;
+    if (!pendingDeleteOC) return;
 
     try {
       setLoading(true);
-      await strategyService.deleteContributionObjective(ocId, selectedClientId);
+      await strategyService.deleteContributionObjective(pendingDeleteOC.id, selectedClientId);
       await onRefreshData();
       setSuccessMsg('Objetivo de Contribución eliminado.');
+      setPendingDeleteOC(null);
     } catch (err: any) {
       setErrorMsg(err.message);
     } finally {
@@ -425,7 +511,6 @@ export const StrategyConfigModal: React.FC<StrategyConfigModalProps> = ({
 
         {/* Content Body */}
         <div className="p-6 overflow-y-auto flex-1 space-y-6">
-
           {/* SECTION 0: PERSPECTIVAS BSC (4 SLOTS CONFIGURABLES) */}
           {activeSection === 'perspectives' && (
             <form onSubmit={handleSavePerspectives} className="max-w-3xl mx-auto space-y-6">
@@ -488,9 +573,9 @@ export const StrategyConfigModal: React.FC<StrategyConfigModalProps> = ({
 
               {/* Form de creación de OE */}
               <div className="lg:col-span-1 bg-slate-950 p-5 rounded-xl border border-slate-800 space-y-4">
-                <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                  <Plus className="w-4 h-4 text-emerald-400" />
-                  Nuevo Objetivo Estratégico
+                  <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                    <Plus className="w-4 h-4 text-emerald-400" />
+                  {editingOEId ? 'Editar Objetivo Estratégico' : 'Nuevo Objetivo Estratégico'}
                 </h3>
 
                 <form onSubmit={handleSaveOE} className="space-y-4">
@@ -507,15 +592,10 @@ export const StrategyConfigModal: React.FC<StrategyConfigModalProps> = ({
                     </select>
                   </div>
 
-                  <div>
-                    <label className="text-xs font-semibold text-slate-300 block mb-1">Código (Ej. OE-01)</label>
-                    <input
-                      type="text"
-                      placeholder="Autogenerado si se deja en blanco"
-                      value={oeCode}
-                      onChange={e => setOeCode(e.target.value)}
-                      className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-white"
-                    />
+                    <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-2">
+                    <div className="text-xs font-semibold text-slate-300">CÓDIGO</div>
+                    <div className="text-sm font-mono font-bold text-emerald-400">{editingOEId ? objectives.find(o => o.id === editingOEId)?.code : 'AUTOMÁTICO'}</div>
+                    <div className="text-[10px] text-slate-500">{editingOEId ? 'Código canónico de sólo lectura.' : 'Se asigna de forma segura al guardar.'}</div>
                   </div>
 
                   <div>
@@ -546,14 +626,28 @@ export const StrategyConfigModal: React.FC<StrategyConfigModalProps> = ({
                     disabled={loading}
                     className="w-full py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold transition-all disabled:opacity-50"
                   >
-                    {loading ? 'Guardando...' : 'Crear Objetivo Estratégico'}
+                    {loading ? 'Guardando...' : editingOEId ? 'Guardar cambios del objetivo' : 'Crear Objetivo Estratégico'}
                   </button>
+                  {editingOEId && (
+                    <button type="button" onClick={cancelEditOE} className="w-full py-2 text-xs font-bold text-slate-400 hover:text-white">
+                      Cancelar edición
+                    </button>
+                  )}
                 </form>
               </div>
 
               {/* Lista de OEs registrados por perspectiva */}
               <div className="lg:col-span-2 space-y-4">
                 <h3 className="text-sm font-bold text-white">Objetivos Estratégicos Configurados ({objectives.length})</h3>
+
+                {legacyObjectives.length > 0 && (
+                  <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 flex items-center justify-between gap-3">
+                    <p className="text-xs text-amber-200">Se detectaron códigos de formato anterior. La normalización conserva objetivos y relaciones.</p>
+                    <button type="button" onClick={() => setShowLegacyRepair(true)} className="shrink-0 rounded-lg bg-amber-600 px-3 py-2 text-[10px] font-bold text-white hover:bg-amber-500">
+                      NORMALIZAR CÓDIGOS
+                    </button>
+                  </div>
+                )}
 
                 {perspectives.map(p => {
                   const pObjectives = objectives.filter(o => o.perspectiveId === p.id);
@@ -586,13 +680,24 @@ export const StrategyConfigModal: React.FC<StrategyConfigModalProps> = ({
                                 )}
                               </div>
 
-                              <button
-                                onClick={() => handleDeleteOE(obj.id)}
-                                className="text-slate-500 hover:text-red-400 p-1.5 rounded transition-colors shrink-0"
-                                title="Eliminar OE"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </button>
+                              <div className="flex items-center gap-1 shrink-0">
+                                <button
+                                  onClick={() => startEditOE(obj)}
+                                  className="text-slate-400 hover:text-emerald-400 p-1.5 rounded transition-colors"
+                                  title="Editar OE"
+                                  aria-label={`Editar ${obj.code}`}
+                                >
+                                  <Edit2 className="w-4 h-4" />
+                                </button>
+                                <button
+                                  onClick={() => setPendingDeleteOE(obj)}
+                                  className="text-slate-500 hover:text-red-400 p-1.5 rounded transition-colors"
+                                  title="Eliminar OE"
+                                  aria-label={`Eliminar ${obj.code}`}
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </div>
                             </div>
                           ))}
                         </div>
@@ -623,7 +728,7 @@ export const StrategyConfigModal: React.FC<StrategyConfigModalProps> = ({
                     onChange={e => handleAreaSelectForConfigChange(e.target.value)}
                     className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-white"
                   >
-                    {availableAreas.map(a => (
+                      {availableAreas.map(a => (
                       <option key={a} value={a}>{a}</option>
                     ))}
                   </select>
@@ -722,11 +827,16 @@ export const StrategyConfigModal: React.FC<StrategyConfigModalProps> = ({
           {activeSection === 'contributionObjectives' && (
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
+              {initialObjectiveId && (
+                <div className="lg:col-span-3 rounded-lg border border-indigo-500/30 bg-indigo-500/10 px-4 py-3 text-xs text-indigo-200">
+                  Selecciona un objetivo de contribución para alinear indicadores del OE seleccionado.
+                </div>
+              )}
               {/* Form para crear OC */}
               <div className="lg:col-span-1 bg-slate-950 p-5 rounded-xl border border-slate-800 space-y-4">
                 <h3 className="text-sm font-bold text-white flex items-center gap-2">
                   <Plus className="w-4 h-4 text-emerald-400" />
-                  Nuevo Objetivo de Contribución
+                  {editingOCId ? 'Editar Objetivo de Contribución' : 'Nuevo Objetivo de Contribución'}
                 </h3>
 
                 <form onSubmit={handleSaveOC} className="space-y-4">
@@ -737,6 +847,7 @@ export const StrategyConfigModal: React.FC<StrategyConfigModalProps> = ({
                       onChange={e => setOcAreaName(e.target.value)}
                       className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-white"
                     >
+                      <option value="GENERAL">GENERAL (sin área)</option>
                       {availableAreas.map(a => (
                         <option key={a} value={a}>{a}</option>
                       ))}
@@ -790,9 +901,10 @@ export const StrategyConfigModal: React.FC<StrategyConfigModalProps> = ({
                       <p className="text-xs text-slate-500 italic">No hay KPIs registrados en el área {ocAreaName}.</p>
                     ) : (
                       <div className="max-h-40 overflow-y-auto space-y-1 p-2 bg-slate-900 rounded-lg border border-slate-800">
-                        {areaDashboardsAndItems.map(({ dashboard, item }) => {
+                        {areaDashboardsAndItems.map(({ dashboard, item, candidate }) => {
                           const key = `${dashboard.id}_${item.id}`;
-                          const isChecked = selectedKpisForOC.includes(key);
+                          const canonicalKeys = candidate.physicalAliases.map(alias => `${alias.dashboard.id}_${alias.item.id}`);
+                          const isChecked = canonicalKeys.some(candidateKey => selectedKpisForOC.includes(candidateKey));
 
                           return (
                             <label
@@ -802,12 +914,15 @@ export const StrategyConfigModal: React.FC<StrategyConfigModalProps> = ({
                               <input
                                 type="checkbox"
                                 checked={isChecked}
-                                onChange={() => toggleKpiSelection(dashboard.id, item.id)}
+                                onChange={() => setSelectedKpisForOC(prev => isChecked
+                                  ? prev.filter(value => !canonicalKeys.includes(value))
+                                  : [...prev, key])}
                                 className="rounded border-slate-700 text-emerald-500 focus:ring-emerald-500"
                               />
-                              <span className="truncate">
+                              <span className="min-w-0 flex-1 break-words">
                                 <strong>[{dashboard.title}]</strong> {item.indicator}
                               </span>
+                              {isChecked && <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setSelectedKpisForOC(prev => prev.filter(value => !canonicalKeys.includes(value))); }} className="text-[10px] font-bold text-rose-400 hover:text-rose-300">QUITAR</button>}
                             </label>
                           );
                         })}
@@ -820,8 +935,13 @@ export const StrategyConfigModal: React.FC<StrategyConfigModalProps> = ({
                     disabled={loading || !ocPrimaryOEId}
                     className="w-full py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold transition-all disabled:opacity-50"
                   >
-                    {loading ? 'Guardando...' : 'Crear Objetivo de Contribución (Atómico)'}
+                    {loading ? 'Guardando...' : editingOCId ? 'Guardar cambios y asignaciones' : 'Crear Objetivo de Contribución (Atómico)'}
                   </button>
+                  {editingOCId && (
+                    <button type="button" onClick={cancelEditOC} className="w-full py-2 bg-slate-800 text-slate-200 rounded-lg text-xs font-bold">
+                      Cancelar edición
+                    </button>
+                  )}
                 </form>
               </div>
 
@@ -829,13 +949,13 @@ export const StrategyConfigModal: React.FC<StrategyConfigModalProps> = ({
               <div className="lg:col-span-2 space-y-4">
                 <h3 className="text-sm font-bold text-white">Objetivos de Contribución Configurados ({contributionObjectives.length})</h3>
 
-                {contributionObjectives.length === 0 ? (
+                {contributionObjectives.filter(oc => !initialObjectiveId || oc.primaryStrategicObjectiveId === initialObjectiveId).length === 0 ? (
                   <div className="p-8 text-center bg-slate-950 rounded-xl border border-slate-800 text-slate-500 text-xs">
-                    No hay Objetivos de Contribución creados.
+                    {initialObjectiveId ? 'Este objetivo aún no tiene Objetivos de Contribución. Primero agrega un objetivo de contribución para este OE.' : 'No hay Objetivos de Contribución creados.'}
                   </div>
                 ) : (
                   <div className="space-y-3">
-                    {contributionObjectives.map(oc => {
+                    {contributionObjectives.filter(oc => !initialObjectiveId || oc.primaryStrategicObjectiveId === initialObjectiveId).map(oc => {
                       const linkedOE = objectives.find(o => o.id === oc.primaryStrategicObjectiveId);
                       const ocAssignments = assignments.filter(a => a.contributionObjectiveId === oc.id);
 
@@ -865,15 +985,21 @@ export const StrategyConfigModal: React.FC<StrategyConfigModalProps> = ({
                             <div className="text-[11px] text-slate-500 flex items-center gap-2 pt-1">
                               <span>KPIs vinculados: <strong>{ocAssignments.length}</strong></span>
                             </div>
+                            {ocAssignments.length > 0 && (
+                              <div className="text-[11px] text-slate-400 pt-1 space-y-0.5">
+                                {ocAssignments.map(a => {
+                                  const dashboard = dashboards.find(d => String(d.id) === String(a.dashboardId));
+                                  const item = dashboard?.items?.find(i => String(i.id) === String(a.itemId));
+                                  return <div key={`${a.dashboardId}_${a.itemId}`}>• {dashboard?.title || a.dashboardId} · {item?.indicator || a.itemId}</div>;
+                                })}
+                              </div>
+                            )}
                           </div>
 
-                          <button
-                            onClick={() => handleDeleteOC(oc.id)}
-                            className="text-slate-500 hover:text-red-400 p-2 rounded transition-colors shrink-0"
-                            title="Eliminar OC"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
+                          <div className="flex items-center gap-1 shrink-0">
+                            <button disabled={loading} onClick={() => startEditOC(oc)} className="text-slate-500 hover:text-emerald-400 p-2 rounded transition-colors" title="Editar OC"><Edit2 className="w-4 h-4" /></button>
+                            <button onClick={() => setPendingDeleteOC(oc)} className="text-slate-500 hover:text-red-400 p-2 rounded transition-colors" title="Eliminar OC"><Trash2 className="w-4 h-4" /></button>
+                          </div>
                         </div>
                       );
                     })}
@@ -885,6 +1011,51 @@ export const StrategyConfigModal: React.FC<StrategyConfigModalProps> = ({
           )}
 
         </div>
+
+        {pendingDeleteOE && (
+          <div className="absolute inset-0 z-10 flex items-center justify-center bg-slate-950/80 p-6">
+            <div className="w-full max-w-md rounded-xl border border-red-500/30 bg-slate-900 p-5 shadow-2xl space-y-4">
+              <h3 className="text-base font-bold text-white">Eliminar objetivo estratégico</h3>
+              <p className="text-xs text-slate-300">
+                ¿Confirmas eliminar <strong className="text-emerald-400">{pendingDeleteOE.code}</strong> — {pendingDeleteOE.title}?
+              </p>
+              <div className="flex justify-end gap-2">
+                <button type="button" onClick={() => setPendingDeleteOE(null)} className="px-4 py-2 rounded-lg bg-slate-800 text-slate-200 text-xs font-bold">
+                  Cancelar
+                </button>
+                <button type="button" onClick={handleDeleteOE} disabled={loading} className="px-4 py-2 rounded-lg bg-red-600 text-white text-xs font-bold disabled:opacity-50">
+                  Eliminar
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {pendingDeleteOC && (
+          <div className="absolute inset-0 z-10 flex items-center justify-center bg-slate-950/80 p-6">
+            <div className="w-full max-w-md rounded-xl border border-red-500/30 bg-slate-900 p-5 shadow-2xl space-y-4">
+              <h3 className="text-base font-bold text-white">Eliminar objetivo de contribución</h3>
+              <p className="text-xs text-slate-300">¿Confirmas eliminar <strong className="text-emerald-400">{pendingDeleteOC.displayCode}</strong> — {pendingDeleteOC.title}?</p>
+              <div className="flex justify-end gap-2">
+                <button type="button" onClick={() => setPendingDeleteOC(null)} className="px-4 py-2 rounded-lg bg-slate-800 text-slate-200 text-xs font-bold">Cancelar</button>
+                <button type="button" onClick={handleDeleteOC} disabled={loading} className="px-4 py-2 rounded-lg bg-red-600 text-white text-xs font-bold disabled:opacity-50">Eliminar</button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {showLegacyRepair && (
+          <div className="absolute inset-0 z-10 flex items-center justify-center bg-slate-950/80 p-6">
+            <div className="w-full max-w-md rounded-xl border border-amber-500/30 bg-slate-900 p-5 shadow-2xl space-y-4">
+              <h3 className="text-base font-bold text-white">Normalizar códigos estratégicos</h3>
+              <p className="text-xs text-slate-300">Se normalizarán {legacyObjectives.length} códigos. No se eliminarán objetivos ni relaciones.</p>
+              <div className="flex justify-end gap-2">
+                <button type="button" onClick={() => setShowLegacyRepair(false)} className="px-4 py-2 rounded-lg bg-slate-800 text-slate-200 text-xs font-bold">Cancelar</button>
+                <button type="button" onClick={handleRepairLegacyCodes} disabled={loading} className="px-4 py-2 rounded-lg bg-amber-600 text-white text-xs font-bold disabled:opacity-50">Normalizar</button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Footer */}
         <div className="p-4 border-t border-slate-800 bg-slate-950 flex justify-end">

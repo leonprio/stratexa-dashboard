@@ -4,6 +4,9 @@ import { getYearWeekMapping, getWeekNumber } from "../utils/weeklyUtils";
 import { ActivityManager } from "./ActivityManager";
 import { formatNumberWithCommas, parseFormattedNumber, formatIndicatorValue } from "../utils/formatters";
 import { resolveItemValues } from "../utils/compliance";
+import { deriveRescheduledKpiCommitments, RescheduledCommitmentsSection, applyOperationalReschedule } from "./CurrentPeriodFocus";
+import type { RescheduledKpiCommitment } from "./CurrentPeriodFocus";
+import { KpiActivityManager } from "./KpiActivityManager";
 
 interface DataEditorProps {
   item: DashboardItem;
@@ -217,6 +220,46 @@ export const DataEditor: React.FC<DataEditorProps> = React.memo(({ item, allDash
   );
   const [isActivityMode, setIsActivityMode] = useState<boolean>(item.isActivityMode || false);
   const [activeActivityPeriod, setActiveActivityPeriod] = useState<number | null>(null);
+  const [managedCommitment, setManagedCommitment] = useState<RescheduledKpiCommitment | null>(null);
+
+  const renderCommitmentManager = (commitment: RescheduledKpiCommitment) => {
+    if (managedCommitment?.id !== commitment.id) return null;
+
+    return <KpiActivityManager
+      activity={commitment}
+      isWeekly={isWeekly}
+      currentPeriodIndex={commitment.scheduledPeriodIndex}
+      maxPeriodIndex={isWeekly ? 52 : 11}
+      onCancel={() => setManagedCommitment(null)}
+      onReschedule={async target => {
+        const config = applyOperationalReschedule(activityConfig, commitment.periodIndex, commitment.sourceActivityId, target, isWeekly, year);
+        await onSave({ activityConfig: config });
+        setActivityConfig(config);
+      }}
+      onComplete={async () => {
+        const config = { ...activityConfig };
+        const source = [...(config[commitment.periodIndex] || [])];
+        const index = source.findIndex(a => a.id === commitment.sourceActivityId);
+        if (index >= 0) {
+          source[index] = { ...source[index], resolution: { ...source[index].resolution, resolutionStatus: 'completed_later', resolvedAt: new Date().toISOString(), resolvedYear: year, resolvedPeriodType: isWeekly ? 'weekly' : 'monthly', resolvedPeriodIndex: commitment.scheduledPeriodIndex } };
+          config[commitment.periodIndex] = source;
+          await onSave({ activityConfig: config });
+          setActivityConfig(config);
+        }
+      }}
+      onDiscard={async note => {
+        const config = { ...activityConfig };
+        const source = [...(config[commitment.periodIndex] || [])];
+        const index = source.findIndex(a => a.id === commitment.sourceActivityId);
+        if (index >= 0) {
+          source[index] = { ...source[index], resolution: { ...source[index].resolution, resolutionStatus: 'discarded', resolutionNote: note, resolvedAt: new Date().toISOString(), resolvedYear: year, resolvedPeriodType: isWeekly ? 'weekly' : 'monthly', resolvedPeriodIndex: commitment.scheduledPeriodIndex } };
+          config[commitment.periodIndex] = source;
+          await onSave({ activityConfig: config });
+          setActivityConfig(config);
+        }
+      }}
+    />;
+  };
 
   const calculateFromActivities = useCallback((periodIdx: number, newActivities?: any[]) => {
     if (isCalculated) return;
@@ -317,6 +360,7 @@ export const DataEditor: React.FC<DataEditorProps> = React.memo(({ item, allDash
             const isToday = currentPeriod.isCurrentYear && currentPeriod.monthIdx === idx;
             const rawActs = activityConfig[idx];
             const activityCount = rawActs ? (Array.isArray(rawActs) ? rawActs.length : Object.values(rawActs).length) : 0;
+            const rescheduledCommitments = deriveRescheduledKpiCommitments(activityConfig, idx, false, year);
 
             return (
               <div
@@ -371,6 +415,8 @@ export const DataEditor: React.FC<DataEditorProps> = React.memo(({ item, allDash
                   </div>
                 </div>
 
+                <RescheduledCommitmentsSection commitments={rescheduledCommitments} onManage={setManagedCommitment} renderManager={renderCommitmentManager} />
+
                 {isActivityMode && (
                   <button
                     onClick={() => setActiveActivityPeriod(idx)}
@@ -408,6 +454,7 @@ export const DataEditor: React.FC<DataEditorProps> = React.memo(({ item, allDash
             const isToday = currentPeriod.isCurrentYear && currentPeriod.weekIdx === i;
             const rawActs = activityConfig[i];
             const activityCount = rawActs ? (Array.isArray(rawActs) ? rawActs.length : Object.values(rawActs).length) : 0;
+            const rescheduledCommitments = deriveRescheduledKpiCommitments(activityConfig, i, true, year);
 
             return (
               <div
@@ -467,6 +514,8 @@ export const DataEditor: React.FC<DataEditorProps> = React.memo(({ item, allDash
                     />
                   </div>
                 </div>
+
+                <RescheduledCommitmentsSection commitments={rescheduledCommitments} onManage={setManagedCommitment} renderManager={renderCommitmentManager} />
 
                 {isActivityMode && (
                   <button

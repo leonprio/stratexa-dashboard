@@ -52,7 +52,7 @@ export const DEFAULT_PERSPECTIVES: StrategicPerspective[] = [
 export interface StrategicObjective {
   id: string;
   perspectiveId: string; // Referencia inmutable a la perspectiva
-  code: string; // e.g. "OE-01"
+  code: string; // e.g. "OE01"; historical hyphenated values remain valid
   title: string;
   description?: string;
   order: number;
@@ -77,7 +77,7 @@ export interface ContributionObjective {
   areaName: string; // Snapshot visible del nombre del área (ej. "COMERCIAL")
   areaCode: string; // Snapshot visible del código asignado al crearse (ej. "COM")
   sequenceNumber: number; // Consecutivo monótono atómico e independiente por área (ej. 1, 2, 3)
-  displayCode: string; // Código de despliegue derivado estable (ej. "COM-OC01")
+  displayCode: string; // Código de despliegue derivado estable (ej. "OCV01" o "OC01")
   title: string;
   description?: string;
   primaryStrategicObjectiveId: string; // OE primario al que contribuye
@@ -89,7 +89,8 @@ export interface ContributionObjective {
 
 export interface ContributionIndicatorAssignment {
   id: string;
-  contributionObjectiveId: string;
+  contributionObjectiveId?: string;
+  strategicObjectiveId?: string;
   dashboardId: number | string;
   itemId: number | string;
   clientId: string;
@@ -99,7 +100,8 @@ export interface ContributionIndicatorAssignment {
 export interface StrategyCounter {
   id: string; // Documento de contador (ej. "cnt_IPS_areacfg_171800...")
   lastIssuedSequence: number;
-  areaConfigId: string;
+  areaConfigId?: string;
+  scope?: string;
   clientId: string;
   updatedAt?: string;
 }
@@ -275,10 +277,46 @@ export function generateNextOCSequence(
 
 /**
  * Formatea el código de despliegue visible de un Objetivo de Contribución.
- * Ej: ("COM", 1) -> "COM-OC01"
+ * Ej: ("V", 1) -> "OCV01"; sin área -> "OC01"
  */
 export function formatOCCode(areaCode: string, sequenceNumber: number): string {
-  const cleanCode = (areaCode || 'AREA').trim().toUpperCase();
-  const seqStr = String(sequenceNumber).padStart(2, '0');
-  return `${cleanCode}-OC${seqStr}`;
+  const cleanCode = normalizeObjectiveCodeForComparison(areaCode || '').replace(/^OC/, '');
+  return formatObjectiveCode(cleanCode ? `OC${cleanCode}` : 'OC', sequenceNumber);
+}
+
+/** Identidad estable para comparar un KPI sin usar su etiqueta visible. */
+export const getCanonicalKpiIdentity = (
+  item: { semanticKey?: string; parentDefinitionId?: string; id?: number | string },
+  dashboardId: number | string,
+  itemId: number | string = item.id ?? ''
+): string => {
+  const semantic = item.semanticKey?.trim() || item.parentDefinitionId?.trim();
+  return semantic ? `semantic:${semantic}` : `physical:${dashboardId}:${itemId}`;
+};
+
+export const getPhysicalKpiKey = (dashboardId: number | string, itemId: number | string): string => `${dashboardId}:${itemId}`;
+
+export function formatOECode(sequenceNumber: number): string {
+  return formatObjectiveCode('OE', sequenceNumber);
+}
+
+/** Canonical comparison form: OE-01, OE 01, oe01 all become OE01. */
+export function normalizeObjectiveCodeForComparison(code: string): string {
+  return (code || '').trim().toUpperCase().replace(/[\s-]+/g, '');
+}
+
+/** Formats any supported objective prefix without visual separators. */
+export function formatObjectiveCode(prefix: string, sequenceNumber: number): string {
+  const cleanPrefix = normalizeObjectiveCodeForComparison(prefix);
+  return `${cleanPrefix}${String(sequenceNumber).padStart(2, '0')}`;
+}
+
+/** Safely extracts the numeric sequence from OE/OC-family codes. */
+export function parseObjectiveCodeSequence(code: string, expectedPrefix?: string): number | null {
+  const normalized = normalizeObjectiveCodeForComparison(code);
+  const match = /^([A-Z]+)(\d+)$/.exec(normalized);
+  if (!match || !match[1].startsWith('OE') && !match[1].startsWith('OC')) return null;
+  if (expectedPrefix && !match[1].startsWith(normalizeObjectiveCodeForComparison(expectedPrefix))) return null;
+  const sequence = Number(match[2]);
+  return Number.isSafeInteger(sequence) && sequence > 0 ? sequence : null;
 }

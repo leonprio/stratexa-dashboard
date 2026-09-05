@@ -21,6 +21,7 @@ interface DashboardProps {
   decimalPrecision?: 0 | 1 | 2;
   allContextItems?: DashboardItem[];
   isGlobalAdmin?: boolean; // 🛡️ v9.1.0-PRO-FINAL-SHIELDED: Propagado hasta DashboardRow
+  area?: string;
 }
 
 /**
@@ -41,7 +42,8 @@ export const Dashboard: React.FC<DashboardProps> = React.memo(({
   onSelectItem,
   decimalPrecision = 0,
   allContextItems = [],
-  isGlobalAdmin = false
+  isGlobalAdmin = false,
+  area
 }) => {
   const safeData: DashboardItem[] = useMemo(() => {
     const list = Array.isArray(data) ? data : [];
@@ -81,6 +83,7 @@ export const Dashboard: React.FC<DashboardProps> = React.memo(({
             decimalPrecision={decimalPrecision}
             allDashboardItems={allContextItems.length > 0 ? allContextItems : (data || [])}
             isGlobalAdmin={isGlobalAdmin}
+            area={area}
           />
         ))
       ) : (

@@ -8,6 +8,8 @@ import {
 import { Dashboard as DashboardType } from '../../types';
 import { calculateCompliance } from '../../utils/compliance';
 import { CheckCircle2, AlertTriangle, Info, TrendingUp, Layers, Target } from 'lucide-react';
+import { resolveStrategicKpiOwnership } from '../../strategyKpiOwnership';
+import type { StrategicKpiCandidate } from '../../strategyKpiOwnership';
 
 export interface StrategicObjectiveNodeProps {
   objective: StrategicObjective;
@@ -15,6 +17,7 @@ export interface StrategicObjectiveNodeProps {
   contributions?: ContributionObjective[];
   assignments?: ContributionIndicatorAssignment[];
   dashboards?: DashboardType[];
+  alignedLogicalKpis?: StrategicKpiCandidate[];
   isSelected?: boolean;
   isHovered?: boolean;
   isCause?: boolean;
@@ -38,6 +41,7 @@ export const StrategicObjectiveNode: React.FC<StrategicObjectiveNodeProps> = ({
   contributions = [],
   assignments = [],
   dashboards = [],
+  alignedLogicalKpis,
   isSelected = false,
   isHovered = false,
   isCause = false,
@@ -55,13 +59,12 @@ export const StrategicObjectiveNode: React.FC<StrategicObjectiveNodeProps> = ({
 
   // Derivar métricas operativas de enriquecimiento opcional (ÚNICAMENTE cuando existen OCs)
   const enrichmentData = useMemo(() => {
-    if (oeContributions.length === 0) {
-      return { hasContributions: false, ocCount: 0, areaCount: 0, kpiCount: 0, statusCounts: { green: 0, yellow: 0, red: 0 } };
-    }
-
+    const ownership = alignedLogicalKpis ? null : resolveStrategicKpiOwnership(dashboards, [objective], oeContributions, assignments);
+    const aligned = alignedLogicalKpis || ownership?.kpisByStrategicObjective.get(objective.id) || [];
     const ocIds = new Set(oeContributions.map(c => c.id));
+    const direct = assignments.filter(a => a.strategicObjectiveId === objective.id);
     const uniqueAreas = new Set(oeContributions.map(c => c.areaName.trim().toUpperCase()));
-    const oeAssignments = assignments.filter(a => ocIds.has(a.contributionObjectiveId));
+    const oeAssignments = assignments.filter(a => a.contributionObjectiveId && ocIds.has(a.contributionObjectiveId));
 
     let green = 0;
     let yellow = 0;
@@ -85,13 +88,19 @@ export const StrategicObjectiveNode: React.FC<StrategicObjectiveNodeProps> = ({
     });
 
     return {
-      hasContributions: true,
+      hasContributions: oeContributions.length > 0 || direct.length > 0,
       ocCount: oeContributions.length,
       areaCount: uniqueAreas.size,
-      kpiCount: oeAssignments.length,
-      statusCounts: { green, yellow, red }
+      kpiCount: aligned.length,
+      statusCounts: { green, yellow, red },
+      directKpis: aligned.map(k => String(k.item.indicator || k.item.name || '')).filter(Boolean),
+      contributionKpis: oeAssignments.map(a => {
+        const dashboard = dashboards.find(d => String(d.id) === String(a.dashboardId));
+        const item = dashboard?.items?.find(i => String(i.id) === String(a.itemId));
+        return item ? { ocId: a.contributionObjectiveId || '', label: String(item.indicator || item.name || '') } : null;
+      }).filter(Boolean) as { ocId: string; label: string }[]
     };
-  }, [oeContributions, assignments, dashboards]);
+  }, [oeContributions, assignments, dashboards, objective.id, alignedLogicalKpis]);
 
   // Clases CSS dinámicas para selección/hover/causa/efecto
   let borderStyle = 'border-slate-200 hover:border-slate-400';
@@ -121,11 +130,12 @@ export const StrategicObjectiveNode: React.FC<StrategicObjectiveNodeProps> = ({
       onClick={onClick}
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
-      className={`relative cursor-pointer transition-all duration-200 rounded-xl bg-white p-3.5 border ${borderStyle} ${shadowStyle} ${ringStyle} min-w-[220px] max-w-[280px] flex flex-col justify-between select-none`}
+      className={`relative cursor-pointer transition-all duration-200 rounded-xl bg-white p-2.5 border ${borderStyle} ${shadowStyle} ${ringStyle} min-w-[220px] md:min-w-[680px] max-w-[820px] flex flex-row items-center gap-4 select-none`}
       style={{ borderLeftWidth: '5px', borderLeftColor: nodeColor }}
     >
+      <div className="min-w-[190px] max-w-[230px] shrink-0">
       {/* Cabecera: Código OE + Badge de Causa/Efecto */}
-      <div className="flex items-center justify-between gap-2 mb-1.5">
+      <div className="flex items-center justify-between gap-2 mb-1">
         <span
           className="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold tracking-wide"
           style={{ backgroundColor: `${nodeColor}15`, color: nodeColor }}
@@ -146,49 +156,18 @@ export const StrategicObjectiveNode: React.FC<StrategicObjectiveNodeProps> = ({
       </div>
 
       {/* Título del Objetivo Estratégico */}
-      <h4 className="text-xs font-semibold text-slate-800 line-clamp-2 leading-tight mb-2">
+      <h4 className="text-xs font-semibold text-slate-800 line-clamp-2 leading-tight mb-1">
         {objective.title}
       </h4>
+      </div>
 
       {/* Pie Enriquecido condicional (Solo Escenario B con OCs) */}
       {enrichmentData.hasContributions ? (
-        <div className="mt-2 pt-2 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500">
-          <div className="flex items-center gap-2">
-            <span className="flex items-center gap-0.5 font-medium text-slate-700" title={`${enrichmentData.ocCount} Objetivos de Contribución`}>
-              <Target className="w-3 h-3 text-slate-400" />
-              {enrichmentData.ocCount} OC
-            </span>
-            <span className="flex items-center gap-0.5" title={`${enrichmentData.areaCount} Áreas contribuyentes`}>
-              <Layers className="w-3 h-3 text-slate-400" />
-              {enrichmentData.areaCount} Áreas
-            </span>
-          </div>
-
-          {/* Badge semafórico sin promedio sintético */}
-          {enrichmentData.kpiCount > 0 ? (
-            <div className="flex items-center gap-1 font-mono text-[10px]" title="Distribución de estatus operativo de KPIs vinculados">
-              {enrichmentData.statusCounts.green > 0 && (
-                <span className="inline-flex items-center text-emerald-600 font-bold">
-                  <CheckCircle2 className="w-2.5 h-2.5 mr-0.5" />
-                  {enrichmentData.statusCounts.green}
-                </span>
-              )}
-              {enrichmentData.statusCounts.yellow > 0 && (
-                <span className="inline-flex items-center text-amber-600 font-bold">
-                  <AlertTriangle className="w-2.5 h-2.5 mr-0.5" />
-                  {enrichmentData.statusCounts.yellow}
-                </span>
-              )}
-              {enrichmentData.statusCounts.red > 0 && (
-                <span className="inline-flex items-center text-rose-600 font-bold">
-                  <Info className="w-2.5 h-2.5 mr-0.5" />
-                  {enrichmentData.statusCounts.red}
-                </span>
-              )}
-            </div>
-          ) : (
-            <span className="text-[10px] text-slate-400 italic">Sin KPIs</span>
-          )}
+        <div className="flex flex-wrap items-center gap-2 flex-1 min-w-0">
+          {enrichmentData.directKpis.slice(0, 4).map(kpi => <span key={kpi} className="rounded-lg border border-indigo-100 bg-indigo-50 px-2 py-1 text-[10px] font-semibold text-indigo-700 truncate max-w-[180px]">{kpi}</span>)}
+          {enrichmentData.directKpis.length > 4 && <span className="text-[10px] font-bold text-slate-500">+{enrichmentData.directKpis.length - 4} MÁS</span>}
+          {enrichmentData.directKpis.length === 0 && enrichmentData.kpiCount === 0 && <span className="text-[10px] text-slate-400">Sin indicadores alineados</span>}
+          {enrichmentData.ocCount > 0 && <span className="text-[10px] font-semibold text-slate-500">{enrichmentData.ocCount} OC</span>}
         </div>
       ) : (
         /* Escenario A: Sin OCs ni KPIs -> Render limpio sin advertencias de error */

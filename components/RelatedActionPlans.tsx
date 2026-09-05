@@ -1,0 +1,627 @@
+import React, { useEffect, useState } from "react";
+import {
+  ActionPlan,
+  ActionPlanActivity,
+  ActionPlanOriginPeriodType,
+  ActionPlanStatus,
+} from "../types";
+import { firebaseService } from "../services/firebaseService";
+import {
+  calculateActionPlanProgress,
+  deriveActionPlanStatus,
+  getActivityTrafficLight,
+} from "../utils/actionPlanLogic";
+
+const labels: Record<ActionPlanStatus, string> = {
+  planned: "Planeado",
+  in_progress: "En ejecución",
+  completed: "Completado",
+  cancelled: "Cancelado",
+};
+const traffic: Record<string, string> = {
+  green: "bg-emerald-500",
+  red: "bg-rose-500",
+  yellow: "bg-amber-400",
+  neutral: "bg-slate-600",
+};
+export const activityProgressVisual = (progress: number) =>
+  progress >= 100
+    ? {
+        label: "Completada",
+        tone: "emerald",
+        className: "bg-emerald-500",
+        text: "text-emerald-300",
+      }
+    : progress >= 70
+      ? {
+          label: "Próximo a completarse",
+          tone: "amber",
+          className: "bg-amber-400",
+          text: "text-amber-300",
+        }
+      : progress > 0
+        ? {
+            label: "En ejecución",
+            tone: "cyan",
+            className: "bg-cyan-500",
+            text: "text-cyan-300",
+          }
+        : {
+            label: "Pendiente",
+            tone: "neutral",
+            className: "bg-slate-500",
+            text: "text-slate-300",
+          };
+export const normalizeActionImpact = (impact?: ActionPlanActivity["impact"]) =>
+  impact === "FAVORABLE" || impact === "positive"
+    ? "FAVORABLE"
+    : impact === "PARTIAL" || impact === "low"
+      ? "PARTIAL"
+      : impact === "LOW_OR_NONE" || impact === "none"
+        ? "LOW_OR_NONE"
+        : "NOT_EVALUATED";
+const impactVisual = (impact?: ActionPlanActivity["impact"]) =>
+  ({
+    NOT_EVALUATED: {
+      label: "Por evaluar",
+      icon: "⚪",
+      className: "text-slate-400",
+    },
+    FAVORABLE: {
+      label: "Impacto favorable",
+      icon: "🟢",
+      className: "text-emerald-300",
+    },
+    PARTIAL: {
+      label: "Impacto parcial",
+      icon: "🟡",
+      className: "text-amber-300",
+    },
+    LOW_OR_NONE: {
+      label: "Bajo / sin impacto",
+      icon: "🔴",
+      className: "text-rose-300",
+    },
+  })[normalizeActionImpact(impact)];
+const monthNames = [
+  "Enero",
+  "Febrero",
+  "Marzo",
+  "Abril",
+  "Mayo",
+  "Junio",
+  "Julio",
+  "Agosto",
+  "Septiembre",
+  "Octubre",
+  "Noviembre",
+  "Diciembre",
+];
+const emptyActivity = (): ActionPlanActivity => ({
+  id: crypto.randomUUID(),
+  title: "",
+  responsible: "",
+  targetDate: "",
+  progress: 0,
+  impact: "NOT_EVALUATED",
+  result: "",
+  createdAt: new Date().toISOString(),
+  updatedAt: new Date().toISOString(),
+});
+const emptyPlan = (
+  year: number,
+  periodType: ActionPlanOriginPeriodType,
+  periodIndex: number,
+): ActionPlan => ({
+  id: "",
+  indicatorId: "",
+  dashboardId: "",
+  clientId: "",
+  title: "",
+  description: "",
+  originYear: year,
+  originPeriodType: periodType,
+  originPeriodIndex: periodIndex,
+  status: "planned",
+  startDate: new Date().toISOString().slice(0, 10),
+  progress: 0,
+  expectedImpact: "",
+  createdAt: "",
+  updatedAt: "",
+  activities: [],
+});
+interface Props {
+  indicatorId: number | string;
+  dashboardId: number | string;
+  clientId?: string;
+  year: number;
+  periodType: ActionPlanOriginPeriodType;
+  periodIndex: number;
+  canEdit: boolean;
+  initialPlanId?: number | string;
+  onCancelEdit?: () => void;
+  onSaved?: () => void;
+}
+export const RelatedActionPlans: React.FC<Props> = ({
+  indicatorId,
+  dashboardId,
+  clientId,
+  year,
+  periodType,
+  periodIndex,
+  canEdit,
+  initialPlanId,
+  onCancelEdit,
+  onSaved,
+}) => {
+  const [plans, setPlans] = useState<ActionPlan[]>([]);
+  const [state, setState] = useState<"loading" | "saving" | "saved" | "error">(
+    "loading",
+  );
+  const [draft, setDraft] = useState<ActionPlan | null>(null);
+  const [deleteConfirmation, setDeleteConfirmation] = useState(false);
+  const load = async () => {
+    setState("loading");
+    try {
+      setPlans(
+        await firebaseService.getActionPlansForIndicator(indicatorId, clientId),
+      );
+      setState("saved");
+    } catch {
+      setState("error");
+    }
+  };
+  useEffect(() => {
+    void load();
+  }, [indicatorId, clientId]);
+  useEffect(() => {
+    if (!initialPlanId || !canEdit || draft || state === "loading") return;
+    const requested = plans.find(
+      (plan) => String(plan.id) === String(initialPlanId),
+    );
+    if (requested)
+      setDraft({ ...requested, activities: requested.activities || [] });
+  }, [initialPlanId, canEdit, draft, plans, state]);
+  const origin = (p: ActionPlan) =>
+    p.originPeriodType === "weekly"
+      ? `Semana ${(p.originPeriodIndex || 0) + 1} · ${p.originYear}`
+      : `${monthNames[p.originPeriodIndex || 0]} ${p.originYear}`;
+  const begin = (plan?: ActionPlan) =>
+    setDraft(
+      plan
+        ? { ...plan, activities: plan.activities || [] }
+        : {
+            ...emptyPlan(year, periodType, periodIndex),
+            indicatorId,
+            dashboardId,
+            clientId: clientId?.trim().toUpperCase() || "",
+          },
+    );
+  const update = (key: keyof ActionPlan, value: string) =>
+    setDraft((d) => (d ? { ...d, [key]: value } : d));
+  const updateActivity = (
+    id: string,
+    key: keyof ActionPlanActivity,
+    value: string | number,
+  ) =>
+    setDraft((d) =>
+      d
+        ? {
+            ...d,
+            activities: (d.activities || []).map((a) =>
+              a.id === id
+                ? { ...a, [key]: value, updatedAt: new Date().toISOString() }
+                : a,
+            ),
+          }
+        : d,
+    );
+  const save = async () => {
+    if (!draft || !draft.title.trim()) return;
+    setState("saving");
+    const activities = draft.activities || [];
+    const changes = {
+      ...draft,
+      activities,
+      progress: calculateActionPlanProgress(activities),
+      status: deriveActionPlanStatus(activities),
+    };
+    try {
+      if (draft.id) await firebaseService.updateActionPlan(draft.id, changes);
+      else await firebaseService.createActionPlan(changes);
+      setDraft(null);
+      await load();
+      onSaved?.();
+    } catch {
+      setState("error");
+    }
+  };
+  const removePlan = async () => {
+    if (!draft?.id || !clientId) return;
+    setState("saving");
+    try {
+      await firebaseService.deleteActionPlan(clientId, draft.id);
+      setDeleteConfirmation(false);
+      setDraft(null);
+      await load();
+    } catch {
+      setState("error");
+    }
+  };
+  const control =
+    "mt-1 w-full rounded-lg border border-slate-700 bg-slate-950/80 px-3 py-2 text-sm text-slate-100 outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-500/30 placeholder:text-slate-500";
+  return (
+    <section className="mt-6 rounded-2xl border border-cyan-500/20 bg-slate-950/30 p-6">
+      <div className="mb-4 flex items-center justify-between">
+        <div>
+          <h4 className="text-sm font-black uppercase tracking-widest text-cyan-300">
+            Planes relacionados
+          </h4>
+          <p className="mt-1 text-xs text-slate-500">
+            Transversales al indicador · visibles en todos los períodos
+          </p>
+        </div>
+        {canEdit && (
+          <button
+            onClick={() => begin()}
+            className="rounded-xl bg-cyan-600 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-white"
+          >
+            + Nuevo plan
+          </button>
+        )}
+      </div>
+      {state === "loading" && (
+        <p className="text-xs text-slate-500">Cargando planes…</p>
+      )}
+      {state === "error" && (
+        <p className="text-xs text-red-400">
+          No se pudieron cargar o guardar los planes.
+        </p>
+      )}
+      <div className="space-y-3">
+        {plans.map((p) => (
+          <div
+            key={p.id}
+            className="rounded-xl border border-white/5 bg-slate-900/50 p-4"
+          >
+            <div className="flex justify-between gap-4">
+              <div>
+                <h5 className="font-bold text-slate-100">{p.title}</h5>
+                <p className="mt-1 text-xs text-slate-400">
+                  {labels[deriveActionPlanStatus(p.activities)]} ·{" "}
+                  {calculateActionPlanProgress(p.activities)}%
+                  {p.responsible ? ` · ${p.responsible}` : ""}
+                </p>
+                <p className="mt-1 text-[10px] uppercase tracking-widest text-slate-600">
+                  Origen: {origin(p)}
+                </p>
+                <div className="mt-2 flex flex-wrap gap-1">
+                  {(p.activities || []).map((activity) => {
+                    const visual = impactVisual(activity.impact);
+                    return (
+                      <span
+                        key={activity.id}
+                        className={`rounded border border-white/10 px-2 py-1 text-[9px] font-bold uppercase ${visual.className}`}
+                      >
+                        {visual.icon} {visual.label}
+                      </span>
+                    );
+                  })}
+                </div>
+              </div>
+              {canEdit && (
+                <button
+                  onClick={() => begin(p)}
+                  className="text-[10px] font-black uppercase text-cyan-400"
+                >
+                  Editar
+                </button>
+              )}
+            </div>
+            <div className="mt-3 h-1.5 rounded-full bg-slate-800">
+              <div
+                className="h-full rounded-full bg-cyan-500"
+                style={{
+                  width: `${calculateActionPlanProgress(p.activities)}%`,
+                }}
+              />
+            </div>
+          </div>
+        ))}
+      </div>
+      {draft && (
+        <div className="mt-4 rounded-xl border border-cyan-500/20 bg-slate-900/70 p-4">
+          <Field label="Nombre del plan">
+            <input
+              autoFocus
+              value={draft.title}
+              onChange={(e) => update("title", e.target.value)}
+              className={control}
+            />
+          </Field>
+          <Field label="Descripción">
+            <textarea
+              value={draft.description || ""}
+              onChange={(e) => update("description", e.target.value)}
+              className={`${control} min-h-16`}
+            />
+          </Field>
+          <div className="mt-3 grid gap-3 md:grid-cols-2">
+            <Field label="Responsable general">
+              <input
+                value={draft.responsible || ""}
+                onChange={(e) => update("responsible", e.target.value)}
+                className={control}
+              />
+            </Field>
+            <div>
+              <span className="text-[10px] font-black uppercase tracking-widest text-slate-300">
+                Avance general calculado
+              </span>
+              <p className="mt-1 rounded-lg border border-slate-700 bg-slate-950/50 px-3 py-2 text-sm font-bold text-cyan-300">
+                {calculateActionPlanProgress(draft.activities)}%
+              </p>
+            </div>
+          </div>
+          <p className="mt-3 text-[10px] uppercase tracking-widest text-slate-500">
+            Origen: {origin(draft)}{" "}
+            <span className="normal-case tracking-normal text-slate-600">
+              (metadata histórica · no editable)
+            </span>
+          </p>
+          <div className="mt-5 border-t border-white/5 pt-4">
+            <div className="mb-3 flex items-center justify-between">
+              <h5 className="text-xs font-black uppercase tracking-widest text-slate-300">
+                Actividades
+              </h5>
+              <button
+                onClick={() =>
+                  setDraft((d) =>
+                    d
+                      ? {
+                          ...d,
+                          activities: [
+                            ...(d.activities || []),
+                            emptyActivity(),
+                          ],
+                        }
+                      : d,
+                  )
+                }
+                className="text-[10px] font-black uppercase tracking-widest text-cyan-400"
+              >
+                + Agregar actividad
+              </button>
+            </div>
+            <div className="space-y-3">
+              {(draft.activities || []).map((a) => (
+                <div
+                  key={a.id}
+                  className="rounded-lg border border-slate-700/70 bg-slate-950/50 p-3"
+                >
+                  <div className="grid gap-3 md:grid-cols-[minmax(0,2fr),minmax(150px,1fr),150px,120px,24px] md:items-end">
+                    <Field label="Actividad">
+                      <textarea
+                        value={a.title}
+                        onChange={(e) =>
+                          updateActivity(a.id, "title", e.target.value)
+                        }
+                        rows={2}
+                        className={`${control} min-h-16 resize-y`}
+                      />
+                    </Field>
+                    <Field label="Responsable">
+                      <input
+                        value={a.responsible || ""}
+                        onChange={(e) =>
+                          updateActivity(a.id, "responsible", e.target.value)
+                        }
+                        className={control}
+                      />
+                    </Field>
+                    <Field label="Fecha compromiso">
+                      <input
+                        type="date"
+                        value={a.targetDate || ""}
+                        onChange={(e) =>
+                          updateActivity(a.id, "targetDate", e.target.value)
+                        }
+                        className={control}
+                      />
+                    </Field>
+                    <Field label="Avance (%)">
+                      <div>
+                        {(() => {
+                          const visual = activityProgressVisual(a.progress);
+                          return (
+                            <>
+                              <div className="relative">
+                                <input
+                                  type="number"
+                                  min="0"
+                                  max="100"
+                                  value={a.progress}
+                                  onChange={(e) =>
+                                    updateActivity(
+                                      a.id,
+                                      "progress",
+                                      Math.max(
+                                        0,
+                                        Math.min(100, Number(e.target.value)),
+                                      ),
+                                    )
+                                  }
+                                  className={`${control} pr-7`}
+                                />
+                                <span className="absolute right-2 top-2 text-xs font-bold text-cyan-300">
+                                  %
+                                </span>
+                              </div>
+                              <div className="mt-2 h-1.5 rounded-full bg-slate-800">
+                                <div
+                                  className={`h-full rounded-full ${visual.className}`}
+                                  style={{ width: `${a.progress}%` }}
+                                />
+                              </div>
+                              <span
+                                className={`mt-1 block text-[9px] font-bold uppercase ${visual.text}`}
+                              >
+                                {a.progress}% · {visual.label}
+                              </span>
+                            </>
+                          );
+                        })()}
+                      </div>
+                    </Field>
+                    <button
+                      aria-label="Eliminar actividad"
+                      onClick={() =>
+                        window.confirm("¿Eliminar esta actividad?") &&
+                        setDraft((d) =>
+                          d
+                            ? {
+                                ...d,
+                                activities: (d.activities || []).filter(
+                                  (item) => item.id !== a.id,
+                                ),
+                              }
+                            : d,
+                        )
+                      }
+                      className="mb-2 text-slate-500 hover:text-rose-400"
+                    >
+                      ×
+                    </button>
+                  </div>
+                  <div className="mt-3 grid gap-3 md:grid-cols-[minmax(0,2fr),minmax(180px,1fr)]">
+                    <Field label="Resultado / nota">
+                      <textarea
+                        value={a.result || ""}
+                        onChange={(e) =>
+                          updateActivity(a.id, "result", e.target.value)
+                        }
+                        rows={2}
+                        className={`${control} min-h-16 resize-y`}
+                      />
+                    </Field>
+                    <Field label="Impacto">
+                      <select
+                        value={normalizeActionImpact(a.impact)}
+                        onChange={(e) =>
+                          updateActivity(a.id, "impact", e.target.value)
+                        }
+                        className={control}
+                      >
+                        <option value="NOT_EVALUATED">⚪ Por evaluar</option>
+                        <option value="FAVORABLE">🟢 Impacto favorable</option>
+                        <option value="PARTIAL">🟡 Impacto parcial</option>
+                        <option value="LOW_OR_NONE">
+                          🔴 Bajo / sin impacto
+                        </option>
+                      </select>
+                      {(() => {
+                        const visual = impactVisual(a.impact);
+                        return (
+                          <span
+                            className={`mt-1 inline-flex rounded border border-white/10 px-2 py-1 text-[9px] font-bold uppercase ${visual.className}`}
+                          >
+                            {visual.icon} {visual.label}
+                          </span>
+                        );
+                      })()}
+                    </Field>
+                  </div>
+                  <div className="mt-2 flex items-center gap-2 text-[10px] uppercase tracking-widest text-slate-500">
+                    <span
+                      className={`h-2.5 w-2.5 rounded-full ${traffic[getActivityTrafficLight(a)]}`}
+                    />
+                    {getActivityTrafficLight(a) === "green"
+                      ? "Completada"
+                      : getActivityTrafficLight(a) === "red"
+                        ? "Vencida"
+                        : getActivityTrafficLight(a) === "yellow"
+                          ? "En ejecución"
+                          : "Pendiente"}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="mt-5 flex justify-end gap-3">
+            {draft.id && !deleteConfirmation && (
+              <button
+                type="button"
+                onClick={() => setDeleteConfirmation(true)}
+                className="mr-auto rounded-lg border border-rose-500/30 px-4 py-2 text-xs font-bold text-rose-300 hover:bg-rose-500/10"
+              >
+                Eliminar plan
+              </button>
+            )}
+            <button
+              onClick={() => {
+                setDraft(null);
+                onCancelEdit?.();
+              }}
+              className="text-xs text-slate-400"
+            >
+              Cancelar
+            </button>
+            <button
+              disabled={state === "saving"}
+              onClick={() => void save()}
+              className="rounded-lg bg-cyan-600 px-5 py-2 text-xs font-bold text-white"
+            >
+              {state === "saving" ? "Guardando…" : "Guardar plan"}
+            </button>
+          </div>
+          {draft.id && deleteConfirmation && (
+            <div
+              className="mt-4 rounded-xl border border-rose-500/30 bg-rose-500/10 p-4"
+              role="alertdialog"
+              aria-label="¿Eliminar este plan?"
+            >
+              <p className="text-sm font-black text-rose-200">
+                ¿Eliminar este plan?
+              </p>
+              <p className="mt-1 text-xs text-slate-300">
+                Se eliminará el plan y sus actividades. El indicador y su
+                historial no se modificarán.
+              </p>
+              <div className="mt-3 flex justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setDeleteConfirmation(false)}
+                  className="px-3 py-2 text-xs font-bold text-slate-300"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  disabled={state === "saving"}
+                  onClick={() => void removePlan()}
+                  className="rounded-lg bg-rose-600 px-4 py-2 text-xs font-black text-white disabled:opacity-50"
+                >
+                  {state === "saving" ? "Eliminando…" : "Eliminar plan"}
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </section>
+  );
+};
+const Field = ({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) => (
+  <label className="block">
+    <span className="text-[10px] font-black uppercase tracking-widest text-slate-300">
+      {label}
+    </span>
+    {children}
+  </label>
+);

@@ -1,0 +1,105 @@
+{
+  "collection": "tbl_contributionIndicatorAssignments",
+  "extractedAt": "2026-09-01T20:33:27.861Z",
+  "assignments": [
+    {
+      "id": "asgn_oe_seed_sigma_oe01_agg-GENERAL-2026_-101",
+      "payload": {
+        "id": "asgn_oe_seed_sigma_oe01_agg-GENERAL-2026_-101",
+        "clientId": "CEMENTOS_SIGMA",
+        "dashboardId": "agg-GENERAL-2026",
+        "createdAt": "2026-09-01T20:15:23.221Z",
+        "strategicObjectiveId": "seed_sigma_oe01",
+        "itemId": -101
+      }
+    },
+    {
+      "id": "asgn_oe_seed_sigma_oe01_agg-GENERAL-2026_-104",
+      "payload": {
+        "strategicObjectiveId": "seed_sigma_oe01",
+        "dashboardId": "agg-GENERAL-2026",
+        "createdAt": "2026-09-01T20:15:23.221Z",
+        "itemId": -104,
+        "id": "asgn_oe_seed_sigma_oe01_agg-GENERAL-2026_-104",
+        "clientId": "CEMENTOS_SIGMA"
+      }
+    },
+    {
+      "id": "asgn_oe_seed_sigma_oe02_agg-GENERAL-2026_-103",
+      "payload": {
+        "id": "asgn_oe_seed_sigma_oe02_agg-GENERAL-2026_-103",
+        "createdAt": "2026-09-01T20:18:02.119Z",
+        "clientId": "CEMENTOS_SIGMA",
+        "dashboardId": "agg-GENERAL-2026",
+        "strategicObjectiveId": "seed_sigma_oe02",
+        "itemId": -103
+      }
+    },
+    {
+      "id": "asgn_oe_seed_sigma_oe02_agg-GENERAL-2026_-105",
+      "payload": {
+        "dashboardId": "agg-GENERAL-2026",
+        "clientId": "CEMENTOS_SIGMA",
+        "itemId": -105,
+        "id": "asgn_oe_seed_sigma_oe02_agg-GENERAL-2026_-105",
+        "strategicObjectiveId": "seed_sigma_oe02",
+        "createdAt": "2026-09-01T20:18:02.119Z"
+      }
+    },
+    {
+      "id": "asgn_oe_seed_sigma_oe03_agg-GENERAL-2026_-100",
+      "payload": {
+        "dashboardId": "agg-GENERAL-2026",
+        "clientId": "CEMENTOS_SIGMA",
+        "strategicObjectiveId": "seed_sigma_oe03",
+        "itemId": -100,
+        "createdAt": "2026-09-01T20:19:06.758Z",
+        "id": "asgn_oe_seed_sigma_oe03_agg-GENERAL-2026_-100"
+      }
+    },
+    {
+      "id": "asgn_oe_seed_sigma_oe03_agg-GENERAL-2026_-102",
+      "payload": {
+        "createdAt": "2026-09-01T20:19:06.758Z",
+        "itemId": -102,
+        "id": "asgn_oe_seed_sigma_oe03_agg-GENERAL-2026_-102",
+        "strategicObjectiveId": "seed_sigma_oe03",
+        "dashboardId": "agg-GENERAL-2026",
+        "clientId": "CEMENTOS_SIGMA"
+      }
+    },
+    {
+      "id": "asgn_oe_seed_sigma_oe04_agg-GENERAL-2026_-106",
+      "payload": {
+        "id": "asgn_oe_seed_sigma_oe04_agg-GENERAL-2026_-106",
+        "itemId": -106,
+        "dashboardId": "agg-GENERAL-2026",
+        "clientId": "CEMENTOS_SIGMA",
+        "createdAt": "2026-09-01T20:19:19.387Z",
+        "strategicObjectiveId": "seed_sigma_oe04"
+      }
+    },
+    {
+      "id": "asgn_oe_seed_sigma_oe04_agg-GENERAL-2026_-107",
+      "payload": {
+        "itemId": -107,
+        "id": "asgn_oe_seed_sigma_oe04_agg-GENERAL-2026_-107",
+        "dashboardId": "agg-GENERAL-2026",
+        "strategicObjectiveId": "seed_sigma_oe04",
+        "createdAt": "2026-09-01T20:19:19.387Z",
+        "clientId": "CEMENTOS_SIGMA"
+      }
+    },
+    {
+      "id": "asgn_oe_seed_sigma_oe05_agg-GENERAL-2026_-108",
+      "payload": {
+        "clientId": "CEMENTOS_SIGMA",
+        "createdAt": "2026-09-01T20:20:29.254Z",
+        "id": "asgn_oe_seed_sigma_oe05_agg-GENERAL-2026_-108",
+        "itemId": -108,
+        "strategicObjectiveId": "seed_sigma_oe05",
+        "dashboardId": "agg-GENERAL-2026"
+      }
+    }
+  ]
+}

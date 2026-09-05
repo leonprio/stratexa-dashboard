@@ -1,3 +1,4 @@
+import { arithmeticExpression } from './arithmeticExpression';
 import type { DashboardItem, ComplianceThresholds, OperationalMetrics } from "../types";
 import { aggregateWeeklyToMonthly, getWeekNumber } from "./weeklyUtils";
 
@@ -6,6 +7,12 @@ import { aggregateWeeklyToMonthly, getWeekNumber } from "./weeklyUtils";
 // Mantengo estos strings consistentes con la mayoría de implementaciones.
 export type ComplianceStatus = "OnTrack" | "AtRisk" | "OffTrack" | "Neutral" | "InProgress";
 export const CURRENT_MONTH_INDEX = new Date().getMonth();
+
+export const isOperationalPeriodCaptured = (value: unknown, goal: unknown): boolean => {
+  const hasValue = value !== null && value !== undefined && value !== '' && Number.isFinite(Number(value));
+  const hasGoal = goal !== null && goal !== undefined && goal !== '' && Number.isFinite(Number(goal));
+  return hasValue && hasGoal && !(Number(value) === 0 && Number(goal) === 0);
+};
 
 /**
  * 🛡️ HELPER DE ACUMULADOS v9.1.0-PRO-FINAL-SHIELDED (ULTRA-AGGRESSIVE)
@@ -154,8 +161,8 @@ export const evaluateFormula = (
     if (!finalExpression || (finalExpression.trim() === "")) return 0;
 
     // 4. Evaluación segura
-    // eslint-disable-next-line no-eval
-    const result = Number(eval(finalExpression));
+    // Evaluate only bounded arithmetic.
+    const result = arithmeticExpression(finalExpression);
 
     if (isNaN(result) || !isFinite(result)) return 0;
     return result;
@@ -866,9 +873,11 @@ export const calculateOperationalMetrics = (
   const isMinimize = shielded.goalType === 'minimize' || (shielded as any).type === 'minimize' || (shielded as any).type === 'lower' || (shielded as any).type === 'min';
   const hasValidGoal = (g: any) => g !== null && g !== undefined && g !== "" && !isNaN(Number(g)) && (isMinimize ? true : Number(g) > 0);
   const firstGoalIdx = monthlyGoals.findIndex(hasValidGoal);
+  const hasExplicitOperationalStart = (shielded as any).operationalStartPeriod !== undefined && (shielded as any).operationalStartPeriod !== null;
+  const hasOperationalDefinition = hasExplicitOperationalStart || firstGoalIdx >= 0;
 
   let startPeriodIdx = 0;
-  if ((shielded as any).operationalStartPeriod !== undefined && (shielded as any).operationalStartPeriod !== null) {
+  if (hasExplicitOperationalStart) {
     startPeriodIdx = parsePeriodToIndex((shielded as any).operationalStartPeriod);
   } else {
     startPeriodIdx = firstGoalIdx >= 0 ? firstGoalIdx : 0;
@@ -888,6 +897,7 @@ export const calculateOperationalMetrics = (
   } else if (year > currentYear) {
     limitIdx = -1;
   }
+  if (!hasOperationalDefinition) limitIdx = -1;
 
   // 4. Calcular periodos esperados
   const expectedPeriods = Math.max(0, limitIdx - startPeriodIdx + 1);
@@ -899,13 +909,7 @@ export const calculateOperationalMetrics = (
     const val = monthlyProgress[m];
     const goal = monthlyGoals[m];
 
-    const isNullVal = val === null || val === undefined || val === "" || isNaN(Number(val));
-    const isNullGoal = goal === null || goal === undefined || goal === "" || isNaN(Number(goal));
-    
-    const isGoalZero = Number(goal || 0) === 0;
-    const isValZero = Number(val || 0) === 0;
-
-    const isCaptured = !isNullVal && !isNullGoal && !(isGoalZero && isValZero);
+    const isCaptured = isOperationalPeriodCaptured(val, goal);
 
     if (isCaptured) {
       capturedPeriods++;
@@ -917,7 +921,9 @@ export const calculateOperationalMetrics = (
   const missingPeriods = expectedPeriods - capturedPeriods;
   const captureRate = expectedPeriods > 0 ? (capturedPeriods / expectedPeriods) * 100 : 100;
 
-  // 5. Calcular performanceScore tradicional (acotado a meses capturados)
+  // 5. Conservar el score operativo sobre periodos capturados para clasificar
+  // riesgo oculto, y exponer por separado el cumplimiento canónico de TABLERO.
+  const sourcePerformance = calculateCompliance(shielded, globalThresholds, year, mode, [], contextItems);
   const itemForPerformance = {
     ...shielded,
     monthlyGoals: shielded.monthlyGoals.map((g, m) => {
@@ -925,13 +931,7 @@ export const calculateOperationalMetrics = (
       if (!isExpected) return g;
 
       const val = monthlyProgress[m];
-      const isNullVal = val === null || val === undefined || val === "" || isNaN(Number(val));
-      const isNullGoal = g === null || g === undefined || g === "" || isNaN(Number(g));
-      const isGoalZero = Number(g || 0) === 0;
-      const isValZero = Number(val || 0) === 0;
-      const isCaptured = !isNullVal && !isNullGoal && !(isGoalZero && isValZero);
-
-      return isCaptured ? g : null;
+      return isOperationalPeriodCaptured(val, g) ? g : null;
     })
   };
   const traditional = calculateCompliance(itemForPerformance, globalThresholds, year, mode, [], contextItems);
@@ -954,11 +954,7 @@ export const calculateOperationalMetrics = (
       const val = monthlyProgress[m];
       const goal = monthlyGoals[m];
 
-      const isNullVal = val === null || val === undefined || val === "" || isNaN(Number(val));
-      const isNullGoal = goal === null || goal === undefined || goal === "" || isNaN(Number(goal));
-      const isGoalZero = Number(goal || 0) === 0;
-      const isValZero = Number(val || 0) === 0;
-      const isCaptured = !isNullVal && !isNullGoal && !(isGoalZero && isValZero);
+      const isCaptured = isOperationalPeriodCaptured(val, goal);
 
       if (isCaptured) {
         sumProgress += Number(val ?? 0);
@@ -974,11 +970,7 @@ export const calculateOperationalMetrics = (
       const val = monthlyProgress[m];
       const goal = monthlyGoals[m];
 
-      const isNullVal = val === null || val === undefined || val === "" || isNaN(Number(val));
-      const isNullGoal = goal === null || goal === undefined || goal === "" || isNaN(Number(goal));
-      const isGoalZero = Number(goal || 0) === 0;
-      const isValZero = Number(val || 0) === 0;
-      const isCaptured = !isNullVal && !isNullGoal && !(isGoalZero && isValZero);
+      const isCaptured = isOperationalPeriodCaptured(val, goal);
 
       if (isCaptured) {
         sumCompliance += calculateMonthlyCompliancePercentage(val, goal, lowerIsBetter);
@@ -1013,6 +1005,7 @@ export const calculateOperationalMetrics = (
     missingPeriods,
     captureRate,
     performanceScore,
+    sourcePerformanceScore: sourcePerformance.overallPercentage,
     realOperationalScore,
     stalenessDays,
     performanceStatus,

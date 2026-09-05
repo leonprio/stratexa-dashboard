@@ -1,6 +1,13 @@
 import { Dashboard, DashboardItem, ComplianceThresholds, ComplianceStatus } from '../types';
 import { attachOperationalMetrics } from './compliance';
 
+export const resolveOperationalIdentity = (dashboard: Dashboard, item: DashboardItem) => ({
+  client: dashboard.clientId || 'CLIENTE NO IDENTIFICADO',
+  direction: (dashboard.group || 'SIN DIRECCIÓN REGISTRADA').trim().toUpperCase(),
+  area: (dashboard.area || 'SIN ÁREA REGISTRADA').trim().toUpperCase(),
+  indicator: item.indicator || 'INDICADOR SIN NOMBRE'
+});
+
 export interface OperationalActorMetrics {
   name: string;
   captureRate: number;
@@ -70,8 +77,9 @@ export const buildOperationalRanking = (
     // Evitar procesar tableros agregados globales en el ranking para no duplicar datos
     if (d.isAggregate || String(d.id).includes('agg-') || d.id === -1) return;
 
-    const dirName = (d.group || 'GENERAL').trim().toUpperCase();
-    const areaName = (d.area || 'OPERACIONES').trim().toUpperCase();
+    const identity = resolveOperationalIdentity(d, d.items?.[0] || ({ indicator: '' } as DashboardItem));
+    const dirName = identity.direction;
+    const areaName = identity.area;
 
     if (!directionMap.has(dirName)) directionMap.set(dirName, []);
     if (!areaMap.has(areaName)) areaMap.set(areaName, []);
@@ -159,8 +167,9 @@ export const buildOperationalMatrix = (
   enriched.forEach(d => {
     if (d.isAggregate || String(d.id).includes('agg-') || d.id === -1) return;
 
-    const dirName = (d.group || 'GENERAL').trim().toUpperCase();
-    const areaName = (d.area || 'OPERACIONES').trim().toUpperCase();
+    const identity = resolveOperationalIdentity(d, d.items?.[0] || ({ indicator: '' } as DashboardItem));
+    const dirName = identity.direction;
+    const areaName = identity.area;
 
     directionSet.add(dirName);
     areaSet.add(areaName);
