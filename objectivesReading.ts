@@ -82,8 +82,13 @@ export function buildObjectiveExecutiveDiagnosis(
       : "Todos los indicadores evaluables están bajo control.";
   }
   const priority = outsideControl.filter((reading) => reading.status === "CRÍTICO");
-  const candidates = priority.length ? priority : outsideControl.filter((reading) => reading.status === "REQUIERE ATENCIÓN");
-  const worst = [...candidates].sort((a, b) => (a.score ?? 0) - (b.score ?? 0))[0];
+  const candidates = priority.length
+    ? priority
+    : outsideControl.filter((reading) => reading.status === "REQUIERE ATENCIÓN");
+  const worst = [...(candidates.length ? candidates : outsideControl)].sort(
+    (a, b) => (a.score ?? 0) - (b.score ?? 0),
+  )[0];
+  if (!worst) return "No existen indicadores evaluables suficientes para determinar la condición.";
   return `${outsideControl.length} de ${evaluable.length} indicadores requieren atención. La principal brecha está en ${worst.indicator} (${worst.score}%).`;
 }
 

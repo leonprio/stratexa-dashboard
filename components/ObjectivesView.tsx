@@ -127,7 +127,9 @@ export const ObjectivesView: React.FC<Props> = ({
     buildExecutiveKpiReading(item, source.thresholds, source.items, year);
   const objectiveRows = orderedObjectives.map((objective) => ({
     objective,
-    items: ownership.kpisByStrategicObjective.get(objective.id) || [],
+    items: (ownership.kpisByStrategicObjective.get(objective.id) || []).filter(
+      (kpi) => Boolean(kpi && kpi.item && kpi.dashboard),
+    ),
   }));
   const unlinked = ownership.orphanKpis;
   const visiblePlans = Array.from(
@@ -559,7 +561,7 @@ export const ObjectivesView: React.FC<Props> = ({
             const plans = relatedPlans.length;
             const diagnosis = buildObjectiveExecutiveDiagnosis(
               items.map((kpi, index) => ({
-                indicator: kpi.item.indicator,
+                indicator: kpi.item?.indicator || kpi.item?.name || "Indicador",
                 score: readings[index].score,
                 status: readings[index].status,
               })),
@@ -567,7 +569,7 @@ export const ObjectivesView: React.FC<Props> = ({
             const execution = buildObjectiveExecutionSummary(relatedPlans);
             const decision = buildObjectiveNextDecision(
               items.map((kpi, index) => ({
-                indicator: kpi.item.indicator,
+                indicator: kpi.item?.indicator || kpi.item?.name || "Indicador",
                 score: readings[index].score,
                 status: readings[index].status,
               })),
@@ -666,11 +668,11 @@ export const ObjectivesView: React.FC<Props> = ({
                           tabIndex={0}
                           key={kpi.identity}
                           onClick={() =>
-                            onNavigateToKpi?.(kpi.dashboard.id, kpi.item.id)
+                            onNavigateToKpi?.(kpi.dashboard?.id, kpi.item?.id)
                           }
                           onKeyDown={(event) => {
                             if (event.key === "Enter" || event.key === " ")
-                              onNavigateToKpi?.(kpi.dashboard.id, kpi.item.id);
+                              onNavigateToKpi?.(kpi.dashboard?.id, kpi.item?.id);
                           }}
                           className="grid w-full cursor-pointer grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 border-b border-white/5 px-1 py-2.5 text-left transition hover:bg-slate-900/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/60 md:grid-cols-[auto_minmax(0,1fr)_auto_auto_auto]"
                         >
@@ -679,7 +681,7 @@ export const ObjectivesView: React.FC<Props> = ({
                             className={`h-2.5 w-2.5 rounded-full ${visual.split(" ")[0]}`}
                           />
                           <span className="whitespace-normal break-words text-xs font-bold text-slate-200">
-                            {kpi.item.indicator}
+                            {kpi.item?.indicator || kpi.item?.name || "Indicador"}
                           </span>
                           <span
                             className={`whitespace-nowrap rounded-lg border px-2 py-1 text-[9px] font-black uppercase ${visual.split(" ").slice(1).join(" ")}`}
@@ -713,7 +715,7 @@ export const ObjectivesView: React.FC<Props> = ({
                             <div
                               id={`trend-${trendId}`}
                               className="col-span-full rounded-lg border border-cyan-500/15 bg-slate-950/50 px-3 py-3"
-                              aria-label={`Lectura HD de ${kpi.item.indicator}`}
+                              aria-label={`Lectura HD de ${kpi.item?.indicator || kpi.item?.name || "Indicador"}`}
                             >
                               <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                                 <div className="rounded-md border border-white/10 bg-white/5 px-2 py-1">
@@ -723,7 +725,7 @@ export const ObjectivesView: React.FC<Props> = ({
                                   <b className="text-sm text-white">
                                     {targetReading.actual == null
                                       ? "—"
-                                      : `${Math.round(targetReading.actual)}${kpi.item.unit === "%" ? "%" : ""}`}
+                                      : `${Math.round(targetReading.actual)}${kpi.item?.unit === "%" ? "%" : ""}`}
                                   </b>
                                 </div>
                                 <div className="rounded-md border border-white/10 bg-white/5 px-2 py-1">
@@ -763,7 +765,7 @@ export const ObjectivesView: React.FC<Props> = ({
                                 <svg
                                   viewBox="0 0 320 58"
                                   role="img"
-                                  aria-label={`Actual vs meta de ${kpi.item.indicator}`}
+                                  aria-label={`Actual vs meta de ${kpi.item?.indicator || kpi.item?.name || "Indicador"}`}
                                   className="mt-3 h-14 w-full"
                                 >
                                   <polyline
@@ -811,7 +813,7 @@ export const ObjectivesView: React.FC<Props> = ({
                             <div
                               id={`legacy-trend-${trendId}`}
                               className="col-span-full rounded-lg border border-cyan-500/15 bg-slate-950/50 px-3 py-2"
-                              aria-label={`Tendencia de ${kpi.item.indicator}`}
+                              aria-label={`Tendencia de ${kpi.item?.indicator || kpi.item?.name || "Indicador"}`}
                             >
                               <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                                 <div className="rounded-md bg-white/5 px-2 py-1">
@@ -870,7 +872,7 @@ export const ObjectivesView: React.FC<Props> = ({
                               <svg
                                 viewBox="0 0 320 96"
                                 role="img"
-                                aria-label={`Gráfico histórico de ${kpi.item.indicator}`}
+                                aria-label={`Gráfico histórico de ${kpi.item?.indicator || kpi.item?.name || "Indicador"}`}
                                 className="mt-2 h-24 w-full"
                               >
                                 <polyline
@@ -1290,13 +1292,13 @@ export const ObjectivesView: React.FC<Props> = ({
                             type="button"
                             onClick={() =>
                               onNavigateToKpi?.(
-                                breach.dashboard.id,
-                                breach.item.id,
+                                breach.dashboard?.id,
+                                breach.item?.id,
                               )
                             }
                             className="mt-1 text-left text-sm font-bold text-amber-300 hover:text-white"
                           >
-                            {breach.item.indicator} ·{" "}
+                            {breach.item?.indicator || breach.item?.name || "Indicador"} ·{" "}
                             {readings[data.items.indexOf(breach)]?.score ?? "—"}
                             % · REVISAR
                           </button>
@@ -1342,13 +1344,13 @@ export const ObjectivesView: React.FC<Props> = ({
               .flatMap((row) => row.items)
               .find(
                 (candidate) =>
-                  String(candidate.item.id) === String(plan.indicatorId),
+                  String(candidate.item?.id) === String(plan.indicatorId),
               );
             if (owner) {
               onNavigateToPlan?.({
                 actionPlanId: plan.id,
-                dashboardId: owner.dashboard.id,
-                itemId: owner.item.id,
+                dashboardId: owner.dashboard?.id,
+                itemId: owner.item?.id,
                 clientId: plan.clientId || dashboard.clientId,
                 year,
               });
@@ -1494,16 +1496,16 @@ export const ObjectivesView: React.FC<Props> = ({
                       )
                       .find(
                         (kpi) =>
-                          String(kpi.item.id) === String(plan.indicatorId),
+                          String(kpi.item?.id) === String(plan.indicatorId),
                       );
                     const linkedAssignment =
                       linked &&
                       assignments.find(
                         (assignment) =>
                           String(assignment.dashboardId) ===
-                            String(linked.dashboard.id) &&
+                            String(linked.dashboard?.id) &&
                           String(assignment.itemId) ===
-                            String(linked.item.id) &&
+                            String(linked.item?.id) &&
                           assignment.contributionObjectiveId,
                       );
                     const linkedOc =
@@ -1543,7 +1545,7 @@ export const ObjectivesView: React.FC<Props> = ({
                         </div>
                         <p className="mt-2 text-xs text-slate-300">
                           {linked
-                            ? `${linked.objective.code} · ${linked.item.indicator} · ${linked.dashboard.area || "Área no definida"}`
+                            ? `${linked.objective.code} · ${linked.item?.indicator || linked.item?.name || "Indicador"} · ${linked.dashboard?.area || "Área no definida"}`
                             : "SIN OBJETIVO ESTRATÉGICO"}
                         </p>
                         {linkedOc && (
@@ -1729,7 +1731,7 @@ const PlanDirectory: React.FC<{
           .flatMap((row) =>
             row.items.map((kpi) => ({ ...kpi, objective: row.objective })),
           )
-          .find((kpi) => String(kpi.item.id) === String(plan.indicatorId));
+          .find((kpi) => String(kpi.item?.id) === String(plan.indicatorId));
         return (
           <article
             key={plan.id}
@@ -1748,7 +1750,7 @@ const PlanDirectory: React.FC<{
             </div>
             <p className="mt-2 text-xs text-slate-300">
               {linked
-                ? `${linked.objective.code} · ${linked.item.indicator} · ${linked.dashboard.area || "Área no definida"}`
+                ? `${linked.objective.code} · ${linked.item?.indicator || linked.item?.name || "Indicador"} · ${linked.dashboard?.area || "Área no definida"}`
                 : "SIN OBJETIVO ESTRATÉGICO"}
             </p>
             <p className="mt-2 text-xs text-slate-400">
@@ -1809,7 +1811,7 @@ const PlanDirectoryFinal: React.FC<{
             .flatMap((row) =>
               row.items.map((kpi) => ({ ...kpi, objective: row.objective })),
             )
-            .find((kpi) => String(kpi.item.id) === String(plan.indicatorId));
+            .find((kpi) => String(kpi.item?.id) === String(plan.indicatorId));
           const expanded = summaryId === plan.id;
           return (
             <article
@@ -1829,7 +1831,7 @@ const PlanDirectoryFinal: React.FC<{
               </div>
               <p className="mt-2 text-xs text-slate-300">
                 {linked
-                  ? `${linked.objective.code} · ${linked.item.indicator} · ${linked.dashboard.area || "Área no definida"}`
+                  ? `${linked.objective.code} · ${linked.item?.indicator || linked.item?.name || "Indicador"} · ${linked.dashboard?.area || "Área no definida"}`
                   : "SIN OBJETIVO ESTRATÉGICO"}
               </p>
               <p className="mt-2 text-xs text-slate-400">

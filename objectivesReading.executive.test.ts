@@ -10,6 +10,13 @@ describe("executive objective reading contracts", () => {
     expect(buildObjectiveExecutiveDiagnosis([base("Nuevas asesorías", "NO EVALUABLE", null)])).toContain("No existen indicadores evaluables");
     expect(buildObjectiveExecutiveDiagnosis([base("Aplicaciones", "BAJO CONTROL", 100), base("Nuevas asesorías", "NO EVALUABLE", null)])).toContain("No existen indicadores evaluables");
   });
+  test("does not crash when the only non-control status is pending data", () => {
+    expect(
+      buildObjectiveExecutiveDiagnosis([
+        base("Ingresos", "DATOS PENDIENTES", 0),
+      ]),
+    ).toContain("requieren atención");
+  });
   test("deduplicates plans and derives active, overdue, and impact metrics", () => {
     const plan: any = { id: "p1", status: "in_progress", activities: [{ id: "a1", progress: 20, targetDate: "2020-01-01", impact: "PARTIAL" }, { id: "a2", progress: 100, impact: "LOW_OR_NONE" }] };
     expect(buildObjectiveExecutionSummary([plan, plan], new Date("2026-01-01"))).toEqual({ activePlans: 1, activeActivities: 1, overdueActivities: 1, impact: { favorable: 0, partial: 1, low: 1, notEvaluated: 0 } });

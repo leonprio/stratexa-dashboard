@@ -5,6 +5,7 @@ import {
   calculateCompliance,
   findLastIndexWithData,
   resolveItemValues,
+  isMonthlyPeriodOverdue,
 } from "../utils/compliance";
 import { getWeekNumber, getYearWeekMapping } from "../utils/weeklyUtils";
 import { ProgressBar } from "./ProgressBar";
@@ -230,9 +231,13 @@ export const derivePendingKpiActivities = (
         ][index] || `P${index + 1}`;
   const pending = Object.entries(activityConfig).flatMap(([period, raw]) => {
     const periodIndex = Number(period);
+    const originOverdue = isWeekly
+      ? year < new Date().getFullYear() ||
+        (year === new Date().getFullYear() && periodIndex < currentIndex)
+      : isMonthlyPeriodOverdue(year, periodIndex);
     if (
       !Number.isFinite(periodIndex) ||
-      periodIndex > currentIndex ||
+      (!originOverdue && periodIndex !== currentIndex) ||
       !Array.isArray(raw)
     )
       return [];
@@ -256,6 +261,7 @@ export const derivePendingKpiActivities = (
           scheduled === undefined
             ? undefined
             : `${labels(scheduled)} · ${scheduledYear}`;
+        if (scheduled === undefined && !originOverdue) return null;
         return {
           id: `${periodIndex}:${activity.id}`,
           sourceActivityId: activity.id,
@@ -279,7 +285,8 @@ export const derivePendingKpiActivities = (
                   ? ("COMPROMISO ACTUAL" as const)
                   : ("REPROGRAMADA" as const),
         };
-      });
+      })
+      .filter(Boolean) as PendingKpiActivity[];
   });
   return Array.from(
     pending
@@ -431,15 +438,25 @@ export const CurrentPeriodFocus: React.FC<CurrentPeriodFocusProps> = ({
 
   // Usar activePeriodIdx para todo lo visual
   const currentIdx = activePeriodIdx === -1 ? periodIdx : activePeriodIdx;
+  // Pendientes siempre se evalúa contra el período calendario real; el período
+  // seleccionado puede apuntar al último dato capturado y no debe redefinir
+  // qué meses están vencidos.
+  const pendingCurrentIdx = isWeekly
+    ? currentIdx
+    : year && year < currentYear
+      ? 11
+      : year && year > currentYear
+        ? 0
+        : new Date().getMonth();
   const pendingKpiActivities = useMemo(
     () =>
       derivePendingKpiActivities(
         item?.activityConfig,
-        currentIdx,
+        pendingCurrentIdx,
         isWeekly,
         year || currentYear,
       ),
-    [item?.activityConfig, currentIdx, isWeekly, year, currentYear],
+    [item?.activityConfig, pendingCurrentIdx, isWeekly, year, currentYear],
   );
   const rescheduledCommitments = useMemo(
     () =>

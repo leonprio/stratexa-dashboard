@@ -291,18 +291,19 @@ export const getMissingMonthsWarning = (
  */
 export const getOverdueWarning = (
   monthlyProgress: Array<number | null | undefined>,
-  monthlyGoals: Array<number | null | undefined>
+  monthlyGoals: Array<number | null | undefined>,
+  periodYear: number = new Date().getFullYear(),
+  referenceDate: Date = new Date(),
 ): string | null => {
   const months = [
     "Ene", "Feb", "Mar", "Abr", "May", "Jun",
     "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"
   ];
 
-  const currentMonthIdx = new Date().getMonth(); // 0-11
   const missing: string[] = [];
 
-  // Checar solo hasta el mes anterior al actual
-  for (let i = 0; i < currentMonthIdx; i++) {
+  for (let i = 0; i < 12; i++) {
+    if (!isMonthlyPeriodOverdue(periodYear, i, referenceDate)) continue;
     const p = Number(monthlyProgress?.[i] ?? 0);
     const g = Number(monthlyGoals?.[i] ?? 0);
 
@@ -316,6 +317,15 @@ export const getOverdueWarning = (
 
   return `⚠️ Periodo vencido: No hay datos capturados en ${missing.join(", ")}.`;
 };
+
+export const isMonthlyPeriodOverdue = (
+  periodYear: number,
+  periodMonthIndex: number,
+  referenceDate: Date = new Date(),
+): boolean =>
+  periodYear < referenceDate.getFullYear() ||
+  (periodYear === referenceDate.getFullYear() &&
+    periodMonthIndex < referenceDate.getMonth());
 
 
 /**
@@ -488,7 +498,7 @@ export const calculateCompliance = (
   if (year === currentYear) {
     if (mode === 'realTime') {
       // 🚀 REAL-TIME: Permitimos el mes actual si hay datos
-      limitIdx = currentMonthIdx;
+      limitIdx = currentMonthIdx - 1;
     } else {
       // 🔒 DEFINITIVO: Solo meses estrictamente cerrados
       limitIdx = currentMonthIdx - 1;

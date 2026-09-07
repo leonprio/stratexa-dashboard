@@ -3,6 +3,13 @@ import { buildLogicalKpiCatalog, getAvailableStrategicKpis, resolveStrategicKpiO
 const item = (id: string, indicator: string, semanticKey?: string) => ({ id, indicator, semanticKey, weight: 100, monthlyGoals: [1], monthlyProgress: [1], unit: 'u', type: 'accumulative', goalType: 'maximize' });
 
 describe('strategic KPI physical and canonical availability', () => {
+  it('ignores incomplete dashboard entries so Objectives can render safely', () => {
+    const dashboards = [{ id: 'd1', title: 'Operativo', items: [undefined, item('income', 'INGRESOS')] }] as any;
+    const catalog = buildLogicalKpiCatalog(dashboards);
+    expect(catalog).toHaveLength(1);
+    expect(catalog[0].item.indicator).toBe('INGRESOS');
+  });
+
   it('groups physical dashboard representations into one logical KPI with aliases', () => {
     const dashboards = ['Operativo', 'Resumen Directivo', 'Síntesis Global'].map((title, i) => ({ id: `d${i}`, title, items: [item(`income-${i}`, 'INGRESOS')] })) as any;
     const catalog = buildLogicalKpiCatalog(dashboards);

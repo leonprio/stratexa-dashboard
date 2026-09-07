@@ -920,7 +920,7 @@ export const StrategyConfigModal: React.FC<StrategyConfigModalProps> = ({
                                 className="rounded border-slate-700 text-emerald-500 focus:ring-emerald-500"
                               />
                               <span className="min-w-0 flex-1 break-words">
-                                <strong>[{dashboard.title}]</strong> {item.indicator}
+                                <strong>[{dashboard.title}]</strong> {item?.indicator || item?.name || "Indicador"}
                               </span>
                               {isChecked && <button type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setSelectedKpisForOC(prev => prev.filter(value => !canonicalKeys.includes(value))); }} className="text-[10px] font-bold text-rose-400 hover:text-rose-300">QUITAR</button>}
                             </label>

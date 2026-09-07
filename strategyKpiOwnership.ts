@@ -87,7 +87,7 @@ export function buildLogicalKpiCatalog(
 ): StrategicKpiCandidate[] {
   const groups = new Map<string, StrategicKpiCandidate>();
   dashboards.forEach((dashboard) =>
-    (dashboard.items || []).forEach((item) => {
+    (dashboard.items || []).filter((item) => item && typeof item === "object").forEach((item) => {
       const identity = logicalIdentity(item, dashboard);
       const alias = {
         dashboard,
