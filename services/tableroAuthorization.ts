@@ -10,6 +10,7 @@ export interface TenantMembership {
   status: MembershipStatus;
   hierarchyScopes: string[];
   dashboardScopes: Record<string, 'viewer' | 'editor'>;
+  editableDashboardIds: string[];
   capabilities: ScopeCapability[];
   source: 'canonical' | 'legacy';
 }
@@ -47,6 +48,7 @@ const canonicalMembership = (membership: NonNullable<User['memberships']>[number
     status,
     hierarchyScopes: [...new Set((membership.hierarchyScopes || []).map(String).map(s => s.trim()).filter(Boolean))],
     dashboardScopes: { ...(membership.dashboardScopes || {}) },
+    editableDashboardIds: [...new Set((membership.editableDashboardIds || []).map(String).map(s => s.trim()).filter(Boolean))],
     capabilities: [...new Set((membership.capabilities || []).filter((x): x is ScopeCapability =>
       ['viewer', 'editor', 'metadata_editor', 'plan_editor', 'strategy_reader'].includes(x)))],
     source: 'canonical',
@@ -69,6 +71,7 @@ function legacyMemberships(profile: User): TenantMembership[] {
     status: 'active',
     hierarchyScopes: [...new Set(hierarchyScopes)],
     dashboardScopes,
+    editableDashboardIds: Object.entries(dashboardScopes).filter(([, access]) => access === 'editor').map(([id]) => id),
     capabilities: [
       ...new Set([
         ...(role === 'director' ? ['metadata_editor'] : []),
@@ -133,8 +136,12 @@ export function canAccessDashboard(profile: User, dashboard: Pick<Dashboard, 'id
   const membership = getMembershipForClient(profile, dashboard.clientId || '');
   if (!membership) return false;
   if (membership.role === 'tenant_admin') return true;
-  const direct = membership.dashboardScopes[String(dashboard.id)];
-  if (direct === 'editor' || direct === 'viewer') return capability === 'viewer' || direct === 'editor';
+  const dashboardId = String(dashboard.id);
+  const originalId = String((dashboard as any).originalId || '');
+  const direct = membership.dashboardScopes[dashboardId] || (originalId ? membership.dashboardScopes[originalId] : undefined);
+  if (direct === 'viewer') return capability === 'viewer';
+  if (direct === 'editor') return capability === 'viewer' || membership.editableDashboardIds.includes(dashboardId) || (originalId && membership.editableDashboardIds.includes(originalId));
+  if (capability === 'editor') return membership.capabilities.includes('editor') && membership.editableDashboardIds.includes(dashboardId);
   return membership.role === 'director' && membership.hierarchyScopes.includes(String(dashboard.group || dashboard.superGroup || '').trim());
 }
 

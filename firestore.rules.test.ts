@@ -657,7 +657,7 @@ describe('Firestore Security Rules — Strategy Module (v9.5.0 Foundation)', () 
     await assertSucceeds(getDocs(query(collection(db,'tbl_actionPlans'),where('clientId','==','A'),where('dashboardId','==','a'))));
     await assertFails(updateDoc(doc(db,'tbl_actionPlans','a'),{status:'completed'}));
     await testEnv.withSecurityRulesDisabled(async context => {
-      await setDoc(doc(context.firestore(),'tbl_userMemberships','member_a__A'),{...canonicalMembership('member_a','A'),allowedDashboardIds:['a'],capabilities:['plan_editor']});
+      await setDoc(doc(context.firestore(),'tbl_userMemberships','member_a__A'),{...canonicalMembership('member_a','A'),allowedDashboardIds:['a'],editableDashboardIds:['a'],capabilities:['plan_editor']});
     });
     await assertSucceeds(updateDoc(doc(db,'tbl_actionPlans','a'),{status:'completed'}));
     await assertFails(updateDoc(doc(db,'tbl_actionPlans','hidden'),{status:'completed'}));

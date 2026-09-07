@@ -62,7 +62,7 @@ describe('canonical Tablero authorization compatibility', () => {
     const profile = legacy({
       globalRole: GlobalUserRole.Director, clientId: 'A,B', directorTitle: 'A', superGroups: ['A', 'B'],
       dashboardAccess: { D1: DashboardRole.Editor, D2: DashboardRole.Editor },
-      memberships: [{ clientId: 'A', role: 'director', status: 'active', hierarchyScopes: ['A'], dashboardScopes: { D1: 'editor' } }],
+      memberships: [{ clientId: 'A', role: 'director', status: 'active', hierarchyScopes: ['A'], dashboardScopes: { D1: 'editor' }, editableDashboardIds: ['D1'] }],
     });
     const result = resolveEffectiveMemberships(profile);
     expect(result).toMatchObject({ source: 'canonical', contradictoryHybrid: true, needsMigrationReview: true });
@@ -96,6 +96,19 @@ describe('canonical Tablero authorization compatibility', () => {
     expect(canAccessDashboard(member, { id: 1, clientId: 'A' }, 'editor')).toBe(false);
     expect(canAccessDashboard(member, { id: 2, clientId: 'A' }, 'editor')).toBe(true);
     expect(canAccessDashboard(member, { id: 2, clientId: 'B' })).toBe(false);
+  });
+
+  it('fails closed for canonical writes without an explicit editable scope', () => {
+    const member = legacy({ memberships: [{ clientId: 'A', role: 'director', status: 'active', dashboardScopes: { D1: 'viewer', D2: 'viewer' }, capabilities: ['editor'] }] });
+    expect(canAccessDashboard(member, { id: 'D1', clientId: 'A' }, 'viewer')).toBe(true);
+    expect(canAccessDashboard(member, { id: 'D1', clientId: 'A' }, 'editor')).toBe(false);
+  });
+
+  it('limits canonical editor access to the editable subset of readable dashboards', () => {
+    const member = legacy({ memberships: [{ clientId: 'A', role: 'director', status: 'active', dashboardScopes: { A: 'editor', B: 'viewer' }, editableDashboardIds: ['A'], capabilities: ['editor'] }] });
+    expect(canAccessDashboard(member, { id: 'A', clientId: 'A' }, 'editor')).toBe(true);
+    expect(canAccessDashboard(member, { id: 'B', clientId: 'A' }, 'editor')).toBe(false);
+    expect(canAccessDashboard(member, { id: 'C', clientId: 'A' }, 'editor')).toBe(false);
   });
 
   it('does not treat selected client as authorization', () => {

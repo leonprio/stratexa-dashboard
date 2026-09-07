@@ -24,7 +24,8 @@ export async function readTableroScope(): Promise<TableroReadScope> {
   if (memberships.length) profile.memberships = [...legacy, ...memberships.map(m => ({
     clientId: m.clientId, role: m.role, status: m.status,
     hierarchyScopes: m.hierarchyScopeKeys || [],
-    dashboardScopes: Object.fromEntries((m.allowedDashboardIds || []).map((id: string) => [id, (m.capabilities || []).includes('editor') ? 'editor' : 'viewer'])),
+    dashboardScopes: Object.fromEntries((m.allowedDashboardIds || []).map((id: string) => [id, (m.capabilities || []).includes('editor') && (m.editableDashboardIds || []).includes(id) ? 'editor' : 'viewer'])),
+    editableDashboardIds: (m.editableDashboardIds || []).filter((id: string) => (m.allowedDashboardIds || []).includes(id)),
     capabilities: (m.capabilities || []).filter((cap: string) => cap !== 'strategy_reader' || m.scopeType === 'tenant'),
   }))];
   const tenants = getAuthorizedClientIds(profile);

@@ -112,6 +112,11 @@ service cloud.firestore {
       return dashboardId in membership.allowedDashboardIds || string(data.get('originalId', '')) in membership.allowedDashboardIds;
     }
 
+    function canonicalEditableDashboardScope(data, dashboardId) {
+      let membership = get(/databases/$(database)/documents/tbl_userMemberships/$(membershipId(data.clientId))).data;
+      return dashboardId in membership.get('editableDashboardIds', []) || string(data.get('originalId', '')) in membership.get('editableDashboardIds', []);
+    }
+
     function canonicalDirectorScope(data) {
       let membership = get(/databases/$(database)/documents/tbl_userMemberships/$(membershipId(data.clientId))).data;
       return membership.role == 'director' && (
@@ -145,7 +150,7 @@ service cloud.firestore {
     function canEditDashboard(data, dashboardId) {
       return hasLegacyPlatformBusinessWriteBridge() || (isTenantUser(data.clientId) && (
         isTenantAdmin(data.clientId) ||
-        (activeCanonicalMembership(data.clientId) && canonicalDashboardScope(data, dashboardId) &&
+        (activeCanonicalMembership(data.clientId) && canonicalDashboardScope(data, dashboardId) && canonicalEditableDashboardScope(data, dashboardId) &&
           'editor' in get(/databases/$(database)/documents/tbl_userMemberships/$(membershipId(data.clientId))).data.capabilities) ||
         (!hasCanonicalMembership(data.clientId) && (dashboardRole(data, dashboardId) == 'Editor' ||
           (dashboardRole(data, dashboardId) == '' && directorScope(data))))
@@ -172,13 +177,18 @@ service cloud.firestore {
       return board.clientId == data.clientId && (isTenantAdmin(data.clientId) ||
         (activeCanonicalMembership(data.clientId) &&
           'plan_editor' in get(/databases/$(database)/documents/tbl_userMemberships/$(membershipId(data.clientId))).data.capabilities &&
-          (canonicalDashboardScope(board, dashboardId) || canonicalDirectorScope(board))));
+          canonicalEditableDashboardScope(board, dashboardId)));
     }
 
     function canManageProfile(data) {
       // Multi-tenant directory administration needs all memberships, not one
       // overlapping tenant. Keep it platform-only until that contract exists.
       return isPlatformAdmin() || (isSafeClientId(data.clientId) && isTenantAdmin(data.clientId));
+    }
+
+    function validEditableDashboardIds(data) {
+      return !('editableDashboardIds' in data) ||
+        (data.editableDashboardIds is list && data.editableDashboardIds.hasOnly(data.allowedDashboardIds));
     }
 
     function validMembership(data) {
@@ -189,6 +199,7 @@ service cloud.firestore {
         data.status in ['active', 'inactive', 'suspended'] &&
         data.scopeType in ['tenant', 'hierarchy', 'dashboard'] &&
         data.allowedDashboardIds is list && data.hierarchyScopeKeys is list &&
+        validEditableDashboardIds(data) &&
         data.capabilities is list && data.schemaVersion == 1 &&
         data.createdBy is string && data.updatedBy is string;
     }

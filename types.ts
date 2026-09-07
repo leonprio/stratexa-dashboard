@@ -234,6 +234,7 @@ export interface TenantMembership {
   status: 'active' | 'inactive' | 'suspended';
   hierarchyScopes?: string[];
   dashboardScopes?: Record<string, 'viewer' | 'editor'>;
+  editableDashboardIds?: string[];
   capabilities?: ('viewer' | 'editor' | 'metadata_editor' | 'plan_editor' | 'strategy_reader')[];
 }
 
