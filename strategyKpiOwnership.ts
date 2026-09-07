@@ -73,13 +73,26 @@ function logicalIdentity(item: any, dashboard: Dashboard): string {
   if (item.semanticKey?.trim()) return `semantic:${item.semanticKey.trim()}`;
   if (item.parentDefinitionId?.trim())
     return `parent:${item.parentDefinitionId.trim()}`;
-  const label = normalizeLogicalKpiLabel(
-    item.indicator || item.name || "",
-  ).replace(
-    /\s+\((COMERCIAL Y VENTAS|LOGISTICA Y TRANSPORTE|OPERACIONES Y ALMACEN)\)$/,
-    "",
-  );
-  return `label:${label || `${dashboard.title}:${item.id}`}`;
+  const label = normalizeLogicalKpiLabel(item.indicator || item.name || "");
+  const normalizedArea = normalizeLogicalKpiLabel(dashboard.area || "");
+  const knownPresentationSuffixes = [
+    normalizedArea,
+    "COMERCIAL Y VENTAS",
+    "LOGISTICA Y TRANSPORTE",
+    "OPERACIONES Y ALMACEN",
+    "RESONANCIA CIUDADANA",
+    "IMPACTO Y VALOR",
+    "SOSTENIBILIDAD",
+    "PROCESOS",
+    "CAPACIDADES",
+  ].filter(Boolean);
+  let logicalLabel = label;
+  let suffix = knownPresentationSuffixes.find((value) => logicalLabel.endsWith(` (${value})`));
+  while (suffix) {
+    logicalLabel = logicalLabel.slice(0, -(` (${suffix})`).length).trim();
+    suffix = knownPresentationSuffixes.find((value) => logicalLabel.endsWith(` (${value})`));
+  }
+  return `label:${logicalLabel || `${dashboard.title}:${item.id}`}`;
 }
 
 export function buildLogicalKpiCatalog(
@@ -150,10 +163,36 @@ export function resolveStrategicKpiOwnership(
   const ownerByOC = new Map(
     contributions.map((oc) => [oc.id, oc.primaryStrategicObjectiveId]),
   );
+  // Older releases persisted assignments against a synthetic aggregate id.
+  // When that aggregate is not part of the current view, retain the alias
+  // relationship through its stable synthetic item id, never by label.
+  const syntheticByItemId = new Map<string, StrategicKpiCandidate>();
+  const ambiguousSyntheticItemIds = new Set<string>();
+  candidates.forEach((candidate) => candidate.physicalAliases.forEach((alias) => {
+    if (!alias.dashboard.isAggregate || Number(alias.item.id) >= 0) return;
+    const key = String(alias.item.id);
+    if (ambiguousSyntheticItemIds.has(key)) return;
+    const previous = syntheticByItemId.get(key);
+    if (previous && previous.identity !== candidate.identity) {
+      syntheticByItemId.delete(key);
+      ambiguousSyntheticItemIds.add(key);
+    } else if (!previous) {
+      syntheticByItemId.set(key, candidate);
+    }
+  }));
+  const resolveAssignmentCandidate = (assignment: ContributionIndicatorAssignment) => {
+    const exact = byPhysical.get(`${assignment.dashboardId}_${assignment.itemId}`);
+    const candidate = exact || (String(assignment.dashboardId).startsWith("agg-") && Number(assignment.itemId) < 0
+      ? syntheticByItemId.get(String(assignment.itemId))
+      : undefined);
+    if (!candidate) return undefined;
+    const tenant = candidate.dashboard.clientId?.trim().toUpperCase();
+    return tenant && tenant !== assignment.clientId.trim().toUpperCase() ? undefined : candidate;
+  };
   const ownershipByCanonicalKpi = new Map<string, StrategicKpiOwnership>();
   const logicalKpiConflicts = new Map<string, Set<string>>();
   assignments.forEach((a) => {
-    const candidate = byPhysical.get(`${a.dashboardId}_${a.itemId}`);
+    const candidate = resolveAssignmentCandidate(a);
     if (!candidate) return;
     const strategicObjectiveId = a.contributionObjectiveId
       ? ownerByOC.get(a.contributionObjectiveId)

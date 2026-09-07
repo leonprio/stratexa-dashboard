@@ -25,3 +25,22 @@ it('renders only physically and canonically free KPIs as available', () => {
   expect(within(available).getByText('APLICACIONES DESARROLLADAS')).toBeInTheDocument();
   expect(within(available).getByText('ACTIVIDADES ESTRATÉGICAS')).toBeInTheDocument();
 });
+
+it('does not expose duplicate aggregate aliases when all ten LVP KPI are assigned', () => {
+  const labels = [
+    'DIOCESIS CON COORDINACION ACTIVA', 'LIDERAZGOS JUVENILES ACTIVOS',
+    'LAICOS CON PARTICIPACION PUBLICA VERIFICABLE', 'PARTICIPANTES FORMADOS EN PSC',
+    'ACCIONES CONJUNTAS DE ARTICULACION', 'JOVENES EN RUTA ACTIVA DE LIDERAZGO',
+    'COMPROMISOS ESTRATEGICOS CUMPLIDOS', 'INDICE DE IDENTIDAD LAICAL PSC',
+    'ALIANZAS ACTIVAS', 'NODOS ACTIVOS',
+  ];
+  const dashboard = { id: 'lvp-operativo', title: 'Impacto y Valor', area: 'Impacto y Valor', items: labels.map((label, index) => kpi(String(index + 1), label)) } as any;
+  const summary = { id: 'agg-GENERAL-2026', title: 'Consolidado', area: 'Sostenibilidad', isAggregate: true, items: labels.map((label, index) => kpi(String(-100 - index), `${label} (RESONANCIA CIUDADANA) (Sostenibilidad)`)) } as any;
+  const objective = { id: 'OE01', code: 'OE01', title: 'OE01', perspectiveId: 'FIN' } as any;
+  const assignments = labels.map((_, index) => ({ id: `a${index}`, strategicObjectiveId: 'OE01', dashboardId: 'lvp-operativo', itemId: String(index + 1), clientId: 'LVP' })) as any;
+  const ownership = resolveStrategicKpiOwnership([dashboard, summary], [objective], [], assignments);
+  render(<OEDetailModal objective={objective} perspective={{ id: 'FIN', name: 'Fin' } as any} allObjectives={[objective]} relationships={[]} contributions={[]} assignments={assignments} dashboards={[dashboard, summary]} selectedClientId="LVP" currentUser={{ globalRole: GlobalUserRole.Admin } as any} onRefreshData={jest.fn()} onClose={jest.fn()} currentObjectiveAlignedKpis={ownership.kpisByStrategicObjective.get('OE01')} occupiedKpiIdentities={ownership.occupiedCanonicalKpiIdentities} occupiedPhysicalKpiKeys={ownership.occupiedPhysicalKpiKeys} />);
+  fireEvent.click(screen.getByRole('button', { name: 'ALINEAR INDICADORES' }));
+  const available = screen.getByText('INDICADORES DISPONIBLES PARA ALINEAR').parentElement!;
+  expect(within(available).queryAllByRole('checkbox')).toHaveLength(0);
+});

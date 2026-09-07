@@ -62,4 +62,23 @@ describe('strategic KPI physical and canonical availability', () => {
     expect(getAvailableStrategicKpis(direct).map(kpi => kpi.identity)).toEqual(['semantic:free']);
     expect(getAvailableStrategicKpis(viaContribution).map(kpi => kpi.identity)).toEqual(['semantic:free']);
   });
+
+  it('reconciles a persisted synthetic aggregate alias with its physical KPI', () => {
+    const physical = { id: 'lvp-board', clientId: 'LVP', title: 'Sostenibilidad', items: [item('alianzas', 'Alianzas activas')] } as any;
+    const aggregate = { id: 'agg-GENERAL-2026', clientId: 'LVP', title: 'GENERAL', isAggregate: true, items: [{ ...physical.items[0], id: -101, indicator: 'Alianzas activas (Operaciones y Almacén)' }] } as any;
+    const result = resolveStrategicKpiOwnership([physical, aggregate], [{ id: 'oe-lvp-02' }, { id: 'oe-lvp-01' }] as any, [], [{ id: 'a1', clientId: 'LVP', strategicObjectiveId: 'oe-lvp-02', dashboardId: 'agg-GENERAL-2026', itemId: -101 }]);
+    expect(result.kpisByStrategicObjective.get('oe-lvp-02')?.map(kpi => kpi.identity)).toEqual(['label:ALIANZAS ACTIVAS']);
+    expect(getAvailableStrategicKpis(result).map(kpi => kpi.identity)).not.toContain('label:ALIANZAS ACTIVAS');
+  });
+
+  it('leaves no available KPI when ten synthetic LVP assignments occupy ten logical KPIs', () => {
+    const physical = { id: 'lvp-board', clientId: 'LVP', title: 'Operativo LVP', items: Array.from({ length: 10 }, (_, index) => item(`kpi-${index + 1}`, `LVP KPI ${index + 1}`)) } as any;
+    const aggregate = { id: 'agg-GENERAL-2026', clientId: 'LVP', title: 'GENERAL', isAggregate: true, items: physical.items.map((source: any, index: number) => ({ ...source, id: -101 - index })) } as any;
+    const assignments = aggregate.items.map((source: any, index: number) => ({ id: `a-${index + 1}`, clientId: 'LVP', strategicObjectiveId: `oe-${index + 1}`, dashboardId: aggregate.id, itemId: source.id }));
+    const result = resolveStrategicKpiOwnership([physical, aggregate], assignments.map((a: any) => ({ id: a.strategicObjectiveId })) as any, [], assignments);
+    expect(result.ownershipByCanonicalKpi.size).toBe(10);
+    expect(getAvailableStrategicKpis(result)).toHaveLength(0);
+    const afterUnassigningOne = resolveStrategicKpiOwnership([physical, aggregate], [], [], assignments.slice(1));
+    expect(getAvailableStrategicKpis(afterUnassigningOne)).toHaveLength(1);
+  });
 });
