@@ -27,7 +27,6 @@ import { saveOperationalAssignmentsForOC } from './contributionAssignmentPersist
 
 import {
   StrategicPerspective,
-  DEFAULT_PERSPECTIVES,
   StrategicObjective,
   AreaStrategyConfig,
   ContributionObjective,
@@ -85,10 +84,6 @@ export const strategyService = {
     const ref = collection(db, PERSPECTIVES_COLLECTION);
     const q = query(ref, where('clientId', '==', targetClient));
     const snap = await getDocs(q);
-
-    if (snap.empty) {
-      return DEFAULT_PERSPECTIVES;
-    }
 
     const perspectives = snap.docs.map(d => ({ id: d.id, ...d.data() } as StrategicPerspective));
     return perspectives.sort((a, b) => a.order - b.order);

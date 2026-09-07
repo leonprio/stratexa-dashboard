@@ -100,7 +100,7 @@ export default function App() {
   const [user, setUser] = useState<FirebaseUser | null>(null);
   const [userProfile, setUserProfile] = useState<User | null>(null);
   // 🛡️ v9.4.22-CHART-UX-CLARITY
-  const VERSION_LABEL = "v9.5.5-CLIENT-SELECTION";
+  const VERSION_LABEL = "v9.5.6-CLIENT-STRATEGY-ISOLATION";
   const SHIELD_ID = "GOLD MASTER";
   const [activeAdminSection, setActiveAdminSection] =
     useState<AdminSection>("none");
@@ -217,16 +217,28 @@ export default function App() {
   >([]);
 
   const strategyRequestIdRef = useRef(0);
+  const hasStrategyForSelectedClient = objectives.some(
+    (objective) =>
+      objective.clientId?.trim().toUpperCase() ===
+      selectedClientId.trim().toUpperCase(),
+  );
 
   // Carga diferida condicional (Feature Flag OFF = 0 llamadas a Firebase)
   const loadStrategyData = useCallback(async () => {
+    const currentRequestId = ++strategyRequestIdRef.current;
     if (
       !settings?.enableStrategyMap ||
       !clientSelectionReady ||
       !selectedClientId
-    )
+    ) {
+      setPerspectives([]);
+      setObjectives([]);
+      setAreaConfigs([]);
+      setContributionObjectives([]);
+      setAssignments([]);
+      setRelationships([]);
       return;
-    const currentRequestId = ++strategyRequestIdRef.current;
+    }
     try {
       const [pList, oList, acList, coList, asgnList, relList] =
         await Promise.all([
@@ -247,6 +259,14 @@ export default function App() {
       }
     } catch (err) {
       console.error("Error al cargar datos estratégicos:", err);
+      if (currentRequestId === strategyRequestIdRef.current) {
+        setPerspectives([]);
+        setObjectives([]);
+        setAreaConfigs([]);
+        setContributionObjectives([]);
+        setAssignments([]);
+        setRelationships([]);
+      }
     }
   }, [settings?.enableStrategyMap, clientSelectionReady, selectedClientId]);
 
@@ -3211,6 +3231,7 @@ Esto corregirá cualquier inconsistencia en colores (ej. Amarillo vs Rojo).`)
                 contributions={contributionObjectives}
                 assignments={assignments}
                 areaConfigs={areaConfigs}
+                hasStrategyForSelectedClient={hasStrategyForSelectedClient}
                 requestedItemId={
                   pendingKpiNavigation &&
                   String(pendingKpiNavigation.dashboardId) ===
