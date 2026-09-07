@@ -2506,19 +2506,6 @@ export default function App() {
         </div>
 
         <div className="flex flex-wrap items-center justify-center md:justify-end gap-2 scale-[0.85] origin-right">
-          <div className="flex bg-black/40 p-0.5 rounded-xl border border-white/5">
-            <select
-              value={selectedYear}
-              onChange={(e) => setSelectedYear(parseInt(e.target.value))}
-              className="bg-transparent text-white px-3 py-1.5 rounded-lg text-xs font-black uppercase tracking-widest outline-none border-none"
-            >
-              {[2023, 2024, 2025, 2026, 2027].map((y) => (
-                <option key={y} value={y} className="bg-slate-900">
-                  {y}
-                </option>
-              ))}
-            </select>
-          </div>
           {(isGlobalAdmin || userProfile?.canManageKPIs) && (
             <nav className="flex items-center gap-0.5 bg-black/40 p-0.5 rounded-xl border border-white/5 overflow-x-auto">
               {isGlobalAdmin && (
@@ -2632,6 +2619,7 @@ export default function App() {
           <div className="flex items-center gap-2">
             {(hasUniversalClientContext || availableManagedClients.length > 1) && (
               <select
+                aria-label="Cliente"
                 value={clientSelectionReady ? selectedClientId : ""}
                 disabled={!clientSelectionReady}
                 onChange={(e) => {

@@ -105,7 +105,7 @@ describe('authenticated app shell runtime bridge', () => {
         { clientId: 'B', role: 'standard_user', status: 'active', dashboardScopes: {} },
       ],
     }) });
-    const selector = screen.getAllByRole('combobox')[1];
+    const selector = screen.getByRole('combobox', { name: /cliente/i });
     expect(selector).toHaveValue('A');
     await act(async () => { fireEvent.change(selector, { target: { value: 'B' } }); });
     await waitFor(() => expect(firebaseService.getDashboards).toHaveBeenCalledWith('B', expect.any(Number)));
@@ -129,9 +129,7 @@ describe('authenticated app shell runtime bridge', () => {
     }) });
 
     await waitFor(() => {
-      const selectors = screen.getAllByRole('combobox');
-      expect(selectors.length).toBeGreaterThanOrEqual(2);
-      const clientSelect = selectors[1];
+      const clientSelect = screen.getByRole('combobox', { name: /cliente/i });
       expect(clientSelect).not.toBeDisabled();
       expect(screen.getByRole('option', { name: 'Tenant A' })).toBeInTheDocument();
       expect(screen.getByRole('option', { name: 'Tenant B' })).toBeInTheDocument();
