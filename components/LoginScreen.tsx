@@ -2,10 +2,9 @@ import React, { useState } from 'react';
 
 interface LoginScreenProps {
   onLogin: (email: string, password: string) => Promise<boolean>;
-  versionLabel?: string;
 }
 
-export const LoginScreen = ({ onLogin, versionLabel }: LoginScreenProps) => {
+export const LoginScreen = ({ onLogin }: LoginScreenProps) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -114,11 +113,6 @@ export const LoginScreen = ({ onLogin, versionLabel }: LoginScreenProps) => {
           <p className="text-slate-600 text-[9px] font-bold uppercase tracking-widest">
             © {new Date().getFullYear()} STRATEXA IAPRIORI • Business Intelligence System
           </p>
-          {versionLabel && (
-            <p className="text-slate-700 text-[8px] font-black tracking-[0.2em] uppercase mt-2">
-              ENGINE {versionLabel}
-            </p>
-          )}
         </footer>
       </div>
     </div>

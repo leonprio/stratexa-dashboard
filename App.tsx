@@ -100,7 +100,7 @@ export default function App() {
   const [user, setUser] = useState<FirebaseUser | null>(null);
   const [userProfile, setUserProfile] = useState<User | null>(null);
   // 🛡️ v9.4.22-CHART-UX-CLARITY
-  const VERSION_LABEL = "v9.5.3-CLIENT-SELECTION";
+  const VERSION_LABEL = "v9.5.5-CLIENT-SELECTION";
   const SHIELD_ID = "GOLD MASTER";
   const [activeAdminSection, setActiveAdminSection] =
     useState<AdminSection>("none");
@@ -2451,7 +2451,7 @@ export default function App() {
           {/* Redundant header removed per user request */}
           <div className="bg-slate-900/40 backdrop-blur-3xl border border-white/5 rounded-[2rem] p-10 relative overflow-hidden">
             <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-cyan-500/50 to-transparent"></div>
-            <LoginScreen onLogin={handleLogin} versionLabel={VERSION_LABEL} />
+            <LoginScreen onLogin={handleLogin} />
           </div>
         </div>
       </div>
@@ -3196,7 +3196,7 @@ Esto corregirá cualquier inconsistencia en colores (ej. Amarillo vs Rojo).`)
                   )}
 
                 {/* 🛡️ NIVEL ACTUAL */}
-                <span className="text-white border-b-2 border-cyan-500/80 pb-0.5 font-black tracking-tight drop-shadow-[0_0_8px_rgba(34,211,238,0.3)]">
+                <span className="text-white shrink-0 border-b-2 border-cyan-500/80 pb-0.5 font-black tracking-tight drop-shadow-[0_0_8px_rgba(34,211,238,0.3)]">
                   {selectedDashboard.title}
                 </span>
               </div>
@@ -3295,14 +3295,14 @@ Esto corregirá cualquier inconsistencia en colores (ej. Amarillo vs Rojo).`)
                     🛠️ Gestión KPI Habilitada
                   </span>
                 )}
-                <span className="text-slate-600 ml-4 border-l border-white/5 pl-4 inline-flex items-center gap-1">
-                  {VERSION_LABEL} • {SHIELD_ID} • MULTI-APP ISOLATION{" "}
-                  {isGlobalAdmin && (
+                {isGlobalAdmin && (
+                  <span className="text-slate-600 ml-4 border-l border-white/5 pl-4 inline-flex items-center gap-1">
+                    {VERSION_LABEL} • {SHIELD_ID} • MULTI-APP ISOLATION{" "}
                     <span className="text-[8px] bg-cyan-500/10 text-cyan-400 px-1.5 py-0.5 rounded ml-1 animate-pulse border border-cyan-500/30">
                       SHIELD-TBL ACTIVE (DB LOCK)
                     </span>
-                  )}
-                </span>
+                  </span>
+                )}
               </p>
             </div>
           </div>
