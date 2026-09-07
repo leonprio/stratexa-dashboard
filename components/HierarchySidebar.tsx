@@ -330,12 +330,12 @@ const HierarchySidebar: React.FC<HierarchySidebarProps> = React.memo(({
         });
 
         // 🛡️ Agregar el único agregado global al inicio
-        // 🛡️ v7.8.23: REGLA DE AISLAMIENTO — Solo mostrar SINTESIS GLOBAL si eres Admin Global (Developer) 
-        // y NO tienes un supergrupo asignado que ya cumpla esa función para ti.
+        // 🛡️ REGLA DE LECTURA: mostrar el consolidado a cualquier usuario
+        // con más de un tablero operativo autorizado del cliente actual.
         const globalAgg = dashboards.find(d => String(d.id).includes('agg-global-total'));
         const hasSpecificSuperDirectorAccess = superDirectors.length > 0;
 
-        if (globalAgg && isGlobalAdmin && !hasSpecificSuperDirectorAccess && realDashboards.length > 1 && availableAreas.length > 1) {
+        if (globalAgg && !hasSpecificSuperDirectorAccess && realDashboards.length > 1) {
             const globalItems = realDashboards.flatMap(d => d.items || []);
             const globalMetrics = getMetricsForItems(globalItems);
             nodes.unshift({

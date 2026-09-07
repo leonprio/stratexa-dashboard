@@ -100,7 +100,7 @@ export default function App() {
   const [user, setUser] = useState<FirebaseUser | null>(null);
   const [userProfile, setUserProfile] = useState<User | null>(null);
   // 🛡️ v9.4.22-CHART-UX-CLARITY
-  const VERSION_LABEL = "v9.5.7-GRANULAR-DASHBOARD-SCOPE";
+  const VERSION_LABEL = "v9.5.8-LVP-CONSOLIDATED-KPI-SCOPE";
   const SHIELD_ID = "GOLD MASTER";
   const [activeAdminSection, setActiveAdminSection] =
     useState<AdminSection>("none");
@@ -1473,27 +1473,19 @@ export default function App() {
           }
         });
 
-        const shouldCreateGlobalAgg =
-          (isGlobalAdmin && selectedClientId && selectedClientId !== "all") ||
-          isDirector;
+        // El consolidado es una vista de lectura sobre todos los tableros
+        // autorizados del cliente, no una capacidad de edición ni un privilegio
+        // exclusivo de Director/Admin.
+        const readableOperationalBoards = enrichedRows.filter(
+          (r) => !String(r.id).startsWith("agg-") && r.id !== -1,
+        );
+        const shouldCreateGlobalAgg = readableOperationalBoards.length > 1;
 
         if (shouldCreateGlobalAgg) {
-          const allRelevantBoards = enrichedRows.filter((r) => {
-            if (isGlobalAdmin) return true;
-            const rGroupNorm = normalizeGroupName(r.group || "");
-            const myTitleNorm = normalizeGroupName(
-              userProfile?.directorTitle || "",
-            );
-            const matchesSubGroup = userProfile?.subGroups?.some(
-              (sg) => normalizeGroupName(sg) === rGroupNorm,
-            );
-            if (matchesSubGroup) return true;
-            if (rGroupNorm === myTitleNorm) return true;
-            return (
-              !!userProfile?.dashboardAccess[r.id] ||
-              (r.originalId && !!userProfile?.dashboardAccess[r.originalId])
-            );
-          });
+          // `enrichedRows` ya proviene de fetchDashboardsForYear, que aplica
+          // el alcance de lectura canónico. No volver a filtrar por
+          // `dashboardAccess` legacy ni por `editableDashboardIds`.
+          const allRelevantBoards = readableOperationalBoards;
 
           if (allRelevantBoards.length > 0) {
             const globalAgg = calculateAggregateDashboard(
