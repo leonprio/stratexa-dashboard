@@ -65,6 +65,7 @@ interface DashboardViewProps {
   contributions?: ContributionObjective[];
   assignments?: ContributionIndicatorAssignment[];
   areaConfigs?: AreaStrategyConfig[];
+  hasStrategyForSelectedClient?: boolean;
   requestedItemId?: number | string | null;
   onNavigateToKpi?: (
     dashboardId: number | string,
@@ -116,6 +117,7 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(
     contributions = [],
     assignments = [],
     areaConfigs = [],
+    hasStrategyForSelectedClient = false,
     requestedItemId,
     requestedNavigationSource = "objectives",
     requestedActionPlanId,
@@ -175,6 +177,12 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(
     const [activeView, setActiveView] = useState<
       "dashboard" | "objectives" | "reports" | "control"
     >("dashboard");
+    useEffect(() => {
+      if (!hasStrategyForSelectedClient && activeView === "objectives") {
+        setActiveView("dashboard");
+        setReturnContext(null);
+      }
+    }, [activeView, hasStrategyForSelectedClient]);
     const [returnContext, setReturnContext] = useState<
       "objectives" | "areas" | "contribution" | "plans" | "control" | null
     >(null);
@@ -573,7 +581,7 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(
                   <span>📊</span>{" "}
                   <span className="hidden sm:inline">Tablero</span>
                 </button>
-                <button
+                {hasStrategyForSelectedClient && <button
                   onClick={() => setActiveView("objectives")}
                   aria-label="Ver Objetivos Estratégicos"
                   title="Lectura estratégica"
@@ -581,7 +589,7 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(
                 >
                   <span>🎯</span>{" "}
                   <span className="hidden sm:inline">Objetivos</span>
-                </button>
+                </button>}
                 <button
                   onClick={() => setActiveView("reports")}
                   aria-label="Ver Centro de Reportes"

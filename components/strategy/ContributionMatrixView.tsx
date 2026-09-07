@@ -19,7 +19,6 @@ import {
   ContributionObjective,
   ContributionIndicatorAssignment,
   StrategicObjectiveRelationship,
-  DEFAULT_PERSPECTIVES,
   deriveAreaCodeSuggestion,
   resolveAreaStrategyConfig,
 } from "../../strategyTypes";
@@ -64,7 +63,7 @@ export interface ContributionMatrixViewProps {
  * - Mapeo de Aliases: Resuelve columnas y OCs utilizando resolveAreaStrategyConfig.
  */
 export const ContributionMatrixView: React.FC<ContributionMatrixViewProps> = ({
-  perspectives = DEFAULT_PERSPECTIVES,
+  perspectives = [],
   objectives = [],
   areaConfigs = [],
   contributionObjectives = [],
@@ -112,9 +111,7 @@ export const ContributionMatrixView: React.FC<ContributionMatrixViewProps> = ({
     return activeAreas.filter((a) => a === selectedAreaFilter);
   }, [activeAreas, selectedAreaFilter]);
 
-  // Usar perspectivas pasadas o fallback a las 4 por defecto
-  const activePerspectives =
-    perspectives.length > 0 ? perspectives : DEFAULT_PERSPECTIVES;
+  const activePerspectives = perspectives;
 
   // Resolver KPIs vinculados para un OC específico (Solo Lectura)
   const getLinkedKpisForOC = (ocId: string) => {

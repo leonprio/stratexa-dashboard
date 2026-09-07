@@ -52,6 +52,11 @@ jest.mock('./firebase', () => ({
 
 describe('v9.5.1 Strategy Map & Cause-Effect Relationships Unit Tests', () => {
 
+  it('returns an empty perspective set for a tenant without strategy configuration', async () => {
+    mockGetDocs.mockResolvedValueOnce({ empty: true, docs: [] });
+    await expect(strategyService.getPerspectives('IPS')).resolves.toEqual([]);
+  });
+
   const samplePerspectives: StrategicPerspective[] = [
     { id: 'FINANCIERA', name: 'Financiera', order: 1, color: '#10B981', clientId: 'IPS' },
     { id: 'CLIENTE', name: 'Cliente', order: 2, color: '#3B82F6', clientId: 'IPS' },
