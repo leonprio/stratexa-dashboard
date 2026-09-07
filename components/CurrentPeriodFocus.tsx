@@ -62,6 +62,17 @@ export interface RescheduledKpiCommitment extends PendingKpiActivity {
   scheduledPeriodIndex: number;
   scheduledPeriodLabel: string;
 }
+
+export const compareCalendarPeriods = (
+  leftYear: number,
+  leftPeriodIndex: number,
+  rightYear: number,
+  rightPeriodIndex: number,
+): -1 | 0 | 1 => {
+  if (leftYear !== rightYear) return leftYear < rightYear ? -1 : 1;
+  if (leftPeriodIndex === rightPeriodIndex) return 0;
+  return leftPeriodIndex < rightPeriodIndex ? -1 : 1;
+};
 export const deriveRescheduledKpiCommitments = (
   activityConfig: DashboardItem["activityConfig"],
   periodIndex: number,
@@ -279,9 +290,9 @@ export const derivePendingKpiActivities = (
                 : Number(activity.completedCount) > 0
                   ? ("ATENCIÓN" as const)
                   : ("PENDIENTE" as const)
-              : scheduled < currentIndex
+              : compareCalendarPeriods(scheduledYear, scheduled, year, currentIndex) < 0
                 ? ("ATRASADA" as const)
-                : scheduled === currentIndex
+                : compareCalendarPeriods(scheduledYear, scheduled, year, currentIndex) === 0
                   ? ("COMPROMISO ACTUAL" as const)
                   : ("REPROGRAMADA" as const),
         };

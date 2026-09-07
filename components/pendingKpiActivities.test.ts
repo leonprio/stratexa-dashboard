@@ -25,7 +25,7 @@ describe('pending KPI activities', () => {
     ]);
   });
 
-  it('does not classify future periods or completed activities, and supports weekly labels', () => {
+  it('excludes the current period and future periods, and supports weekly labels', () => {
     const activityConfig = {
       3: [{ id: 'future', label: 'Futura', targetCount: 1, completedCount: 0 }],
       4: [{ id: 'partial', label: 'Parcial', targetCount: 3, completedCount: 1 }],
@@ -34,7 +34,6 @@ describe('pending KPI activities', () => {
 
     expect(derivePendingKpiActivities(activityConfig, 4, true, 2026)).toEqual([
       { id: '3:future', sourceActivityId: 'future', label: 'Futura', periodIndex: 3, periodLabel: 'S4 · 2026', commitmentLabel: undefined, rescheduleHistory: undefined, status: 'ATRASADA' },
-      { id: '4:partial', sourceActivityId: 'partial', label: 'Parcial', periodIndex: 4, periodLabel: 'S5 · 2026', commitmentLabel: undefined, rescheduleHistory: undefined, status: 'ATENCIÓN' },
     ]);
   });
 });

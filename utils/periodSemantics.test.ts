@@ -1,8 +1,18 @@
 import { isMonthlyPeriodOverdue } from './compliance';
-import { derivePendingKpiActivities } from '../components/CurrentPeriodFocus';
+import { compareCalendarPeriods, derivePendingKpiActivities } from '../components/CurrentPeriodFocus';
 
 describe('semántica canónica de periodos vencidos', () => {
   const activity = { id: 'a1', label: 'Captura', targetCount: 1, completedCount: 0 };
+
+  it.each([
+    ['agosto 2026 -> enero 2027 en septiembre 2026', 2027, 0, 2026, 8, 1],
+    ['agosto 2026 -> julio 2026 en septiembre 2026', 2026, 6, 2026, 8, -1],
+    ['agosto 2026 -> septiembre 2026 en septiembre 2026', 2026, 8, 2026, 8, 0],
+    ['diciembre 2026 -> enero 2027 en diciembre 2026', 2027, 0, 2026, 11, 1],
+    ['enero 2027 en febrero 2027', 2027, 0, 2027, 1, -1],
+  ])('%s compara año y período conjuntamente', (_label, scheduledYear, scheduledIndex, currentYear, currentIndex, expected) => {
+    expect(compareCalendarPeriods(scheduledYear, scheduledIndex, currentYear, currentIndex)).toBe(expected);
+  });
 
   it('clasifica anterior como vencido y el periodo actual como vigente', () => {
     const reference = new Date('2026-09-15T12:00:00Z');
