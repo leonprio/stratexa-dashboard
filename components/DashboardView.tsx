@@ -571,12 +571,12 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(
                 </span>
               </button>
 
-              <div className="flex bg-slate-900/95 p-0.5 rounded-xl border border-white/10 shadow-2xl backdrop-blur-xl">
+              <div className="flex w-full flex-wrap bg-slate-900/95 p-0.5 rounded-xl border border-white/10 shadow-2xl backdrop-blur-xl">
                 <button
                   onClick={() => setActiveView("dashboard")}
                   aria-label="Ver Tablero de Indicadores"
                   title="Indicadores y resultados"
-                  className={`px-4 sm:px-6 py-2 rounded-xl text-[9px] font-extrabold uppercase tracking-widest transition-all duration-500 flex items-center gap-2 ${activeView === "dashboard" ? "bg-cyan-600 text-white shadow-[0_0_20px_rgba(8,145,178,0.5)]" : "text-slate-500 hover:text-slate-300 hover:bg-white/5"}`}
+                  className={`min-h-[44px] flex-1 px-3 sm:px-6 py-2 rounded-xl text-[9px] font-extrabold uppercase tracking-widest transition-all duration-500 flex items-center justify-center gap-2 ${activeView === "dashboard" ? "bg-cyan-600 text-white shadow-[0_0_20px_rgba(8,145,178,0.5)]" : "text-slate-500 hover:text-slate-300 hover:bg-white/5"}`}
                 >
                   <span>📊</span>{" "}
                   <span className="hidden sm:inline">Tablero</span>
@@ -585,7 +585,7 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(
                   onClick={() => setActiveView("objectives")}
                   aria-label="Ver Objetivos Estratégicos"
                   title="Lectura estratégica"
-                  className={`px-4 sm:px-6 py-2 rounded-xl text-[9px] font-extrabold uppercase tracking-widest transition-all duration-500 flex items-center gap-2 ${activeView === "objectives" ? "bg-violet-600 text-white" : "text-slate-500 hover:text-slate-300 hover:bg-white/5"}`}
+                  className={`min-h-[44px] flex-1 px-3 sm:px-6 py-2 rounded-xl text-[9px] font-extrabold uppercase tracking-widest transition-all duration-500 flex items-center justify-center gap-2 ${activeView === "objectives" ? "bg-violet-600 text-white" : "text-slate-500 hover:text-slate-300 hover:bg-white/5"}`}
                 >
                   <span>🎯</span>{" "}
                   <span className="hidden sm:inline">Objetivos</span>
@@ -594,7 +594,7 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(
                   onClick={() => setActiveView("reports")}
                   aria-label="Ver Centro de Reportes"
                   title="Síntesis ejecutiva"
-                  className={`px-4 sm:px-6 py-2 rounded-xl text-[9px] font-extrabold uppercase tracking-widest transition-all duration-500 flex items-center gap-2 ${activeView === "reports" ? "bg-indigo-600 text-white shadow-[0_0_20px_rgba(79,70,229,0.5)]" : "text-slate-500 hover:text-slate-300 hover:bg-white/5"}`}
+                  className={`min-h-[44px] flex-1 px-3 sm:px-6 py-2 rounded-xl text-[9px] font-extrabold uppercase tracking-widest transition-all duration-500 flex items-center justify-center gap-2 ${activeView === "reports" ? "bg-indigo-600 text-white shadow-[0_0_20px_rgba(79,70,229,0.5)]" : "text-slate-500 hover:text-slate-300 hover:bg-white/5"}`}
                 >
                   <span>📑</span>{" "}
                   <span className="hidden sm:inline">Reporte</span>

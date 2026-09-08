@@ -95,12 +95,19 @@ export const firebaseService = {
 
     getActionPlansForIndicator: async (indicatorId: number | string, clientId?: string): Promise<ActionPlan[]> => {
         if (!clientId) throw new Error('Cliente requerido para planes.');
+        if (typeof process !== 'undefined' && process.env.NODE_ENV !== 'production') {
+            console.debug('[DEV_TIMING] PLANS_START', { indicatorId, clientId });
+        }
         const tenant = clientId.trim().toUpperCase();
         const boards = await firebaseService.getDashboards(tenant);
         const snapshots = await Promise.all(boards.map(board => getDocs(query(collection(db, ACTION_PLANS_COLLECTION),
             where('clientId', '==', tenant), where('dashboardId', '==', board.id), where('indicatorId', '==', indicatorId)))));
-        return [...new Map(snapshots.flatMap(s => s.docs.map(d => [d.id, { ...d.data(), id: d.id } as ActionPlan] as const))).values()]
+        const plans = [...new Map(snapshots.flatMap(s => s.docs.map(d => [d.id, { ...d.data(), id: d.id } as ActionPlan] as const))).values()]
             .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+        if (typeof process !== 'undefined' && process.env.NODE_ENV !== 'production') {
+            console.debug('[DEV_TIMING] PLANS_END', { indicatorId, count: plans.length });
+        }
+        return plans;
     },
 
     getActiveActionPlansForDashboard: async (dashboardId: number | string, clientId?: string): Promise<ActionPlan[]> => {
@@ -307,7 +314,7 @@ export const firebaseService = {
         const scope = await readTableroScope();
         const tenants = requestedTenants(scope, clientId);
         // Global business catalogue is an explicit platform-only branch.
-        const snapshots = await Promise.all(tenants.flatMap(tenant => dashboardQueryConstraints(scope, tenant)
+        const snapshots = await Promise.all(tenants.flatMap(tenant => dashboardQueryConstraints(scope, tenant, year)
                 .map(constraints => getDocs(query(dRef, ...constraints)))));
         const documents = [...new Map(snapshots.flatMap(s => s.docs.map(d => [d.id, d] as const))).values()];
 

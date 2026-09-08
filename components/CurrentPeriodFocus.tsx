@@ -881,7 +881,7 @@ export const CurrentPeriodFocus: React.FC<CurrentPeriodFocusProps> = ({
             </h2>
           </div>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex w-full flex-wrap items-center gap-3">
           {/* 🛡️ MASTER TOGGLE: MODO ACTIVIDADES */}
           <button
             onClick={() => setActivityMode(!activityMode)}
@@ -907,7 +907,7 @@ export const CurrentPeriodFocus: React.FC<CurrentPeriodFocusProps> = ({
             <button
               onClick={handleQuickSave}
               disabled={isSaving}
-              className={`
+            className={`w-full sm:w-auto min-h-[44px]
                                 group relative flex items-center gap-3 px-8 py-4 rounded-2xl transition-all duration-300 font-black uppercase tracking-widest text-[10px]
                                 ${
                                   isSaving

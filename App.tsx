@@ -15,6 +15,85 @@ import {
 } from "firebase/auth";
 import { doc, getDoc, getDocs, collection, query, where, deleteField } from "firebase/firestore";
 
+const isDevRuntime = typeof process !== "undefined"
+  && process.env.NODE_ENV !== "production"
+  && process.env.NODE_ENV !== "test";
+
+const devTiming = (marker: string, details: Record<string, unknown> = {}) => {
+  if (isDevRuntime) {
+    const event = { marker, t: Math.round(performance.now()), details };
+    console.debug(`[DEV_TIMING] ${marker}`, event);
+    if (typeof window !== "undefined") window.dispatchEvent(new CustomEvent("tablero-dev-timing", { detail: event }));
+  }
+};
+
+const DevDiagnosticPanel = () => {
+  const [open, setOpen] = useState(true);
+  const [events, setEvents] = useState<Array<{ marker: string; t: number; details: Record<string, unknown> }>>([]);
+  const [watchdog, setWatchdog] = useState("NONE");
+  const [phase, setPhase] = useState("IDLE");
+  const [startedAt, setStartedAt] = useState<number | null>(null);
+  const [snapshot, setSnapshot] = useState<Record<string, unknown>>({});
+
+  useEffect(() => {
+    if (!isDevRuntime) return;
+    const onTiming = (event: Event) => {
+      const detail = (event as CustomEvent).detail as { marker: string; t: number; details: Record<string, unknown> };
+      setEvents((current) => [...current, detail].slice(-15));
+      setSnapshot((current) => ({ ...current, ...detail.details }));
+      setPhase(detail.marker);
+      if (detail.marker === "LOAD_START") setStartedAt(detail.t);
+      if (detail.marker === "LOAD_WATCHDOG") setWatchdog(`${Number(detail.details.delay ?? 0) / 1000}s`);
+      if (detail.marker === "LOAD_END" || detail.marker === "LOADING_DASHBOARDS_FALSE") setWatchdog("NONE");
+    };
+    window.addEventListener("tablero-dev-timing", onTiming);
+    return () => window.removeEventListener("tablero-dev-timing", onTiming);
+  }, []);
+
+  const copy = async () => {
+    const lines = [
+      `CLIENTE = ${snapshot.client ?? snapshot.clientId ?? "-"}`,
+      `AÑO = ${snapshot.year ?? "-"}`,
+      `LOAD_KEY = ${String(snapshot.loadKey ?? "-").replace(/user\|[^|]+\|?/i, "user|anon|")}`,
+      `FASE_ACTUAL = ${phase}`,
+      `TIEMPO_FASE = ${events.length ? `${((performance.now() - events[events.length - 1].t) / 1000).toFixed(3)}s` : "-"}`,
+      `TIEMPO_TOTAL = ${startedAt ? `${((performance.now() - startedAt) / 1000).toFixed(3)}s` : "-"}`,
+      `DASHBOARDS = ${snapshot.dashboards ?? "-"}`,
+      `ITEM_REQUESTS = ${snapshot.itemRequests ?? "-"}`,
+      `LOAD_CYCLE = ${events.filter((e) => e.marker === "LOAD_START").length}`,
+      `LAST_EVENT = ${phase}`,
+      `WATCHDOG = ${watchdog}`,
+      "EVENTS:",
+      ...events.map((e) => `+${(e.t / 1000).toFixed(3)}s ${e.marker}`),
+    ].join("\n");
+    await navigator.clipboard?.writeText(lines);
+  };
+
+  if (!isDevRuntime) return null;
+  return (
+    <aside className="fixed bottom-2 right-2 z-[100] w-[min(92vw,420px)] max-h-[40vh] overflow-hidden rounded-lg border border-amber-400/60 bg-slate-950/95 text-[10px] font-mono text-amber-100 shadow-2xl">
+      <button className="flex w-full items-center justify-between px-2 py-1 text-left font-bold" onClick={() => setOpen((value) => !value)}>
+        <span>DEV DIAGNÓSTICO · {phase}</span><span>{open ? "−" : "+"}</span>
+      </button>
+      {open && <div className="max-h-[calc(40vh-28px)] overflow-y-auto border-t border-amber-400/30 p-2">
+        <div>CLIENTE = {String(snapshot.client ?? snapshot.clientId ?? "-")}</div>
+        <div>AÑO = {String(snapshot.year ?? "-")}</div>
+        <div>LOAD_KEY = {String(snapshot.loadKey ?? "-").replace(/user\|[^|]+\|?/i, "user|anon|")}</div>
+        <div>FASE_ACTUAL = {phase}</div>
+        <div>TIEMPO_FASE = {events.length ? `${((performance.now() - events[events.length - 1].t) / 1000).toFixed(3)}s` : "-"}</div>
+        <div>TIEMPO_TOTAL = {startedAt ? `${((performance.now() - startedAt) / 1000).toFixed(3)}s` : "-"}</div>
+        <div>DASHBOARDS = {String(snapshot.dashboards ?? "-")}</div>
+        <div>ITEM_REQUESTS = {String(snapshot.itemRequests ?? "-")}</div>
+        <div>LOAD_CYCLE = {events.filter((e) => e.marker === "LOAD_START").length}</div>
+        <div>LAST_EVENT = {phase}</div>
+        <div>WATCHDOG = {watchdog} · PENDIENTE = {phase === "LOAD_END" || phase === "LOADING_DASHBOARDS_FALSE" ? "NONE" : phase}</div>
+        <button className="mt-1 rounded bg-amber-500 px-2 py-1 font-bold text-slate-950" onClick={copy}>COPIAR DIAGNÓSTICO</button>
+        <div className="mt-1 border-t border-amber-400/20 pt-1">{events.map((e, index) => <div key={`${e.t}-${index}`}>+{(e.t / 1000).toFixed(3)}s {e.marker}</div>)}</div>
+      </div>}
+    </aside>
+  );
+};
+
 import { calculateCapture } from "./components/DashboardTabs";
 import { HierarchySidebar } from "./components/HierarchySidebar";
 import { DashboardView } from "./components/DashboardView";
@@ -170,6 +249,7 @@ export default function App() {
     year: number;
   } | null>(null);
   const [loadingDashboards, setLoadingDashboards] = useState<boolean>(false);
+  const lastDashboardLoadKeyRef = useRef<string | null>(null);
   const [settings, setSettings] = useState<SystemSettings | undefined>(
     undefined,
   );
@@ -240,6 +320,7 @@ export default function App() {
       return;
     }
     try {
+      devTiming("STRATEGY_START", { client: selectedClientId });
       const [pList, oList, acList, coList, asgnList, relList] =
         await Promise.all([
           strategyService.getPerspectives(selectedClientId),
@@ -255,7 +336,8 @@ export default function App() {
         setAreaConfigs(acList);
         setContributionObjectives(coList);
         setAssignments(asgnList);
-        setRelationships(relList);
+          setRelationships(relList);
+        devTiming("STRATEGY_END", { client: selectedClientId, objectives: oList.length, assignments: asgnList.length });
       }
     } catch (err) {
       console.error("Error al cargar datos estratégicos:", err);
@@ -620,6 +702,7 @@ export default function App() {
     }
 
     const unsubAuth = onAuthStateChanged(auth, async (u) => {
+      devTiming("AUTH_READY", { authenticated: Boolean(u) });
       setUser(u);
       if (!u) {
         setUser(null);
@@ -664,6 +747,7 @@ export default function App() {
         // 🛡️ RECONCILIACIÓN DE MEMBRESÍAS CANÓNICAS DE PLATAFORMA (v9.5.3)
         // Cargar explícitamente tbl_userMemberships para poblar la autoridad del superadministrador
         if (prof) {
+          devTiming("PROFILE_READY", { role: prof.globalRole || "unknown" });
           try {
             const canonicalSnap = await getDocs(
               query(
@@ -678,6 +762,7 @@ export default function App() {
                 memberships: canonicalList as any,
               };
             }
+            devTiming("MEMBERSHIP_READY", { count: prof?.memberships?.length || 0 });
           } catch (mErr) {
             console.error("Error al cargar membresías canónicas de usuario:", mErr);
           }
@@ -709,8 +794,7 @@ export default function App() {
           const initialContextClient = isUniversalSuperAdmin(prof, u.email)
             ? localStorage.getItem("selectedClientId") || prof.clientId || "main"
             : prof.clientId || "main";
-          const currentSettings = await firebaseService.getSystemSettings(initialContextClient.split(',')[0].trim());
-          setSettings(currentSettings);
+          devTiming("CLIENT_RESOLVED", { hasClient: Boolean(initialContextClient), settingsLoaded: false });
           setStatus("ready");
         } else {
           // 🛡️ NUCLEAR ISOLATION (v11.0.0): BLOQUEO DE ACCESO CRUZADO
@@ -831,7 +915,11 @@ export default function App() {
           : authorizedClients[0];
       }
 
+      const loadKey = `${user?.uid || "anonymous"}|${target || "none"}|${year}`;
+      devTiming("LOAD_START", { loadKey: loadKey.replace(/[^|]+(?=\|)/, "user") });
+      devTiming("DASHBOARD_QUERY_START", { loadKey: loadKey.replace(/[^|]+(?=\|)/, "user"), client: target || "none", year });
       const rows = await firebaseService.getDashboards(target, year);
+      devTiming("DASHBOARD_QUERY_END", { loadKey: loadKey.replace(/[^|]+(?=\|)/, "user"), dashboards: rows.length });
 
       return rows.sort((a, b) => {
         const orderA = a.orderNumber || 999;
@@ -839,7 +927,7 @@ export default function App() {
         return orderA - orderB;
       });
     },
-    [hasUniversalClientContext, selectedClientId, userProfile],
+    [hasUniversalClientContext, selectedClientId, userProfile, user?.uid],
   );
 
   // -----------------------------
@@ -959,26 +1047,27 @@ export default function App() {
     if (status !== "ready" || !user) return;
 
     let cancelled = false;
+    const scopeKey = userProfile ? getAuthorizedClientIds(userProfile).sort().join(",") : "";
+    const loadKey = `${user.uid}|${selectedClientId}|${selectedYear}|${scopeKey}`;
+    if (lastDashboardLoadKeyRef.current === loadKey) return;
+    lastDashboardLoadKeyRef.current = loadKey;
 
     const run = async () => {
+      const watchdogStartedAt = performance.now();
+      const watchdogs = [5000, 15000, 30000, 60000].map((delay) => window.setTimeout(() => devTiming("LOAD_WATCHDOG", { delay, elapsed: Math.round(performance.now() - watchdogStartedAt) }), delay));
       setLoadingDashboards(true);
+      devTiming("LOADING_DASHBOARDS_TRUE", { client: selectedClientId, year: selectedYear });
       setErrorMsg("");
 
-      // 1. Cargar catálogo de clientes de forma independiente y prioritaria
+      // The authorized dashboard is the critical path; catalog metadata is secondary.
       try {
-        const clients = await firebaseService.getAllClients();
-        const mClients = await firebaseService.getAllManagedClients();
-        if (cancelled) return;
-        setDbClients(clients);
-        setManagedClientsList(mClients);
-        setClientCatalogLoaded(true);
-      } catch (clientErr) {
-        console.error("Error loading client catalog:", clientErr);
-      }
-
-      // 2. Cargar tableros en bloque protegido independiente
-      try {
+        devTiming("ITEMS_START", { phase: "dashboard_items_included_in_dashboard_query" });
         const rows = await fetchDashboardsForYear(selectedYear);
+        devTiming("ITEMS_END", {
+          dashboards: rows.length,
+          itemRequests: rows.length,
+          itemCount: rows.reduce((sum, row) => sum + (row.items || []).length, 0),
+        });
         if (cancelled) return;
 
         const targetClientAgg = (
@@ -1534,7 +1623,24 @@ export default function App() {
         console.error("Error loading dashboards:", err);
         setErrorMsg("Error al cargar datos.");
       } finally {
+        watchdogs.forEach(window.clearTimeout);
+        devTiming("LOAD_END", { client: selectedClientId, year: selectedYear });
+        devTiming("LOADING_DASHBOARDS_FALSE", { client: selectedClientId, year: selectedYear });
         if (!cancelled) setLoadingDashboards(false);
+      }
+
+      // Load the full client catalog after the first dashboard path has started/completed.
+      devTiming("SECONDARY_CONTEXT_START", { context: "client_catalog" });
+      try {
+        const mClients = await firebaseService.getAllManagedClients();
+        if (!cancelled) {
+          setDbClients(mClients.map((client) => client.clientId));
+          setManagedClientsList(mClients);
+          setClientCatalogLoaded(true);
+          devTiming("SECONDARY_CONTEXT_READY", { context: "client_catalog", clients: mClients.length });
+        }
+      } catch (clientErr) {
+        console.error("Error loading client catalog:", clientErr);
       }
     };
 
@@ -2472,6 +2578,7 @@ export default function App() {
 
   return (
     <PageShell>
+      <DevDiagnosticPanel />
       <header className="sticky top-0 z-50 flex flex-col md:flex-row items-center justify-between gap-2 bg-slate-950/90 py-1.5 px-6 rounded-b-2xl border-b border-white/5 backdrop-blur-3xl">
         {/* Lado Izquierdo: Título Dinámico basado en Cliente */}
         <div className="flex flex-row items-center gap-4 shrink-0">
@@ -2517,9 +2624,9 @@ export default function App() {
           )}
         </div>
 
-        <div className="flex flex-wrap items-center justify-center md:justify-end gap-2 scale-[0.85] origin-right">
+        <div className="flex w-full min-w-0 flex-wrap items-center justify-center md:w-auto md:justify-end gap-2 scale-100 md:scale-[0.85] origin-right">
           {(isGlobalAdmin || userProfile?.canManageKPIs) && (
-            <nav className="flex items-center gap-0.5 bg-black/40 p-0.5 rounded-xl border border-white/5 overflow-x-auto">
+            <nav className="flex max-w-full flex-wrap items-center gap-0.5 bg-black/40 p-0.5 rounded-xl border border-white/5">
               {isGlobalAdmin && (
                 <>
                   <button
@@ -2628,7 +2735,7 @@ export default function App() {
             </nav>
           )}
 
-          <div className="flex items-center gap-2">
+          <div className="flex w-full min-w-0 flex-wrap items-center justify-center gap-2">
             {(hasUniversalClientContext || availableManagedClients.length > 1) && (
               <select
                 aria-label="Cliente"
@@ -2720,7 +2827,7 @@ export default function App() {
 
             <button
               onClick={() => setActiveAdminSection("help")}
-              className="bg-white/5 hover:bg-indigo-500/20 text-slate-400 hover:text-indigo-400 border border-white/5 px-4 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all"
+              className="min-h-[44px] max-w-full whitespace-normal bg-white/5 hover:bg-indigo-500/20 text-slate-400 hover:text-indigo-400 border border-white/5 px-4 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all"
               title="Manual de Vuelo (Instrucciones)"
             >
               ❓ Ayuda
@@ -2728,7 +2835,7 @@ export default function App() {
 
             <button
               onClick={handleLogout}
-              className="bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white border border-red-500/20 px-4 py-2.5 rounded-2xl text-xs font-black uppercase tracking-widest transition-all"
+              className="min-h-[44px] max-w-full whitespace-normal bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white border border-red-500/20 px-4 py-2.5 rounded-2xl text-xs font-black uppercase tracking-widest transition-all"
             >
               Salir
             </button>

@@ -47,6 +47,11 @@ test('member queries always constrain tenant AND dashboard permissions', () => {
   expect(constraints[1][1].value).toEqual([10]);
 });
 
+test('year-scoped dashboard queries constrain the requested numeric year', () => {
+  const constraints = dashboardQueryConstraints(scope, 'A', 2026) as any[];
+  expect(constraints.flat()).toContainEqual({ field: 'year', op: '==', value: 2026 });
+});
+
 test('canonical Director scope never unions legacy superGroups or dashboardAccess', () => {
   const canonicalDirector: TableroReadScope = {
     platform: false, tenants: ['A'], profile: {

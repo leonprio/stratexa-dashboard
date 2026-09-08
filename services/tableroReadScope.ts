@@ -42,25 +42,27 @@ export function requestedTenants(scope: TableroReadScope, selected?: string): st
   return scope.tenants;
 }
 
-export function dashboardQueryConstraints(scope: TableroReadScope, tenant: string): QueryConstraint[][] {
-  const base = where('clientId', '==', tenant);
+export function dashboardQueryConstraints(scope: TableroReadScope, tenant: string, year?: number): QueryConstraint[][] {
+  const baseConstraints: QueryConstraint[] = [where('clientId', '==', tenant)];
+  if (Number.isInteger(year)) baseConstraints.push(where('year', '==', year));
+  const base = baseConstraints;
   const profile = scope.profile;
   const membership = profile && getMembershipForClient(profile, tenant);
-  if (membership?.role === 'tenant_admin') return [[base]];
+  if (membership?.role === 'tenant_admin') return [base];
   const result: QueryConstraint[][] = [];
   const ids = Object.keys(membership?.dashboardScopes || {});
   for (let i = 0; i < ids.length; i += 10) {
     const chunk = ids.slice(i, i + 10);
-    result.push([base, where(documentId(), 'in', chunk)]);
+    result.push([...base, where(documentId(), 'in', chunk)]);
     const originals = chunk.filter(id => /^\d+$/.test(id)).map(Number);
-    if (originals.length) result.push([base, where('originalId', 'in', originals)]);
+    if (originals.length) result.push([...base, where('originalId', 'in', originals)]);
   }
   if (membership?.role === 'director') {
     const groups = [...new Set(membership.hierarchyScopes)] as string[];
     for (const group of groups) {
       if (membership.source === 'canonical') {
-        result.push([base, where('directionId', '==', group)], [base, where('areaId', '==', group)]);
-      } else result.push([base, where('group', '==', group)]);
+        result.push([...base, where('directionId', '==', group)], [...base, where('areaId', '==', group)]);
+      } else result.push([...base, where('group', '==', group)]);
     }
   }
   return result;
