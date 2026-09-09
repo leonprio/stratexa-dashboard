@@ -95,18 +95,12 @@ export const firebaseService = {
 
     getActionPlansForIndicator: async (indicatorId: number | string, clientId?: string): Promise<ActionPlan[]> => {
         if (!clientId) throw new Error('Cliente requerido para planes.');
-        if (typeof process !== 'undefined' && process.env.NODE_ENV !== 'production') {
-            console.debug('[DEV_TIMING] PLANS_START', { indicatorId, clientId });
-        }
         const tenant = clientId.trim().toUpperCase();
         const boards = await firebaseService.getDashboards(tenant);
         const snapshots = await Promise.all(boards.map(board => getDocs(query(collection(db, ACTION_PLANS_COLLECTION),
             where('clientId', '==', tenant), where('dashboardId', '==', board.id), where('indicatorId', '==', indicatorId)))));
         const plans = [...new Map(snapshots.flatMap(s => s.docs.map(d => [d.id, { ...d.data(), id: d.id } as ActionPlan] as const))).values()]
             .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
-        if (typeof process !== 'undefined' && process.env.NODE_ENV !== 'production') {
-            console.debug('[DEV_TIMING] PLANS_END', { indicatorId, count: plans.length });
-        }
         return plans;
     },
 

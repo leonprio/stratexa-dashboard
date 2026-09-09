@@ -1,4 +1,23 @@
-import { normalizeGroupName, formatIndicatorValue, formatNumberWithCommas } from "./formatters";
+import { normalizeGroupName, formatIndicatorValue, formatNumberWithCommas, formatMonthlyGoal, formatMonthlyProgress, hasCapturedNumericValue } from "./formatters";
+
+describe("monthly absence versus explicit zero", () => {
+    test("formats goals without inventing zero", () => {
+        expect(hasCapturedNumericValue(null)).toBe(false);
+        expect(hasCapturedNumericValue(undefined)).toBe(false);
+        expect(hasCapturedNumericValue("")).toBe(false);
+        expect(formatMonthlyGoal(null)).toBe("SIN DATOS");
+        expect(formatMonthlyGoal(0, false)).toBe("SIN DATOS");
+        expect(formatMonthlyGoal(0)).toBe("0%");
+        expect(formatMonthlyGoal(2)).toBe("2%");
+    });
+
+    test("formats progress using explicit capture evidence", () => {
+        expect(formatMonthlyProgress(null)).toBe("SIN DATOS");
+        expect(formatMonthlyProgress(0, false)).toBe("SIN DATOS");
+        expect(formatMonthlyProgress(0)).toBe("0%");
+        expect(formatMonthlyProgress(67)).toBe("67%");
+    });
+});
 
 describe("normalizeGroupName", () => {
     test("should handle basic normalization (accents and case)", () => {

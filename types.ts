@@ -60,7 +60,11 @@ export interface DashboardItem {
   weeklyProgress?: (number | null)[];
   weekStart?: 'Sun' | 'Mon';
   monthlyGoals: (number | null)[];
+  /** Explicit evidence that a monthly goal was defined; absent means legacy data. */
+  monthlyGoalCaptured?: boolean[];
   monthlyProgress: (number | null)[];
+  /** Explicit monthly capture evidence; absent means legacy data. */
+  monthlyProgressCaptured?: boolean[];
   monthlyNotes?: string[];
   weeklyNotes?: string[];
   unit: string;

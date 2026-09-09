@@ -55,8 +55,8 @@ export const shieldItem = (item: DashboardItem): DashboardItem => {
   const shielded: DashboardItem = { ...item };
 
   // 1. Asegurar arreglos de datos mensuales (SOPORTE 12 MESES)
-  if (!Array.isArray(shielded.monthlyGoals)) shielded.monthlyGoals = Array(12).fill(0);
-  if (!Array.isArray(shielded.monthlyProgress)) shielded.monthlyProgress = Array(12).fill(0);
+  if (!Array.isArray(shielded.monthlyGoals)) shielded.monthlyGoals = Array(12).fill(null);
+  if (!Array.isArray(shielded.monthlyProgress)) shielded.monthlyProgress = Array(12).fill(null);
   
   // 2. Asegurar arreglos de datos semanales si existen
   if (shielded.frequency === 'weekly') {
@@ -233,21 +233,35 @@ export const calculateMonthlyCompliancePercentage = (
 };
 
 /**
- * Encuentra el último índice donde exista algún dato (meta o avance)
- * distinto de 0 (o no vacío).
+ * Encuentra el último índice con avance capturado. El cero explícito cuenta
+ * como dato; las metas futuras no extienden la serie real.
  */
 export const findLastIndexWithData = (
   monthlyProgress: Array<number | null | undefined>,
-  monthlyGoals: Array<number | null | undefined>
+  _monthlyGoals: Array<number | null | undefined>,
+  monthlyProgressCaptured?: Array<boolean | undefined>,
 ): number => {
-  const len = Math.max(monthlyProgress?.length ?? 0, monthlyGoals?.length ?? 0);
+  const len = monthlyProgress?.length ?? 0;
   for (let i = len - 1; i >= 0; i--) {
-    const p = Number(monthlyProgress?.[i] ?? 0);
-    const g = Number(monthlyGoals?.[i] ?? 0);
-    if (p !== 0 || g !== 0) return i;
+    const p = monthlyProgress?.[i];
+    if (isMonthlyProgressCaptured(p, monthlyProgressCaptured, i)) return i;
   }
   return -1;
 };
+
+const findLastIndexWithAnyValue = (values: Array<number | null | undefined>): number => {
+  for (let i = (values?.length ?? 0) - 1; i >= 0; i--) {
+    if (values[i] !== null && values[i] !== undefined) return i;
+  }
+  return -1;
+};
+
+/** A positive legacy value is historical evidence; legacy zero is ambiguous. */
+export const isMonthlyProgressCaptured = (
+  value: number | null | undefined,
+  captured: Array<boolean | undefined> | undefined,
+  index: number,
+): boolean => captured?.[index] === true || (captured?.[index] === undefined && value !== null && value !== undefined && value > 0);
 
 /**
  * Devuelve un warning legible cuando hay meses incompletos
@@ -507,7 +521,7 @@ export const calculateCompliance = (
     limitIdx = -1; // Año futuro, nada cuenta
   }
 
-  const lastIdxWithData = findLastIndexWithData(monthlyProgress, monthlyGoals);
+  const lastIdxWithData = findLastIndexWithAnyValue(monthlyProgress);
 
   // 🛡️ REGLA v9.1.0-PRO-FINAL-SHIELDED (FIX): Para años pasados, el índice evaluado es SIEMPRE Diciembre (11)
   // independientemente del mes actual del sistema. Se previene el cap en el mes actual.
@@ -630,6 +644,7 @@ export const calculateCompliance = (
     isActive: hasTarget
   };
 };
+
 
 /**
  * 🎯 AUDITORÍA DE METAS APLICABLES (v9.4.17)

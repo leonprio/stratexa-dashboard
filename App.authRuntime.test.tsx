@@ -79,6 +79,31 @@ describe('authenticated app shell runtime bridge', () => {
     expect(firebaseService.getSystemSettings).toHaveBeenCalledWith('A');
   });
 
+  it('unblocks SuperAdmin when scoped dashboards are loaded before the secondary catalog', async () => {
+    (firebaseService.getDashboards as jest.Mock).mockResolvedValue([
+      { id: 1, clientId: 'IPS', name: 'IPS Dashboard', year: 2026, items: [] },
+    ]);
+    (firebaseService.getAllManagedClients as jest.Mock).mockImplementation(
+      () => new Promise(() => {}),
+    );
+
+    await boot({
+      uid: 'platform',
+      email: 'leon@leonprior.com',
+      profile: baseProfile({ clientId: undefined }),
+      renderedName: 'Leon Prior',
+      initialClient: 'IPS',
+    });
+
+    await waitFor(() => {
+      const selector = screen.getByRole('combobox', { name: /cliente/i });
+      expect(selector).toHaveValue('IPS');
+      expect(selector).not.toBeDisabled();
+      expect(screen.queryByText(/Sincronizando Datos/i)).not.toBeInTheDocument();
+      expect(screen.queryByText(/Seleccionando cliente/i)).not.toBeInTheDocument();
+    });
+  });
+
   it('boots a multi-client profile with one authorized tenant query, never a global dashboard query', async () => {
     await boot({ uid: 'multi', email: 'multi@example.test', profile: baseProfile({
       id: 'multi', clientId: 'A,B', memberships: [

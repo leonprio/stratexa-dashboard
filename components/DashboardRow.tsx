@@ -70,14 +70,16 @@ export const DashboardRow: React.FC<DashboardRowProps> = React.memo(({ item, onU
   const chartData = useMemo(() => {
     if (!item || !item.indicator) return { progress: [], goals: [] };
     const { monthlyProgress, monthlyGoals } = item;
-    const lastDataIndex = findLastIndexWithData(monthlyProgress, monthlyGoals);
+    const lastDataIndex = findLastIndexWithData(monthlyProgress, [], item.monthlyProgressCaptured);
     if (lastDataIndex === -1) {
       return { progress: [], goals: [] };
     }
     const sliceIndex = lastDataIndex + 1;
     return {
       progress: monthlyProgress.slice(0, sliceIndex),
-      goals: monthlyGoals.slice(0, sliceIndex)
+      goals: monthlyGoals.slice(0, sliceIndex),
+      captured: (item.monthlyProgressCaptured || []).slice(0, sliceIndex),
+      goalDefined: (item.monthlyGoalCaptured || []).slice(0, sliceIndex),
     };
   }, [item]);
 
@@ -383,6 +385,8 @@ export const DashboardRow: React.FC<DashboardRowProps> = React.memo(({ item, onU
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 lg:gap-6">
                 <LineChart
                   progressData={chartData.progress}
+                  capturedData={chartData.captured}
+                  goalDefinedData={chartData.goalDefined}
                   goalData={chartData.goals}
                   unit={unit}
                   type={type}

@@ -38,6 +38,20 @@ export const normalizeGroupName = (s: string | undefined | null): string => {
     return name || "GENERAL";
 };
 
+export const hasCapturedNumericValue = (value: unknown): value is number =>
+  typeof value === "number" && Number.isFinite(value);
+
+export const isMonthlyGoalDefined = (value: unknown, marker?: boolean): boolean =>
+  marker === false ? false : hasCapturedNumericValue(value);
+
+export const formatMonthlyGoal = (value: unknown, marker?: boolean, unit = "%", precision = 0): string =>
+  isMonthlyGoalDefined(value, marker) ? formatIndicatorValue(value as number, unit, precision) : "SIN DATOS";
+
+export const formatMonthlyProgress = (value: unknown, captured?: boolean, unit = "%", precision = 0): string =>
+  (captured === false ? false : hasCapturedNumericValue(value))
+    ? formatIndicatorValue(value as number, unit, precision)
+    : "SIN DATOS";
+
 /**
  * Checks if two group names are effectively the same after normalization.
  */

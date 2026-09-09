@@ -15,85 +15,6 @@ import {
 } from "firebase/auth";
 import { doc, getDoc, getDocs, collection, query, where, deleteField } from "firebase/firestore";
 
-const isDevRuntime = typeof process !== "undefined"
-  && process.env.NODE_ENV !== "production"
-  && process.env.NODE_ENV !== "test";
-
-const devTiming = (marker: string, details: Record<string, unknown> = {}) => {
-  if (isDevRuntime) {
-    const event = { marker, t: Math.round(performance.now()), details };
-    console.debug(`[DEV_TIMING] ${marker}`, event);
-    if (typeof window !== "undefined") window.dispatchEvent(new CustomEvent("tablero-dev-timing", { detail: event }));
-  }
-};
-
-const DevDiagnosticPanel = () => {
-  const [open, setOpen] = useState(true);
-  const [events, setEvents] = useState<Array<{ marker: string; t: number; details: Record<string, unknown> }>>([]);
-  const [watchdog, setWatchdog] = useState("NONE");
-  const [phase, setPhase] = useState("IDLE");
-  const [startedAt, setStartedAt] = useState<number | null>(null);
-  const [snapshot, setSnapshot] = useState<Record<string, unknown>>({});
-
-  useEffect(() => {
-    if (!isDevRuntime) return;
-    const onTiming = (event: Event) => {
-      const detail = (event as CustomEvent).detail as { marker: string; t: number; details: Record<string, unknown> };
-      setEvents((current) => [...current, detail].slice(-15));
-      setSnapshot((current) => ({ ...current, ...detail.details }));
-      setPhase(detail.marker);
-      if (detail.marker === "LOAD_START") setStartedAt(detail.t);
-      if (detail.marker === "LOAD_WATCHDOG") setWatchdog(`${Number(detail.details.delay ?? 0) / 1000}s`);
-      if (detail.marker === "LOAD_END" || detail.marker === "LOADING_DASHBOARDS_FALSE") setWatchdog("NONE");
-    };
-    window.addEventListener("tablero-dev-timing", onTiming);
-    return () => window.removeEventListener("tablero-dev-timing", onTiming);
-  }, []);
-
-  const copy = async () => {
-    const lines = [
-      `CLIENTE = ${snapshot.client ?? snapshot.clientId ?? "-"}`,
-      `AÑO = ${snapshot.year ?? "-"}`,
-      `LOAD_KEY = ${String(snapshot.loadKey ?? "-").replace(/user\|[^|]+\|?/i, "user|anon|")}`,
-      `FASE_ACTUAL = ${phase}`,
-      `TIEMPO_FASE = ${events.length ? `${((performance.now() - events[events.length - 1].t) / 1000).toFixed(3)}s` : "-"}`,
-      `TIEMPO_TOTAL = ${startedAt ? `${((performance.now() - startedAt) / 1000).toFixed(3)}s` : "-"}`,
-      `DASHBOARDS = ${snapshot.dashboards ?? "-"}`,
-      `ITEM_REQUESTS = ${snapshot.itemRequests ?? "-"}`,
-      `LOAD_CYCLE = ${events.filter((e) => e.marker === "LOAD_START").length}`,
-      `LAST_EVENT = ${phase}`,
-      `WATCHDOG = ${watchdog}`,
-      "EVENTS:",
-      ...events.map((e) => `+${(e.t / 1000).toFixed(3)}s ${e.marker}`),
-    ].join("\n");
-    await navigator.clipboard?.writeText(lines);
-  };
-
-  if (!isDevRuntime) return null;
-  return (
-    <aside className="fixed bottom-2 right-2 z-[100] w-[min(92vw,420px)] max-h-[40vh] overflow-hidden rounded-lg border border-amber-400/60 bg-slate-950/95 text-[10px] font-mono text-amber-100 shadow-2xl">
-      <button className="flex w-full items-center justify-between px-2 py-1 text-left font-bold" onClick={() => setOpen((value) => !value)}>
-        <span>DEV DIAGNÓSTICO · {phase}</span><span>{open ? "−" : "+"}</span>
-      </button>
-      {open && <div className="max-h-[calc(40vh-28px)] overflow-y-auto border-t border-amber-400/30 p-2">
-        <div>CLIENTE = {String(snapshot.client ?? snapshot.clientId ?? "-")}</div>
-        <div>AÑO = {String(snapshot.year ?? "-")}</div>
-        <div>LOAD_KEY = {String(snapshot.loadKey ?? "-").replace(/user\|[^|]+\|?/i, "user|anon|")}</div>
-        <div>FASE_ACTUAL = {phase}</div>
-        <div>TIEMPO_FASE = {events.length ? `${((performance.now() - events[events.length - 1].t) / 1000).toFixed(3)}s` : "-"}</div>
-        <div>TIEMPO_TOTAL = {startedAt ? `${((performance.now() - startedAt) / 1000).toFixed(3)}s` : "-"}</div>
-        <div>DASHBOARDS = {String(snapshot.dashboards ?? "-")}</div>
-        <div>ITEM_REQUESTS = {String(snapshot.itemRequests ?? "-")}</div>
-        <div>LOAD_CYCLE = {events.filter((e) => e.marker === "LOAD_START").length}</div>
-        <div>LAST_EVENT = {phase}</div>
-        <div>WATCHDOG = {watchdog} · PENDIENTE = {phase === "LOAD_END" || phase === "LOADING_DASHBOARDS_FALSE" ? "NONE" : phase}</div>
-        <button className="mt-1 rounded bg-amber-500 px-2 py-1 font-bold text-slate-950" onClick={copy}>COPIAR DIAGNÓSTICO</button>
-        <div className="mt-1 border-t border-amber-400/20 pt-1">{events.map((e, index) => <div key={`${e.t}-${index}`}>+{(e.t / 1000).toFixed(3)}s {e.marker}</div>)}</div>
-      </div>}
-    </aside>
-  );
-};
-
 import { calculateCapture } from "./components/DashboardTabs";
 import { HierarchySidebar } from "./components/HierarchySidebar";
 import { DashboardView } from "./components/DashboardView";
@@ -139,6 +60,7 @@ import {
 } from "./utils/clientReconciliation";
 import { isUniversalSuperAdmin } from "./utils/universalSuperAdmin";
 import { getAuthorizedClientIds } from "./services/tableroAuthorization";
+import { getMainViewReadiness } from "./utils/mainViewReadiness";
 import {
   StrategicPerspective,
   StrategicObjective,
@@ -179,7 +101,7 @@ export default function App() {
   const [user, setUser] = useState<FirebaseUser | null>(null);
   const [userProfile, setUserProfile] = useState<User | null>(null);
   // 🛡️ v9.4.22-CHART-UX-CLARITY
-  const VERSION_LABEL = "v9.6.0-EXECUTIVE-REPORT-V1";
+  const VERSION_LABEL = "v9.6.1-KPI-INTEGRITY-MOBILE-PERFORMANCE";
   const SHIELD_ID = "GOLD MASTER";
   const [activeAdminSection, setActiveAdminSection] =
     useState<AdminSection>("none");
@@ -249,6 +171,7 @@ export default function App() {
     year: number;
   } | null>(null);
   const [loadingDashboards, setLoadingDashboards] = useState<boolean>(false);
+  const [dashboardLoadCompleted, setDashboardLoadCompleted] = useState(false);
   const lastDashboardLoadKeyRef = useRef<string | null>(null);
   const [settings, setSettings] = useState<SystemSettings | undefined>(
     undefined,
@@ -320,7 +243,6 @@ export default function App() {
       return;
     }
     try {
-      devTiming("STRATEGY_START", { client: selectedClientId });
       const [pList, oList, acList, coList, asgnList, relList] =
         await Promise.all([
           strategyService.getPerspectives(selectedClientId),
@@ -337,7 +259,6 @@ export default function App() {
         setContributionObjectives(coList);
         setAssignments(asgnList);
           setRelationships(relList);
-        devTiming("STRATEGY_END", { client: selectedClientId, objectives: oList.length, assignments: asgnList.length });
       }
     } catch (err) {
       console.error("Error al cargar datos estratégicos:", err);
@@ -702,7 +623,6 @@ export default function App() {
     }
 
     const unsubAuth = onAuthStateChanged(auth, async (u) => {
-      devTiming("AUTH_READY", { authenticated: Boolean(u) });
       setUser(u);
       if (!u) {
         setUser(null);
@@ -747,7 +667,6 @@ export default function App() {
         // 🛡️ RECONCILIACIÓN DE MEMBRESÍAS CANÓNICAS DE PLATAFORMA (v9.5.3)
         // Cargar explícitamente tbl_userMemberships para poblar la autoridad del superadministrador
         if (prof) {
-          devTiming("PROFILE_READY", { role: prof.globalRole || "unknown" });
           try {
             const canonicalSnap = await getDocs(
               query(
@@ -762,7 +681,6 @@ export default function App() {
                 memberships: canonicalList as any,
               };
             }
-            devTiming("MEMBERSHIP_READY", { count: prof?.memberships?.length || 0 });
           } catch (mErr) {
             console.error("Error al cargar membresías canónicas de usuario:", mErr);
           }
@@ -794,7 +712,6 @@ export default function App() {
           const initialContextClient = isUniversalSuperAdmin(prof, u.email)
             ? localStorage.getItem("selectedClientId") || prof.clientId || "main"
             : prof.clientId || "main";
-          devTiming("CLIENT_RESOLVED", { hasClient: Boolean(initialContextClient), settingsLoaded: false });
           setStatus("ready");
         } else {
           // 🛡️ NUCLEAR ISOLATION (v11.0.0): BLOQUEO DE ACCESO CRUZADO
@@ -916,10 +833,7 @@ export default function App() {
       }
 
       const loadKey = `${user?.uid || "anonymous"}|${target || "none"}|${year}`;
-      devTiming("LOAD_START", { loadKey: loadKey.replace(/[^|]+(?=\|)/, "user") });
-      devTiming("DASHBOARD_QUERY_START", { loadKey: loadKey.replace(/[^|]+(?=\|)/, "user"), client: target || "none", year });
       const rows = await firebaseService.getDashboards(target, year);
-      devTiming("DASHBOARD_QUERY_END", { loadKey: loadKey.replace(/[^|]+(?=\|)/, "user"), dashboards: rows.length });
 
       return rows.sort((a, b) => {
         const orderA = a.orderNumber || 999;
@@ -935,6 +849,7 @@ export default function App() {
   // Ensures UI, Logic, and Persistence are ALWAYS in sync.
   // -----------------------------
   const refreshAllData = async (forceYear?: number) => {
+    setDashboardLoadCompleted(false);
     setLoadingDashboards(true);
     try {
       const yearToFetch = forceYear || selectedYear;
@@ -952,6 +867,7 @@ export default function App() {
       setErrorMsg("Error al refrescar la memoria del sistema.");
     } finally {
       setLoadingDashboards(false);
+      setDashboardLoadCompleted(true);
     }
   };
 
@@ -1053,21 +969,13 @@ export default function App() {
     lastDashboardLoadKeyRef.current = loadKey;
 
     const run = async () => {
-      const watchdogStartedAt = performance.now();
-      const watchdogs = [5000, 15000, 30000, 60000].map((delay) => window.setTimeout(() => devTiming("LOAD_WATCHDOG", { delay, elapsed: Math.round(performance.now() - watchdogStartedAt) }), delay));
+      setDashboardLoadCompleted(false);
       setLoadingDashboards(true);
-      devTiming("LOADING_DASHBOARDS_TRUE", { client: selectedClientId, year: selectedYear });
       setErrorMsg("");
 
       // The authorized dashboard is the critical path; catalog metadata is secondary.
       try {
-        devTiming("ITEMS_START", { phase: "dashboard_items_included_in_dashboard_query" });
         const rows = await fetchDashboardsForYear(selectedYear);
-        devTiming("ITEMS_END", {
-          dashboards: rows.length,
-          itemRequests: rows.length,
-          itemCount: rows.reduce((sum, row) => sum + (row.items || []).length, 0),
-        });
         if (cancelled) return;
 
         const targetClientAgg = (
@@ -1623,21 +1531,22 @@ export default function App() {
         console.error("Error loading dashboards:", err);
         setErrorMsg("Error al cargar datos.");
       } finally {
-        watchdogs.forEach(window.clearTimeout);
-        devTiming("LOAD_END", { client: selectedClientId, year: selectedYear });
-        devTiming("LOADING_DASHBOARDS_FALSE", { client: selectedClientId, year: selectedYear });
-        if (!cancelled) setLoadingDashboards(false);
+        // A cancelled request must not publish a false LOAD_END or leave the
+        // live request's loading flag stuck. Only the current load key may
+        // close the visual loading contract.
+        if (!cancelled && lastDashboardLoadKeyRef.current === loadKey) {
+          setLoadingDashboards(false);
+          setDashboardLoadCompleted(true);
+        }
       }
 
       // Load the full client catalog after the first dashboard path has started/completed.
-      devTiming("SECONDARY_CONTEXT_START", { context: "client_catalog" });
       try {
         const mClients = await firebaseService.getAllManagedClients();
         if (!cancelled) {
           setDbClients(mClients.map((client) => client.clientId));
           setManagedClientsList(mClients);
           setClientCatalogLoaded(true);
-          devTiming("SECONDARY_CONTEXT_READY", { context: "client_catalog", clients: mClients.length });
         }
       } catch (clientErr) {
         console.error("Error loading client catalog:", clientErr);
@@ -1647,6 +1556,11 @@ export default function App() {
     run();
     return () => {
       cancelled = true;
+      // Permit the replacement effect to restart the same scope after an
+      // unstable dependency (for example, the user catalog) changes.
+      if (lastDashboardLoadKeyRef.current === loadKey) {
+        lastDashboardLoadKeyRef.current = null;
+      }
     };
   }, [
     status,
@@ -1737,11 +1651,54 @@ export default function App() {
     });
   }, [availableClients, managedClientsList]);
 
+  // The dashboard query is the critical authorization/context path.  A
+  // platform admin may already have a validated tenant and loaded dashboards
+  // while the secondary managed-client catalog is still catching up.
+  const authorizationResolved = Boolean(
+    userProfile &&
+      selectedClientId &&
+      (hasUniversalClientContext ||
+        getAuthorizedClientIds(userProfile).some(
+          (clientId) =>
+            clientId.trim().toUpperCase() === selectedClientId.trim().toUpperCase(),
+        )),
+  );
+  const mainViewReadiness = getMainViewReadiness({
+    authenticated: Boolean(user),
+    platformAuthorityResolved: Boolean(userProfile),
+    authorizationResolved,
+    effectiveClientId: selectedClientId,
+    // Once scoped dashboards are materialized, an out-of-order loading flag
+    // must not mask the already available authorized view.
+    loadingDashboards:
+      loadingDashboards && !dashboardLoadCompleted && dashboards.length === 0,
+    dashboardsCount: dashboards.length,
+  });
+  const effectiveClientSelectionReady =
+    clientSelectionReady || mainViewReadiness.canRenderMainView;
+
   // 🛡️ RECONCILIACIÓN AUTOMÁTICA DE CLIENTE (v9.5.3)
   useEffect(() => {
+    // Do not let the secondary catalog hold an already validated, loaded
+    // tenant hostage. Normal users still require an explicit authorized
+    // membership; SuperAdmin uses its platform authority plus selected scope.
+    if (mainViewReadiness.canRenderMainView) {
+      setClientSelectionReady(true);
+      return;
+    }
+
     // Do not reconcile against the synthetic IPS fallback while the canonical
     // catalog is loading: that race overwrote a persisted SuperAdmin context.
     if (!clientCatalogLoaded || availableManagedClients.length === 0) {
+      // A normal user/director already has an authorized tenant in the
+      // resolved profile; the secondary catalog must not block first render.
+      if (!hasUniversalClientContext && userProfile && selectedClientId) {
+        const authorized = getAuthorizedClientIds(userProfile);
+        if (authorized.includes(selectedClientId.trim().toUpperCase())) {
+          setClientSelectionReady(true);
+          return;
+        }
+      }
       setClientSelectionReady(false);
       return;
     }
@@ -1766,7 +1723,7 @@ export default function App() {
       );
       setClientSelectionReady(false);
     }
-  }, [availableManagedClients, clientCatalogLoaded, selectedClientId]);
+  }, [availableManagedClients, clientCatalogLoaded, hasUniversalClientContext, mainViewReadiness.canRenderMainView, selectedClientId, userProfile]);
 
   const selectClientContext = useCallback((clientId: string) => {
     const nextClientId = clientId.trim().toUpperCase();
@@ -2578,7 +2535,6 @@ export default function App() {
 
   return (
     <PageShell>
-      <DevDiagnosticPanel />
       <header className="sticky top-0 z-50 flex flex-col md:flex-row items-center justify-between gap-2 bg-slate-950/90 py-1.5 px-6 rounded-b-2xl border-b border-white/5 backdrop-blur-3xl">
         {/* Lado Izquierdo: Título Dinámico basado en Cliente */}
         <div className="flex flex-row items-center gap-4 shrink-0">
@@ -2739,8 +2695,8 @@ export default function App() {
             {(hasUniversalClientContext || availableManagedClients.length > 1) && (
               <select
                 aria-label="Cliente"
-                value={clientSelectionReady ? selectedClientId : ""}
-                disabled={!clientSelectionReady}
+                value={effectiveClientSelectionReady ? selectedClientId : ""}
+                disabled={!effectiveClientSelectionReady}
                 onChange={(e) => {
                   if (e.target.value === "NEW_CLIENT_OPTION") {
                     handleCreateClientNew();
@@ -2750,7 +2706,7 @@ export default function App() {
                 }}
                 className="bg-slate-900 border-2 border-cyan-500/20 rounded-2xl px-4 py-2.5 text-xs font-black text-cyan-400 outline-none min-w-[180px] focus:border-cyan-500 transition-all uppercase tracking-widest cursor-pointer disabled:opacity-50"
               >
-                {!clientSelectionReady && (
+                {!effectiveClientSelectionReady && (
                   <option value="" disabled>
                     Seleccionando cliente…
                   </option>
@@ -3165,7 +3121,7 @@ Esto corregirá cualquier inconsistencia en colores (ej. Amarillo vs Rojo).`)
         </div>
       )}
 
-      {loadingDashboards ? (
+      {mainViewReadiness.dataLoading ? (
         <div className="py-24 text-center">
           <div className="inline-block w-8 h-8 border-4 border-cyan-500/20 border-t-cyan-500 rounded-full animate-spin mb-4"></div>
           <p className="text-slate-500 font-black uppercase tracking-widest text-xs">

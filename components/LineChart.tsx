@@ -1,9 +1,11 @@
 import React, { useMemo } from 'react';
 import { ComplianceStatus } from '../types';
-import { formatNumberWithCommas } from '../utils/formatters';
+import { formatNumberWithCommas, hasCapturedNumericValue } from '../utils/formatters';
 
 interface LineChartProps {
   progressData: (number | null)[];
+  capturedData?: (boolean | undefined)[];
+  goalDefinedData?: (boolean | undefined)[];
   goalData: (number | null)[];
   unit: string;
   type: 'accumulative' | 'average';
@@ -22,7 +24,7 @@ interface LineChartProps {
  * @param {LineChartProps} props - Propiedades para los datos y configuración del gráfico.
  * @returns {JSX.Element} Gráfico SVG responsivo.
  */
-export const LineChart: React.FC<LineChartProps> = React.memo(({ progressData, goalData, unit: _unit, type, status, indicator = 'chart', frequency = 'monthly', compact = false }) => {
+export const LineChart: React.FC<LineChartProps> = React.memo(({ progressData, capturedData, goalData, goalDefinedData, unit: _unit, type, status, indicator = 'chart', frequency = 'monthly', compact = false }) => {
   const isWeekly = frequency === 'weekly';
   const numPeriods = progressData.length;
   const [hoveredIdx, setHoveredIdx] = React.useState<number | null>(null);
@@ -55,8 +57,15 @@ export const LineChart: React.FC<LineChartProps> = React.memo(({ progressData, g
     return data.map((value, i) => ({ index: i, value }));
   };
 
-  const plotData = useMemo(() => processLineData(progressData, type), [progressData, type]);
-  const goalPlotData = useMemo(() => processLineData(goalData, type), [goalData, type]);
+  const semanticProgress = useMemo(() => progressData.map((value, index) => {
+    const captured = capturedData?.[index] === false ? false : hasCapturedNumericValue(value);
+    return captured ? value : null;
+  }), [progressData, capturedData]);
+  const plotData = useMemo(() => processLineData(semanticProgress, type), [semanticProgress, type]);
+  const semanticGoals = useMemo(() => goalData.map((value, index) =>
+    (goalDefinedData?.[index] === false ? false : hasCapturedNumericValue(value)) ? value : null,
+  ), [goalData, goalDefinedData]);
+  const goalPlotData = useMemo(() => processLineData(semanticGoals, type), [semanticGoals, type]);
 
   if (numPeriods === 0) {
     return <div className="text-center text-slate-400 p-4 h-[120px] flex items-center justify-center glass-panel rounded-2xl">No hay datos para mostrar.</div>;
@@ -277,7 +286,7 @@ export const LineChart: React.FC<LineChartProps> = React.memo(({ progressData, g
             </div>
             <div className="flex justify-between items-center text-slate-200">
               <span className="font-semibold text-emerald-400">Real:</span>
-              <span className="font-bold tabular-nums">{activeHoveredData.realVal !== null ? formatNumber(activeHoveredData.realVal) : 'N/D'}</span>
+              <span className="font-bold tabular-nums">{activeHoveredData.realVal !== null ? formatNumber(activeHoveredData.realVal) : 'Sin captura'}</span>
             </div>
             <div className="flex justify-between items-center text-slate-200">
               <span className="font-semibold text-cyan-300">Meta:</span>

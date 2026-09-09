@@ -2,7 +2,7 @@ import React, { useMemo, useState, useEffect, useCallback, useRef } from "react"
 import type { DashboardItem } from "../types";
 import { getYearWeekMapping, getWeekNumber } from "../utils/weeklyUtils";
 import { ActivityManager } from "./ActivityManager";
-import { formatNumberWithCommas, parseFormattedNumber, formatIndicatorValue } from "../utils/formatters";
+import { formatNumberWithCommas, parseFormattedNumber, formatMonthlyGoal, formatMonthlyProgress } from "../utils/formatters";
 import { resolveItemValues } from "../utils/compliance";
 import { deriveRescheduledKpiCommitments, RescheduledCommitmentsSection, applyOperationalReschedule } from "./CurrentPeriodFocus";
 import type { RescheduledKpiCommitment } from "./CurrentPeriodFocus";
@@ -25,13 +25,23 @@ export const DataEditor: React.FC<DataEditorProps> = React.memo(({ item, allDash
       return resolveItemValues(item, allDashboardItems, year);
     }
     return {
-      monthlyGoals: Array.isArray(item.monthlyGoals) ? [...item.monthlyGoals] : Array(12).fill(0),
-      monthlyProgress: Array.isArray(item.monthlyProgress) ? [...item.monthlyProgress] : Array(12).fill(0),
+      monthlyGoals: Array.isArray(item.monthlyGoals) ? [...item.monthlyGoals] : Array(12).fill(null),
+      monthlyProgress: Array.isArray(item.monthlyProgress) ? [...item.monthlyProgress] : Array(12).fill(null),
     };
   }, [item, allDashboardItems, year, isCalculated]);
 
   const [monthlyGoals, setMonthlyGoals] = useState<(number | null)[]>(resolved.monthlyGoals);
   const [monthlyProgress, setMonthlyProgress] = useState<(number | null)[]>(resolved.monthlyProgress);
+  const [monthlyProgressCaptured, setMonthlyProgressCaptured] = useState<boolean[]>(
+    Array.isArray(item.monthlyProgressCaptured)
+      ? [...item.monthlyProgressCaptured]
+      : (item.monthlyProgress || []).map((value) => typeof value === 'number' && Number.isFinite(value) && value > 0),
+  );
+  const [monthlyGoalCaptured, setMonthlyGoalCaptured] = useState<boolean[]>(
+    Array.isArray(item.monthlyGoalCaptured)
+      ? [...item.monthlyGoalCaptured]
+      : (item.monthlyGoals || []).map((value) => typeof value === 'number' && Number.isFinite(value) && value > 0),
+  );
 
   useEffect(() => {
     if (isCalculated && allDashboardItems.length > 0) {
@@ -70,20 +80,26 @@ export const DataEditor: React.FC<DataEditorProps> = React.memo(({ item, allDash
 
   const setGoalAt = (idx: number, val: string) => {
     if (isCalculated) return;
-    const n = parseFormattedNumber(val) ?? 0;
+    const n = val.trim() === "" ? null : parseFormattedNumber(val);
     setMonthlyGoals((prev) => {
       const copy = [...prev];
       copy[idx] = n;
       return copy;
     });
+    setMonthlyGoalCaptured((prev) => { const copy = [...prev]; copy[idx] = val.trim() !== ""; return copy; });
   };
 
   const setProgressAt = (idx: number, val: string) => {
     if (isCalculated) return;
-    const n = parseFormattedNumber(val) ?? 0;
+    const n = val.trim() === "" ? null : parseFormattedNumber(val);
     setMonthlyProgress((prev) => {
       const copy = [...prev];
       copy[idx] = n;
+      return copy;
+    });
+    setMonthlyProgressCaptured((prev) => {
+      const copy = [...prev];
+      copy[idx] = val.trim() !== "";
       return copy;
     });
   };
@@ -114,7 +130,9 @@ export const DataEditor: React.FC<DataEditorProps> = React.memo(({ item, allDash
     try {
       await onSave({
         monthlyGoals,
+        monthlyGoalCaptured,
         monthlyProgress,
+        monthlyProgressCaptured,
         weeklyGoals,
         weeklyProgress,
         monthlyNotes,
@@ -392,7 +410,9 @@ export const DataEditor: React.FC<DataEditorProps> = React.memo(({ item, allDash
                     <input
                       type="text"
                       inputMode="decimal"
-                      value={focusedInputId === `m-goal-${idx}` ? (monthlyGoals[idx] ?? '').toString() : formatIndicatorValue(monthlyGoals[idx], item.unit, 0, item.indicatorType === 'formula')}
+                      value={focusedInputId === `m-goal-${idx}`
+                        ? (monthlyGoalCaptured[idx] ? (monthlyGoals[idx] ?? '').toString() : '')
+                        : formatMonthlyGoal(monthlyGoals[idx], monthlyGoalCaptured[idx], item.unit, 0)}
                       onFocus={() => setFocusedInputId(`m-goal-${idx}`)}
                       onBlur={() => setFocusedInputId(null)}
                       onChange={(e) => setGoalAt(idx, e.target.value)}
@@ -405,7 +425,9 @@ export const DataEditor: React.FC<DataEditorProps> = React.memo(({ item, allDash
                     <input
                       type="text"
                       inputMode="decimal"
-                      value={focusedInputId === `m-actual-${idx}` ? (monthlyProgress[idx] ?? '').toString() : formatIndicatorValue(monthlyProgress[idx], item.unit, 0, item.indicatorType === 'formula')}
+                      value={focusedInputId === `m-actual-${idx}`
+                        ? (monthlyProgressCaptured[idx] ? (monthlyProgress[idx] ?? '').toString() : '')
+                        : formatMonthlyProgress(monthlyProgress[idx], monthlyProgressCaptured[idx], item.unit, 0)}
                       onFocus={() => setFocusedInputId(`m-actual-${idx}`)}
                       onBlur={() => setFocusedInputId(null)}
                       onChange={(e) => setProgressAt(idx, e.target.value)}

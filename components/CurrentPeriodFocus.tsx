@@ -18,6 +18,8 @@ import {
   parseFormattedNumber,
   formatIndicatorValue,
   getCleanIndicatorName,
+  formatMonthlyGoal,
+  formatMonthlyProgress,
 } from "../utils/formatters";
 
 interface CurrentPeriodFocusProps {
@@ -375,6 +377,7 @@ export const CurrentPeriodFocus: React.FC<CurrentPeriodFocusProps> = ({
     weekStart: "Mon",
     type: "simple",
   };
+  const monthlyProgressCaptured = item.monthlyProgressCaptured || [];
 
   // 🛡️ NAVEGACIÓN DE PERIODOS (v7.9.0-INTEGRITY)
   const [activePeriodIdx, setActivePeriodIdx] = useState<number>(-1);
@@ -575,8 +578,8 @@ export const CurrentPeriodFocus: React.FC<CurrentPeriodFocusProps> = ({
   const virtualItem = useMemo(() => {
     if (!item) return null;
     const v = { ...item };
-    const gVal = localGoal === "" ? 0 : parseFloat(localGoal);
-    const aVal = localActual === "" ? 0 : parseFloat(localActual);
+    const gVal = localGoal === "" ? null : parseFloat(localGoal);
+    const aVal = localActual === "" ? null : parseFloat(localActual);
 
     if (isWeekly) {
       v.weeklyGoals = [...(item.weeklyGoals || Array(53).fill(null))];
@@ -584,9 +587,9 @@ export const CurrentPeriodFocus: React.FC<CurrentPeriodFocusProps> = ({
       v.weeklyProgress = [...(item.weeklyProgress || Array(53).fill(null))];
       v.weeklyProgress[currentIdx] = aVal;
     } else {
-      v.monthlyGoals = [...(item.monthlyGoals || Array(12).fill(0))];
+      v.monthlyGoals = [...(item.monthlyGoals || Array(12).fill(null))];
       v.monthlyGoals[currentIdx] = gVal;
-      v.monthlyProgress = [...(item.monthlyProgress || Array(12).fill(0))];
+      v.monthlyProgress = [...(item.monthlyProgress || Array(12).fill(null))];
       v.monthlyProgress[currentIdx] = aVal;
     }
     return v;
@@ -640,8 +643,11 @@ export const CurrentPeriodFocus: React.FC<CurrentPeriodFocusProps> = ({
         : item.monthlyNotes?.[currentIdx]) || "";
 
     const strGoal = goal !== null && goal !== undefined ? goal.toString() : "";
-    const strActual =
-      actual !== null && actual !== undefined ? actual.toString() : "";
+    const actualCaptured = isWeekly
+      ? actual !== null && actual !== undefined
+      : item.monthlyProgressCaptured?.[currentIdx] === true ||
+        (item.monthlyProgressCaptured?.[currentIdx] === undefined && Number(actual) > 0);
+    const strActual = actualCaptured && actual !== null && actual !== undefined ? actual.toString() : "";
 
     if (
       strGoal !== localGoal ||
@@ -672,14 +678,10 @@ export const CurrentPeriodFocus: React.FC<CurrentPeriodFocusProps> = ({
       resolvedG = res.monthlyGoals;
     }
 
-    let limitIdx = -1;
-    if (isPastYear) {
-      limitIdx = isWeekly ? 52 : 11;
-    } else if (year === currentYear) {
-      const idxNow = isWeekly
-        ? getWeekNumber(new Date(), weekStart === "Sun" ? 0 : 1) - 1
-        : new Date().getMonth();
-      limitIdx = Math.max(idxNow - 1, currentIdx);
+    let limitIdx = isWeekly ? 52 : findLastIndexWithData(resolvedP, [], item.monthlyProgressCaptured);
+    if (isWeekly && !isPastYear) {
+      const idxNow = getWeekNumber(new Date(), weekStart === "Sun" ? 0 : 1) - 1;
+      limitIdx = Math.min(limitIdx, Math.max(idxNow - 1, currentIdx));
     }
 
     if (isWeekly) {
@@ -688,6 +690,7 @@ export const CurrentPeriodFocus: React.FC<CurrentPeriodFocusProps> = ({
       return {
         progress: prog.map((v) => (v !== null && v !== undefined ? v : null)),
         goals: goals.map((v) => (v !== null && v !== undefined ? v : null)),
+        captured: undefined,
       };
     } else {
       const prog = (resolvedP || []).slice(0, limitIdx + 1);
@@ -695,6 +698,8 @@ export const CurrentPeriodFocus: React.FC<CurrentPeriodFocusProps> = ({
       return {
         progress: prog.map((v) => (v !== null && v !== undefined ? v : null)),
         goals: goals.map((v) => (v !== null && v !== undefined ? v : null)),
+        captured: (item.monthlyProgressCaptured || []).slice(0, limitIdx + 1),
+        goalDefined: (item.monthlyGoalCaptured || []).slice(0, limitIdx + 1),
       };
     }
   }, [
@@ -715,8 +720,8 @@ export const CurrentPeriodFocus: React.FC<CurrentPeriodFocusProps> = ({
     if (!canEdit || !item) return;
     setIsSaving(true);
     try {
-      const newGoalVal = parseFormattedNumber(localGoal);
-      const newActualVal = parseFormattedNumber(localActual);
+      const newGoalVal = localGoal === "" ? null : parseFormattedNumber(localGoal);
+      const newActualVal = localActual === "" ? null : parseFormattedNumber(localActual);
       const updatedItem = {
         ...item,
         isActivityMode: activityMode,
@@ -733,14 +738,22 @@ export const CurrentPeriodFocus: React.FC<CurrentPeriodFocusProps> = ({
         updatedItem.weeklyProgress = newProgress;
         updatedItem.weeklyNotes = newNotes;
       } else {
-        const newGoals = [...monthlyGoals];
-        const newProgress = [...monthlyProgress];
+        const newGoals = [...(monthlyGoals || Array(12).fill(null))];
+        const newProgress = [...(monthlyProgress || Array(12).fill(null))];
         const newNotes = [...(monthlyNotes || Array(12).fill(""))];
         newGoals[currentIdx] = newGoalVal;
         newProgress[currentIdx] = newActualVal;
         newNotes[currentIdx] = localNote;
         updatedItem.monthlyGoals = newGoals;
+        updatedItem.monthlyGoalCaptured = [
+          ...(item.monthlyGoalCaptured || Array(12).fill(false)),
+        ];
+        updatedItem.monthlyGoalCaptured[currentIdx] = newGoalVal !== null;
         updatedItem.monthlyProgress = newProgress;
+        updatedItem.monthlyProgressCaptured = [
+          ...(item.monthlyProgressCaptured || Array(12).fill(false)),
+        ];
+        updatedItem.monthlyProgressCaptured[currentIdx] = newActualVal !== null;
         updatedItem.monthlyNotes = newNotes;
       }
       await onUpdateItem(updatedItem);
@@ -983,14 +996,7 @@ export const CurrentPeriodFocus: React.FC<CurrentPeriodFocusProps> = ({
                       Meta del Periodo ({unit})
                     </span>
                     <span className="text-[10px] font-black text-cyan-400 tabular-nums">
-                      {localGoal !== ""
-                        ? formatIndicatorValue(
-                            parseFormattedNumber(localGoal),
-                            unit,
-                            0,
-                            item.indicatorType === "formula",
-                          )
-                        : "SIN DATOS"}
+                      {localGoal !== "" ? formatMonthlyGoal(parseFormattedNumber(localGoal), item.monthlyGoalCaptured?.[currentIdx], unit, 0) : "SIN DATOS"}
                     </span>
                   </div>
                   <input
@@ -1000,12 +1006,7 @@ export const CurrentPeriodFocus: React.FC<CurrentPeriodFocusProps> = ({
                       isGoalFocused
                         ? localGoal
                         : localGoal !== ""
-                          ? formatIndicatorValue(
-                              parseFormattedNumber(localGoal),
-                              unit,
-                              0,
-                              item.indicatorType === "formula",
-                            )
+                          ? formatMonthlyGoal(parseFormattedNumber(localGoal), item.monthlyGoalCaptured?.[currentIdx], unit, 0)
                           : ""
                     }
                     onFocus={() => setIsGoalFocused(true)}
@@ -1038,14 +1039,7 @@ export const CurrentPeriodFocus: React.FC<CurrentPeriodFocusProps> = ({
                       Real del Periodo ({unit})
                     </span>
                     <span className="text-[10px] font-black text-emerald-400 tabular-nums">
-                      {localActual !== ""
-                        ? formatIndicatorValue(
-                            parseFormattedNumber(localActual),
-                            unit,
-                            0,
-                            item.indicatorType === "formula",
-                          )
-                        : "SIN DATOS"}
+                      {localActual !== "" ? formatMonthlyProgress(parseFormattedNumber(localActual), item.monthlyProgressCaptured?.[currentIdx], unit, 0) : "SIN DATOS"}
                     </span>
                   </div>
                   <input
@@ -1055,12 +1049,7 @@ export const CurrentPeriodFocus: React.FC<CurrentPeriodFocusProps> = ({
                       isActualFocused
                         ? localActual
                         : localActual !== ""
-                          ? formatIndicatorValue(
-                              parseFormattedNumber(localActual),
-                              unit,
-                              0,
-                              item.indicatorType === "formula",
-                            )
+                          ? formatMonthlyProgress(parseFormattedNumber(localActual), item.monthlyProgressCaptured?.[currentIdx], unit, 0)
                           : ""
                     }
                     onFocus={() => setIsActualFocused(true)}
@@ -1447,6 +1436,8 @@ export const CurrentPeriodFocus: React.FC<CurrentPeriodFocusProps> = ({
                 </div>
                 <LineChart
                   progressData={chartData.progress}
+                  capturedData={chartData.captured}
+                  goalDefinedData={chartData.goalDefined}
                   goalData={chartData.goals}
                   unit={unit}
                   type={type as any}
