@@ -16,6 +16,7 @@ import type { StrategicKpiCandidate } from "../strategyKpiOwnership";
 import { buildContributionMatrixViewModel } from "../contributionMatrixViewModel";
 import { ContributionExecutiveCell } from "./strategy/ContributionExecutiveCell";
 import { firebaseService } from "../services/firebaseService";
+import { resolveOperationalArea } from "../utils/operationalArea";
 import {
   buildObjectiveExecutiveDiagnosis,
   buildObjectiveExecutionSummary,
@@ -146,9 +147,10 @@ export const ObjectivesView: React.FC<Props> = ({
     >();
     objectiveRows.forEach(({ items }) =>
       items.forEach((item) => {
-        const key = canonicalAreaIdentity(item.dashboard.area, areaConfigs);
+        const operationalArea = resolveOperationalArea(item.dashboard, areaConfigs);
+        const key = canonicalAreaIdentity(operationalArea, areaConfigs);
         const row = rows.get(key) || {
-          label: item.dashboard.area || "Área no definida",
+          label: operationalArea || "Área no definida",
           items: [],
         };
         if (!row.items.some((existing) => existing.identity === item.identity))
@@ -252,6 +254,12 @@ export const ObjectivesView: React.FC<Props> = ({
         (() => {
           const areaIdentity = (name: string | undefined) =>
             canonicalAreaIdentity(name, areaConfigs);
+          const contributionArea = (oc: ContributionObjective) => {
+            const linkedKpis = contributionMatrix.strategicObjectives
+              .flatMap((row) => row.contributionObjectives)
+              .find((row) => row.contributionObjective.id === oc.id)?.kpis || [];
+            return resolveOperationalArea(linkedKpis[0]?.dashboard, areaConfigs) || oc.areaName;
+          };
           const areaLabels = new Map<string, string>();
           [
             ...areaConfigs.map((config) => ({
@@ -259,10 +267,13 @@ export const ObjectivesView: React.FC<Props> = ({
               name: config.areaName,
             })),
             ...objectiveRows.flatMap((row) =>
-              row.items.map((item) => ({
-                key: areaIdentity(item.dashboard.area),
-                name: item.dashboard.area || "Área no definida",
-              })),
+              row.items.map((item) => {
+                const resolvedArea = resolveOperationalArea(item.dashboard, areaConfigs);
+                return {
+                  key: areaIdentity(resolvedArea),
+                  name: resolvedArea || "Área no definida",
+                };
+              }),
             ),
             ...contributions
               .filter((oc) =>
@@ -270,9 +281,9 @@ export const ObjectivesView: React.FC<Props> = ({
                   (row) => row.objective.id === oc.primaryStrategicObjectiveId,
                 ),
               )
-              .map((oc) => ({
-                key: oc.areaConfigId || areaIdentity(oc.areaName),
-                name: oc.areaName || "Área no definida",
+            .map((oc) => ({
+                key: oc.areaConfigId || areaIdentity(contributionArea(oc)),
+                name: contributionArea(oc) || "Área no definida",
               })),
           ].forEach((area) => {
             if (!areaLabels.has(area.key)) areaLabels.set(area.key, area.name);
@@ -285,7 +296,7 @@ export const ObjectivesView: React.FC<Props> = ({
               .filter(
                 (oc) =>
                   oc.primaryStrategicObjectiveId === objective.id &&
-                  (oc.areaConfigId || areaIdentity(oc.areaName)) === areaKey,
+                  (oc.areaConfigId || areaIdentity(contributionArea(oc))) === areaKey,
               )
               .map((oc) => {
                 const kpis = (contributionMatrix.strategicObjectives.find(row => row.strategicObjective.id === objective.id)?.contributionObjectives.find(row => row.contributionObjective.id === oc.id)?.kpis || []).map((k) => ({
