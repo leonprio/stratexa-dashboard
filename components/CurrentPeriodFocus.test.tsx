@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import React from 'react';
 import { CurrentPeriodFocus } from './CurrentPeriodFocus';
 import { DashboardItem } from '../types';
@@ -63,5 +63,17 @@ describe('CurrentPeriodFocus Runtime & Derived Indicators Render Test (v9.4.13)'
     expect(screen.getByText('% Compromisos estratégicos cumplidos')).toBeInTheDocument();
     expect(screen.queryByText(/GUARDAR MES/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/Guardar Cambios/i)).not.toBeInTheDocument();
+  });
+
+  test('REABRIR conserva el KPI abierto y cambia a PENDIENTES', async () => {
+    const onClose = jest.fn();
+    const onUpdateItem = jest.fn().mockResolvedValue(undefined);
+    render(<CurrentPeriodFocus item={{ ...mockItems[2], isActivityMode: true, activityConfig: { 7: [{ id: 'a1', label: 'Establecer metas en Agosto', targetCount: 1, completedCount: 0, resolution: { resolutionStatus: 'completed_later', resolvedYear: 2026, resolvedPeriodIndex: 7 } }] } }} allDashboardItems={mockItems} globalThresholds={{ onTrack: 90, atRisk: 80 }} year={2026} canEdit={true} onUpdateItem={onUpdateItem} onClose={onClose} />);
+    fireEvent.click(screen.getAllByRole('button', { name: 'REABRIR' })[0]);
+    expect(screen.getByRole('dialog')).toHaveTextContent('¿Reabrir este pendiente?');
+    fireEvent.click(screen.getAllByRole('button', { name: 'REABRIR' })[1]);
+    await waitFor(() => expect(onUpdateItem).toHaveBeenCalled());
+    expect(onClose).not.toHaveBeenCalled();
+    expect(screen.getByRole('button', { name: /Pendientes/i })).toBeInTheDocument();
   });
 });

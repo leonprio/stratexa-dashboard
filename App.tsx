@@ -47,6 +47,7 @@ import {
 } from "./utils/standardStructure";
 import { firebaseService } from "./services/firebaseService";
 import { shieldItem } from "./utils/compliance";
+import { mergeActivityConfigPreservingResolutions } from "./utils/activityResolutionMerge";
 
 import { IPS_INDICATORS } from "./utils/standardStructure";
 import { exportBulkDataToCSV } from "./utils/exportUtils";
@@ -1753,7 +1754,11 @@ export default function App() {
     isSavingRef.current = true; // Activar escudo de sync
 
     // CRITICO v7.9.12: Crear copia profunda ANTES de shieldItem para evitar mutación
-    const deepCopy = JSON.parse(JSON.stringify(updatedItem)) as DashboardItem;
+    const currentItem = selectedDashboard.items.find((it) => String(it.id) === String(updatedItem.id));
+    const deepCopy = JSON.parse(JSON.stringify({
+      ...updatedItem,
+      activityConfig: mergeActivityConfigPreservingResolutions(currentItem?.activityConfig, updatedItem.activityConfig),
+    })) as DashboardItem;
     const shieldedItem = shieldItem(deepCopy);
 
     // 🔬 DIAGNÓSTICO v7.9.12: Rastrear exactamente qué se guarda

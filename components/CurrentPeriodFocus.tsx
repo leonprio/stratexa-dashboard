@@ -21,6 +21,8 @@ import {
   formatMonthlyGoal,
   formatMonthlyProgress,
 } from "../utils/formatters";
+import { buildResolutionHistory, type ResolutionHistoryRow } from "../utils/resolutionHistory";
+import { reopenActivityResolution } from "../utils/activityResolutionMerge";
 
 interface CurrentPeriodFocusProps {
   item: DashboardItem;
@@ -260,6 +262,16 @@ export const derivePendingKpiActivities = (
           Number(activity.completedCount) < Number(activity.targetCount) &&
           !["completed_later", "discarded"].includes(
             activity.resolution?.resolutionStatus || "",
+          ) && !(
+            activity.resolution?.resolutionStatus === "rescheduled" &&
+            activity.resolution.scheduledResolutionPeriodIndex !== undefined &&
+            compareCalendarPeriods(
+              activity.resolution.scheduledResolutionYear || year,
+              activity.resolution.scheduledResolutionPeriodIndex,
+              year,
+              currentIndex,
+            ) > 0 &&
+            currentIndex === activity.resolution.scheduledResolutionPeriodIndex
           ),
       )
       .map((activity) => {
@@ -312,6 +324,21 @@ export const derivePendingKpiActivities = (
   );
 };
 
+export const getFirstMeaningfulTrackingIndex = (
+  item: DashboardItem,
+  progress: (number | null)[] = item.monthlyProgress || [],
+  goals: (number | null)[] = item.monthlyGoals || [],
+): number => {
+  const configured = (item as DashboardItem & { trackingStartMonth?: number }).trackingStartMonth;
+  if (Number.isInteger(configured) && configured >= 0 && configured < 12) return configured;
+  const goalCaptured = item.monthlyGoalCaptured || [];
+  const progressCaptured = item.monthlyProgressCaptured || [];
+  const marked = [...Array(12).keys()].find(i => goalCaptured[i] === true || progressCaptured[i] === true);
+  if (marked !== undefined) return marked;
+  const legacy = [...Array(12).keys()].find(i => Number(progress[i]) > 0 || Number(goals[i]) > 0);
+  return legacy === undefined ? 12 : legacy;
+};
+
 export const CurrentPeriodFocus: React.FC<CurrentPeriodFocusProps> = ({
   item,
   globalThresholds,
@@ -333,11 +360,12 @@ export const CurrentPeriodFocus: React.FC<CurrentPeriodFocusProps> = ({
   const [isSaving, setIsSaving] = useState(false);
   const [isFullEditMode, setIsFullEditMode] = useState(false);
   const [isActivityManagerOpen, setIsActivityManagerOpen] = useState(false);
-  const [activityTab, setActivityTab] = useState<"current" | "pending">(
+  const [activityTab, setActivityTab] = useState<"current" | "pending" | "history">(
     "current",
   );
   const [managedPending, setManagedPending] =
     useState<PendingKpiActivity | null>(null);
+  const [reopenCandidate, setReopenCandidate] = useState<ResolutionHistoryRow | null>(null);
   const [pendingAction, setPendingAction] = useState<
     "idle" | "complete" | "discard" | "reschedule"
   >("idle");
@@ -482,10 +510,26 @@ export const CurrentPeriodFocus: React.FC<CurrentPeriodFocusProps> = ({
       ),
     [item?.activityConfig, currentIdx, isWeekly, year, currentYear],
   );
+  const resolutionHistory = useMemo(() => buildResolutionHistory(item, year || currentYear).filter(row => row.status !== 'REPROGRAMADO'), [item, year, currentYear]);
+  const reopenResolution = async (row: ResolutionHistoryRow) => {
+    const config = { ...(item.activityConfig || {}) };
+    const source = [...(config[row.originalPeriodIndex] || [])];
+    const index = source.findIndex(activity => activity.id === row.activityId);
+    if (index < 0) return;
+    source[index] = reopenActivityResolution(source[index], year || currentYear, currentIdx);
+    await onUpdateItem({ ...item, activityConfig: { ...config, [row.originalPeriodIndex]: source } });
+    setReopenCandidate(null);
+    setActivityTab("pending");
+  };
 
   useEffect(() => {
-    if (pendingAction === "reschedule") setRescheduleTarget(currentIdx);
-  }, [pendingAction, currentIdx]);
+    if (pendingAction === "reschedule" && managedPending) {
+      // A destination must be strictly after the activity's origin. The
+      // visible month is not necessarily the origin when an overdue item is
+      // being managed.
+      setRescheduleTarget(Math.min(managedPending.periodIndex + 1, isWeekly ? 52 : 11));
+    }
+  }, [pendingAction, managedPending, isWeekly]);
 
   const resolvePendingActivity = async (
     pending: PendingKpiActivity,
@@ -526,6 +570,7 @@ export const CurrentPeriodFocus: React.FC<CurrentPeriodFocusProps> = ({
     setPendingSaving(false);
     setManagedPending(null);
     setPendingAction("idle");
+    setPendingFeedback(`Reprogramado a ${isWeekly ? `la semana ${rescheduleTarget + 1}` : ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"][rescheduleTarget]}`);
     setPendingNote("");
     setPendingFeedback(
       status === "discarded" ? "Actividad descartada" : "Actividad completada",
@@ -533,7 +578,7 @@ export const CurrentPeriodFocus: React.FC<CurrentPeriodFocusProps> = ({
   };
 
   const reschedulePendingActivity = async (pending: PendingKpiActivity) => {
-    if (rescheduleTarget < currentIdx) return;
+    if (rescheduleTarget <= pending.periodIndex) return;
     setPendingSaving(true);
     setPendingError("");
     const config = applyOperationalReschedule(
@@ -678,6 +723,7 @@ export const CurrentPeriodFocus: React.FC<CurrentPeriodFocusProps> = ({
       resolvedG = res.monthlyGoals;
     }
 
+    const firstTrackingIdx = isWeekly ? 0 : getFirstMeaningfulTrackingIndex(item, resolvedP, resolvedG);
     let limitIdx = isWeekly ? 52 : findLastIndexWithData(resolvedP, [], item.monthlyProgressCaptured);
     if (isWeekly && !isPastYear) {
       const idxNow = getWeekNumber(new Date(), weekStart === "Sun" ? 0 : 1) - 1;
@@ -693,13 +739,13 @@ export const CurrentPeriodFocus: React.FC<CurrentPeriodFocusProps> = ({
         captured: undefined,
       };
     } else {
-      const prog = (resolvedP || []).slice(0, limitIdx + 1);
-      const goals = (resolvedG || []).slice(0, limitIdx + 1);
+      const prog = (resolvedP || []).slice(0, limitIdx + 1).map((value, index) => index < firstTrackingIdx ? null : value);
+      const goals = (resolvedG || []).slice(0, limitIdx + 1).map((value, index) => index < firstTrackingIdx ? null : value);
       return {
         progress: prog.map((v) => (v !== null && v !== undefined ? v : null)),
         goals: goals.map((v) => (v !== null && v !== undefined ? v : null)),
-        captured: (item.monthlyProgressCaptured || []).slice(0, limitIdx + 1),
-        goalDefined: (item.monthlyGoalCaptured || []).slice(0, limitIdx + 1),
+        captured: prog.map((v, index) => index < firstTrackingIdx ? false : item.monthlyProgressCaptured?.[index] === true || (item.monthlyProgressCaptured?.[index] === undefined && typeof v === 'number' && v > 0)),
+        goalDefined: goals.map((v, index) => index < firstTrackingIdx ? false : item.monthlyGoalCaptured?.[index] === true || (item.monthlyGoalCaptured?.[index] === undefined && typeof v === 'number' && v > 0)),
       };
     }
   }, [
@@ -1092,8 +1138,15 @@ export const CurrentPeriodFocus: React.FC<CurrentPeriodFocusProps> = ({
                 />
               )}
 
+              {activityMode && resolutionHistory.length > 0 && <section aria-label="Histórico de resoluciones" className="mb-3 rounded-xl border border-slate-700/60 bg-slate-950/40 p-3">
+                  <h3 className="text-[9px] font-black uppercase tracking-widest text-slate-400">HISTÓRICO DE RESOLUCIONES</h3>
+                  <div className="mt-2 space-y-2">{resolutionHistory.map(row => <div key={row.id} className="flex items-center justify-between gap-3 border-b border-white/5 pb-2 last:border-0 last:pb-0"><div><p className="text-xs text-slate-200">{row.title}</p><p className="text-[10px] text-slate-500">Periodo {row.originalPeriodIndex + 1} · {row.status}{row.reason ? ` · ${row.reason}` : ''}</p></div>{row.canReopen && <button type="button" onClick={() => setReopenCandidate(row)} className="shrink-0 rounded-lg border border-cyan-500/30 px-2 py-1.5 text-[9px] font-black text-cyan-300">REABRIR</button>}</div>)}</div>
+                  {reopenCandidate && <div role="dialog" className="mt-3 rounded-lg border border-cyan-500/30 bg-slate-900 p-3"><p className="text-xs font-bold text-white">¿Reabrir este pendiente?</p><p className="mt-1 text-[10px] text-slate-400">Volverá a Pendientes y se conservará el historial de lo ocurrido.</p><div className="mt-2 flex justify-end gap-2"><button type="button" onClick={() => setReopenCandidate(null)} className="rounded px-2 py-1.5 text-[9px] font-black text-slate-400">CANCELAR</button><button type="button" onClick={() => void reopenResolution(reopenCandidate)} className="rounded bg-cyan-600 px-2 py-1.5 text-[9px] font-black text-white">REABRIR</button></div></div>}
+                </section>}
+
               {activityMode && (
                 <div className="space-y-2">
+                  {pendingFeedback && <p role="status" className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-[10px] font-bold text-emerald-300">{pendingFeedback}</p>}
                   <div className="flex gap-1 rounded-xl border border-indigo-500/20 bg-slate-950/50 p-1">
                     <button
                       onClick={() => setActivityTab("current")}
@@ -1227,9 +1280,9 @@ export const CurrentPeriodFocus: React.FC<CurrentPeriodFocusProps> = ({
                                         {Array.from(
                                           {
                                             length:
-                                              (isWeekly ? 53 : 12) - currentIdx,
+                                              (isWeekly ? 53 : 12) - activity.periodIndex - 1,
                                           },
-                                          (_, i) => currentIdx + i,
+                                          (_, i) => activity.periodIndex + 1 + i,
                                         ).map((idx) => (
                                           <option key={idx} value={idx}>
                                             {isWeekly

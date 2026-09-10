@@ -132,7 +132,8 @@ export const LineChart: React.FC<LineChartProps> = React.memo(({ progressData, c
   };
 
   const linePath = createSmoothPath(validPlotData);
-  const goalLinePath = createSmoothPath(goalPlotData);
+  // Null points are gaps, never zero-valued SVG coordinates.
+  const goalLinePath = createSmoothPath(validGoalData);
 
   const areaPath = linePath && validPlotData.length > 0 ? `${linePath} L ${xScale(validPlotData[validPlotData.length - 1].index)} ${yScale(yMin)} L ${xScale(validPlotData[0].index)} ${yScale(yMin)} Z` : "";
   const safeId = indicator.replace(/[^a-zA-Z0-9]/g, '_');
@@ -231,6 +232,20 @@ export const LineChart: React.FC<LineChartProps> = React.memo(({ progressData, c
               </g>
             );
           })}
+
+          {/* Independent goal markers, including the single first period. */}
+          {validGoalData.map((d) => (
+            <circle
+              key={`goal-point-${d.index}`}
+              cx={xScale(d.index)}
+              cy={yScale(d.value)}
+              r="4"
+              fill="#22d3ee"
+              stroke="#020617"
+              strokeWidth="1"
+              aria-label={`Periodo ${labels[d.index]}: Meta ${formatNumber(d.value)}`}
+            />
+          ))}
 
           {/* Hover indicator line */}
           {activeHoveredData && (

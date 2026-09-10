@@ -102,12 +102,22 @@ export interface DashboardItem {
       targetCount: number;
       completedCount: number;
       resolution?: {
-        resolutionStatus: 'completed_later' | 'discarded' | 'rescheduled';
+        resolutionStatus: 'completed_later' | 'discarded' | 'rescheduled' | 'reopened';
         resolvedAt?: string;
         resolvedYear?: number;
         resolvedPeriodType?: 'monthly' | 'weekly';
         resolvedPeriodIndex?: number;
         resolutionNote?: string;
+        reopenedAt?: string;
+        previousResolutionStatus?: 'completed_later' | 'discarded' | 'rescheduled';
+        resolutionHistory?: {
+          event: 'completed_later' | 'discarded' | 'rescheduled' | 'reopened';
+          at: string;
+          year: number;
+          periodIndex: number;
+          previousResolutionStatus?: 'completed_later' | 'discarded' | 'rescheduled';
+          note?: string;
+        }[];
         scheduledResolutionYear?: number;
         scheduledResolutionPeriodType?: 'monthly' | 'weekly';
         scheduledResolutionPeriodIndex?: number;
