@@ -26,7 +26,17 @@ export interface SystemSettings {
   customWeights?: Record<string, number>; // { dashboardId: 30 } (si strategy === 'manual')
   calculationMode?: 'realTime' | 'definitive'; // Default: 'realTime'
   enableStrategyMap?: boolean; // 🎯 Feature Flag para Mapa de Estrategia / Matriz de Contribución (v9.5.0 Foundation)
+  /** Client-scoped default; intentionally undefined until an administrator configures it. */
+  defaultTrackingStartPeriod?: TrackingStartPeriod;
 }
+
+/**
+ * First period in which a KPI is expected to carry information.  The
+ * discriminant keeps monthly and weekly calendars in one extensible model.
+ */
+export type TrackingStartPeriod =
+  | { frequency: 'monthly'; year: number; monthIndex: number }
+  | { frequency: 'weekly'; year: number; weekNumber: number };
 
 export enum CalculationMode {
   RealTime = 'realTime',
@@ -56,6 +66,8 @@ export interface DashboardItem {
   order?: number; // 🚀 V6.2.1: Persist visual order
   weight: number; // Ponderación del indicador en porcentaje
   frequency?: 'monthly' | 'weekly';
+  /** Explicit KPI-level override of the client/dashboard tracking start. */
+  trackingStartPeriod?: TrackingStartPeriod;
   weeklyGoals?: (number | null)[]; // Up to 53 weeks
   weeklyProgress?: (number | null)[];
   weekStart?: 'Sun' | 'Mon';
@@ -202,6 +214,8 @@ export interface Dashboard {
   superGroup?: string; // 🏢 NIVEL 4: Grupo de Grupos (v7.2.1)
   isHierarchyRoot?: boolean; // Indica si es un grupo de nivel superior (v5.1.0)
   targetIndicatorCount?: number; // Meta manual de cuántos indicadores deben estar capturados (v5.5.3)
+  /** Optional dashboard default, taking precedence over the client default. */
+  defaultTrackingStartPeriod?: TrackingStartPeriod;
 }
 
 
