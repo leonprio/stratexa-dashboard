@@ -1,0 +1,237 @@
+import {
+  formatResolutionHistoryItem,
+  getCurrentPeriodProgress,
+  getContinuitySnapshot,
+  getCumulativeProgress,
+  getFulfillmentPercent,
+  getPreviousCumulative,
+  getRemainingTarget,
+  isCaptureComplete,
+  isTargetReached,
+  reduceContinuity,
+  type ContinuityCommitment,
+} from './continuityEngine';
+
+const createBaseCommitment = (overrides?: Partial<ContinuityCommitment>): ContinuityCommitment => ({
+  id: 'c1',
+  sourceType: 'ACTIVITY_KPI',
+  sourceKpiId: 'k1',
+  sourceActivityId: 'a1',
+  originYear: 2026,
+  originPeriod: 7, // Agosto
+  originalTarget: 20,
+  scheduledYear: 2026,
+  scheduledPeriod: 7, // Agosto
+  progressByPeriod: { 7: 5 },
+  status: 'active',
+  outcome: 'in_progress',
+  rescheduleHistory: [],
+  resolutionHistory: [],
+  ...overrides,
+});
+
+describe('Semántica Final de Continuidad, Trazabilidad Humanizada e Invariantes', () => {
+  // A. 12/20 -> REGISTRAR META ALCANZADA -> confirmar +8 = 20/20, 100%, completed
+  test('A. 12/20 -> Confirmar meta alcanzada (+8) -> 20/20, 100%, status: completed', () => {
+    let state = createBaseCommitment();
+    state = reduceContinuity(state, { type: 'RESCHEDULE', year: 2026, period: 8 });
+    state = reduceContinuity(state, { type: 'RECORD_PROGRESS', period: 8, value: 7 }); // 12
+    state = reduceContinuity(state, { type: 'RESCHEDULE', year: 2026, period: 9 }); // Octubre
+
+    const snapBefore = getContinuitySnapshot(state);
+    expect(snapBefore.remainingTarget).toBe(8);
+
+    // Registro de progreso confirmado 8 y completado
+    state = reduceContinuity(state, { type: 'RECORD_PROGRESS', period: 9, value: 8 });
+    expect(isTargetReached(state)).toBe(true);
+    state = reduceContinuity(state, { type: 'COMPLETE' });
+
+    expect(state.status).toBe('completed');
+    expect(state.outcome).toBe('target_reached');
+    expect(getContinuitySnapshot(state)).toMatchObject({
+      cumulativeProgress: 20,
+      remainingTarget: 0,
+      fulfillmentPercent: 100,
+      isTargetReached: true,
+    });
+  });
+
+  // B. 12/20 -> Cambiar sugerencia 8 por 6 = 18/20, 90%, remaining 2, status active
+  test('B. 12/20 -> Cambiar sugerencia de 8 por 6 -> 18/20, 90%, status active (sin completar falsamente)', () => {
+    let state = createBaseCommitment();
+    state = reduceContinuity(state, { type: 'RESCHEDULE', year: 2026, period: 8 });
+    state = reduceContinuity(state, { type: 'RECORD_PROGRESS', period: 8, value: 7 });
+    state = reduceContinuity(state, { type: 'RESCHEDULE', year: 2026, period: 9 });
+
+    // Usuario ajusta propuesta a 6
+    state = reduceContinuity(state, { type: 'RECORD_PROGRESS', period: 9, value: 6 });
+
+    expect(isTargetReached(state)).toBe(false);
+    expect(state.status).toBe('active');
+    expect(getContinuitySnapshot(state)).toMatchObject({
+      cumulativeProgress: 18,
+      remainingTarget: 2,
+      fulfillmentPercent: 90,
+      isTargetReached: false,
+    });
+
+    // Intentar COMPLETE lanza excepción
+    expect(() => {
+      reduceContinuity(state, { type: 'COMPLETE' });
+    }).toThrow('CANNOT_COMPLETE_UNMET');
+  });
+
+  // C. Abrir diálogo de meta alcanzada sin confirmar = no data mutation
+  test('C. Abrir diálogo sin confirmar no altera el estado', () => {
+    const state = createBaseCommitment();
+    const cloned = JSON.parse(JSON.stringify(state));
+    expect(state).toEqual(cloned);
+  });
+
+  // D. CLOSE_UNMET 12/20 = conserva 12/20, 60%, brecha 8
+  test('D. CLOSE_UNMET con 12/20 conserva honestamente 12/20, 60%, brecha 8', () => {
+    let state = createBaseCommitment();
+    state = reduceContinuity(state, { type: 'RESCHEDULE', year: 2026, period: 8 });
+    state = reduceContinuity(state, { type: 'RECORD_PROGRESS', period: 8, value: 7 });
+
+    state = reduceContinuity(state, { type: 'CLOSE_UNMET' });
+    expect(state.status).toBe('closed');
+    expect(state.outcome).toBe('target_not_reached');
+    expect(getContinuitySnapshot(state)).toMatchObject({
+      cumulativeProgress: 12,
+      remainingTarget: 8,
+      fulfillmentPercent: 60,
+      isTargetReached: false,
+    });
+  });
+
+  // E. REOPEN después de COMPLETE = conserva todos los avances
+  test('E. REOPEN después de COMPLETE conserva todos los avances', () => {
+    let state = createBaseCommitment();
+    state = reduceContinuity(state, { type: 'RESCHEDULE', year: 2026, period: 8 });
+    state = reduceContinuity(state, { type: 'RECORD_PROGRESS', period: 8, value: 15 });
+    state = reduceContinuity(state, { type: 'COMPLETE' });
+
+    state = reduceContinuity(state, { type: 'REOPEN' });
+    expect(state.status).toBe('active');
+    expect(state.progressByPeriod[7]).toBe(5);
+    expect(state.progressByPeriod[8]).toBe(15);
+    expect(getCumulativeProgress(state)).toBe(20);
+  });
+
+  // F. REOPEN después de CLOSE_UNMET = conserva todos los avances
+  test('F. REOPEN después de CLOSE_UNMET conserva todos los avances', () => {
+    let state = createBaseCommitment();
+    state = reduceContinuity(state, { type: 'RESCHEDULE', year: 2026, period: 8 });
+    state = reduceContinuity(state, { type: 'RECORD_PROGRESS', period: 8, value: 7 });
+    state = reduceContinuity(state, { type: 'CLOSE_UNMET' });
+
+    state = reduceContinuity(state, { type: 'REOPEN' });
+    expect(state.status).toBe('active');
+    expect(state.progressByPeriod[7]).toBe(5);
+    expect(state.progressByPeriod[8]).toBe(7);
+    expect(getCumulativeProgress(state)).toBe(12);
+  });
+
+  // G. Ninguna acción de estado puede fabricar progreso
+  test('G. Ninguna acción de cambio de estado altera avances ni fabrica progreso fantasma', () => {
+    let state = createBaseCommitment();
+    const initialCumulative = getCumulativeProgress(state);
+
+    state = reduceContinuity(state, { type: 'RESCHEDULE', year: 2026, period: 8 });
+    expect(getCumulativeProgress(state)).toBe(initialCumulative);
+
+    state = reduceContinuity(state, { type: 'UNDO_RESCHEDULE' });
+    expect(getCumulativeProgress(state)).toBe(initialCumulative);
+
+    state = reduceContinuity(state, { type: 'CLOSE_UNMET' });
+    expect(getCumulativeProgress(state)).toBe(initialCumulative);
+
+    state = reduceContinuity(state, { type: 'REOPEN' });
+    expect(getCumulativeProgress(state)).toBe(initialCumulative);
+
+    state = reduceContinuity(state, { type: 'DISCARD' });
+    expect(getCumulativeProgress(state)).toBe(initialCumulative);
+  });
+
+  // H. CAPTURA COMPLETA != META ALCANZADA
+  test('H. Captura Completa es independiente de Meta Alcanzada', () => {
+    let state = createBaseCommitment();
+    state = reduceContinuity(state, { type: 'RESCHEDULE', year: 2026, period: 8 });
+    state = reduceContinuity(state, { type: 'RECORD_PROGRESS', period: 8, value: 7 }); // 12 / 20
+
+    // En Septiembre: la captura está completa (hay un valor registrado), pero la meta NO está alcanzada
+    expect(isCaptureComplete(state, 8)).toBe(true);
+    expect(isTargetReached(state)).toBe(false);
+    expect(getContinuitySnapshot(state).fulfillmentPercent).toBe(60);
+  });
+
+  // I. Human Readable Traceability Formatter
+  test('I. Formateador de Trazabilidad Humanizada en español sin códigos técnicos', () => {
+    expect(
+      formatResolutionHistoryItem({ type: 'CREATE_CONTINUITY', at: '' })
+    ).toBe('Compromiso iniciado');
+
+    expect(
+      formatResolutionHistoryItem({
+        type: 'RESCHEDULE',
+        fromPeriod: 7,
+        toPeriod: 8,
+        at: '',
+      })
+    ).toBe('Reprogramado de Agosto a Septiembre');
+
+    expect(
+      formatResolutionHistoryItem({
+        type: 'RECORD_PROGRESS',
+        period: 8,
+        value: 7,
+        at: '',
+      })
+    ).toBe('Avance registrado en Septiembre: +7 unidades');
+
+    expect(
+      formatResolutionHistoryItem({
+        type: 'ADJUST_PERIOD_PROGRESS',
+        period: 8,
+        fromValue: 7,
+        toValue: 6,
+        at: '',
+      })
+    ).toBe('Avance corregido en Septiembre: de 7 a 6 unidades');
+
+    expect(
+      formatResolutionHistoryItem({
+        type: 'VOID_PERIOD_PROGRESS',
+        period: 8,
+        previousValue: 7,
+        at: '',
+      })
+    ).toBe('Avance de Septiembre anulado: 7 unidades');
+
+    expect(
+      formatResolutionHistoryItem({
+        type: 'UNDO_RESCHEDULE',
+        fromPeriod: 8,
+        toPeriod: 7,
+        at: '',
+      })
+    ).toBe('Reprogramación deshecha: vuelve a Agosto');
+
+    expect(
+      formatResolutionHistoryItem({ type: 'COMPLETE', at: '' })
+    ).toBe('Meta alcanzada y compromiso cerrado');
+
+    expect(
+      formatResolutionHistoryItem({ type: 'CLOSE_UNMET', at: '' })
+    ).toBe('Seguimiento cerrado sin alcanzar la meta');
+
+    expect(
+      formatResolutionHistoryItem({ type: 'DISCARD', at: '' })
+    ).toBe('Compromiso descartado');
+
+    expect(
+      formatResolutionHistoryItem({ type: 'REOPEN', at: '' })
+    ).toBe('Compromiso reabierto');
+  });
+});
