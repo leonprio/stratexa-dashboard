@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Dashboard as DashboardType, SystemSettings } from "../types";
 import { normalizeGroupName } from "../utils/formatters";
-import { calculateDashboardWeightedScore, calculateCaptureMetrics, calculateCapturePct, hasApplicableGoals } from "../utils/compliance";
+import { calculateDashboardWeightedScore, calculateCapturePct, hasApplicableGoals } from "../utils/compliance";
+import { getCaptureSummaryForDashboard } from "../utils/smartCapture";
 
 type LayoutMode = "grid" | "compact";
 
@@ -182,7 +183,7 @@ const DashboardTabsComponent: React.FC<DashboardTabsProps> = ({
       const dItems = d.items || [];
       const dHasGoals = hasApplicableGoals(dItems);
       const dCompliancePct = calculateDashboardWeightedScore(dItems, settings?.thresholds || { onTrack: 95, atRisk: 85 }, d.year || new Date().getFullYear());
-      const dCapturePct = calculateCaptureMetrics(dItems, d.year || new Date().getFullYear()).capturePct;
+      const dCapturePct = getCaptureSummaryForDashboard(d, settings).capturePercent;
 
       const dCopy = { ...d };
       (dCopy as any)._compliancePct = dCompliancePct;
@@ -206,14 +207,14 @@ const DashboardTabsComponent: React.FC<DashboardTabsProps> = ({
         const groupAllItems = data.items.flatMap(it => it.items || []);
         const gHasGoals = hasApplicableGoals(groupAllItems);
         const gCompliancePct = calculateDashboardWeightedScore(groupAllItems, settings?.thresholds || { onTrack: 95, atRisk: 85 }, new Date().getFullYear());
-        const gCaptureMetrics = calculateCaptureMetrics(groupAllItems, new Date().getFullYear());
+        const gCaptureMetrics = getCaptureSummaryForDashboard({ items: groupAllItems, year: new Date().getFullYear(), periodicity: 'monthly', defaultTrackingStartPeriod: undefined }, settings);
 
         return {
           label: data.officialName,
           originalLabel: data.officialName,
           normalizedLabel: normG,
           compliancePct: gCompliancePct,
-          capturePct: gCaptureMetrics.capturePct,
+          capturePct: gCaptureMetrics.capturePercent === null ? null : Math.round(gCaptureMetrics.capturePercent),
           hasGoals: gHasGoals,
           superGroup: data.superGroup,
           items: data.items.sort((a, b) => {
@@ -535,6 +536,9 @@ const DashboardTabsComponent: React.FC<DashboardTabsProps> = ({
                           </div>
                           <span className={`text-[10px] font-black tracking-widest min-w-[35px] text-right ${(dashboard as any)._compliancePct >= 95 ? 'text-emerald-400' : (dashboard as any)._compliancePct >= 85 ? 'text-amber-400' : 'text-rose-400'}`}>
                             {Math.round((dashboard as any)._compliancePct || 0)}%
+                          </span>
+                          <span className="text-[8px] font-black uppercase tracking-widest text-cyan-400 whitespace-nowrap">
+                            Captura {(dashboard as any)._capturePct === null ? 'SIN OBLIGACIONES' : `${Math.round((dashboard as any)._capturePct || 0)}%`}
                           </span>
                         </div>
                       ) : (

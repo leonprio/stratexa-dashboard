@@ -14,9 +14,9 @@ import { PowerPointExportModal } from "./PowerPointExportModal";
 import {
   calculateDashboardWeightedScore,
   getStatusForPercentage,
-  calculateCapturePct,
   hasApplicableGoals,
 } from "../utils/compliance";
+import { getCaptureSummaryForDashboard } from "../utils/smartCapture";
 import { ReportCenter } from "./ReportCenter";
 import { CurrentPeriodFocus } from "./CurrentPeriodFocus";
 import { exportDashboardToExcel } from "../utils/exportUtils";
@@ -242,13 +242,13 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(
     const totalStatus = getStatusForPercentage(totalScore, activeThresholds);
 
     // 🎯 CÁLCULO DE CUMPLIMIENTO REGULATORIO / CAPTURA (Sincronizado v5.5.9.3)
-    const capturePct = useMemo(() => {
-      if (typeof (dashboard as any).capturePct === "number")
-        return (dashboard as any).capturePct;
-      if (typeof (dashboard as any)._capturePct === "number")
-        return (dashboard as any)._capturePct;
-      return calculateCapturePct(dashboard);
-    }, [dashboard]);
+    const captureSummary = useMemo(
+      () => getCaptureSummaryForDashboard(dashboard, settings),
+      [dashboard, settings],
+    );
+    const capturePct = captureSummary.capturePercent === null
+      ? null
+      : Math.round(captureSummary.capturePercent);
 
     const selectedItem = useMemo(() => {
       return findDashboardItemById(safeItems, selectedItemId);
@@ -509,7 +509,7 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(
             </div>
 
             {/* CAPTURA BADGE */}
-            {typeof capturePct === "number" && (
+            {capturePct !== null && (
               <div className="flex items-center gap-3 border border-white/5 bg-slate-900/50 px-4 py-1.5 rounded-xl shadow-lg">
                 <div className="flex flex-col items-end">
                   <span className="text-[8px] sm:text-[9px] font-black text-slate-500 uppercase tracking-widest leading-none mb-1">
@@ -521,7 +521,18 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(
                     >
                       {capturePct}%
                     </span>
+                    <span className="text-[9px] font-bold text-slate-500 whitespace-nowrap">
+                      {captureSummary.capturedKpis} de {captureSummary.requiredKpis} exigibles
+                    </span>
                   </div>
+                </div>
+              </div>
+            )}
+            {capturePct === null && (
+              <div className="flex items-center gap-3 border border-white/5 bg-slate-900/50 px-4 py-1.5 rounded-xl shadow-lg">
+                <div className="flex flex-col items-end">
+                  <span className="text-[8px] sm:text-[9px] font-black text-slate-500 uppercase tracking-widest leading-none mb-1">Captura</span>
+                  <span className="text-sm font-black text-slate-400 uppercase tracking-wider">Sin obligaciones</span>
                 </div>
               </div>
             )}
