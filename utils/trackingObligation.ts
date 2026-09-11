@@ -117,6 +117,27 @@ export const getKpiTrackingObligation = (input: KpiTrackingObligationInput): Tra
   return 'CAPTURE_COMPLETE';
 };
 
+/** True only for captured historical information; legacy zero is intentionally ambiguous. */
+export const hasTrackingFactsBeforePeriod = (
+  frequency: TrackingFrequency,
+  year: number,
+  candidate: TrackingPeriod,
+  goals: Array<number | null | undefined>,
+  progress: Array<number | null | undefined>,
+  goalCaptured?: Array<boolean | undefined>,
+  progressCaptured?: Array<boolean | undefined>,
+): { hasFacts: boolean; firstPeriod?: TrackingPeriod; goal?: number | null; progress?: number | null } => {
+  const size = frequency === 'monthly' ? 12 : 53;
+  for (let index = 0; index < size; index++) {
+    const period: TrackingPeriod = frequency === 'monthly' ? { frequency, year, monthIndex: index } : { frequency, year, weekNumber: index + 1 };
+    if (compareTrackingPeriods(period, candidate) >= 0) break;
+    if (isExplicitOrLegacyValue(goals[index], goalCaptured?.[index]) || isExplicitOrLegacyValue(progress[index], progressCaptured?.[index])) {
+      return { hasFacts: true, firstPeriod: period, goal: goals[index], progress: progress[index] };
+    }
+  }
+  return { hasFacts: false };
+};
+
 export interface KpiTrackingPeriodEntry {
   kpiId: DashboardItem['id'];
   obligation: TrackingObligation;

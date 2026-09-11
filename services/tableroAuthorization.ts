@@ -2,7 +2,7 @@ import type { Dashboard, User } from '../types';
 
 export type CanonicalRole = 'platform_admin' | 'tenant_admin' | 'director' | 'standard_user';
 export type MembershipStatus = 'active' | 'inactive' | 'suspended';
-export type ScopeCapability = 'viewer' | 'editor' | 'metadata_editor' | 'plan_editor' | 'strategy_reader';
+export type ScopeCapability = 'viewer' | 'editor' | 'metadata_editor' | 'plan_editor' | 'strategy_reader' | 'tracking_configurator' | 'strategy_configurator';
 
 export interface TenantMembership {
   clientId: string;
@@ -50,7 +50,7 @@ const canonicalMembership = (membership: NonNullable<User['memberships']>[number
     dashboardScopes: { ...(membership.dashboardScopes || {}) },
     editableDashboardIds: [...new Set((membership.editableDashboardIds || []).map(String).map(s => s.trim()).filter(Boolean))],
     capabilities: [...new Set((membership.capabilities || []).filter((x): x is ScopeCapability =>
-      ['viewer', 'editor', 'metadata_editor', 'plan_editor', 'strategy_reader'].includes(x)))],
+      ['viewer', 'editor', 'metadata_editor', 'plan_editor', 'strategy_reader', 'tracking_configurator', 'strategy_configurator'].includes(x)))],
     source: 'canonical',
   };
 };
@@ -149,6 +149,17 @@ export function canManageUsers(profile: User, targetClientId: string): boolean {
 export function canAccessStrategy(profile: User, clientId: string): boolean {
   const membership = getMembershipForClient(profile, clientId);
   return membership?.role === 'tenant_admin' || membership?.capabilities.includes('strategy_reader') || false;
+}
+export function canConfigureTracking(profile: User, clientId: string, dashboard?: Pick<Dashboard, 'id' | 'clientId'>): boolean {
+  const membership = getMembershipForClient(profile, clientId);
+  if (!membership) return false;
+  if (membership.role === 'tenant_admin') return true;
+  if (!membership.capabilities.includes('tracking_configurator')) return false;
+  return !dashboard || membership.editableDashboardIds.includes(String(dashboard.id));
+}
+export function canConfigureStrategy(profile: User, clientId: string): boolean {
+  const membership = getMembershipForClient(profile, clientId);
+  return !!membership && (membership.role === 'tenant_admin' || membership.capabilities.includes('strategy_configurator'));
 }
 
 export { validRoles };

@@ -263,7 +263,7 @@ export interface TenantMembership {
   hierarchyScopes?: string[];
   dashboardScopes?: Record<string, 'viewer' | 'editor'>;
   editableDashboardIds?: string[];
-  capabilities?: ('viewer' | 'editor' | 'metadata_editor' | 'plan_editor' | 'strategy_reader')[];
+  capabilities?: ('viewer' | 'editor' | 'metadata_editor' | 'plan_editor' | 'strategy_reader' | 'tracking_configurator' | 'strategy_configurator')[];
 }
 
 export type OperationalMetrics = any;

@@ -4,6 +4,7 @@ import {
   resolveTrackingStartPeriod,
   getEffectiveTrackingStartPeriod,
   suggestTrackingStartFromGoalHistory,
+  hasTrackingFactsBeforePeriod,
   selectKpiTrackingCaptureForPeriod,
 } from './trackingObligation';
 
@@ -78,5 +79,11 @@ describe('tracking obligation', () => {
 
   test('area-only and no-strategy-shaped KPI input needs no strategic dependency', () => {
     expect(getKpiTrackingObligation({ frequency: 'monthly', period: monthly(2026, 7), operationalPeriod: monthly(2026, 7), trackingStartPeriod: monthly(2026, 7), goalValue: 1, goalCaptured: true, progressValue: 1, progressCaptured: true })).toBe('CAPTURE_COMPLETE');
+  });
+
+  test('blocks a forward start only when earlier information was actually captured', () => {
+    expect(hasTrackingFactsBeforePeriod('monthly', 2026, monthly(2026, 9), [null, null, null, null, null, null, null, 20], [null, null, null, null, null, null, null, 5], [], [])).toMatchObject({ hasFacts: true, firstPeriod: monthly(2026, 7) });
+    expect(hasTrackingFactsBeforePeriod('monthly', 2026, monthly(2026, 9), [null, null, null, null, null, null, null, 0], [null, null, null, null, null, null, null, 0], [], [])).toMatchObject({ hasFacts: false });
+    expect(hasTrackingFactsBeforePeriod('monthly', 2026, monthly(2026, 9), [null, null, null, null, null, null, null, 0], [], [false, false, false, false, false, false, false, true])).toMatchObject({ hasFacts: true });
   });
 });

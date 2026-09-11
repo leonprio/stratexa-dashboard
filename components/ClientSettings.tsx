@@ -9,6 +9,8 @@ import {
   generateChecksum
 } from '../utils/enterpriseRecoveryUtils';
 import { exportToExecutiveExcelJS } from '../utils/ExecutiveOperationalExport';
+import { TrackingStartPeriodControls, formatTrackingStartPeriod } from './TrackingStartPeriodControls';
+import type { TrackingStartPeriod } from '../types';
 
 export interface ClientSettingsProps {
   dashboards: DashboardType[];
@@ -45,6 +47,11 @@ export const ClientSettings: React.FC<ClientSettingsProps> = React.memo(({
   currentUser,
 }) => {
   const [activeTab, setActiveTab] = useState<ConfigTab>('exports');
+  const [trackingStart, setTrackingStart] = useState<TrackingStartPeriod | undefined>(settings?.defaultTrackingStartPeriod);
+  const [trackingFrequency, setTrackingFrequency] = useState<'monthly' | 'weekly'>(settings?.defaultTrackingStartPeriod?.frequency || 'monthly');
+  const [trackingSavePending, setTrackingSavePending] = useState(false);
+  const [trackingFeedback, setTrackingFeedback] = useState<string>('');
+  useEffect(() => setTrackingStart(settings?.defaultTrackingStartPeriod), [settings?.defaultTrackingStartPeriod]);
   
   // Checkpoint manual states
   const [chkReason, setChkReason] = useState('');
@@ -265,6 +272,21 @@ export const ClientSettings: React.FC<ClientSettingsProps> = React.memo(({
             Cerrar Panel
           </button>
         </div>
+
+        <section className="mb-6 rounded-xl border border-cyan-500/30 bg-cyan-950/15 p-5">
+          <h3 className="text-sm font-black uppercase tracking-wider text-cyan-200">Seguimiento</h3>
+          <p className="mt-1 text-xs leading-relaxed text-slate-300">Define desde qué periodo los indicadores deben comenzar a registrar metas y avances. Cada tablero o indicador puede tener una excepción propia.</p>
+          <div className="mt-4 grid gap-3 md:grid-cols-[140px_1fr_auto] md:items-end">
+            <label className="block text-[10px] font-black uppercase text-slate-400">Frecuencia
+              <select aria-label="Frecuencia predeterminada de seguimiento" value={trackingFrequency} onChange={e => { const frequency = e.target.value as 'monthly' | 'weekly'; setTrackingFrequency(frequency); setTrackingStart(undefined); }} className="mt-1 block w-full bg-slate-950 border border-slate-700 rounded-lg px-2 py-2 text-xs text-white"><option value="monthly">Mensual</option><option value="weekly">Semanal</option></select>
+            </label>
+            <TrackingStartPeriodControls value={trackingStart?.frequency === trackingFrequency ? trackingStart : undefined} frequency={trackingFrequency} year={selectedYear} onChange={setTrackingStart} />
+            <button type="button" onClick={() => { setTrackingFeedback(''); setTrackingSavePending(true); }} className="rounded-lg bg-cyan-600 px-4 py-2 text-xs font-black uppercase text-white hover:bg-cyan-500">Guardar inicio</button>
+          </div>
+          <p className="mt-3 text-[11px] text-cyan-100">Valor efectivo del cliente: <strong>{formatTrackingStartPeriod(trackingStart)}</strong></p>
+          {trackingSavePending && <div className="mt-3 rounded-lg border border-amber-400/30 bg-amber-950/20 p-3 text-xs text-amber-100"><p>El inicio predeterminado del seguimiento cambiará a <strong>{formatTrackingStartPeriod(trackingStart)}</strong>. Los indicadores que no tengan una excepción propia heredarán este periodo.</p><div className="mt-2 flex gap-2"><button type="button" onClick={async () => { try { await handleUpdateSystemSettings({ defaultTrackingStartPeriod: trackingStart }); setTrackingFeedback(`Inicio de seguimiento guardado: ${formatTrackingStartPeriod(trackingStart)}.`); } catch (error: any) { setTrackingFeedback(`No se pudo guardar: ${error?.message || 'error desconocido'}.`); } finally { setTrackingSavePending(false); } }} className="rounded bg-cyan-600 px-3 py-1 font-black text-white">GUARDAR</button><button type="button" onClick={() => setTrackingSavePending(false)} className="rounded border border-slate-600 px-3 py-1">CANCELAR</button></div></div>}
+          {trackingFeedback && <p role="status" className="mt-2 text-xs font-bold text-emerald-300">{trackingFeedback}</p>}
+        </section>
 
         {/* Navigation Tabs (EXPORTS, IMPORTS, RECOVERY, MAINTENANCE, NUCLEAR) */}
         <div className="flex bg-slate-950 border border-slate-800 p-1 rounded-xl mb-6 overflow-x-auto whitespace-nowrap">

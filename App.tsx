@@ -1823,6 +1823,7 @@ export default function App() {
             monthlyGoals: shieldedItem.monthlyGoals,
             weeklyProgress: shieldedItem.weeklyProgress,
             weeklyGoals: shieldedItem.weeklyGoals,
+            trackingStartPeriod: shieldedItem.trackingStartPeriod,
             isActivityMode: shieldedItem.isActivityMode,
           };
 
@@ -1936,6 +1937,7 @@ export default function App() {
     area: string,
     superGroup?: string,
     targetIndicatorCount?: number,
+    trackingStartPeriod?: import('./types').TrackingStartPeriod,
   ) => {
     if ((!isGlobalAdmin && !isDirector) || id === -1) return;
     try {
@@ -1945,6 +1947,7 @@ export default function App() {
       } else {
         dataToUpdate.targetIndicatorCount = deleteField();
       }
+      dataToUpdate.defaultTrackingStartPeriod = trackingStartPeriod ?? deleteField();
 
       await firebaseService.updateDashboardMetadata(id, dataToUpdate);
 
@@ -1958,6 +1961,7 @@ export default function App() {
               area,
               superGroup,
               targetIndicatorCount,
+              defaultTrackingStartPeriod: trackingStartPeriod,
             }
           : db;
       setAllRawDashboards((prev) => prev.map(updateFn));
@@ -3034,6 +3038,8 @@ Esto corregirá cualquier inconsistencia en colores (ej. Amarillo vs Rojo).`)
               ? (IPS_INDICATORS as any)
               : undefined
           }
+          settings={settings}
+          year={selectedYear}
         />
       )}
 

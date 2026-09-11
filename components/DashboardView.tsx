@@ -37,6 +37,7 @@ import {
 } from "../utils/scrollUtils";
 import { orderDashboardItemsForStrategicPresentation } from "../strategicDisplayOrder";
 import { findDashboardItemById } from "../dashboardItemNavigation";
+import { canConfigureTracking } from '../services/tableroAuthorization';
 
 interface DashboardViewProps {
   dashboard: DashboardType;
@@ -52,6 +53,7 @@ interface DashboardViewProps {
     area: string,
     superGroup?: string,
     targetIndicatorCount?: number,
+    trackingStartPeriod?: import('../types').TrackingStartPeriod,
   ) => Promise<void>;
   existingGroups?: string[];
   settings?: SystemSettings;
@@ -649,6 +651,9 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(
               decimalPrecision={localDecimalPrecision as 0 | 1 | 2}
               dashboardId={dashboard.id}
               clientId={dashboard.clientId || currentUser.clientId}
+              dashboardTrackingStartPeriod={dashboard.defaultTrackingStartPeriod}
+              clientTrackingStartPeriod={settings?.defaultTrackingStartPeriod}
+              canConfigureTracking={isGlobalAdmin || canConfigureTracking(currentUser, dashboard.clientId || currentUser.clientId || '', dashboard)}
               initialActionPlanId={requestedActionPlanId}
               onActionPlanExit={handleActionPlanExit}
             />
@@ -798,6 +803,11 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(
             currentTargetIndicatorCount={
               (dashboard as any).targetIndicatorCount
             }
+            currentTrackingStartPeriod={(dashboard as any).defaultTrackingStartPeriod}
+            clientTrackingStartPeriod={settings?.defaultTrackingStartPeriod}
+            periodicity={(dashboard as any).periodicity || 'monthly'}
+            year={year}
+            items={safeItems}
             totalIndicatorsCount={safeItems.length}
             onSave={async (
               title,
@@ -806,6 +816,7 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(
               area,
               superGroup,
               targetCount,
+              trackingStartPeriod,
             ) => {
               await (onUpdateMetadata as any)(
                 (dashboard as any).id,
@@ -815,6 +826,7 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(
                 area,
                 superGroup,
                 targetCount,
+                trackingStartPeriod,
               );
             }}
             existingGroups={existingGroups}

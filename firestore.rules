@@ -161,6 +161,15 @@ service cloud.firestore {
       return isTenantAdmin(clientId) || (activeCanonicalMembership(clientId) &&
         capability in get(/databases/$(database)/documents/tbl_userMemberships/$(membershipId(clientId))).data.capabilities);
     }
+    function canConfigureTracking(data, dashboardId) {
+      return isTenantAdmin(data.clientId) || (activeCanonicalMembership(data.clientId) &&
+        'tracking_configurator' in get(/databases/$(database)/documents/tbl_userMemberships/$(membershipId(data.clientId))).data.capabilities &&
+        canonicalDashboardScope(data, dashboardId) && canonicalEditableDashboardScope(data, dashboardId));
+    }
+    function canConfigureStrategy(clientId) {
+      return isTenantAdmin(clientId) || (activeCanonicalMembership(clientId) &&
+        'strategy_configurator' in get(/databases/$(database)/documents/tbl_userMemberships/$(membershipId(clientId))).data.capabilities);
+    }
     function canReadStrategy(clientId) {
       return isTenantAdmin(clientId) || (activeCanonicalMembership(clientId) &&
         get(/databases/$(database)/documents/tbl_userMemberships/$(membershipId(clientId))).data.scopeType == 'tenant' &&
@@ -297,16 +306,20 @@ service cloud.firestore {
     match /tbl_dashboards/{docId} {
       allow read: if isTableroUser() && canReadDashboard(resource.data, docId);
       allow create: if isTableroUser() && isSafeClientId(request.resource.data.clientId) && isTenantAdmin(request.resource.data.clientId);
-      allow update: if isTableroUser() && isTenantAdmin(resource.data.clientId) && request.resource.data.clientId == resource.data.clientId;
+      allow update: if isTableroUser() && request.resource.data.clientId == resource.data.clientId &&
+        (isTenantAdmin(resource.data.clientId) || (canConfigureTracking(resource.data, docId) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['defaultTrackingStartPeriod'])));
       allow delete: if isTableroUser() && isTenantAdmin(resource.data.clientId);
       match /items/{itemId} {
         allow read: if isTableroUser() && canReadDashboard(get(/databases/$(database)/documents/tbl_dashboards/$(docId)).data, docId);
-        allow write: if isTableroUser() && canEditDashboard(get(/databases/$(database)/documents/tbl_dashboards/$(docId)).data, docId);
+        allow write: if isTableroUser() && (canEditDashboard(get(/databases/$(database)/documents/tbl_dashboards/$(docId)).data, docId) ||
+          (canConfigureTracking(get(/databases/$(database)/documents/tbl_dashboards/$(docId)).data, docId) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['trackingStartPeriod'])));
       }
     }
     match /tbl_systemSettings/{id} {
       allow read: if isTableroUser() && (id in ['main', 'MAIN'] || canReadTableroTenant(id));
-      allow write: if isPlatformAdmin() || (!(id in ['main', 'MAIN']) && isTenantAdmin(id));
+      allow write: if isPlatformAdmin() || (!(id in ['main', 'MAIN']) && (isTenantAdmin(id) ||
+        (hasTenantCapability(id, 'tracking_configurator') && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['defaultTrackingStartPeriod'])) ||
+        (canConfigureStrategy(id) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['enableStrategyMap']))));
     }
     match /tbl_managedClients/{id} {
       // This is a platform catalogue, not tenant business data. Keeping the

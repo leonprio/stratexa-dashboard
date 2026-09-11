@@ -1,5 +1,7 @@
 import React, { useState, useMemo, useEffect } from "react";
-import { DashboardItem, ComplianceThresholds } from "../types";
+import { DashboardItem, ComplianceThresholds, TrackingStartPeriod } from "../types";
+import { TrackingStartPeriodControls, formatTrackingStartPeriod } from './TrackingStartPeriodControls';
+import { getEffectiveTrackingStartPeriod, hasTrackingFactsBeforePeriod } from '../utils/trackingObligation';
 import { RelatedActionPlans } from "./RelatedActionPlans";
 import {
   calculateCompliance,
@@ -37,6 +39,9 @@ interface CurrentPeriodFocusProps {
   clientId?: string;
   initialActionPlanId?: number | string;
   onActionPlanExit?: () => void;
+  dashboardTrackingStartPeriod?: TrackingStartPeriod;
+  clientTrackingStartPeriod?: TrackingStartPeriod;
+  canConfigureTracking?: boolean;
 }
 
 export interface PendingKpiActivity {
@@ -352,6 +357,9 @@ export const CurrentPeriodFocus: React.FC<CurrentPeriodFocusProps> = ({
   clientId,
   initialActionPlanId,
   onActionPlanExit,
+  dashboardTrackingStartPeriod,
+  clientTrackingStartPeriod,
+  canConfigureTracking = false,
 }) => {
   // 🛡️ ACTIVE SHIELD: Blindaje contra ítems malformados
   const [localGoal, setLocalGoal] = useState<string>("");
@@ -379,6 +387,19 @@ export const CurrentPeriodFocus: React.FC<CurrentPeriodFocusProps> = ({
   );
   const [isGoalFocused, setIsGoalFocused] = useState(false);
   const [isActualFocused, setIsActualFocused] = useState(false);
+  const [editingTracking, setEditingTracking] = useState(false);
+  const [trackingDraft, setTrackingDraft] = useState<TrackingStartPeriod | undefined>(item.trackingStartPeriod);
+  const [confirmInherit, setConfirmInherit] = useState(false);
+  const [trackingFeedback, setTrackingFeedback] = useState('');
+  const [trackingBlocked, setTrackingBlocked] = useState('');
+  const [confirmTrackingSave, setConfirmTrackingSave] = useState(false);
+  const effectiveTracking = getEffectiveTrackingStartPeriod(item, { defaultTrackingStartPeriod: dashboardTrackingStartPeriod }, { defaultTrackingStartPeriod: clientTrackingStartPeriod });
+  const saveTrackingOverride = async () => {
+    if (!trackingDraft) return;
+    const facts = hasTrackingFactsBeforePeriod(isWeekly ? 'weekly' : 'monthly', year || currentYear, trackingDraft, isWeekly ? weeklyGoals : monthlyGoals, isWeekly ? weeklyProgress : monthlyProgress, isWeekly ? undefined : item.monthlyGoalCaptured, isWeekly ? undefined : item.monthlyProgressCaptured);
+    if (facts.hasFacts) { setTrackingBlocked(`No se puede cambiar el inicio a ${formatTrackingStartPeriod(trackingDraft)}. Este indicador ya tiene información registrada en ${formatTrackingStartPeriod(facts.firstPeriod)}: Meta ${facts.goal ?? '—'} · Avance ${facts.progress ?? '—'}. El inicio no puede dejar fuera periodos con información real.`); return; }
+    setConfirmTrackingSave(true);
+  };
 
   const {
     indicator,
@@ -1010,6 +1031,18 @@ export const CurrentPeriodFocus: React.FC<CurrentPeriodFocusProps> = ({
           </button>
         </div>
       </div>
+      <section className="mb-6 rounded-2xl border border-cyan-500/25 bg-cyan-950/15 p-4">
+        <h3 className="text-xs font-black uppercase tracking-widest text-cyan-200">Seguimiento</h3>
+        <p className="mt-1 text-sm font-bold text-white">Inicio efectivo: {formatTrackingStartPeriod(effectiveTracking.period)}</p>
+        <p className="text-xs text-slate-400">{effectiveTracking.source === 'KPI' ? 'EXCEPCIÓN DE SEGUIMIENTO' : effectiveTracking.source === 'UNDEFINED' ? 'Inicio de seguimiento sin configurar.' : `Heredado del ${effectiveTracking.source === 'DASHBOARD' ? 'tablero' : 'cliente'}`}</p>
+        {canConfigureTracking && !item.trackingStartPeriod && !editingTracking && <button type="button" onClick={() => { setTrackingDraft(effectiveTracking.period || (isWeekly ? { frequency: 'weekly', year: year || currentYear, weekNumber: 1 } : { frequency: 'monthly', year: year || currentYear, monthIndex: 0 })); setEditingTracking(true); }} className="mt-3 rounded bg-cyan-600 px-3 py-2 text-[10px] font-black uppercase text-white">Definir excepción</button>}
+        {editingTracking && trackingDraft && <div className="mt-3 space-y-2"><TrackingStartPeriodControls value={trackingDraft} frequency={isWeekly ? 'weekly' : 'monthly'} year={year || currentYear} onChange={setTrackingDraft} /><p className="text-xs text-amber-100">Este indicador comenzará su seguimiento en {formatTrackingStartPeriod(trackingDraft)}. Los periodos anteriores no serán obligatorios.</p><button type="button" onClick={saveTrackingOverride} className="rounded bg-cyan-600 px-3 py-1 text-xs font-black text-white">GUARDAR EXCEPCIÓN</button><button type="button" onClick={() => setEditingTracking(false)} className="ml-2 text-xs text-slate-300">CANCELAR</button></div>}
+        {trackingBlocked && <div className="mt-3 rounded border border-rose-400/40 bg-rose-950/30 p-3 text-xs text-rose-100">{trackingBlocked}<button type="button" onClick={() => setTrackingBlocked('')} className="ml-2 font-black">ENTENDIDO</button></div>}
+        {confirmTrackingSave && trackingDraft && <div className="mt-3 rounded border border-amber-400/30 bg-amber-950/20 p-3 text-xs text-amber-100">Este indicador comenzará su seguimiento en {formatTrackingStartPeriod(trackingDraft)}. Los periodos anteriores dejarán de ser obligatorios porque no contienen información registrada.<div className="mt-2"><button type="button" onClick={async () => { try { await onUpdateItem({ ...item, trackingStartPeriod: trackingDraft }); setTrackingFeedback(`Excepción de seguimiento guardada: ${formatTrackingStartPeriod(trackingDraft)}.`); setEditingTracking(false); } catch { setTrackingFeedback('No se pudo guardar la excepción de seguimiento.'); } finally { setConfirmTrackingSave(false); } }} className="rounded bg-cyan-600 px-3 py-1 font-black text-white">GUARDAR</button><button type="button" onClick={() => setConfirmTrackingSave(false)} className="ml-2 text-slate-300">CANCELAR</button></div></div>}
+        {canConfigureTracking && item.trackingStartPeriod && !confirmInherit && <button type="button" onClick={() => setConfirmInherit(true)} className="mt-3 text-xs font-black text-cyan-300">VOLVER A HEREDAR</button>}
+        {confirmInherit && <div className="mt-3 text-xs text-amber-100">Este indicador volverá a utilizar el inicio heredado: {formatTrackingStartPeriod(effectiveTracking.source === 'KPI' ? (dashboardTrackingStartPeriod || clientTrackingStartPeriod) : effectiveTracking.period)}.<div className="mt-2"><button type="button" onClick={async () => { await onUpdateItem({ ...item, trackingStartPeriod: undefined }); setConfirmInherit(false); setTrackingFeedback('El indicador volvió a heredar el inicio de seguimiento.'); }} className="rounded bg-cyan-600 px-3 py-1 font-black text-white">VOLVER A HEREDAR</button><button type="button" onClick={() => setConfirmInherit(false)} className="ml-2 text-slate-300">CANCELAR</button></div></div>}
+        {trackingFeedback && <p role="status" className="mt-2 text-xs font-bold text-emerald-300">{trackingFeedback}</p>}
+      </section>
 
       {isFullEditMode ? (
         <div className="animate-in fade-in slide-in-from-top-4">

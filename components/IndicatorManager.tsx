@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
-import { DashboardItem } from '../types';
+import { Dashboard, DashboardItem, SystemSettings } from '../types';
 import { FormulaBuilder } from './FormulaBuilder';
 import { AggregateBuilder } from './AggregateBuilder';
+import { TrackingStartPeriodControls, formatTrackingStartPeriod } from './TrackingStartPeriodControls';
+import { getEffectiveTrackingStartPeriod, suggestTrackingStartFromGoalHistory } from '../utils/trackingObligation';
 
 type EditableIndicator = Omit<DashboardItem, 'id'> & { id: number | string };
 
@@ -19,13 +21,15 @@ interface IndicatorManagerProps {
     /** Callback triggered to close the manager modal. */
     onCancel: () => void;
     /** Array of all available dashboards for global sync or selector. */
-    dashboards: { id: number | string; title: string }[];
+    dashboards: Dashboard[];
     /** Currently selected dashboard ID. */
     activeDashboardId: number | string;
     /** Callback when user selects a different dashboard from dropdown. */
     onDashboardSelect: (id: number | string) => void;
     /** Default IPS specific template items. */
     defaultItems?: DashboardItem[];
+    settings?: SystemSettings;
+    year?: number;
 }
 
 const NEW_INDICATOR_TEMPLATE: Omit<DashboardItem, 'id'> = {
@@ -62,7 +66,7 @@ const NEW_INDICATOR_TEMPLATE: Omit<DashboardItem, 'id'> = {
  *    onCancel={closeModal}
  * />
  */
-export const IndicatorManager = React.memo(({ initialItems, onSaveChanges, onCancel, dashboards, activeDashboardId, onDashboardSelect, defaultItems }: IndicatorManagerProps) => {
+export const IndicatorManager = React.memo(({ initialItems, onSaveChanges, onCancel, dashboards, activeDashboardId, onDashboardSelect, defaultItems, settings, year = new Date().getFullYear() }: IndicatorManagerProps) => {
     const [items, setItems] = useState<EditableIndicator[]>(() => {
         return [...initialItems].sort((a, b) => {
             // 🛡️ V6.2.1: Sort by order first, then ID
@@ -104,6 +108,7 @@ export const IndicatorManager = React.memo(({ initialItems, onSaveChanges, onCan
     const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
     const [editingFormulaItemId, setEditingFormulaItemId] = useState<number | string | null>(null);
     const [editingAggregateItemId, setEditingAggregateItemId] = useState<number | string | null>(null);
+    const activeDashboard = dashboards.find(d => String(d.id) === String(activeDashboardId));
 
     const handleRestoreFactory = () => {
         if (!defaultItems) return;
@@ -238,7 +243,7 @@ export const IndicatorManager = React.memo(({ initialItems, onSaveChanges, onCan
                                 <th scope="col" className="p-2 text-xs font-semibold text-slate-400 uppercase tracking-wider w-[120px]">Frecuencia</th>
                                 <th scope="col" className="p-2 text-xs font-semibold text-slate-400 uppercase tracking-wider w-[140px]">Motor</th>
                                 <th scope="col" className="p-2 text-xs font-semibold text-slate-400 uppercase tracking-wider w-[100px]">Modo</th>
-                                <th scope="col" className="p-2 text-xs font-semibold text-slate-400 uppercase tracking-wider w-[80px]">Inicio</th>
+                                <th scope="col" className="p-2 text-xs font-semibold text-slate-400 uppercase tracking-wider w-[210px]">Seguimiento</th>
                                 <th scope="col" className="p-2 text-xs font-semibold text-slate-400 uppercase tracking-wider w-[60px]"></th>
                             </tr>
                         </thead>
@@ -367,16 +372,18 @@ export const IndicatorManager = React.memo(({ initialItems, onSaveChanges, onCan
                                         </button>
                                     </td>
                                     <td className="p-2">
-                                        <select
-                                            aria-label="Inicio de semana"
-                                            value={item.weekStart || 'Mon'}
-                                            onChange={(e) => handleInputChange(item.id, 'weekStart', e.target.value)}
-                                            disabled={item.frequency !== 'weekly'}
-                                            className="w-full bg-slate-700 border border-slate-600 rounded-md p-2 text-white text-xs focus:ring-2 focus:ring-cyan-500 outline-none h-[42px] disabled:opacity-30"
-                                        >
-                                            <option value="Mon">Lun</option>
-                                            <option value="Sun">Dom</option>
-                                        </select>
+                                        {(() => {
+                                            const frequency = item.frequency || 'monthly';
+                                            const effective = getEffectiveTrackingStartPeriod(item, activeDashboard, settings);
+                                            const suggestion = suggestTrackingStartFromGoalHistory(frequency, year, frequency === 'weekly' ? item.weeklyGoals || [] : item.monthlyGoals || [], frequency === 'monthly' ? item.monthlyGoalCaptured : undefined);
+                                            const defaultPeriod = frequency === 'monthly' ? { frequency: 'monthly' as const, year, monthIndex: 0 } : { frequency: 'weekly' as const, year, weekNumber: 1 };
+                                            return <div className="space-y-1 rounded border border-slate-700 bg-slate-900/60 p-2">
+                                                <label className="flex gap-1 text-[9px] text-slate-300"><input type="checkbox" checked={!!item.trackingStartPeriod} onChange={e => handleInputChange(item.id, 'trackingStartPeriod', e.target.checked ? (effective.period || defaultPeriod) : undefined as any)} /> Definir para este indicador</label>
+                                                {item.trackingStartPeriod ? <TrackingStartPeriodControls value={item.trackingStartPeriod} frequency={frequency} year={year} onChange={value => handleInputChange(item.id, 'trackingStartPeriod', value as any)} /> : <p className="text-[9px] text-cyan-200">{formatTrackingStartPeriod(effective.period)} · {effective.source === 'UNDEFINED' ? 'Sin configurar: no genera alertas.' : `Heredado de ${effective.source === 'DASHBOARD' ? 'tablero' : 'cliente'}`}</p>}
+                                                {suggestion && !item.trackingStartPeriod && <button type="button" onClick={() => handleInputChange(item.id, 'trackingStartPeriod', suggestion as any)} className="text-[9px] font-black text-amber-300 hover:text-amber-200">Detectamos metas desde {formatTrackingStartPeriod(suggestion)}. USAR COMO INICIO</button>}
+                                                {frequency === 'weekly' && <select aria-label="Inicio de semana" value={item.weekStart || 'Mon'} onChange={e => handleInputChange(item.id, 'weekStart', e.target.value)} className="w-full bg-slate-700 border border-slate-600 rounded p-1 text-[9px] text-white"><option value="Mon">Semana inicia lunes</option><option value="Sun">Semana inicia domingo</option></select>}
+                                            </div>;
+                                        })()}
                                     </td>
                                     <td className="p-2 text-center">
                                         <button onClick={() => handleDeleteItem(item.id)} className="text-red-500 hover:text-red-400 transition" title="Eliminar Indicador" aria-label="Eliminar indicador">

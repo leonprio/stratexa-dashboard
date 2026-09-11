@@ -1,4 +1,7 @@
 import React, { useState, useEffect } from 'react';
+import type { DashboardItem, TrackingStartPeriod } from '../types';
+import { TrackingStartPeriodControls, formatTrackingStartPeriod } from './TrackingStartPeriodControls';
+import { suggestTrackingStartFromGoalHistory } from '../utils/trackingObligation';
 
 interface DashboardMetadataModalProps {
     isOpen: boolean;
@@ -9,8 +12,13 @@ interface DashboardMetadataModalProps {
     currentArea?: string;
     currentSuperGroup?: string;
     currentTargetIndicatorCount?: number;
+    currentTrackingStartPeriod?: TrackingStartPeriod;
+    clientTrackingStartPeriod?: TrackingStartPeriod;
+    periodicity?: 'monthly' | 'weekly';
+    year?: number;
+    items?: DashboardItem[];
     totalIndicatorsCount?: number;
-    onSave: (newTitle: string, newSubtitle: string, newGroup: string, newArea: string, superGroup?: string, targetIndicatorCount?: number) => Promise<void>;
+    onSave: (newTitle: string, newSubtitle: string, newGroup: string, newArea: string, superGroup?: string, targetIndicatorCount?: number, trackingStartPeriod?: TrackingStartPeriod) => Promise<void>;
     existingGroups: string[];
     groupLabel: string;
     dashboardLabel: string;
@@ -25,6 +33,11 @@ export const DashboardMetadataModal: React.FC<DashboardMetadataModalProps> = ({
     currentArea,
     currentSuperGroup,
     currentTargetIndicatorCount,
+    currentTrackingStartPeriod,
+    clientTrackingStartPeriod,
+    periodicity = 'monthly',
+    year = new Date().getFullYear(),
+    items = [],
     totalIndicatorsCount,
     onSave,
     existingGroups,
@@ -38,6 +51,13 @@ export const DashboardMetadataModal: React.FC<DashboardMetadataModalProps> = ({
     const [superGroup, setSuperGroup] = useState(currentSuperGroup || '');
     const [targetIndicatorCount, setTargetIndicatorCount] = useState<string>(currentTargetIndicatorCount?.toString() || '');
     const [isSaving, setIsSaving] = useState(false);
+    const [trackingStart, setTrackingStart] = useState<TrackingStartPeriod | undefined>(currentTrackingStartPeriod);
+    const [inheritsTrackingStart, setInheritsTrackingStart] = useState(!currentTrackingStartPeriod);
+    const dashboardSuggestion = (() => {
+        const candidates = items.filter(item => (item.frequency || 'monthly') === periodicity).map(item => suggestTrackingStartFromGoalHistory(periodicity, year, periodicity === 'monthly' ? item.monthlyGoals : item.weeklyGoals || [], periodicity === 'monthly' ? item.monthlyGoalCaptured : undefined)).filter(Boolean) as TrackingStartPeriod[];
+        if (candidates.length === 0) return undefined;
+        return candidates.sort((a, b) => a.year - b.year || (a.frequency === 'monthly' && b.frequency === 'monthly' ? a.monthIndex - b.monthIndex : a.frequency === 'weekly' && b.frequency === 'weekly' ? a.weekNumber - b.weekNumber : 0))[0];
+    })();
 
     useEffect(() => {
         if (isOpen) {
@@ -47,8 +67,10 @@ export const DashboardMetadataModal: React.FC<DashboardMetadataModalProps> = ({
             setArea(currentArea || '');
             setSuperGroup(currentSuperGroup || '');
             setTargetIndicatorCount(currentTargetIndicatorCount?.toString() || '');
+            setTrackingStart(currentTrackingStartPeriod);
+            setInheritsTrackingStart(!currentTrackingStartPeriod);
         }
-    }, [isOpen, currentTitle, currentSubtitle, currentGroup, currentArea, currentSuperGroup, currentTargetIndicatorCount]);
+    }, [isOpen, currentTitle, currentSubtitle, currentGroup, currentArea, currentSuperGroup, currentTargetIndicatorCount, currentTrackingStartPeriod]);
 
     const handleSave = async () => {
         if (!title.trim()) {
@@ -58,7 +80,7 @@ export const DashboardMetadataModal: React.FC<DashboardMetadataModalProps> = ({
         setIsSaving(true);
         try {
             const numericTarget = targetIndicatorCount === '' ? undefined : parseInt(targetIndicatorCount, 10);
-            await onSave(title.trim(), subtitle.trim(), group.trim(), area.trim().toUpperCase(), superGroup.trim().toUpperCase(), numericTarget);
+            await onSave(title.trim(), subtitle.trim(), group.trim(), area.trim().toUpperCase(), superGroup.trim().toUpperCase(), numericTarget, inheritsTrackingStart ? undefined : trackingStart);
             onClose();
         } catch (error) {
             console.error("Error saving metadata:", error);
@@ -188,6 +210,14 @@ export const DashboardMetadataModal: React.FC<DashboardMetadataModalProps> = ({
                             Define cuántos indicadores debe capturar este usuario para cumplir con su reporte mensual.
                             <strong> Si se deja vacío, se usará el total de indicadores configurados.</strong>
                         </p>
+                    </div>
+                    <div className="pt-3 border-t border-slate-800">
+                        <h4 className="text-xs font-black uppercase tracking-wider text-cyan-300">Inicio de seguimiento</h4>
+                        <label className="mt-2 flex items-center gap-2 text-xs text-slate-300"><input type="radio" checked={inheritsTrackingStart} onChange={() => setInheritsTrackingStart(true)} /> Heredar del cliente</label>
+                        <p className="ml-5 text-[10px] text-slate-500">{formatTrackingStartPeriod(clientTrackingStartPeriod)} · Heredado del cliente</p>
+                        <label className="mt-3 flex items-center gap-2 text-xs text-slate-300"><input type="radio" checked={!inheritsTrackingStart} onChange={() => setInheritsTrackingStart(false)} /> Definir para este tablero</label>
+                        {!inheritsTrackingStart && <div className="mt-2 ml-5"><TrackingStartPeriodControls value={trackingStart} frequency={periodicity} year={year} onChange={setTrackingStart} /></div>}
+                        {dashboardSuggestion && inheritsTrackingStart && <button type="button" onClick={() => { setTrackingStart(dashboardSuggestion); setInheritsTrackingStart(false); }} className="mt-2 text-[10px] font-black text-amber-300">Detectamos metas desde {formatTrackingStartPeriod(dashboardSuggestion)}. USAR COMO INICIO</button>}
                     </div>
                 </div>
 
