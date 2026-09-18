@@ -24,20 +24,26 @@ export const mergeActivityConfigPreservingResolutions = (
     if (!Array.isArray(currentRaw)) continue;
     const incomingRaw = Array.isArray(result[period]) ? result[period] : [];
     result[period] = currentRaw.map((currentActivity) => {
-      if (!terminal(currentActivity)) return currentActivity;
       const incomingActivity = incomingRaw.find((a) => a.id === currentActivity.id);
       if (!incomingActivity) return currentActivity;
-      // A completed/discarded snapshot must not be erased by a stale plain
-      // activity, but an explicit newer transition is authoritative. In
-      // particular, REABRIR must be allowed to replace completed_later.
-      if (!terminal(incomingActivity)) {
+
+      const currentResTime = resolutionAt(currentActivity);
+      const incomingResTime = resolutionAt(incomingActivity);
+
+      if (currentResTime && incomingResTime && incomingResTime < currentResTime) {
+        return {
+          ...incomingActivity,
+          resolution: currentActivity.resolution,
+        };
+      }
+
+      if (terminal(currentActivity) && !terminal(incomingActivity)) {
         return explicitReactivation(incomingActivity)
           ? incomingActivity
-          : currentActivity;
+          : { ...incomingActivity, resolution: currentActivity.resolution };
       }
-      return resolutionAt(incomingActivity) >= resolutionAt(currentActivity)
-        ? incomingActivity
-        : currentActivity;
+
+      return incomingActivity;
     }).concat(incomingRaw.filter((a) => !currentRaw.some((c) => c.id === a.id)));
   }
   return result;

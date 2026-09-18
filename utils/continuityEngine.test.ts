@@ -31,6 +31,27 @@ const createBaseCommitment = (overrides?: Partial<ContinuityCommitment>): Contin
 });
 
 describe('Semántica Final de Continuidad, Trazabilidad Humanizada e Invariantes', () => {
+  test('contrato KPI gap 20/5 reprogramado conserva 5/20, pendiente 15 y 25%', () => {
+    let state = createBaseCommitment({ progressByPeriod: { 7: 5 }, scheduledPeriod: 8 });
+    state = reduceContinuity(state, { type: 'RESCHEDULE', year: 2026, period: 9 });
+    expect(getContinuitySnapshot(state)).toMatchObject({
+      previousCumulative: 5,
+      currentPeriodProgress: 0,
+      cumulativeProgress: 5,
+      remainingTarget: 15,
+      fulfillmentPercent: 25,
+    });
+  });
+
+  test('contrato KPI gap suma +7 sin doble conteo: 12/20, pendiente 8 y 60%', () => {
+    let state = createBaseCommitment({ progressByPeriod: { 7: 5 }, scheduledPeriod: 8 });
+    state = reduceContinuity(state, { type: 'RECORD_PROGRESS', period: 8, value: 7 });
+    expect(getContinuitySnapshot(state)).toMatchObject({
+      cumulativeProgress: 12,
+      remainingTarget: 8,
+      fulfillmentPercent: 60,
+    });
+  });
   // A. 12/20 -> REGISTRAR META ALCANZADA -> confirmar +8 = 20/20, 100%, completed
   test('A. 12/20 -> Confirmar meta alcanzada (+8) -> 20/20, 100%, status: completed', () => {
     let state = createBaseCommitment();

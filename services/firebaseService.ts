@@ -14,6 +14,7 @@ import {
     DocumentReference,
     DocumentData,
     onSnapshot,
+    deleteField,
 } from "firebase/firestore";
 import {
     signInWithEmailAndPassword,
@@ -431,6 +432,7 @@ export const firebaseService = {
                 // 2. Marcar para inserción nueva
                 items.forEach(it => {
                     const itemRef = doc(db, DASHBOARDS_COLLECTION, String(dashboardId), "items", String(it.id));
+                    const clearTrackingOverride = Object.prototype.hasOwnProperty.call(it, 'trackingStartPeriod') && it.trackingStartPeriod === undefined;
                     const cleanItem = JSON.parse(JSON.stringify(it));
                     mainBatch.set(itemRef, cleanItem, { merge: false });
                     opCount++;
@@ -453,6 +455,7 @@ export const firebaseService = {
                 // 🛡️ REGLA: Cada tablero es un "cajón" independiente. No hay límites globales, solo por tablero.
                 items.forEach(it => {
                     const itemRef = doc(db, DASHBOARDS_COLLECTION, String(dashboardId), "items", String(it.id));
+                    const clearTrackingOverride = Object.prototype.hasOwnProperty.call(it, 'trackingStartPeriod') && it.trackingStartPeriod === undefined;
                     const cleanItem = JSON.parse(JSON.stringify(it));
                     const activities = cleanItem.activityConfig || {};
                     
@@ -461,7 +464,12 @@ export const firebaseService = {
                     delete cleanItem.id;
 
                     // 1. Actualización de datos base (Metas, Avances, Unit)
-                    mainBatch.set(itemRef, cleanItem, { merge: true });
+                    // merge:true does not delete omitted fields. An explicit
+                    // undefined tracking override is the canonical signal to
+                    // remove the persisted override and resume inheritance.
+                    mainBatch.set(itemRef, clearTrackingOverride
+                        ? { ...cleanItem, trackingStartPeriod: deleteField() }
+                        : cleanItem, { merge: true });
 
                     // 2. Actualización atómica de actividades (dot-notation)
                     const atomicActivities: any = {};

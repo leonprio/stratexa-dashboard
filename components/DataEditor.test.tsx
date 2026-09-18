@@ -92,7 +92,7 @@ describe('DataEditor Component', () => {
     }, { timeout: 2000 });
   });
 
-  test('abre inline el gestor real de un compromiso reprogramado en Vista Anual', () => {
+  test('Vista Anual abre la superficie única sin incrustar ContinuityPanel en la columna', () => {
     const item = {
       ...mockItem,
       activityConfig: {
@@ -116,15 +116,19 @@ describe('DataEditor Component', () => {
     const manage = screen.getByRole('button', { name: 'GESTIONAR' });
     const commitmentSection = manage.closest('section');
     expect(commitmentSection).not.toBeNull();
+    expect(within(commitmentSection as HTMLElement).queryByRole('region', { name: 'Panel de continuidad' })).not.toBeInTheDocument();
     fireEvent.click(manage);
 
-    expect(within(commitmentSection as HTMLElement).getByRole('button', { name: /COMPLETAR AHORA/ })).toBeInTheDocument();
-    expect(within(commitmentSection as HTMLElement).getByRole('button', { name: /REPROGRAMAR/ })).toBeInTheDocument();
-    expect(within(commitmentSection as HTMLElement).getByRole('button', { name: /DESCARTAR/ })).toBeInTheDocument();
-    expect(within(commitmentSection as HTMLElement).getByRole('button', { name: 'CANCELAR' })).toBeInTheDocument();
+    const workspace = screen.getByRole('dialog', { name: 'Gestión de continuidad' });
+    expect(within(workspace).getByRole('region', { name: 'Panel de continuidad' })).toBeInTheDocument();
+    expect(within(workspace).getByText('KPI')).toBeInTheDocument();
+    expect(within(workspace).getByRole('button', { name: /CERRAR SIN ALCANZAR LA META/ })).toBeInTheDocument();
+    fireEvent.click(within(workspace).getByRole('button', { name: /CERRAR GESTOR/ }));
+    expect(screen.queryByRole('dialog', { name: 'Gestión de continuidad' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'GESTIONAR' })).toBeInTheDocument();
   });
 
-  test('reprograma sucesivamente la misma actividad física sin alterar KPI/YTD', async () => {
+  test('reprograma mediante el panel compartido sin escribir la resolución legacy', async () => {
     const item = {
       ...mockItem,
       weeklyGoals: Array(53).fill(0).map((value, index) => index === 35 ? 17 : value),
@@ -161,14 +165,24 @@ describe('DataEditor Component', () => {
     fireEvent.click(screen.getByRole('button', { name: 'CONFIRMAR REPROGRAMACIÓN' }));
 
     await waitFor(() => expect(mockOnSave).toHaveBeenCalledTimes(1));
+    expect(mockOnSave).toHaveBeenCalledWith(expect.any(Object), true);
     const saved = mockOnSave.mock.calls[0][0] as Partial<DashboardItem>;
-    const savedActivities = saved.activityConfig?.[30] || [];
-    expect(savedActivities).toHaveLength(1);
-    expect(savedActivities[0].id).toBe('activity-physical-1');
-    expect(savedActivities[0].resolution?.scheduledResolutionPeriodIndex).toBe(39);
-    expect(savedActivities[0].resolution?.rescheduleHistory).toHaveLength(2);
-    expect(savedActivities[0].resolution?.rescheduleHistory?.[1]).toMatchObject({ fromPeriodIndex: 35, toPeriodIndex: 39 });
+    expect(saved.activityConfig).toBeUndefined();
+    expect(saved.continuityCommitments?.['activity:activity-physical-1']).toMatchObject({ scheduledPeriod: 39, status: 'active' });
+    expect(saved.continuityCommitments?.['activity:activity-physical-1'].rescheduleHistory).toHaveLength(1);
     expect(item.weeklyGoals[35]).toBe(17);
     expect(item.weeklyProgress[35]).toBe(9);
+  });
+
+  test('prioriza el compromiso canónico sobre la resolución legacy', () => {
+    const item = {
+      ...mockItem,
+      activityConfig: { 30: [{ id: 'activity-physical-1', label: 'Compromiso anual S36', targetCount: 1, completedCount: 0, resolution: { resolutionStatus: 'rescheduled', scheduledResolutionYear: 2026, scheduledResolutionPeriodType: 'weekly', scheduledResolutionPeriodIndex: 35 } }] },
+      continuityCommitments: { 'activity:activity-physical-1': { id: 'activity:activity-physical-1', sourceType: 'ACTIVITY_KPI', sourceKpiId: 'test-dash', sourceActivityId: 'activity-physical-1', originYear: 2026, originPeriod: 30, originalTarget: 1, scheduledYear: 2026, scheduledPeriod: 35, progressByPeriod: {}, status: 'active', outcome: 'in_progress', rescheduleHistory: [], resolutionHistory: [{ type: 'CREATE_CONTINUITY', at: '2026-08-01T00:00:00.000Z' }] } },
+    } as DashboardItem;
+    render(<DataEditor item={item} onSave={mockOnSave} onCancel={mockOnCancel} canEdit year={2026} />);
+    fireEvent.click(screen.getByRole('button', { name: 'GESTIONAR' }));
+    expect(screen.getByText('Historial')).toBeInTheDocument();
+    expect(screen.getByText('Compromiso iniciado')).toBeInTheDocument();
   });
 });

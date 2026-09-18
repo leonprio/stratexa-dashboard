@@ -4,9 +4,10 @@ import { getYearWeekMapping, getWeekNumber } from "../utils/weeklyUtils";
 import { ActivityManager } from "./ActivityManager";
 import { formatNumberWithCommas, parseFormattedNumber, formatMonthlyGoal, formatMonthlyProgress } from "../utils/formatters";
 import { resolveItemValues } from "../utils/compliance";
-import { deriveRescheduledKpiCommitments, RescheduledCommitmentsSection, applyOperationalReschedule } from "./CurrentPeriodFocus";
+import { deriveRescheduledKpiCommitments, RescheduledCommitmentsSection } from "./CurrentPeriodFocus";
 import type { RescheduledKpiCommitment } from "./CurrentPeriodFocus";
-import { KpiActivityManager } from "./KpiActivityManager";
+import { ContinuityWorkspace } from './continuity/ContinuityWorkspace';
+import { getEffectiveKpiProgressByPeriod, syncCommitmentsWithActivityConfig } from '../utils/continuityAdapter';
 
 interface DataEditorProps {
   item: DashboardItem;
@@ -239,44 +240,40 @@ export const DataEditor: React.FC<DataEditorProps> = React.memo(({ item, allDash
   const [isActivityMode, setIsActivityMode] = useState<boolean>(item.isActivityMode || false);
   const [activeActivityPeriod, setActiveActivityPeriod] = useState<number | null>(null);
   const [managedCommitment, setManagedCommitment] = useState<RescheduledKpiCommitment | null>(null);
+  const [selectedMonthForManage, setSelectedMonthForManage] = useState<number | null>(null);
+  const [continuityCommitments, setContinuityCommitments] = useState(item.continuityCommitments);
 
-  const renderCommitmentManager = (commitment: RescheduledKpiCommitment) => {
-    if (managedCommitment?.id !== commitment.id) return null;
+  useEffect(() => setContinuityCommitments(item.continuityCommitments), [item.continuityCommitments]);
 
-    return <KpiActivityManager
-      activity={commitment}
-      isWeekly={isWeekly}
-      currentPeriodIndex={commitment.scheduledPeriodIndex}
-      maxPeriodIndex={isWeekly ? 52 : 11}
-      onCancel={() => setManagedCommitment(null)}
-      onReschedule={async target => {
-        const config = applyOperationalReschedule(activityConfig, commitment.periodIndex, commitment.sourceActivityId, target, isWeekly, year);
-        await onSave({ activityConfig: config });
-        setActivityConfig(config);
-      }}
-      onComplete={async () => {
-        const config = { ...activityConfig };
-        const source = [...(config[commitment.periodIndex] || [])];
-        const index = source.findIndex(a => a.id === commitment.sourceActivityId);
-        if (index >= 0) {
-          source[index] = { ...source[index], resolution: { ...source[index].resolution, resolutionStatus: 'completed_later', resolvedAt: new Date().toISOString(), resolvedYear: year, resolvedPeriodType: isWeekly ? 'weekly' : 'monthly', resolvedPeriodIndex: commitment.scheduledPeriodIndex } };
-          config[commitment.periodIndex] = source;
-          await onSave({ activityConfig: config });
-          setActivityConfig(config);
-        }
-      }}
-      onDiscard={async note => {
-        const config = { ...activityConfig };
-        const source = [...(config[commitment.periodIndex] || [])];
-        const index = source.findIndex(a => a.id === commitment.sourceActivityId);
-        if (index >= 0) {
-          source[index] = { ...source[index], resolution: { ...source[index].resolution, resolutionStatus: 'discarded', resolutionNote: note, resolvedAt: new Date().toISOString(), resolvedYear: year, resolvedPeriodType: isWeekly ? 'weekly' : 'monthly', resolvedPeriodIndex: commitment.scheduledPeriodIndex } };
-          config[commitment.periodIndex] = source;
-          await onSave({ activityConfig: config });
-          setActivityConfig(config);
-        }
-      }}
-    />;
+  const continuityItem = useMemo(
+    () => ({ ...item, activityConfig, continuityCommitments }),
+    [item, activityConfig, continuityCommitments],
+  );
+
+  const commitmentsForPeriod = (periodIndex: number): RescheduledKpiCommitment[] => {
+    const legacy = deriveRescheduledKpiCommitments(activityConfig, periodIndex, isWeekly, year);
+    const canonical = Object.values(continuityCommitments || {})
+      .filter((commitment) => {
+        if (commitment.status !== 'active' || commitment.scheduledYear !== year) return false;
+        const latestActiveMove = [...(commitment.rescheduleHistory || [])].reverse().find(move => move.status === 'active');
+        return commitment.scheduledPeriod === periodIndex || latestActiveMove?.fromPeriod === periodIndex;
+      })
+      .map((commitment) => {
+        const source = (activityConfig[commitment.originPeriod] || []).find(activity => activity.id === commitment.sourceActivityId);
+        const isScheduledPeriod = commitment.scheduledPeriod === periodIndex;
+        return {
+          id: commitment.id,
+          sourceActivityId: commitment.sourceActivityId || '',
+          label: source?.label || 'Compromiso de continuidad',
+          periodIndex: commitment.originPeriod,
+          periodLabel: isWeekly ? `Semana ${commitment.originPeriod + 1}` : months[commitment.originPeriod],
+          scheduledPeriodIndex: commitment.scheduledPeriod,
+          scheduledPeriodLabel: isWeekly ? `Semana ${commitment.scheduledPeriod + 1}` : months[commitment.scheduledPeriod],
+          status: isScheduledPeriod ? ('COMPROMISO ACTUAL' as const) : ('REPROGRAMADA' as const),
+        };
+      });
+    const canonicalActivityIds = new Set(canonical.map(commitment => commitment.sourceActivityId));
+    return [...canonical, ...legacy.filter(commitment => !canonicalActivityIds.has(commitment.sourceActivityId))];
   };
 
   const calculateFromActivities = useCallback((periodIdx: number, newActivities?: any[]) => {
@@ -378,7 +375,7 @@ export const DataEditor: React.FC<DataEditorProps> = React.memo(({ item, allDash
             const isToday = currentPeriod.isCurrentYear && currentPeriod.monthIdx === idx;
             const rawActs = activityConfig[idx];
             const activityCount = rawActs ? (Array.isArray(rawActs) ? rawActs.length : Object.values(rawActs).length) : 0;
-            const rescheduledCommitments = deriveRescheduledKpiCommitments(activityConfig, idx, false, year);
+            const rescheduledCommitments = commitmentsForPeriod(idx);
 
             return (
               <div
@@ -427,7 +424,12 @@ export const DataEditor: React.FC<DataEditorProps> = React.memo(({ item, allDash
                       inputMode="decimal"
                       value={focusedInputId === `m-actual-${idx}`
                         ? (monthlyProgressCaptured[idx] ? (monthlyProgress[idx] ?? '').toString() : '')
-                        : formatMonthlyProgress(monthlyProgress[idx], monthlyProgressCaptured[idx], item.unit, 0)}
+                        : formatMonthlyProgress(
+                          getEffectiveKpiProgressByPeriod(continuityItem, idx),
+                          monthlyProgressCaptured[idx] || getEffectiveKpiProgressByPeriod(continuityItem, idx) !== null,
+                          item.unit,
+                          0,
+                        )}
                       onFocus={() => setFocusedInputId(`m-actual-${idx}`)}
                       onBlur={() => setFocusedInputId(null)}
                       onChange={(e) => setProgressAt(idx, e.target.value)}
@@ -437,7 +439,25 @@ export const DataEditor: React.FC<DataEditorProps> = React.memo(({ item, allDash
                   </div>
                 </div>
 
-                <RescheduledCommitmentsSection commitments={rescheduledCommitments} onManage={setManagedCommitment} renderManager={renderCommitmentManager} />
+                {rescheduledCommitments.length > 0 && (
+                  <section aria-label="Compromisos de continuidad del mes" className="mt-3 rounded-xl border border-cyan-500/30 bg-cyan-950/20 p-2.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[9px] font-black uppercase tracking-wider text-cyan-300">
+                        ⚡ {rescheduledCommitments.length} COMPROMISO{rescheduledCommitments.length > 1 ? 'S' : ''}
+                      </span>
+                    </div>
+                    <p className="mt-1 text-[9px] text-slate-400">
+                      {rescheduledCommitments.filter(c => c.status === 'COMPROMISO ACTUAL').length} actual{rescheduledCommitments.filter(c => c.status === 'COMPROMISO ACTUAL').length !== 1 ? 'es' : ''} · {rescheduledCommitments.filter(c => c.status === 'REPROGRAMADA').length} reprogramado{rescheduledCommitments.filter(c => c.status === 'REPROGRAMADA').length !== 1 ? 's' : ''}
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => { if (rescheduledCommitments.length === 1) { setManagedCommitment(rescheduledCommitments[0]); } else { setSelectedMonthForManage(idx); } }}
+                      className="mt-2 flex min-h-[44px] w-full items-center justify-center rounded-xl bg-cyan-500/20 border border-cyan-500/40 px-3 py-2 text-[10px] font-black uppercase tracking-wider text-cyan-200 hover:bg-cyan-500/30 hover:text-white transition-all active:scale-95"
+                    >
+                      GESTIONAR
+                    </button>
+                  </section>
+                )}
 
                 {isActivityMode && (
                   <button
@@ -476,7 +496,7 @@ export const DataEditor: React.FC<DataEditorProps> = React.memo(({ item, allDash
             const isToday = currentPeriod.isCurrentYear && currentPeriod.weekIdx === i;
             const rawActs = activityConfig[i];
             const activityCount = rawActs ? (Array.isArray(rawActs) ? rawActs.length : Object.values(rawActs).length) : 0;
-            const rescheduledCommitments = deriveRescheduledKpiCommitments(activityConfig, i, true, year);
+            const rescheduledCommitments = commitmentsForPeriod(i);
 
             return (
               <div
@@ -537,7 +557,20 @@ export const DataEditor: React.FC<DataEditorProps> = React.memo(({ item, allDash
                   </div>
                 </div>
 
-                <RescheduledCommitmentsSection commitments={rescheduledCommitments} onManage={setManagedCommitment} renderManager={renderCommitmentManager} />
+                {rescheduledCommitments.length > 0 && (
+                  <section aria-label="Compromisos de continuidad de la semana" className="mb-2 rounded-lg border border-cyan-500/30 bg-cyan-950/20 p-2">
+                    <span className="text-[8px] font-black uppercase tracking-wider text-cyan-300">
+                      ⚡ {rescheduledCommitments.length} COMPROMISO{rescheduledCommitments.length > 1 ? 'S' : ''}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => { if (rescheduledCommitments.length === 1) { setManagedCommitment(rescheduledCommitments[0]); } else { setSelectedMonthForManage(i); } }}
+                      className="mt-1.5 flex min-h-[44px] w-full items-center justify-center rounded-lg bg-cyan-500/20 border border-cyan-500/40 px-2 py-1.5 text-[9px] font-black uppercase text-cyan-200 hover:bg-cyan-500/30"
+                    >
+                      GESTIONAR
+                    </button>
+                  </section>
+                )}
 
                 {isActivityMode && (
                   <button
@@ -602,13 +635,15 @@ export const DataEditor: React.FC<DataEditorProps> = React.memo(({ item, allDash
             setActiveActivityPeriod(null);
             
             // 🚀 AUTO-SAVE NUCLEAR: Persistir TODO en Firebase inmediatamente
+            const syncedCommitments = syncCommitmentsWithActivityConfig(item, newConfig);
             onSave({ 
               activityConfig: newConfig,
+              continuityCommitments: syncedCommitments,
               isActivityMode: true,
               weeklyGoals: isWeekly ? finalWeeklyGoals : weeklyGoals,
               weeklyProgress: isWeekly ? finalWeeklyProgress : weeklyProgress,
               monthlyGoals: isWeekly ? monthlyGoals : finalMonthlyGoals,
-              monthlyProgress: isWeekly ? monthlyProgress : finalMonthlyProgress,
+              monthlyProgress: isWeekly ? finalMonthlyProgress : finalMonthlyProgress,
               monthlyNotes,
               weeklyNotes
             }, true);
@@ -624,14 +659,93 @@ export const DataEditor: React.FC<DataEditorProps> = React.memo(({ item, allDash
             }
             setActivityConfig(newTotalConfig);
             
+            const syncedCommitments = syncCommitmentsWithActivityConfig(item, newTotalConfig);
             onSave({ 
               activityConfig: newTotalConfig,
+              continuityCommitments: syncedCommitments,
               isActivityMode: true 
             }, true);
 
             alert("Estructura copiada exitosamente.");
           } : undefined}
           goalType={item.goalType}
+        />
+      )}
+
+      {selectedMonthForManage !== null && (
+        <div className="fixed inset-0 z-[115] flex items-center justify-center bg-slate-950/80 p-3 backdrop-blur-sm" role="dialog" aria-modal="true">
+          <div className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-3xl border border-cyan-500/30 bg-slate-950 p-6 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-white/10 pb-3">
+              <div>
+                <span className="text-[10px] font-black uppercase tracking-widest text-cyan-300">COMPROMISOS DEL PERIODO</span>
+                <h3 className="text-xl font-black text-white">{!isWeekly ? months[selectedMonthForManage] : `Semana ${selectedMonthForManage + 1}`} {year}</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedMonthForManage(null)}
+                className="min-h-[44px] px-4 py-2 rounded-xl text-xs font-black text-slate-300 hover:bg-white/10 hover:text-white border border-white/10 transition-colors"
+              >
+                ✕ CERRAR
+              </button>
+            </div>
+            <div className="mt-4 space-y-3">
+              {commitmentsForPeriod(selectedMonthForManage).map((commitment) => (
+                <div key={commitment.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-2xl bg-slate-900 border border-slate-700/60 p-4">
+                  <div className="min-w-0 flex-1">
+                    <span className="text-xs font-bold text-white">{commitment.label}</span>
+                    <p className="mt-1 text-[11px] text-slate-400">
+                      Origen: <strong className="text-slate-300">{commitment.periodLabel}</strong> → Compromiso: <strong className="text-cyan-300">{commitment.scheduledPeriodLabel}</strong>
+                    </p>
+                    <div className="mt-1.5 flex gap-1">
+                      <span className={`rounded px-2 py-0.5 text-[8px] font-black uppercase tracking-wider border ${commitment.status === 'COMPROMISO ACTUAL' ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40' : 'bg-amber-500/20 text-amber-300 border-amber-500/40'}`}>
+                        {commitment.status}
+                      </span>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setManagedCommitment(commitment);
+                    }}
+                    className="flex min-h-[44px] shrink-0 items-center justify-center rounded-xl bg-cyan-500/20 border border-cyan-500/40 px-4 py-2 text-[10px] font-black uppercase tracking-wider text-cyan-200 hover:bg-cyan-500/30 hover:text-white transition-all active:scale-95"
+                  >
+                    GESTIONAR
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {managedCommitment && (
+        <ContinuityWorkspace
+          item={continuityItem}
+          pending={managedCommitment}
+          year={year}
+          isWeekly={isWeekly}
+          consultedPeriod={managedCommitment.scheduledPeriodIndex}
+          onUpdateItem={async (updatedItem) => {
+            await onSave({ continuityCommitments: updatedItem.continuityCommitments }, true);
+            setContinuityCommitments(updatedItem.continuityCommitments);
+          }}
+          onUpdateKpiProgress={async (period: number, value: number | null) => {
+            if (isWeekly) {
+              const nextProgress = [...(weeklyProgress || Array(53).fill(null))];
+              nextProgress[period] = value;
+              setWeeklyProgress(nextProgress);
+              await onSave({ weeklyProgress: nextProgress }, true);
+            } else {
+              const nextProgress = [...(monthlyProgress || Array(12).fill(null))];
+              const nextCaptured = [...(monthlyProgressCaptured || Array(12).fill(false))];
+              nextProgress[period] = value === null ? 0 : value;
+              nextCaptured[period] = value !== null;
+              setMonthlyProgress(nextProgress);
+              setMonthlyProgressCaptured(nextCaptured);
+              await onSave({ monthlyProgress: nextProgress, monthlyProgressCaptured: nextCaptured }, true);
+            }
+          }}
+          onClose={() => setManagedCommitment(null)}
         />
       )}
 

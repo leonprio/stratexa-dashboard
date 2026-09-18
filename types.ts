@@ -145,6 +145,8 @@ export interface DashboardItem {
       };
     }[];
   };
+  /** Canonical persisted state for continuity commitments. */
+  continuityCommitments?: Record<string, import('./utils/continuityEngine').ContinuityCommitment>;
 
   // 🛡️ CAMPOS OPERATIVOS Y OPCIONALES COMPATIBILIDAD
   operationalMetrics?: any;

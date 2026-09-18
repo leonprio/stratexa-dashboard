@@ -87,6 +87,12 @@ type AdminSection =
   | "master"
   | "strategy";
 
+const PageShell: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+  <div className="min-h-screen bg-slate-950 text-slate-100 font-sans">
+    <div className="max-w-[1800px] mx-auto">{children}</div>
+  </div>
+);
+
 /**
  * Componente principal de la aplicación Stratexa Dashboard.
  * Gestiona el estado global de autenticación, carga de tableros, ruteo interno y administración.
@@ -102,7 +108,7 @@ export default function App() {
   const [user, setUser] = useState<FirebaseUser | null>(null);
   const [userProfile, setUserProfile] = useState<User | null>(null);
   // 🛡️ v9.4.22-CHART-UX-CLARITY
-  const VERSION_LABEL = "v9.6.2-AREA-PERSPECTIVE-COMPATIBILITY";
+  const VERSION_LABEL = "v9.6.6-AREA-PERSPECTIVE-COMPATIBILITY";
   const SHIELD_ID = "GOLD MASTER";
   const [activeAdminSection, setActiveAdminSection] =
     useState<AdminSection>("none");
@@ -1825,6 +1831,7 @@ export default function App() {
             weeklyGoals: shieldedItem.weeklyGoals,
             trackingStartPeriod: shieldedItem.trackingStartPeriod,
             isActivityMode: shieldedItem.isActivityMode,
+            continuityCommitments: shieldedItem.continuityCommitments,
           };
 
           workingList[boardIdx] = {
@@ -1860,6 +1867,23 @@ export default function App() {
             );
           }
         }
+
+        // The persisted source update is authoritative for the currently open
+        // aggregate item. Reconcile it explicitly so the focused panel and the
+        // aggregate chart receive the same value in this render, rather than
+        // waiting for a Firestore rehydration.
+        workingList = workingList.map((dashboard) =>
+          String(dashboard.id) === String(selectedDashboard.id)
+            ? {
+                ...dashboard,
+                items: dashboard.items.map((entry) =>
+                  String(entry.id) === String(shieldedItem.id)
+                    ? shieldedItem
+                    : entry,
+                ),
+              }
+            : dashboard,
+        );
 
         // 3. Actualización atómica única
         setDashboards(workingList);
@@ -2505,12 +2529,6 @@ export default function App() {
     downloadAnchorNode.click();
     downloadAnchorNode.remove();
   };
-
-  const PageShell = ({ children }: { children: React.ReactNode }) => (
-    <div className="min-h-screen bg-slate-950 text-slate-100 font-sans">
-      <div className="max-w-[1800px] mx-auto">{children}</div>
-    </div>
-  );
 
   if (status === "loading") {
     return (

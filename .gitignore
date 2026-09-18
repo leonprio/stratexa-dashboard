@@ -28,5 +28,6 @@ dist-ssr
 build_output
 
 # Temporary files
+.vite-cache
 .gemini
 tmp

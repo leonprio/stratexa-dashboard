@@ -146,15 +146,24 @@ export const LineChart: React.FC<LineChartProps> = React.memo(({ progressData, c
     const goalVal = goalPoint?.value ?? null;
     const gapVal = (realVal !== null && goalVal !== null) ? (realVal - goalVal) : null;
 
+    let cumulativeReal: number | null = null;
+    if (realVal !== null) {
+      const validPointsBefore = semanticProgress.slice(0, hoveredIdx + 1).filter((v) => v !== null && typeof v === 'number') as number[];
+      if (validPointsBefore.length > 1) {
+        cumulativeReal = validPointsBefore.reduce((sum, v) => sum + v, 0);
+      }
+    }
+
     return {
       periodLabel: labels[hoveredIdx] || `Periodo ${hoveredIdx + 1}`,
       realVal,
       goalVal,
       gapVal,
+      cumulativeReal,
       x: xScale(hoveredIdx),
       y: realVal !== null ? yScale(realVal) : (goalVal !== null ? yScale(goalVal) : height / 2)
     };
-  }, [hoveredIdx, plotData, goalPlotData, labels]);
+  }, [hoveredIdx, plotData, goalPlotData, semanticProgress, labels]);
 
   return (
     <div className={`bg-slate-950/50 ${compact ? 'p-2.5' : 'p-4'} rounded-2xl border border-white/10 shadow-inner relative select-none`}>
@@ -303,6 +312,12 @@ export const LineChart: React.FC<LineChartProps> = React.memo(({ progressData, c
               <span className="font-semibold text-emerald-400">Real:</span>
               <span className="font-bold tabular-nums">{activeHoveredData.realVal !== null ? formatNumber(activeHoveredData.realVal) : 'Sin captura'}</span>
             </div>
+            {activeHoveredData.cumulativeReal !== null && (
+              <div className="flex justify-between items-center text-slate-300 text-[10px]">
+                <span className="font-medium text-slate-400">Acumulado:</span>
+                <span className="font-bold tabular-nums text-white">{formatNumber(activeHoveredData.cumulativeReal)}</span>
+              </div>
+            )}
             <div className="flex justify-between items-center text-slate-200">
               <span className="font-semibold text-cyan-300">Meta:</span>
               <span className="font-bold tabular-nums">{activeHoveredData.goalVal !== null ? formatNumber(activeHoveredData.goalVal) : 'N/D'}</span>
