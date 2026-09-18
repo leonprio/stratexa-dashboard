@@ -16,7 +16,7 @@ import { ActionPlan } from "./ActionPlan";
 import { DataEditor } from "./DataEditor";
 import { ActivityManager } from "./ActivityManager";
 import { ContinuityWorkspace } from "./continuity/ContinuityWorkspace";
-import { getDiscardedContinuityCommitments, getEffectiveKpiProgressByPeriod } from "../utils/continuityAdapter";
+import { getDiscardedContinuityCommitments, getEffectiveKpiProgressByPeriod, getOperationalContinuityCommitments } from "../utils/continuityAdapter";
 import {
   formatNumberWithCommas,
   parseFormattedNumber,
@@ -110,13 +110,13 @@ export const deriveRescheduledKpiCommitments = (
           "Dic",
         ][index] || `P${index + 1}`;
 
-  const canonical = Object.values(item?.continuityCommitments || {}).filter(
+  const canonical = item ? getOperationalContinuityCommitments(item).filter(
     (c) =>
       c.status === "active" &&
       c.scheduledPeriod === periodIndex &&
       (c.scheduledYear || year) === year &&
       (c.rescheduleHistory?.length > 0 || c.scheduledPeriod !== c.originPeriod),
-  );
+  ) : [];
 
   const canonicalMap = new Map(canonical.map((c) => [c.sourceActivityId, c]));
 
@@ -292,7 +292,7 @@ export const derivePendingKpiActivities = (
           "Dic",
         ][index] || `P${index + 1}`;
 
-  const canonicalCommitments = Object.values(item?.continuityCommitments || {});
+  const canonicalCommitments = item ? getOperationalContinuityCommitments(item) : [];
   const canonicalMap = new Map(canonicalCommitments.map((c) => [c.sourceActivityId, c]));
 
   const pending = Object.entries(activityConfig || {}).flatMap(([period, raw]) => {
@@ -1680,6 +1680,7 @@ export const CurrentPeriodFocus: React.FC<CurrentPeriodFocusProps> = ({
         <ActivityManager
           title={getCleanIndicatorName(indicator)}
           subtitle={`Periodo: ${currentPeriodLabel}`}
+          periodLabel={`${currentPeriodLabel} ${year || currentYear}`}
           goalType={item.goalType}
           initialActivities={
             Array.isArray(item.activityConfig?.[currentIdx])

@@ -48,4 +48,14 @@ describe('resolución de pendientes frente a recargas y stale writes', () => {
     expect(merged[7][0].resolution?.resolutionStatus).toBe('reopened');
     expect(pending(merged)).toHaveLength(1);
   });
+  test('la lista entrante elimina actividades ausentes sin crear falsos ceros', () => {
+    const removed = { id: 'x', label: 'Prueba', targetCount: 3, completedCount: 0 };
+    const merged = mergeActivityConfigPreservingResolutions(
+      { 7: [activity, removed], 8: [{ ...activity, id: 'x2' }] },
+      { 7: [activity], 8: [{ ...activity, id: 'x2' }] },
+    );
+    expect(merged[7].map((item) => item.id)).toEqual(['a1']);
+    expect(merged[7].find((item) => item.id === 'x')).toBeUndefined();
+    expect(merged[8].map((item) => item.id)).toEqual(['x2']);
+  });
 });

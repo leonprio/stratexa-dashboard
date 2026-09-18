@@ -108,7 +108,7 @@ export default function App() {
   const [user, setUser] = useState<FirebaseUser | null>(null);
   const [userProfile, setUserProfile] = useState<User | null>(null);
   // 🛡️ v9.4.22-CHART-UX-CLARITY
-  const VERSION_LABEL = "v9.6.6-AREA-PERSPECTIVE-COMPATIBILITY";
+  const VERSION_LABEL = "v9.6.7-SMART-CAPTURE-CONTROL";
   const SHIELD_ID = "GOLD MASTER";
   const [activeAdminSection, setActiveAdminSection] =
     useState<AdminSection>("none");
@@ -918,39 +918,15 @@ export default function App() {
               );
               if (!oldItem) return raw;
 
-              // 🛡️ REGLA v8.5.0 (CRUD-NUCLEAR SHIELD): Merge que respeta eliminaciones
-              // ANTES: Solo iterábamos claves locales → las eliminaciones se perdían (el server restauraba lo borrado)
-              // AHORA: Si hay CUALQUIER activityConfig local, lo usamos COMPLETO como fuente de verdad.
-              // Esto asegura que: (1) eliminaciones persistan, (2) ediciones persistan, (3) adiciones persistan.
-              let mergedActivityConfig = raw.activityConfig || {};
-              if (oldItem.activityConfig) {
-                const localKeys = Object.keys(oldItem.activityConfig);
-                const rawKeys = Object.keys(raw.activityConfig || {});
-                const allKeys = new Set([...localKeys, ...rawKeys]);
-
-                const hasAnyDifference = Array.from(allKeys).some((weekKey) => {
-                  const localStr = JSON.stringify(
-                    oldItem.activityConfig![weekKey] || [],
-                  );
-                  const rawStr = JSON.stringify(
-                    (raw.activityConfig || {})[weekKey] || [],
-                  );
-                  return localStr !== rawStr;
-                });
-
-                if (hasAnyDifference) {
-                  // 🛡️ CRUD-NUCLEAR: Lo local es la fuente de verdad (incluye eliminaciones)
-                  console.log(
-                    `⚠️ [SYNC] activityConfig discrepante para ${raw.indicator}. Protegiendo estado local completo.`,
-                  );
-                  mergedActivityConfig = { ...oldItem.activityConfig };
-                }
-              }
-
               return {
                 ...oldItem,
                 ...raw,
-                activityConfig: mergedActivityConfig,
+                // Firebase ya contiene la lista reconciliada; aceptar su snapshot
+                // evita que un estado local antiguo vuelva a resucitar eliminaciones.
+                activityConfig:
+                  raw.activityConfig !== undefined
+                    ? raw.activityConfig
+                    : oldItem.activityConfig,
               };
             });
 

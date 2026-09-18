@@ -28,6 +28,8 @@ export interface ActivityManagerProps {
   title: string;
   /** Subtítulo descriptivo u organizacional */
   subtitle?: string;
+  /** Periodo exacto cuya configuración se está editando */
+  periodLabel?: string;
   /** Determina si el usuario tiene permisos de edición. Si es false, se muestra solo lectura */
   canEdit?: boolean;
   /** Función opcional para clonar la configuración actual a todos los periodos del año */
@@ -52,6 +54,7 @@ const ActivityManager = React.memo((props: ActivityManagerProps) => {
     onClose,
     title,
     subtitle,
+    periodLabel,
     canEdit = true,
     onCopyToAll,
     goalType = 'maximize'
@@ -131,12 +134,14 @@ const ActivityManager = React.memo((props: ActivityManagerProps) => {
         {/* HEADER */}
         <div className="p-4 sm:p-6 border-b border-slate-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-gradient-to-r from-slate-900 to-slate-950">
           <div className="flex flex-col min-w-0">
+            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-cyan-300">CONFIGURACIÓN DE ACTIVIDADES</p>
             <h2 className="text-xl sm:text-2xl font-black text-white leading-tight mb-1 flex items-center flex-wrap gap-2">
               <span className="truncate">{title}</span>
               <span className={`text-[9px] px-2 py-0.5 rounded-full border ${goalType === 'minimize' ? 'bg-amber-500/10 border-amber-500/20 text-amber-500' : 'bg-emerald-500/10 border-emerald-500/20 text-emerald-500'} font-bold uppercase tracking-widest shrink-0`}>
                 OBJETIVO: {goalType === 'minimize' ? 'Minimizar' : 'Maximizar'}
               </span>
             </h2>
+            {periodLabel && <p data-testid="activity-manager-period" className="text-sm font-black uppercase tracking-widest text-white">PERIODO: {periodLabel}</p>}
             <p className="text-slate-500 font-bold uppercase tracking-[0.2em] text-[10px] flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-cyan-500 shrink-0" />
               <span className="truncate">{subtitle || "GESTOR DE ELEMENTOS DETALLADO v9.1.0-PRO-FINAL-SHIELDED"}</span>

@@ -7,7 +7,7 @@ import { resolveItemValues } from "../utils/compliance";
 import { deriveRescheduledKpiCommitments, RescheduledCommitmentsSection } from "./CurrentPeriodFocus";
 import type { RescheduledKpiCommitment } from "./CurrentPeriodFocus";
 import { ContinuityWorkspace } from './continuity/ContinuityWorkspace';
-import { getEffectiveKpiProgressByPeriod, syncCommitmentsWithActivityConfig } from '../utils/continuityAdapter';
+import { getEffectiveKpiProgressByPeriod, getOperationalContinuityCommitments, syncCommitmentsWithActivityConfig } from '../utils/continuityAdapter';
 
 interface DataEditorProps {
   item: DashboardItem;
@@ -251,8 +251,8 @@ export const DataEditor: React.FC<DataEditorProps> = React.memo(({ item, allDash
   );
 
   const commitmentsForPeriod = (periodIndex: number): RescheduledKpiCommitment[] => {
-    const legacy = deriveRescheduledKpiCommitments(activityConfig, periodIndex, isWeekly, year);
-    const canonical = Object.values(continuityCommitments || {})
+    const legacy = deriveRescheduledKpiCommitments(activityConfig, periodIndex, isWeekly, year, continuityItem);
+    const canonical = getOperationalContinuityCommitments(continuityItem)
       .filter((commitment) => {
         if (commitment.status !== 'active' || commitment.scheduledYear !== year) return false;
         const latestActiveMove = [...(commitment.rescheduleHistory || [])].reverse().find(move => move.status === 'active');
@@ -602,6 +602,7 @@ export const DataEditor: React.FC<DataEditorProps> = React.memo(({ item, allDash
         <ActivityManager
           title={item.indicator}
           subtitle={!isWeekly ? months[activeActivityPeriod] : `Semana ${activeActivityPeriod + 1}`}
+          periodLabel={!isWeekly ? `${months[activeActivityPeriod]} ${year}` : `Semana ${activeActivityPeriod + 1} · ${year}`}
           initialActivities={Array.isArray(activityConfig[activeActivityPeriod]) ? activityConfig[activeActivityPeriod] as any : (activityConfig[activeActivityPeriod] ? Object.values(activityConfig[activeActivityPeriod] || {}) : [])}
           canEdit={canEdit}
           onClose={() => setActiveActivityPeriod(null)}

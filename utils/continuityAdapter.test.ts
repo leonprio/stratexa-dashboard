@@ -1,4 +1,5 @@
-import { applyContinuityEventToItem, continuityKey, getAvailableContinuityActions, getEffectiveKpiProgressByPeriod, getIndividualCommitmentProjection, getVisibleContinuityState, syncCommitmentsWithActivityConfig } from './continuityAdapter';
+import { applyContinuityEventToItem, continuityKey, getAvailableContinuityActions, getContinuityOperationalState, getEffectiveKpiProgressByPeriod, getIndividualCommitmentProjection, getOperationalContinuityCommitments, getRetiredContinuityCommitments, getVisibleContinuityState, syncCommitmentsWithActivityConfig } from './continuityAdapter';
+import { derivePendingKpiActivities, deriveRescheduledKpiCommitments } from '../components/CurrentPeriodFocus';
 
 const item: any = { id: 7, indicator: 'KPI', weight: 1, unit: 'u', type: 'accumulative', goalType: 'maximize', monthlyGoals: [0, 0, 0, 0, 0, 0, 0, 20], monthlyProgress: [0, 0, 0, 0, 0, 0, 0, 5], activityConfig: { 7: [{ id: 'a', label: 'Meta', targetCount: 10, completedCount: 4 }] } };
 test('reschedule persists a canonical continuity commitment without writing legacy resolution', () => {
@@ -46,6 +47,62 @@ test('shared action policy exposes undo only from canonical reschedule history',
 test('legacy active fallback retains executable actions before canonical materialization', () => {
   const actions = getAvailableContinuityActions(getVisibleContinuityState(item, 'a'));
   expect(actions).toEqual(expect.arrayContaining(['RESCHEDULE', 'COMPLETE', 'CLOSE_UNMET', 'DISCARD']));
+});
+
+test('retires a deleted August source from operational continuity while retaining its audit history', () => {
+  const source: any = {
+    ...item,
+    activityConfig: {
+      7: [{ id: 'activity-a', label: 'Establecer metas en Agosto', targetCount: 1, completedCount: 0 }],
+      8: [{ id: 'activity-b-september', label: 'Agregar estrategia', targetCount: 8, completedCount: 0 }],
+    },
+    continuityCommitments: {
+      'activity:activity-a': {
+        id: 'activity:activity-a', sourceType: 'ACTIVITY_KPI', sourceKpiId: '7', sourceActivityId: 'activity-a', originYear: 2026, originPeriod: 7, originalTarget: 1, scheduledYear: 2026, scheduledPeriod: 7, progressByPeriod: {}, status: 'active', outcome: 'in_progress', rescheduleHistory: [], resolutionHistory: [],
+      },
+      'activity:activity-b-august': {
+        id: 'activity:activity-b-august', sourceType: 'ACTIVITY_KPI', sourceKpiId: '7', sourceActivityId: 'activity-b-august', originYear: 2026, originPeriod: 7, originalTarget: 8, scheduledYear: 2026, scheduledPeriod: 8, progressByPeriod: { 7: 1 }, status: 'active', outcome: 'in_progress', rescheduleHistory: [{ id: 'r1', fromYear: 2026, fromPeriod: 7, toYear: 2026, toPeriod: 8, at: '2026-09-01', status: 'active' }], resolutionHistory: [{ type: 'CREATE_CONTINUITY', at: '2026-08-01' }],
+      },
+    },
+  };
+
+  const retired = source.continuityCommitments['activity:activity-b-august'];
+  expect(getContinuityOperationalState(source, retired)).toBe('RETIRED_FROM_SOURCE');
+  expect(getOperationalContinuityCommitments(source).map(c => c.id)).toEqual(['activity:activity-a']);
+  expect(getRetiredContinuityCommitments(source)).toEqual([retired]);
+  expect(getRetiredContinuityCommitments(source)[0].resolutionHistory).toEqual(retired.resolutionHistory);
+  expect(deriveRescheduledKpiCommitments(source.activityConfig, 8, false, 2026, source)).toEqual([]);
+  expect(derivePendingKpiActivities(source.activityConfig, 8, false, 2026, source).map(p => p.sourceActivityId)).not.toContain('activity-b-august');
+  expect(source.activityConfig[8]).toHaveLength(1);
+});
+
+test('treats a zero-target origin residue as retired rather than an active source', () => {
+  const source: any = {
+    ...item,
+    activityConfig: { 7: [{ id: 'activity-b', label: 'Agregar estrategia', targetCount: 0, completedCount: 0 }] },
+    continuityCommitments: {
+      'activity:activity-b': {
+        id: 'activity:activity-b', sourceType: 'ACTIVITY_KPI', sourceKpiId: '7', sourceActivityId: 'activity-b', originYear: 2026, originPeriod: 7, originalTarget: 8, scheduledYear: 2026, scheduledPeriod: 8, progressByPeriod: {}, status: 'active', outcome: 'in_progress', rescheduleHistory: [], resolutionHistory: [{ type: 'CREATE_CONTINUITY', at: '2026-08-01' }],
+      },
+    },
+  };
+  expect(getContinuityOperationalState(source, source.continuityCommitments['activity:activity-b'])).toBe('RETIRED_FROM_SOURCE');
+  expect(getOperationalContinuityCommitments(source)).toEqual([]);
+  expect(getRetiredContinuityCommitments(source)).toHaveLength(1);
+});
+
+test('keeps a legitimate August-to-September reschedule operational when its source remains at origin', () => {
+  const source: any = {
+    ...item,
+    activityConfig: { 7: [{ id: 'activity-b', label: 'Agregar estrategia', targetCount: 8, completedCount: 1 }] },
+    continuityCommitments: {
+      'activity:activity-b': {
+        id: 'activity:activity-b', sourceType: 'ACTIVITY_KPI', sourceKpiId: '7', sourceActivityId: 'activity-b', originYear: 2026, originPeriod: 7, originalTarget: 8, scheduledYear: 2026, scheduledPeriod: 8, progressByPeriod: { 7: 1 }, status: 'active', outcome: 'in_progress', rescheduleHistory: [{ id: 'r1', fromYear: 2026, fromPeriod: 7, toYear: 2026, toPeriod: 8, at: '2026-09-01', status: 'active' }], resolutionHistory: [],
+      },
+    },
+  };
+  expect(getContinuityOperationalState(source, source.continuityCommitments['activity:activity-b'])).toBe('ACTIVE');
+  expect(deriveRescheduledKpiCommitments(source.activityConfig, 8, false, 2026, source)).toHaveLength(1);
 });
 
 test('correction preserves individual activity progress in origin period instead of KPI aggregate', () => {

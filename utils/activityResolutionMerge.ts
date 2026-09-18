@@ -20,12 +20,15 @@ export const mergeActivityConfigPreservingResolutions = (
   incoming: DashboardItem['activityConfig'],
 ): DashboardItem['activityConfig'] => {
   const result: ActivityConfig = { ...(incoming || {}) };
-  for (const [period, currentRaw] of Object.entries(current || {})) {
-    if (!Array.isArray(currentRaw)) continue;
-    const incomingRaw = Array.isArray(result[period]) ? result[period] : [];
-    result[period] = currentRaw.map((currentActivity) => {
-      const incomingActivity = incomingRaw.find((a) => a.id === currentActivity.id);
-      if (!incomingActivity) return currentActivity;
+  // La lista entrante es autoritativa para las actividades activas del periodo.
+  // Solo se conserva la resolución de una actividad que todavía está presente;
+  // una actividad ausente es una eliminación, no una actividad a reinyectar.
+  for (const [period, incomingRaw] of Object.entries(incoming || {})) {
+    if (!Array.isArray(incomingRaw)) continue;
+    const currentRaw = Array.isArray(current?.[period]) ? current[period] : [];
+    result[period] = incomingRaw.map((incomingActivity) => {
+      const currentActivity = currentRaw.find((a) => a.id === incomingActivity.id);
+      if (!currentActivity) return incomingActivity;
 
       const currentResTime = resolutionAt(currentActivity);
       const incomingResTime = resolutionAt(incomingActivity);
@@ -44,7 +47,7 @@ export const mergeActivityConfigPreservingResolutions = (
       }
 
       return incomingActivity;
-    }).concat(incomingRaw.filter((a) => !currentRaw.some((c) => c.id === a.id)));
+    });
   }
   return result;
 };

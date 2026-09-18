@@ -4,6 +4,42 @@ import { reduceContinuity, type ContinuityCommitment, type ContinuityEvent } fro
 export const cleanActivityId = (activityId: string) => String(activityId || '').replace(/^activity:/, '');
 export const continuityKey = (activityId: string) => `activity:${cleanActivityId(activityId)}`;
 export type VisibleContinuityState = { source: 'CANONICAL' | 'LEGACY_FALLBACK' | 'NONE'; commitment?: ContinuityCommitment };
+export type ContinuityOperationalState = 'ACTIVE' | 'RETIRED_FROM_SOURCE';
+
+const hasSourceActivityAtOrigin = (item: DashboardItem, commitment: ContinuityCommitment): boolean => {
+  if (commitment.sourceType !== 'ACTIVITY_KPI' || !commitment.sourceActivityId) return true;
+  const originActivities = item.activityConfig?.[commitment.originPeriod];
+  return Array.isArray(originActivities) && originActivities.some(
+    (activity) =>
+      cleanActivityId(activity.id) === cleanActivityId(commitment.sourceActivityId || '') &&
+      Number(activity.targetCount) > 0,
+  );
+};
+
+/**
+ * Read-only reconciliation: a deleted source must not remain actionable merely
+ * because its historical canonical commitment is still persisted.  A genuine
+ * reschedule retains an exigible source activity at its origin, so it stays
+ * active. A residual zero-target activity is not an operational source.
+ */
+export const getContinuityOperationalState = (
+  item: DashboardItem,
+  commitment: ContinuityCommitment,
+): ContinuityOperationalState =>
+  commitment.status === 'active' && !hasSourceActivityAtOrigin(item, commitment)
+    ? 'RETIRED_FROM_SOURCE'
+    : 'ACTIVE';
+
+export const getOperationalContinuityCommitments = (item: DashboardItem): ContinuityCommitment[] =>
+  Object.values(item.continuityCommitments || {}).filter(
+    (commitment) => getContinuityOperationalState(item, commitment) === 'ACTIVE',
+  );
+
+/** Preserved audit records that are intentionally excluded from live queues. */
+export const getRetiredContinuityCommitments = (item: DashboardItem): ContinuityCommitment[] =>
+  Object.values(item.continuityCommitments || {}).filter(
+    (commitment) => getContinuityOperationalState(item, commitment) === 'RETIRED_FROM_SOURCE',
+  );
 /** Read-only KPI projection shared by annual, trend and continuity surfaces. */
 export const getEffectiveKpiProgressByPeriod = (item: DashboardItem, period: number): number | null => {
   if (item.frequency === 'weekly') {
@@ -146,6 +182,11 @@ export const getVisibleContinuityState = (item: DashboardItem, activityId: strin
       return { source: 'LEGACY_FALLBACK', commitment: synthetic };
     }
     return { source: item.activityConfig ? 'LEGACY_FALLBACK' : 'NONE' };
+  }
+  // Keep the persisted record auditable, but never rematerialize a removed
+  // source as an active operational commitment.
+  if (getContinuityOperationalState(item, commitment) === 'RETIRED_FROM_SOURCE') {
+    return { source: 'NONE' };
   }
   return {
     source: 'CANONICAL',

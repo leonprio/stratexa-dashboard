@@ -20,11 +20,11 @@ describe('PendingAlertsCenter', () => {
     render(<PendingAlertsCenter dashboards={[dashboard(1, null, null, undefined), dashboard(2, null, null, period), dashboard(3, 100, 40, period), dashboard(4, 100, 100, period), dashboard(5, null, null, { ...period, monthIndex: 10 })]} year={2026} authorizedDashboardIds={[1, 2, 3, 4, 5]} onNavigateToKpi={onNavigateToKpi} />);
     expect(screen.getByText('3 asuntos requieren atención')).toBeInTheDocument();
     expect(screen.getByText('INICIO SIN CONFIGURAR')).toBeInTheDocument();
-    expect(screen.getByText('FALTA META')).toBeInTheDocument();
+    expect(screen.getByText('POR CONFIGURAR')).toBeInTheDocument();
     expect(screen.getByText('RESULTADO CRÍTICO')).toBeInTheDocument();
     expect(screen.queryByText('KPI 4')).not.toBeInTheDocument();
     expect(screen.queryByText('KPI 5')).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'REGISTRAR META' }));
+    fireEvent.click(screen.getByRole('button', { name: 'CONFIGURAR' }));
     expect(onNavigateToKpi).toHaveBeenCalledWith(2, 2);
   });
 });

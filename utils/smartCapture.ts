@@ -9,7 +9,7 @@ export const captureLabel: Record<TrackingObligation, string> = {
 
 export interface CaptureEntry { item: DashboardItem; input: KpiTrackingObligationInput; }
 export interface CaptureSummary {
-  totalKpis: number; requiredKpis: number; capturedKpis: number; missingGoalKpis: number;
+  totalKpis: number; requiredKpis: number; capturedKpis: number; completeRequiredKpis: number; missingGoalKpis: number;
   missingProgressKpis: number; notRequiredKpis: number; undefinedStartKpis: number; futureKpis: number;
   capturePercent: number | null; obligations: Array<{ item: DashboardItem; obligation: TrackingObligation }>;
 }
@@ -27,6 +27,7 @@ export const getCaptureSummaryForPeriod = (entries: CaptureEntry[]): CaptureSumm
   const missingProgressKpis = count('PROGRESS_REQUIRED');
   const requiredKpis = capturedKpis + missingGoalKpis + missingProgressKpis;
   return { totalKpis: entries.length, requiredKpis, capturedKpis, missingGoalKpis, missingProgressKpis,
+    completeRequiredKpis: capturedKpis,
     notRequiredKpis: count('NOT_REQUIRED'), undefinedStartKpis: count('TRACKING_START_UNDEFINED'), futureKpis: count('FUTURE'),
     capturePercent: requiredKpis ? (capturedKpis / requiredKpis) * 100 : null, obligations };
 };
@@ -51,8 +52,8 @@ export const getCaptureSummaryForDashboard = (
   const frequency = dashboard.periodicity ?? (dashboard.items?.some(item => item.frequency === 'weekly') ? 'weekly' : 'monthly');
   const year = dashboard.year ?? now.getFullYear();
   const operationalPeriod: TrackingPeriod = frequency === 'weekly'
-    ? { frequency, year, weekNumber: year < now.getFullYear() ? 53 : Math.max(1, Math.min(53, Math.ceil((now.getTime() - new Date(now.getFullYear(), 0, 1).getTime()) / 604800000))) }
-    : { frequency, year, monthIndex: year < now.getFullYear() ? 11 : year > now.getFullYear() ? now.getMonth() : now.getMonth() };
+    ? { frequency, year: now.getFullYear(), weekNumber: Math.max(1, Math.min(53, Math.ceil((now.getTime() - new Date(now.getFullYear(), 0, 1).getTime()) / 604800000))) }
+    : { frequency, year: now.getFullYear(), monthIndex: now.getMonth() };
   const entries = (dashboard.items ?? [])
     .filter(item => item.indicatorType !== 'compound' && item.indicatorType !== 'formula' && !(item as any).isAggregate)
     .map(item => makeCaptureEntry(item, operationalPeriod, operationalPeriod, getEffectiveTrackingStartPeriod(item, dashboard, settings).period));

@@ -457,13 +457,12 @@ export const firebaseService = {
                     const itemRef = doc(db, DASHBOARDS_COLLECTION, String(dashboardId), "items", String(it.id));
                     const clearTrackingOverride = Object.prototype.hasOwnProperty.call(it, 'trackingStartPeriod') && it.trackingStartPeriod === undefined;
                     const cleanItem = JSON.parse(JSON.stringify(it));
-                    const activities = cleanItem.activityConfig || {};
-                    
-                    // Extraer para guardado atómico y evitar sobreescritura de metadatos de ID
-                    delete cleanItem.activityConfig;
                     delete cleanItem.id;
 
-                    // 1. Actualización de datos base (Metas, Avances, Unit)
+                    // 1. Actualización de datos base y configuración operativa.
+                    // activityConfig se escribe como mapa completo: la lista entrante
+                    // es autoritativa y una actividad ausente debe desaparecer también
+                    // del documento persistido, no sólo del estado local.
                     // merge:true does not delete omitted fields. An explicit
                     // undefined tracking override is the canonical signal to
                     // remove the persisted override and resume inheritance.
@@ -471,17 +470,6 @@ export const firebaseService = {
                         ? { ...cleanItem, trackingStartPeriod: deleteField() }
                         : cleanItem, { merge: true });
 
-                    // 2. Actualización atómica de actividades (dot-notation)
-                    const atomicActivities: any = {};
-                    Object.keys(activities).forEach(idx => {
-                        if (activities[idx] !== undefined) {
-                            atomicActivities[`activityConfig.${idx}`] = activities[idx];
-                        }
-                    });
-
-                    if (Object.keys(atomicActivities).length > 0) {
-                        mainBatch.update(itemRef, atomicActivities);
-                    }
                 });
                 
                 await mainBatch.commit();
