@@ -1,5 +1,6 @@
 import type { Dashboard, DashboardItem, SystemSettings } from '../types';
 import { getEffectiveTrackingStartPeriod, getKpiTrackingObligation, type TrackingPeriod, type TrackingObligation } from './trackingObligation';
+import { getObligationStatus, type ObligationStatus } from './obligationStatus';
 
 export type PendingType = 'MISSING_GOAL' | 'MISSING_PROGRESS' | 'TRACKING_START_UNDEFINED' | 'RESULT_CRITICAL' | 'RESULT_AT_RISK';
 export type PendingCategory = 'CONFIGURACIÓN' | 'CAPTURA' | 'RESULTADO';
@@ -10,6 +11,7 @@ export interface PendingItem {
   severity: 'CRÍTICA' | 'ALTA' | 'MEDIA';
   indicatorId: DashboardItem['id']; indicatorName: string; dashboardId: Dashboard['id']; area?: string; responsible?: string;
   period: TrackingPeriod; message: string; actionLabel: string; source: 'trackingObligation' | 'performance';
+  obligationStatus?: ObligationStatus;
 }
 export interface PendingCategoryCounts { CONFIGURACIÓN: number; CAPTURA: number; RESULTADO: number; }
 const rank: Record<PendingType, number> = { TRACKING_START_UNDEFINED: 1, MISSING_GOAL: 2, MISSING_PROGRESS: 3, RESULT_CRITICAL: 4, RESULT_AT_RISK: 5 };
@@ -46,8 +48,9 @@ export const buildPendingItems = (dashboards: Dashboard[], period: TrackingPerio
     const trackingStartPeriod = getEffectiveTrackingStartPeriod(item, d, clientSettings).period;
     if (activeContinuity && activities.length === 0) return;
     const obligation = getKpiTrackingObligation({ frequency: period.frequency, period, operationalPeriod, trackingStartPeriod, goalValue: goal, progressValue: progress, goalCaptured, progressCaptured });
+    const obligationStatus = getObligationStatus(obligation, period, operationalPeriod);
     const type: PendingType | undefined = obligation === 'TRACKING_START_UNDEFINED' ? 'TRACKING_START_UNDEFINED' : obligation === 'GOAL_REQUIRED' ? 'MISSING_GOAL' : obligation === 'PROGRESS_REQUIRED' ? 'MISSING_PROGRESS' : undefined;
-    if (type) { const x = detail[type]; result.push({ id: `${d.id}:${item.id}:${type}`, type, ...x, indicatorId: item.id, indicatorName: item.indicator, dashboardId: d.id, area: d.area, responsible: item.responsible, period, source: 'trackingObligation' }); return; }
+    if (type) { const x = detail[type]; result.push({ id: `${d.id}:${item.id}:${type}`, type, ...x, indicatorId: item.id, indicatorName: item.indicator, dashboardId: d.id, area: d.area, responsible: item.responsible, period, source: 'trackingObligation', obligationStatus }); return; }
     if (obligation !== 'CAPTURE_COMPLETE' || typeof goal !== 'number' || typeof progress !== 'number' || goal === 0) return;
     const score = item.goalType === 'minimize' ? (progress <= goal ? 100 : (goal / progress) * 100) : (progress / goal) * 100;
     const performanceType = score < 70 ? 'RESULT_CRITICAL' : score < 85 ? 'RESULT_AT_RISK' : undefined;

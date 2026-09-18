@@ -212,6 +212,8 @@ export interface IndividualCommitmentProjection {
   scheduledYear: number;
   target: number;
   progressByPeriod: Record<number, number>;
+  previousCumulativeProgress: number;
+  currentPeriodProgress: number | null;
   cumulativeProgress: number;
   fulfillmentPercent: number;
   remaining: number;
@@ -222,6 +224,7 @@ export interface IndividualCommitmentProjection {
 export const getIndividualCommitmentProjection = (
   item: DashboardItem,
   sourceActivityId: string,
+  consultedPeriod?: number,
 ): IndividualCommitmentProjection => {
   const cleanId = cleanActivityId(sourceActivityId);
   const visible = getVisibleContinuityState(item, cleanId);
@@ -251,10 +254,15 @@ export const getIndividualCommitmentProjection = (
     activityOriginPeriod,
   );
 
-  const cumulativeProgress = Object.values(progressByPeriod).reduce((sum, val) => sum + Number(val || 0), 0);
-  const remaining = Math.max(0, target - cumulativeProgress);
-  const fulfillmentPercent = target > 0 ? (cumulativeProgress / target) * 100 : 0;
-
+  const projectionPeriod = commitment?.scheduledPeriod ?? activityOriginPeriod;
+  const previousCumulativeProgress = Object.entries(progressByPeriod)
+    .filter(([period]) => Number(period) < projectionPeriod)
+    .reduce((sum, [, value]) => sum + Number(value || 0), 0);
+  const currentPeriodProgress = Object.prototype.hasOwnProperty.call(progressByPeriod, projectionPeriod)
+    ? Number(progressByPeriod[projectionPeriod] || 0)
+    : null;
+  const cumulativeProgressThroughPeriod = previousCumulativeProgress + (currentPeriodProgress ?? 0);
+  const remaining = Math.max(0, target - cumulativeProgressThroughPeriod);
   return {
     id: commitment?.id || continuityKey(cleanId),
     sourceActivityId: cleanId,
@@ -265,8 +273,10 @@ export const getIndividualCommitmentProjection = (
     scheduledYear: commitment?.scheduledYear ?? new Date().getFullYear(),
     target,
     progressByPeriod,
-    cumulativeProgress,
-    fulfillmentPercent,
+    previousCumulativeProgress,
+    currentPeriodProgress,
+    cumulativeProgress: cumulativeProgressThroughPeriod,
+    fulfillmentPercent: target > 0 ? (cumulativeProgressThroughPeriod / target) * 100 : 0,
     remaining,
     status: commitment?.status || 'active',
     commitment,

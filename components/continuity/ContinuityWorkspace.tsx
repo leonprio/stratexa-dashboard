@@ -1,8 +1,7 @@
 import React from 'react';
 import { createPortal } from 'react-dom';
 import type { DashboardItem } from '../../types';
-import { getEffectiveKpiProgressByPeriod, getIndividualCommitmentProjection, getVisibleContinuityState } from '../../utils/continuityAdapter';
-import { getContinuitySnapshot } from '../../utils/continuityEngine';
+import { getIndividualCommitmentProjection } from '../../utils/continuityAdapter';
 import { ContinuityPanel, type ContinuityPanelPending } from './ContinuityPanel';
 
 interface Props {
@@ -74,9 +73,6 @@ export const ContinuityWorkspace: React.FC<Props> = ({
 
   // FILA 2: Individual Commitment Projection (Dominant, Authoritative)
   const projection = getIndividualCommitmentProjection(localItem, pending.sourceActivityId);
-  const augustProgress = projection.progressByPeriod[7];
-  const septemberProgress = projection.progressByPeriod[8];
-  const consultedPeriodProgress = projection.progressByPeriod[consultedPeriod];
 
   return createPortal(
     <div className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-950/85 p-3 backdrop-blur-md" role="presentation">
@@ -137,7 +133,7 @@ export const ContinuityWorkspace: React.FC<Props> = ({
               Origen: <strong className="text-slate-200">{periodLabel(projection.originPeriod)} {projection.originYear || year}</strong>
             </span>
             <span className="rounded-lg bg-cyan-500/20 border border-cyan-500/40 px-3 py-1.5 text-cyan-200">
-              COMPROMISO ACTUAL: <strong className="text-white">{periodLabel(projection.scheduledPeriod)} {projection.scheduledYear || year}</strong>
+              PERIODO DEL COMPROMISO: <strong className="text-white">{periodLabel(projection.scheduledPeriod)} {projection.scheduledYear || year}</strong>
             </span>
           </div>
 
@@ -147,19 +143,13 @@ export const ContinuityWorkspace: React.FC<Props> = ({
               <p className="mt-1.5 text-2xl font-black text-white tabular-nums">{projection.target}</p>
             </div>
             <div className="rounded-2xl border border-indigo-400/25 bg-indigo-500/10 p-3.5">
-              <p className="text-[9px] font-black uppercase tracking-widest text-indigo-200">Avance de Agosto</p>
-              <p className="mt-1.5 text-2xl font-black text-white tabular-nums">
-                {augustProgress !== undefined && augustProgress !== null ? `+${augustProgress}` : 'SIN CAPTURA'}
-              </p>
+              <p className="text-[9px] font-black uppercase tracking-widest text-indigo-200">Acumulado anterior</p>
+              <p className="mt-1.5 text-2xl font-black text-white tabular-nums">{projection.previousCumulativeProgress}</p>
             </div>
-            {consultedPeriod !== 7 && (
-              <div className="rounded-2xl border border-indigo-400/25 bg-indigo-500/10 p-3.5">
-                <p className="text-[9px] font-black uppercase tracking-widest text-indigo-200">Avance de {periodLabel(consultedPeriod)}</p>
-                <p className="mt-1.5 text-2xl font-black text-white tabular-nums">
-                  {consultedPeriodProgress !== undefined && consultedPeriodProgress !== null ? `+${consultedPeriodProgress}` : 'SIN CAPTURA'}
-                </p>
-              </div>
-            )}
+            <div className="rounded-2xl border border-indigo-400/25 bg-indigo-500/10 p-3.5">
+              <p className="text-[9px] font-black uppercase tracking-widest text-indigo-200">Avance de {periodLabel(projection.scheduledPeriod)}</p>
+              <p className="mt-1.5 text-2xl font-black text-white tabular-nums">{projection.currentPeriodProgress === null ? 'SIN CAPTURA' : `+${projection.currentPeriodProgress}`}</p>
+            </div>
             <div className="rounded-2xl border border-cyan-400/30 bg-cyan-500/10 p-3.5">
               <p className="text-[9px] font-black uppercase tracking-widest text-cyan-200">Realizado acumulado</p>
               <p className="mt-1.5 text-2xl font-black text-white tabular-nums">{projection.cumulativeProgress}</p>

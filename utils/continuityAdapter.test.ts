@@ -8,6 +8,43 @@ test('reschedule persists a canonical continuity commitment without writing lega
   expect(next.continuityCommitments?.[continuityKey('a')]).toMatchObject({ scheduledPeriod: 8, status: 'active' });
   expect(next.continuityCommitments?.[continuityKey('a')].resolutionHistory.at(-1)).toMatchObject({ type: 'RESCHEDULE', fromPeriod: 7, toPeriod: 8 });
 });
+
+test('projects previous, current and cumulative progress for the consulted period', () => {
+  const source: any = {
+    id: 9,
+    activityConfig: { 7: [{ id: 'commitment', label: 'Compromiso', targetCount: 10, completedCount: 3 }] },
+    continuityCommitments: {
+      'activity:commitment': {
+        id: 'activity:commitment', sourceType: 'ACTIVITY_KPI', sourceKpiId: '9', sourceActivityId: 'commitment',
+        originYear: 2026, originPeriod: 7, originalTarget: 10, scheduledYear: 2026, scheduledPeriod: 8,
+        progressByPeriod: { 7: 3, 8: 1 }, status: 'active', outcome: 'in_progress', rescheduleHistory: [], resolutionHistory: [],
+      },
+    },
+  };
+  const projection = getIndividualCommitmentProjection(source, 'commitment', 8);
+  expect(projection.previousCumulativeProgress).toBe(3);
+  expect(projection.currentPeriodProgress).toBe(1);
+  expect(projection.cumulativeProgress).toBe(4);
+  expect(projection.remaining).toBe(6);
+  expect(projection.fulfillmentPercent).toBe(40);
+});
+
+test('distinguishes no capture from an explicit zero in the consulted period', () => {
+  const source: any = {
+    id: 10,
+    activityConfig: { 7: [{ id: 'commitment', label: 'Compromiso', targetCount: 10, completedCount: 3 }] },
+    continuityCommitments: {
+      'activity:commitment': {
+        id: 'activity:commitment', sourceType: 'ACTIVITY_KPI', sourceKpiId: '10', sourceActivityId: 'commitment',
+        originYear: 2026, originPeriod: 7, originalTarget: 10, scheduledYear: 2026, scheduledPeriod: 8,
+        progressByPeriod: { 7: 3 }, status: 'active', outcome: 'in_progress', rescheduleHistory: [], resolutionHistory: [],
+      },
+    },
+  };
+  expect(getIndividualCommitmentProjection(source, 'commitment', 8).currentPeriodProgress).toBeNull();
+  source.continuityCommitments['activity:commitment'].progressByPeriod[8] = 0;
+  expect(getIndividualCommitmentProjection(source, 'commitment', 8).currentPeriodProgress).toBe(0);
+});
 test('read projection prefers monthly KPI progress and uses canonical history only when monthly data is absent', () => {
   const source = { ...item, monthlyProgress: [0, 0, 0, 0, 0, 0, 0, null], continuityCommitments: { [continuityKey('a')]: {
     id: continuityKey('a'), sourceType: 'ACTIVITY_KPI', sourceKpiId: '7', sourceActivityId: 'a', originYear: 2026, originPeriod: 7, originalTarget: 20, scheduledYear: 2026, scheduledPeriod: 8, progressByPeriod: { 7: 5 }, status: 'active', outcome: 'in_progress', rescheduleHistory: [], resolutionHistory: [],
@@ -352,4 +389,104 @@ test('Strict non-contamination: individual progress is decoupled from KPI aggreg
   expect(a.progressByPeriod[8]).not.toBe(b.progressByPeriod[8]);       // undefined != 3
   expect(a.cumulativeProgress).not.toBe(fixture.monthlyProgress[7]);  // 4 != 5
   expect(b.cumulativeProgress).not.toBe(kpiAug + kpiSep);             // 4 != 8
+});
+
+describe('authoritative commitment projection regression suite', () => {
+  test('A) commitment born and active in the same month', () => {
+    const itemA: any = {
+      id: 11,
+      activityConfig: { 7: [{ id: 'act-same', label: 'Mismo mes', targetCount: 10, completedCount: 3 }] },
+    };
+    const proj = getIndividualCommitmentProjection(itemA, 'act-same');
+    expect(proj.originPeriod).toBe(7);
+    expect(proj.scheduledPeriod).toBe(7);
+    expect(proj.previousCumulativeProgress).toBe(0);
+    expect(proj.currentPeriodProgress).toBe(3);
+    expect(proj.cumulativeProgress).toBe(3);
+    expect(proj.remaining).toBe(7);
+    expect(proj.fulfillmentPercent).toBe(30);
+  });
+
+  test('B) rescheduled commitment uses new period as projectionPeriod', () => {
+    const itemB: any = {
+      id: 12,
+      activityConfig: { 7: [{ id: 'act-resched', label: 'Reprogramado', targetCount: 10, completedCount: 3 }] },
+      continuityCommitments: {
+        'activity:act-resched': {
+          id: 'activity:act-resched', sourceType: 'ACTIVITY_KPI', sourceKpiId: '12', sourceActivityId: 'act-resched',
+          originYear: 2026, originPeriod: 7, originalTarget: 10, scheduledYear: 2026, scheduledPeriod: 8,
+          progressByPeriod: { 7: 3, 8: 1 }, status: 'active', outcome: 'in_progress',
+          rescheduleHistory: [], resolutionHistory: [],
+        },
+      },
+    };
+    const proj = getIndividualCommitmentProjection(itemB, 'act-resched');
+    expect(proj.originPeriod).toBe(7);
+    expect(proj.scheduledPeriod).toBe(8);
+    expect(proj.previousCumulativeProgress).toBe(3);
+    expect(proj.currentPeriodProgress).toBe(1);
+    expect(proj.cumulativeProgress).toBe(4);
+    expect(proj.remaining).toBe(6);
+    expect(proj.fulfillmentPercent).toBe(40);
+  });
+
+  test('C) two reschedules uses the latest scheduledPeriod', () => {
+    const itemC: any = {
+      id: 13,
+      activityConfig: { 7: [{ id: 'act-2resched', label: 'Doble reprogramación', targetCount: 10, completedCount: 3 }] },
+      continuityCommitments: {
+        'activity:act-2resched': {
+          id: 'activity:act-2resched', sourceType: 'ACTIVITY_KPI', sourceKpiId: '13', sourceActivityId: 'act-2resched',
+          originYear: 2026, originPeriod: 7, originalTarget: 10, scheduledYear: 2026, scheduledPeriod: 9,
+          progressByPeriod: { 7: 3, 8: 2, 9: 1 }, status: 'active', outcome: 'in_progress',
+          rescheduleHistory: [], resolutionHistory: [],
+        },
+      },
+    };
+    const proj = getIndividualCommitmentProjection(itemC, 'act-2resched');
+    expect(proj.scheduledPeriod).toBe(9);
+    expect(proj.previousCumulativeProgress).toBe(5); // 3 + 2
+    expect(proj.currentPeriodProgress).toBe(1);
+    expect(proj.cumulativeProgress).toBe(6); // 5 + 1
+    expect(proj.remaining).toBe(4);
+    expect(proj.fulfillmentPercent).toBe(60);
+  });
+
+  test('D) missing progress in scheduledPeriod yields currentPeriodProgress = null', () => {
+    const itemD: any = {
+      id: 14,
+      activityConfig: { 7: [{ id: 'act-nocap', label: 'Sin captura', targetCount: 10, completedCount: 3 }] },
+      continuityCommitments: {
+        'activity:act-nocap': {
+          id: 'activity:act-nocap', sourceType: 'ACTIVITY_KPI', sourceKpiId: '14', sourceActivityId: 'act-nocap',
+          originYear: 2026, originPeriod: 7, originalTarget: 10, scheduledYear: 2026, scheduledPeriod: 8,
+          progressByPeriod: { 7: 3 }, status: 'active', outcome: 'in_progress',
+          rescheduleHistory: [], resolutionHistory: [],
+        },
+      },
+    };
+    const proj = getIndividualCommitmentProjection(itemD, 'act-nocap');
+    expect(proj.currentPeriodProgress).toBeNull();
+    expect(proj.previousCumulativeProgress).toBe(3);
+    expect(proj.cumulativeProgress).toBe(3);
+  });
+
+  test('E) explicit zero progress in scheduledPeriod yields currentPeriodProgress = 0', () => {
+    const itemE: any = {
+      id: 15,
+      activityConfig: { 7: [{ id: 'act-zero', label: 'Cero explicito', targetCount: 10, completedCount: 3 }] },
+      continuityCommitments: {
+        'activity:act-zero': {
+          id: 'activity:act-zero', sourceType: 'ACTIVITY_KPI', sourceKpiId: '15', sourceActivityId: 'act-zero',
+          originYear: 2026, originPeriod: 7, originalTarget: 10, scheduledYear: 2026, scheduledPeriod: 8,
+          progressByPeriod: { 7: 3, 8: 0 }, status: 'active', outcome: 'in_progress',
+          rescheduleHistory: [], resolutionHistory: [],
+        },
+      },
+    };
+    const proj = getIndividualCommitmentProjection(itemE, 'act-zero');
+    expect(proj.currentPeriodProgress).toBe(0);
+    expect(proj.previousCumulativeProgress).toBe(3);
+    expect(proj.cumulativeProgress).toBe(3);
+  });
 });

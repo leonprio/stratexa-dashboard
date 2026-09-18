@@ -20,22 +20,51 @@ const item: any = {
   },
 };
 
-test('shows executive metrics for consulted September while commitment is October', () => {
+test('shows authoritative commitment metrics for October when scheduled for October even if consulted in September', () => {
   render(<ContinuityWorkspace item={item} pending={pending} year={2026} isWeekly={false} consultedPeriod={8} onUpdateItem={jest.fn()} onClose={jest.fn()} />);
   const summary = screen.getByRole('region', { name: 'Resumen ejecutivo de continuidad' });
-  expect(within(summary).getByText('20')).toBeInTheDocument();
-  expect(within(summary).getByText('12')).toBeInTheDocument();
-  expect(within(summary).getByText('+7')).toBeInTheDocument();
-  expect(within(summary).getByText('8')).toBeInTheDocument();
-  expect(within(summary).getByText('Octubre')).toBeInTheDocument();
+  expect(within(summary).getByText('20')).toBeInTheDocument(); // Meta
+  expect(within(summary).getAllByText('12')).toHaveLength(2); // Acumulado anterior (5 + 7) & Realizado acumulado
+  expect(within(summary).getByText('SIN CAPTURA')).toBeInTheDocument(); // Avance de Octubre
+  expect(within(summary).getByText('8')).toBeInTheDocument(); // Pendiente
+  expect(within(summary).getByText('Octubre')).toBeInTheDocument(); // Periodo compromiso
   expect(screen.getByText(/PERIODO CONSULTADO/)).toHaveTextContent('Septiembre 2026');
-  expect(screen.getByText(/COMPROMISO ACTUAL/)).toHaveTextContent('Octubre 2026');
+  expect(screen.getByText(/PERIODO DEL COMPROMISO/)).toHaveTextContent('Octubre 2026');
 });
 
-test('shows no capture for consulted October without coercing it to zero', () => {
-  render(<ContinuityWorkspace item={item} pending={pending} year={2026} isWeekly={false} consultedPeriod={9} onUpdateItem={jest.fn()} onClose={jest.fn()} />);
+test('shows authoritative commitment metrics for September even when opened from August', () => {
+  const rescheduledItem: any = {
+    id: 7,
+    indicator: 'COMPROMISOS ESTRATÉGIDOS CUMPLIDOS',
+    activityConfig: { 7: [{ id: 'a', label: 'Establecer metas en Agosto', targetCount: 10, completedCount: 3 }] },
+    continuityCommitments: {
+      'activity:a': {
+        id: 'activity:a', sourceType: 'ACTIVITY_KPI', sourceKpiId: '7', sourceActivityId: 'a',
+        originYear: 2026, originPeriod: 7, originalTarget: 10, scheduledYear: 2026, scheduledPeriod: 8,
+        progressByPeriod: { 7: 3, 8: 1 }, status: 'active', outcome: 'in_progress',
+        rescheduleHistory: [], resolutionHistory: [],
+      },
+    },
+  };
+  render(<ContinuityWorkspace item={rescheduledItem} pending={pending} year={2026} isWeekly={false} consultedPeriod={7} onUpdateItem={jest.fn()} onClose={jest.fn()} />);
+  const summary = screen.getByRole('region', { name: 'Resumen ejecutivo de continuidad' });
+  expect(within(summary).getByText('10')).toBeInTheDocument(); // Meta
+  expect(within(summary).getByText('3')).toBeInTheDocument(); // Acumulado anterior
+  expect(within(summary).getByText('+1')).toBeInTheDocument(); // Avance de Septiembre
+  expect(within(summary).getByText('4')).toBeInTheDocument(); // Realizado acumulado
+  expect(within(summary).getByText('40%')).toBeInTheDocument(); // Cumplimiento
+  expect(within(summary).getByText('6')).toBeInTheDocument(); // Pendiente
+  expect(within(summary).getByText('Septiembre')).toBeInTheDocument(); // Periodo compromiso
+  expect(screen.getByText(/PERIODO CONSULTADO/)).toHaveTextContent('Agosto 2026');
+  expect(screen.getByText(/PERIODO DEL COMPROMISO/)).toHaveTextContent('Septiembre 2026');
+});
+
+test('shows no capture for scheduled October without capture without coercing it to zero', () => {
+  render(<ContinuityWorkspace item={item} pending={pending} year={2026} isWeekly={false} consultedPeriod={8} onUpdateItem={jest.fn()} onClose={jest.fn()} />);
   const summary = screen.getByRole('region', { name: 'Resumen ejecutivo de continuidad' });
   expect(within(summary).getByText('SIN CAPTURA')).toBeInTheDocument();
+  expect(within(summary).getAllByText('12')).toHaveLength(2);
+  expect(within(summary).getByText('8')).toBeInTheDocument();
 });
 
 test('strictly separates aggregate KPI progress (5) from individual items (4 and 1)', () => {
@@ -316,7 +345,7 @@ test('Workspace displays single source of truth: A target 9 / rem 5, B target 8 
 
   const summaryB = screen.getByRole('region', { name: 'Resumen ejecutivo de continuidad' });
   expect(within(summaryB).getByText('8')).toBeInTheDocument(); // target B = 8 (NOT 10)
-  expect(within(summaryB).getByText('+1')).toBeInTheDocument(); // Aug progress = +1
+  expect(within(summaryB).getByText('1')).toBeInTheDocument(); // previous cumulative through Aug = 1
   expect(within(summaryB).getByText('+3')).toBeInTheDocument(); // Sep progress = +3
   expect(within(summaryB).getAllByText('4')).toHaveLength(2); // cumulative 4 and remaining 4
   expect(within(summaryB).getByText(/de 8/)).toBeInTheDocument();
