@@ -893,7 +893,7 @@ export const CurrentPeriodFocus: React.FC<CurrentPeriodFocusProps> = ({
       resolvedP = Array.from({ length: 12 }, (_, i) => getEffectiveKpiProgressByPeriod(item, i));
       const canonicalCommitments = Object.values(item.continuityCommitments || {});
       const activeCommitment = canonicalCommitments.find((c) => c.status === 'active' || c.status === 'discarded');
-      if (activeCommitment && activeCommitment.originalTarget > 0) {
+      if (activeCommitment && activeCommitment.sourceType !== 'SIMPLE_KPI' && activeCommitment.originalTarget > 0) {
         resolvedG = Array.from({ length: 12 }, (_, i) => {
           const explicit = item.monthlyGoals?.[i];
           const isCaptured = item.monthlyGoalCaptured?.[i];

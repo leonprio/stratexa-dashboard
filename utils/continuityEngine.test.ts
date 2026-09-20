@@ -12,6 +12,75 @@ import {
   type ContinuityCommitment,
 } from './continuityEngine';
 
+const crossYearCommitment = (frequency: 'monthly' | 'weekly' = 'monthly'): any => ({
+  id: `cross-year-${frequency}`,
+  sourceType: 'SIMPLE_KPI',
+  sourceKpiId: 'kpi-1',
+  originYear: 2026,
+  originPeriod: frequency === 'monthly' ? 11 : 52,
+  originalTarget: 5,
+  scheduledYear: 2026,
+  scheduledPeriod: frequency === 'monthly' ? 11 : 52,
+  frequency,
+  progressByPeriod: { [frequency === 'monthly' ? 11 : 52]: 3 },
+  status: 'active',
+  outcome: 'in_progress',
+  rescheduleHistory: [],
+  resolutionHistory: [],
+});
+
+describe('temporal progress identity', () => {
+  test('orders December 2026 before January 2027 without changing the original target', () => {
+    let commitment = crossYearCommitment();
+    commitment = reduceContinuity(commitment, { type: 'RESCHEDULE', year: 2027, period: 0 });
+    commitment = reduceContinuity(commitment, { type: 'RECORD_PROGRESS', year: 2027, period: 0, value: 2 });
+    expect(getContinuitySnapshot(commitment)).toMatchObject({
+      previousCumulative: 3,
+      currentPeriodProgress: 2,
+      cumulativeProgress: 5,
+      remainingTarget: 0,
+      fulfillmentPercent: 100,
+    });
+    expect(commitment.originalTarget).toBe(5);
+  });
+
+  test('keeps weekly facts ordered across week 52 to week 1', () => {
+    let commitment = crossYearCommitment('weekly');
+    commitment = reduceContinuity(commitment, { type: 'RESCHEDULE', year: 2027, period: 1 });
+    commitment = reduceContinuity(commitment, { type: 'RECORD_PROGRESS', year: 2027, period: 1, value: 2 });
+    expect(getContinuitySnapshot(commitment)).toMatchObject({ previousCumulative: 3, currentPeriodProgress: 2, cumulativeProgress: 5 });
+  });
+
+  test('correction and void in January leave December fact intact', () => {
+    let commitment = crossYearCommitment();
+    commitment = reduceContinuity(commitment, { type: 'RESCHEDULE', year: 2027, period: 0 });
+    commitment = reduceContinuity(commitment, { type: 'RECORD_PROGRESS', year: 2027, period: 0, value: 2 });
+    commitment = reduceContinuity(commitment, { type: 'ADJUST_PERIOD_PROGRESS', year: 2027, period: 0, value: 1 });
+    expect(getContinuitySnapshot(commitment)).toMatchObject({ previousCumulative: 3, currentPeriodProgress: 1, cumulativeProgress: 4 });
+    commitment = reduceContinuity(commitment, { type: 'VOID_PERIOD_PROGRESS', year: 2027, period: 0 });
+    expect(getContinuitySnapshot(commitment)).toMatchObject({ previousCumulative: 3, currentPeriodProgress: 0, cumulativeProgress: 3 });
+  });
+
+  test('undo reschedule crosses the year only after the current fact is voided', () => {
+    let commitment = crossYearCommitment();
+    commitment = reduceContinuity(commitment, { type: 'RESCHEDULE', year: 2027, period: 0 });
+    commitment = reduceContinuity(commitment, { type: 'RECORD_PROGRESS', year: 2027, period: 0, value: 2 });
+    expect(() => reduceContinuity(commitment, { type: 'UNDO_RESCHEDULE' })).toThrow('UNDO_REQUIRES_CORRECTION');
+    commitment = reduceContinuity(commitment, { type: 'VOID_AND_UNDO_RESCHEDULE' });
+    expect(commitment).toMatchObject({ scheduledYear: 2026, scheduledPeriod: 11 });
+    expect(getContinuitySnapshot(commitment).cumulativeProgress).toBe(3);
+  });
+
+  test('reads legacy cross-year facts only when reschedule history supplies an authoritative year', () => {
+    const legacy = {
+      ...crossYearCommitment(), scheduledYear: 2027, scheduledPeriod: 0,
+      progressByPeriod: { 11: 3, 0: 2 },
+      rescheduleHistory: [{ id: 'r1', fromYear: 2026, fromPeriod: 11, toYear: 2027, toPeriod: 0, at: '2027-01-01', status: 'active' as const }],
+    };
+    expect(getContinuitySnapshot(legacy)).toMatchObject({ previousCumulative: 3, currentPeriodProgress: 2, cumulativeProgress: 5 });
+  });
+});
+
 const createBaseCommitment = (overrides?: Partial<ContinuityCommitment>): ContinuityCommitment => ({
   id: 'c1',
   sourceType: 'ACTIVITY_KPI',

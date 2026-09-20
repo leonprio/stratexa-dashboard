@@ -20,6 +20,15 @@ test('continuity scheduled in current period does not invent a new goal',()=>{
   source.items[0].continuityCommitments = { 'activity:aug': { status:'active', scheduledYear:2026, scheduledPeriod:8 } };
   expect(buildPendingItems([source],{...p,monthIndex:8},{...p,monthIndex:8},[9])).toHaveLength(0);
 });
+test('simple-KPI continuity suppresses only the inherited missing-goal alert and keeps a real new goal independent',()=>{
+  const inherited:any = d(11,null,null,p);
+  inherited.items[0].continuityCommitments = { 'simple-kpi:11:monthly:2026:7': { sourceType:'SIMPLE_KPI', status:'active', scheduledYear:2026, scheduledPeriod:8, frequency:'monthly' } };
+  expect(buildPendingItems([inherited],{...p,monthIndex:8},{...p,monthIndex:8},[11])).toHaveLength(0);
+  inherited.items[0].monthlyGoals[8] = 6;
+  inherited.items[0].monthlyGoalCaptured[8] = true;
+  const pending = buildPendingItems([inherited],{...p,monthIndex:8},{...p,monthIndex:8},[11]);
+  expect(pending.map(x => x.type)).toEqual(['MISSING_PROGRESS']);
+});
 test('new activity in current period creates a capture obligation',()=>{
   const source:any = d(10,null,null,p);
   source.items[0].isActivityMode = true;

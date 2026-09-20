@@ -158,7 +158,7 @@ describe('ANULAR AVANCE & RESTAURAR AVANCE (Phase 11 Certification)', () => {
     await waitFor(() => expect(onUpdateItem).toHaveBeenCalled());
     const updated = onUpdateItem.mock.calls[0][0];
     const commitment = updated.continuityCommitments['activity:activity-1'];
-    expect(commitment.progressByPeriod[8]).toBe(0);
+    expect(commitment.progressByPeriod[8]).toBeUndefined();
   });
 
   test('Caso B: VOID conserva hecho histórico con previousValue', async () => {
@@ -192,7 +192,7 @@ describe('ANULAR AVANCE & RESTAURAR AVANCE (Phase 11 Certification)', () => {
     await waitFor(() => expect(onUpdateItem).toHaveBeenCalled());
     const commitment = onUpdateItem.mock.calls[0][0].continuityCommitments['activity:activity-1'];
     expect(commitment.progressByPeriod[7]).toBe(5); // Agosto intacto
-    expect(commitment.progressByPeriod[8]).toBe(0); // Septiembre anulado
+    expect(commitment.progressByPeriod[8]).toBeUndefined(); // Septiembre anulado
   });
 
   test('Caso D: RESTORE devuelve 7 tras anulación', async () => {

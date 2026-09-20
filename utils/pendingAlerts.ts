@@ -28,8 +28,9 @@ export const buildPendingItems = (dashboards: Dashboard[], period: TrackingPerio
     if (item.indicatorType === 'compound' || item.indicatorType === 'formula') return;
     const i = period.frequency === 'monthly' ? period.monthIndex : period.weekNumber - 1;
     const activities = item.isActivityMode ? (item.activityConfig?.[i] || []) : [];
-    const activeContinuity = item.isActivityMode && Object.values(item.continuityCommitments || {}).some(commitment =>
-      commitment.status === 'active' && commitment.scheduledYear === period.year && commitment.scheduledPeriod === i,
+    const activeContinuity = Object.values(item.continuityCommitments || {}).some(commitment =>
+      commitment.status === 'active' && commitment.scheduledYear === period.year && commitment.scheduledPeriod === i &&
+      (!commitment.frequency || commitment.frequency === period.frequency),
     );
     const activityGoal = activities.reduce((sum, activity) => sum + Math.max(0, Number(activity.targetCount) || 0), 0);
     const activityProgress = activities.reduce((sum, activity) => sum + Math.max(0, Number(activity.completedCount) || 0), 0);
@@ -46,11 +47,12 @@ export const buildPendingItems = (dashboards: Dashboard[], period: TrackingPerio
       ? activityProgress > 0
       : period.frequency === 'monthly' ? item.monthlyProgressCaptured?.[i] : undefined;
     const trackingStartPeriod = getEffectiveTrackingStartPeriod(item, d, clientSettings).period;
-    if (activeContinuity && activities.length === 0) return;
     const obligation = getKpiTrackingObligation({ frequency: period.frequency, period, operationalPeriod, trackingStartPeriod, goalValue: goal, progressValue: progress, goalCaptured, progressCaptured });
     const obligationStatus = getObligationStatus(obligation, period, operationalPeriod);
     const type: PendingType | undefined = obligation === 'TRACKING_START_UNDEFINED' ? 'TRACKING_START_UNDEFINED' : obligation === 'GOAL_REQUIRED' ? 'MISSING_GOAL' : obligation === 'PROGRESS_REQUIRED' ? 'MISSING_PROGRESS' : undefined;
-    if (type) { const x = detail[type]; result.push({ id: `${d.id}:${item.id}:${type}`, type, ...x, indicatorId: item.id, indicatorName: item.indicator, dashboardId: d.id, area: d.area, responsible: item.responsible, period, source: 'trackingObligation', obligationStatus }); return; }
+    // An inherited commitment is not a missing goal for its scheduled period.
+    // A real goal configured for that period still follows ordinary obligation logic.
+    if (type && !(activeContinuity && type === 'MISSING_GOAL')) { const x = detail[type]; result.push({ id: `${d.id}:${item.id}:${type}`, type, ...x, indicatorId: item.id, indicatorName: item.indicator, dashboardId: d.id, area: d.area, responsible: item.responsible, period, source: 'trackingObligation', obligationStatus }); return; }
     if (obligation !== 'CAPTURE_COMPLETE' || typeof goal !== 'number' || typeof progress !== 'number' || goal === 0) return;
     const score = item.goalType === 'minimize' ? (progress <= goal ? 100 : (goal / progress) * 100) : (progress / goal) * 100;
     const performanceType = score < 70 ? 'RESULT_CRITICAL' : score < 85 ? 'RESULT_AT_RISK' : undefined;

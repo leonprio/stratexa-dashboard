@@ -1,8 +1,14 @@
 import type { DashboardItem } from '../types';
-import { reduceContinuity, type ContinuityCommitment, type ContinuityEvent } from './continuityEngine';
+import { getContinuitySnapshot, isCaptureComplete, reduceContinuity, type ContinuityCommitment, type ContinuityEvent, type ContinuityFrequency, type ContinuityStatus } from './continuityEngine';
 
 export const cleanActivityId = (activityId: string) => String(activityId || '').replace(/^activity:/, '');
 export const continuityKey = (activityId: string) => `activity:${cleanActivityId(activityId)}`;
+export const simpleKpiContinuityKey = (
+  item: Pick<DashboardItem, 'id'>,
+  frequency: ContinuityFrequency,
+  originYear: number,
+  originPeriod: number,
+) => `simple-kpi:${item.id}:${frequency}:${originYear}:${originPeriod}`;
 export type VisibleContinuityState = { source: 'CANONICAL' | 'LEGACY_FALLBACK' | 'NONE'; commitment?: ContinuityCommitment };
 export type ContinuityOperationalState = 'ACTIVE' | 'RETIRED_FROM_SOURCE';
 
@@ -78,8 +84,6 @@ export const reconcileCommitmentProgress = (
     result[originPeriod] = Number(matchingActivity.completedCount);
   } else if (rawProgress?.[originPeriod] !== undefined && rawProgress[originPeriod] !== null) {
     result[originPeriod] = Number(rawProgress[originPeriod]);
-  } else if (matchingActivity?.completedCount !== undefined && Number.isFinite(Number(matchingActivity.completedCount))) {
-    result[originPeriod] = Number(matchingActivity.completedCount);
   }
 
   // 2. Additional periods: preserve explicit progress entries
@@ -136,17 +140,102 @@ export const createKpiContinuityCommitment = (
     sourceType: 'ACTIVITY_KPI',
     sourceKpiId: String(item.id),
     sourceActivityId: cleanId,
+    frequency: item.frequency || 'monthly',
     originYear: existing?.originYear ?? originYear,
     originPeriod: existing?.originPeriod ?? activityOriginPeriod,
     originalTarget: target,
     scheduledYear,
     scheduledPeriod,
     progressByPeriod: finalProgress,
+    progressByTemporalPeriod: existing?.progressByTemporalPeriod,
     status: existing?.status || 'active',
     outcome: existing?.outcome || 'in_progress',
     rescheduleHistory: existing?.rescheduleHistory || [],
     resolutionHistory: existing?.resolutionHistory || [],
   };
+};
+
+const simpleKpiPeriodValues = (item: DashboardItem, frequency: ContinuityFrequency, period: number) => {
+  const goal = frequency === 'weekly' ? item.weeklyGoals?.[period] : item.monthlyGoals?.[period];
+  const progress = frequency === 'weekly' ? item.weeklyProgress?.[period] : item.monthlyProgress?.[period];
+  const progressCaptured = frequency === 'weekly'
+    ? progress !== null && progress !== undefined
+    : item.monthlyProgressCaptured?.[period] === true ||
+      (item.monthlyProgressCaptured?.[period] === undefined && typeof progress === 'number' && Number.isFinite(progress) && progress !== 0);
+  return { goal: Number(goal), progress: Number(progress), progressCaptured };
+};
+
+/** A simple KPI can become a commitment only from a real, unmet captured fact. */
+export const canCreateSimpleKpiContinuity = (
+  item: DashboardItem,
+  originYear: number,
+  originPeriod: number,
+  frequency: ContinuityFrequency = item.frequency || 'monthly',
+): boolean => {
+  if (item.isActivityMode || item.indicatorType === 'compound' || item.indicatorType === 'formula' || !item.trackingStartPeriod) return false;
+  const { goal, progress, progressCaptured } = simpleKpiPeriodValues(item, frequency, originPeriod);
+  return Number.isFinite(goal) && goal > 0 && progressCaptured && Number.isFinite(progress) && progress >= 0 && progress < goal;
+};
+
+export const createSimpleKpiContinuityCommitment = (
+  item: DashboardItem,
+  originYear: number,
+  originPeriod: number,
+  scheduledYear = originYear,
+  scheduledPeriod = originPeriod,
+  existing?: ContinuityCommitment,
+): ContinuityCommitment => {
+  const frequency: ContinuityFrequency = item.frequency || 'monthly';
+  if (!existing && !canCreateSimpleKpiContinuity(item, originYear, originPeriod, frequency)) {
+    throw new Error('SIMPLE_KPI_CONTINUITY_NOT_ELIGIBLE');
+  }
+  const { goal, progress, progressCaptured } = simpleKpiPeriodValues(item, frequency, originPeriod);
+  const initialProgress = progressCaptured ? progress : 0;
+  return {
+    ...(existing || {}),
+    id: existing?.id || simpleKpiContinuityKey(item, frequency, originYear, originPeriod),
+    sourceType: 'SIMPLE_KPI',
+    sourceKpiId: String(item.id),
+    originYear: existing?.originYear ?? originYear,
+    originPeriod: existing?.originPeriod ?? originPeriod,
+    originalTarget: existing?.originalTarget ?? goal,
+    scheduledYear,
+    scheduledPeriod,
+    frequency,
+    progressByPeriod: existing?.progressByPeriod || (progressCaptured ? { [originPeriod]: initialProgress } : {}),
+    progressByTemporalPeriod: existing?.progressByTemporalPeriod,
+    status: existing?.status || 'active',
+    outcome: existing?.outcome || 'in_progress',
+    rescheduleHistory: existing?.rescheduleHistory || [],
+    resolutionHistory: existing?.resolutionHistory || [{ type: 'CREATE_CONTINUITY', at: new Date().toISOString() }],
+  };
+};
+
+export const getSimpleKpiContinuity = (
+  item: DashboardItem,
+  originYear: number,
+  originPeriod: number,
+): ContinuityCommitment | undefined => {
+  const frequency: ContinuityFrequency = item.frequency || 'monthly';
+  const key = simpleKpiContinuityKey(item, frequency, originYear, originPeriod);
+  const existing = item.continuityCommitments?.[key];
+  return existing && existing.sourceType === 'SIMPLE_KPI'
+    ? createSimpleKpiContinuityCommitment(item, originYear, originPeriod, existing.scheduledYear, existing.scheduledPeriod, existing)
+    : undefined;
+};
+
+export const applySimpleKpiContinuityEventToItem = (
+  item: DashboardItem,
+  originYear: number,
+  originPeriod: number,
+  event: Exclude<ContinuityEvent, { type: 'CREATE_CONTINUITY' }>,
+): DashboardItem => {
+  const frequency: ContinuityFrequency = item.frequency || 'monthly';
+  const key = simpleKpiContinuityKey(item, frequency, originYear, originPeriod);
+  const current = getSimpleKpiContinuity(item, originYear, originPeriod) ||
+    createSimpleKpiContinuityCommitment(item, originYear, originPeriod);
+  const next = reduceContinuity(current, event);
+  return { ...item, continuityCommitments: { ...(item.continuityCommitments || {}), [key]: next } };
 };
 export const getVisibleContinuityState = (item: DashboardItem, activityId: string): VisibleContinuityState => {
   const cleanId = cleanActivityId(activityId);
@@ -171,12 +260,13 @@ export const getVisibleContinuityState = (item: DashboardItem, activityId: strin
       }
     }
     if (foundActivity) {
+      const year = item.trackingStartPeriod?.year || new Date().getFullYear();
       const synthetic = createKpiContinuityCommitment(
         item,
         cleanId,
+        year,
         foundPeriod,
-        foundPeriod,
-        foundPeriod,
+        year,
         foundPeriod,
       );
       return { source: 'LEGACY_FALLBACK', commitment: synthetic };
@@ -187,6 +277,19 @@ export const getVisibleContinuityState = (item: DashboardItem, activityId: strin
   // source as an active operational commitment.
   if (getContinuityOperationalState(item, commitment) === 'RETIRED_FROM_SOURCE') {
     return { source: 'NONE' };
+  }
+  if (commitment.sourceType === 'SIMPLE_KPI') {
+    return {
+      source: 'CANONICAL',
+      commitment: createSimpleKpiContinuityCommitment(
+        item,
+        commitment.originYear,
+        commitment.originPeriod,
+        commitment.scheduledYear,
+        commitment.scheduledPeriod,
+        commitment,
+      ),
+    };
   }
   return {
     source: 'CANONICAL',
@@ -217,9 +320,38 @@ export interface IndividualCommitmentProjection {
   cumulativeProgress: number;
   fulfillmentPercent: number;
   remaining: number;
-  status: 'active' | 'discarded' | 'completed';
+  status: ContinuityStatus;
   commitment?: ContinuityCommitment;
 }
+
+/** Same continuity-workspace metrics, sourced from a simple KPI rather than an activity. */
+export const getSimpleKpiContinuityProjection = (
+  item: DashboardItem,
+  originYear: number,
+  originPeriod: number,
+): IndividualCommitmentProjection | undefined => {
+  const commitment = getSimpleKpiContinuity(item, originYear, originPeriod);
+  if (!commitment) return undefined;
+  const snapshot = getContinuitySnapshot(commitment);
+  return {
+    id: commitment.id,
+    sourceActivityId: commitment.id,
+    title: item.indicator,
+    originPeriod: commitment.originPeriod,
+    originYear: commitment.originYear,
+    scheduledPeriod: commitment.scheduledPeriod,
+    scheduledYear: commitment.scheduledYear,
+    target: commitment.originalTarget,
+    progressByPeriod: commitment.progressByPeriod,
+    previousCumulativeProgress: snapshot.previousCumulative,
+    currentPeriodProgress: isCaptureComplete(commitment) ? snapshot.currentPeriodProgress : null,
+    cumulativeProgress: snapshot.cumulativeProgress,
+    fulfillmentPercent: snapshot.fulfillmentPercent,
+    remaining: snapshot.remainingTarget,
+    status: commitment.status,
+    commitment,
+  };
+};
 
 export const getIndividualCommitmentProjection = (
   item: DashboardItem,
@@ -255,18 +387,19 @@ export const getIndividualCommitmentProjection = (
   );
 
   const projectionPeriod = commitment?.scheduledPeriod ?? activityOriginPeriod;
-  const previousCumulativeProgress = Object.entries(progressByPeriod)
+  const snapshot = commitment ? getContinuitySnapshot(commitment) : undefined;
+  const previousCumulativeProgress = snapshot?.previousCumulative ?? Object.entries(progressByPeriod)
     .filter(([period]) => Number(period) < projectionPeriod)
     .reduce((sum, [, value]) => sum + Number(value || 0), 0);
-  const currentPeriodProgress = Object.prototype.hasOwnProperty.call(progressByPeriod, projectionPeriod)
-    ? Number(progressByPeriod[projectionPeriod] || 0)
-    : null;
-  const cumulativeProgressThroughPeriod = previousCumulativeProgress + (currentPeriodProgress ?? 0);
+  const currentPeriodProgress = commitment
+    ? (isCaptureComplete(commitment) ? snapshot!.currentPeriodProgress : null)
+    : (Object.prototype.hasOwnProperty.call(progressByPeriod, projectionPeriod) ? Number(progressByPeriod[projectionPeriod] || 0) : null);
+  const cumulativeProgressThroughPeriod = snapshot?.cumulativeProgress ?? (previousCumulativeProgress + (currentPeriodProgress ?? 0));
   const remaining = Math.max(0, target - cumulativeProgressThroughPeriod);
   return {
     id: commitment?.id || continuityKey(cleanId),
     sourceActivityId: cleanId,
-    title: matchingActivity?.label || commitment?.sourceActivityId || cleanId,
+    title: matchingActivity?.label || (commitment?.sourceType === 'SIMPLE_KPI' ? item.indicator : (commitment?.sourceActivityId || cleanId)),
     originPeriod: commitment?.originPeriod ?? activityOriginPeriod,
     originYear: commitment?.originYear ?? new Date().getFullYear(),
     scheduledPeriod: commitment?.scheduledPeriod ?? activityOriginPeriod,
@@ -334,6 +467,7 @@ export const getAvailableContinuityActions = (state: VisibleContinuityState): Co
   }
   if (commitment.status !== 'active') return ['REOPEN'];
 
+  const hasCapturedProgress = isCaptureComplete(commitment);
   const currentProgress = commitment.progressByPeriod[commitment.scheduledPeriod] ?? 0;
   const historyForPeriod = (commitment.resolutionHistory || []).filter(
     (h) => h.period === commitment.scheduledPeriod,
@@ -343,7 +477,7 @@ export const getAvailableContinuityActions = (state: VisibleContinuityState): Co
 
   const actions: ContinuityAction[] = ['RESCHEDULE', 'COMPLETE', 'CLOSE_UNMET', 'DISCARD'];
 
-  if (currentProgress > 0) {
+  if (hasCapturedProgress) {
     actions.push('ADJUST_PERIOD_PROGRESS', 'VOID_PERIOD_PROGRESS');
   } else {
     actions.push('RECORD_PROGRESS');
@@ -374,8 +508,12 @@ export const applyContinuityEventToItem = (
   item: DashboardItem, activityId: string, originPeriod: number, year: number, weekly: boolean,
   event: Exclude<ContinuityEvent, { type: 'CREATE_CONTINUITY' }>,
 ): DashboardItem => {
+  const visible = getVisibleContinuityState(item, activityId);
+  if (visible.commitment?.sourceType === 'SIMPLE_KPI') {
+    return applySimpleKpiContinuityEventToItem(item, visible.commitment.originYear, visible.commitment.originPeriod, event);
+  }
   const key = continuityKey(activityId);
-  const current = getVisibleContinuityState(item, activityId).commitment || createFromActivity(item, activityId, originPeriod, year, weekly);
+  const current = visible.commitment || createFromActivity(item, activityId, originPeriod, year, weekly);
   const next = reduceContinuity(current, event);
   return { ...item, continuityCommitments: { ...(item.continuityCommitments || {}), [key]: next } };
 };

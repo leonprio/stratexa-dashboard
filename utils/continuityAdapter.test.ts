@@ -1,4 +1,47 @@
-import { applyContinuityEventToItem, continuityKey, getAvailableContinuityActions, getContinuityOperationalState, getEffectiveKpiProgressByPeriod, getIndividualCommitmentProjection, getOperationalContinuityCommitments, getRetiredContinuityCommitments, getVisibleContinuityState, syncCommitmentsWithActivityConfig } from './continuityAdapter';
+import { applyContinuityEventToItem, applySimpleKpiContinuityEventToItem, canCreateSimpleKpiContinuity, continuityKey, getAvailableContinuityActions, getContinuityOperationalState, getEffectiveKpiProgressByPeriod, getIndividualCommitmentProjection, getOperationalContinuityCommitments, getRetiredContinuityCommitments, getSimpleKpiContinuity, getSimpleKpiContinuityProjection, getVisibleContinuityState, simpleKpiContinuityKey, syncCommitmentsWithActivityConfig } from './continuityAdapter';
+import { getContinuitySnapshot } from './continuityEngine';
+
+describe('simple KPI continuity adapter', () => {
+  const simpleKpi = (): any => ({
+    id: 'simple-7', indicator: 'KPI simple', weight: 1, unit: 'u', type: 'accumulative', goalType: 'maximize',
+    trackingStartPeriod: { frequency: 'monthly', year: 2026, monthIndex: 8 },
+    monthlyGoals: [null, null, null, null, null, null, null, null, 5, 6],
+    monthlyGoalCaptured: [false, false, false, false, false, false, false, false, true, true],
+    monthlyProgress: [null, null, null, null, null, null, null, null, 3, null],
+    monthlyProgressCaptured: [false, false, false, false, false, false, false, false, true, false],
+    frequency: 'monthly',
+  });
+
+  test('creates a simple KPI commitment from an unmet captured source without rewriting the new period goal', () => {
+    const source = simpleKpi();
+    expect(canCreateSimpleKpiContinuity(source, 2026, 8)).toBe(true);
+    const rescheduled = applySimpleKpiContinuityEventToItem(source, 2026, 8, { type: 'RESCHEDULE', year: 2026, period: 9 });
+    const commitment = getSimpleKpiContinuity(rescheduled, 2026, 8)!;
+    expect(commitment.id).toBe(simpleKpiContinuityKey(source, 'monthly', 2026, 8));
+    expect(commitment.originalTarget).toBe(5);
+    expect(getContinuitySnapshot(commitment)).toMatchObject({ previousCumulative: 3, currentPeriodProgress: 0, cumulativeProgress: 3, remainingTarget: 2 });
+    expect(rescheduled.monthlyGoals[9]).toBe(6);
+    expect(getSimpleKpiContinuityProjection(rescheduled, 2026, 8)).toMatchObject({
+      previousCumulativeProgress: 3, currentPeriodProgress: null, cumulativeProgress: 3, remaining: 2,
+    });
+  });
+
+  test('records, corrects and voids only the rescheduled simple-KPI fact', () => {
+    let next = applySimpleKpiContinuityEventToItem(simpleKpi(), 2026, 8, { type: 'RESCHEDULE', year: 2026, period: 9 });
+    next = applySimpleKpiContinuityEventToItem(next, 2026, 8, { type: 'RECORD_PROGRESS', year: 2026, period: 9, value: 2 });
+    expect(getContinuitySnapshot(getSimpleKpiContinuity(next, 2026, 8)!)).toMatchObject({ cumulativeProgress: 5, remainingTarget: 0 });
+    next = applySimpleKpiContinuityEventToItem(next, 2026, 8, { type: 'ADJUST_PERIOD_PROGRESS', year: 2026, period: 9, value: 1 });
+    expect(getContinuitySnapshot(getSimpleKpiContinuity(next, 2026, 8)!)).toMatchObject({ cumulativeProgress: 4, remainingTarget: 1 });
+    next = applySimpleKpiContinuityEventToItem(next, 2026, 8, { type: 'VOID_PERIOD_PROGRESS', year: 2026, period: 9 });
+    expect(getContinuitySnapshot(getSimpleKpiContinuity(next, 2026, 8)!)).toMatchObject({ cumulativeProgress: 3, remainingTarget: 2 });
+  });
+
+  test('refuses simple KPI continuity without an actual captured progress fact', () => {
+    const missingCapture = { ...simpleKpi(), monthlyProgress: [...simpleKpi().monthlyProgress.slice(0, 8), null, null], monthlyProgressCaptured: Array(12).fill(false) };
+    expect(canCreateSimpleKpiContinuity(missingCapture, 2026, 8)).toBe(false);
+    expect(() => applySimpleKpiContinuityEventToItem(missingCapture, 2026, 8, { type: 'RESCHEDULE', year: 2026, period: 9 })).toThrow('SIMPLE_KPI_CONTINUITY_NOT_ELIGIBLE');
+  });
+});
 import { derivePendingKpiActivities, deriveRescheduledKpiCommitments } from '../components/CurrentPeriodFocus';
 
 const item: any = { id: 7, indicator: 'KPI', weight: 1, unit: 'u', type: 'accumulative', goalType: 'maximize', monthlyGoals: [0, 0, 0, 0, 0, 0, 0, 20], monthlyProgress: [0, 0, 0, 0, 0, 0, 0, 5], activityConfig: { 7: [{ id: 'a', label: 'Meta', targetCount: 10, completedCount: 4 }] } };
