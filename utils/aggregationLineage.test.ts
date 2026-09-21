@@ -24,6 +24,16 @@ describe('universal aggregation lineage', () => {
     expect(annual(calculateAggregateDashboard([derived, gto, qro]))).toBe(49);
   });
 
+  test('a derivative never overlaps a partially authorized physical source', () => {
+    const derived = board('NATIONAL', item('national-derived', [5, 5, 6, 6, 6, 6, 5, 10], {
+      contributionKind: 'derived',
+      derivedFrom: [{ dashboardId: 'GTO', itemId: 'gto-activities' }, { dashboardId: 'QRO', itemId: 'qro-activities' }],
+    }));
+    // QRO is outside this fixture's authorized scope. The derivative cannot
+    // re-add GTO or expose QRO through its combined value.
+    expect(annual(calculateAggregateDashboard([derived, gto]))).toBe(26);
+  });
+
   test('independent national results remain additive even when equal to a state total', () => {
     const nationalOwn = board('NATIONAL', item('national-own', [1, 0, 1, 0, 1, 0, 1, 1]));
     expect(annual(calculateAggregateDashboard([nationalOwn, gto, qro]))).toBe(54);

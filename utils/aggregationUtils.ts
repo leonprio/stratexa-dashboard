@@ -80,9 +80,11 @@ const isIndependentContribution = (
     const availableSources = new Set(available.map(({ board, item }) =>
         physicalSourceKey({ dashboardId: board.id, itemId: item.id }),
     ));
-    // A derived value is useful when its inputs are outside this view.  It is
-    // redundant only when every declared input is already represented here.
-    return !candidate.item.derivedFrom.every(source => availableSources.has(physicalSourceKey(source)));
+    // A derived value is useful only when none of its inputs are already in
+    // this view. If even one physical source is visible, including the
+    // derivative would double-count that source and could leak values from
+    // sources outside the caller's authorized scope.
+    return !candidate.item.derivedFrom.some(source => availableSources.has(physicalSourceKey(source)));
 };
 
 
