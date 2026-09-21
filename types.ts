@@ -80,7 +80,7 @@ export interface DashboardItem {
   monthlyNotes?: string[];
   weeklyNotes?: string[];
   unit: string;
-  type: 'accumulative' | 'average';
+  type: 'accumulative' | 'average' | 'stock';
   goalType: 'maximize' | 'minimize';
   actionPlan?: string;
   pai?: {

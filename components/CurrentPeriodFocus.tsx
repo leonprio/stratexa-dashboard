@@ -125,15 +125,18 @@ export const deriveRescheduledKpiCommitments = (
     if (activityConfig) {
       for (const raw of Object.values(activityConfig)) {
         const found = raw.find((a) => a.id === c.sourceActivityId);
-        if (found) {
+        if (found?.label) {
           label = found.label;
           break;
         }
       }
     }
+    if (!label || label === c.sourceActivityId) {
+      label = c.resolutionHistory?.[0]?.reason || item?.indicator || "Compromiso de continuidad";
+    }
     return {
       id: c.id,
-      sourceActivityId: c.sourceActivityId,
+      sourceActivityId: c.sourceActivityId || c.id,
       label,
       periodIndex: c.originPeriod,
       periodLabel: `${labels(c.originPeriod)} · ${c.originYear}`,
@@ -293,9 +296,54 @@ export const derivePendingKpiActivities = (
         ][index] || `P${index + 1}`;
 
   const canonicalCommitments = item ? getOperationalContinuityCommitments(item) : [];
-  const canonicalMap = new Map(canonicalCommitments.map((c) => [c.sourceActivityId, c]));
+  const mappedActivityIds = new Set<string>();
+  canonicalCommitments.forEach((c) => {
+    if (c.sourceActivityId) {
+      mappedActivityIds.add(c.sourceActivityId);
+    }
+  });
 
-  const pending = Object.entries(activityConfig || {}).flatMap(([period, raw]) => {
+  const canonicalPending: PendingKpiActivity[] = canonicalCommitments
+    .filter((c) => c.status === "active")
+    .map((c) => {
+      const scheduled = c.scheduledPeriod;
+      const scheduledYear = c.scheduledYear || year;
+      const origin = `${labels(c.originPeriod)} · ${c.originYear}`;
+      const commitment = `${labels(scheduled)} · ${scheduledYear}`;
+      const isOverdue = compareCalendarPeriods(scheduledYear, scheduled, year, currentIndex) < 0;
+      const isCurrent = compareCalendarPeriods(scheduledYear, scheduled, year, currentIndex) === 0;
+
+      let label = c.sourceActivityId;
+      if (activityConfig) {
+        for (const raw of Object.values(activityConfig)) {
+          const found = raw.find((a) => a.id === c.sourceActivityId);
+          if (found?.label) {
+            label = found.label;
+            break;
+          }
+        }
+      }
+      if (!label || label === c.sourceActivityId) {
+        label = c.resolutionHistory?.[0]?.reason || item?.indicator || "Compromiso de continuidad";
+      }
+
+      return {
+        id: c.id,
+        sourceActivityId: c.sourceActivityId || c.id,
+        label,
+        periodIndex: c.originPeriod,
+        periodLabel: `ORIGEN ${origin} → COMPROMISO ${commitment}`,
+        commitmentLabel: commitment,
+        rescheduleHistory: c.rescheduleHistory,
+        status: isOverdue
+          ? ("ATRASADA" as const)
+          : isCurrent
+            ? ("COMPROMISO ACTUAL" as const)
+            : ("REPROGRAMADA" as const),
+      };
+    });
+
+  const legacyPending = Object.entries(activityConfig || {}).flatMap(([period, raw]) => {
     const periodIndex = Number(period);
     const originOverdue = isWeekly
       ? year < new Date().getFullYear() ||
@@ -305,10 +353,7 @@ export const derivePendingKpiActivities = (
 
     return raw
       .filter((activity) => {
-        const canonical = canonicalMap.get(activity.id);
-        if (canonical) {
-          return canonical.status === "active";
-        }
+        if (mappedActivityIds.has(activity.id)) return false;
         return (
           Number(activity.completedCount) < Number(activity.targetCount) &&
           !["completed_later", "discarded"].includes(
@@ -328,25 +373,6 @@ export const derivePendingKpiActivities = (
         );
       })
       .map((activity) => {
-        const canonical = canonicalMap.get(activity.id);
-        if (canonical) {
-          const scheduled = canonical.scheduledPeriod;
-          const scheduledYear = canonical.scheduledYear || year;
-          const origin = `${labels(canonical.originPeriod)} · ${canonical.originYear}`;
-          const commitment = `${labels(scheduled)} · ${scheduledYear}`;
-          const isOverdue = compareCalendarPeriods(scheduledYear, scheduled, year, currentIndex) < 0;
-          const isCurrent = compareCalendarPeriods(scheduledYear, scheduled, year, currentIndex) === 0;
-          return {
-            id: canonical.id,
-            sourceActivityId: activity.id,
-            label: activity.label,
-            periodIndex: canonical.originPeriod,
-            periodLabel: `ORIGEN ${origin} → COMPROMISO ${commitment}`,
-            commitmentLabel: commitment,
-            status: isOverdue ? ("ATRASADA" as const) : isCurrent ? ("COMPROMISO ACTUAL" as const) : ("REPROGRAMADA" as const),
-          };
-        }
-
         const scheduled =
           activity.resolution?.resolutionStatus === "rescheduled"
             ? activity.resolution.scheduledResolutionPeriodIndex
@@ -386,8 +412,10 @@ export const derivePendingKpiActivities = (
       .filter(Boolean) as PendingKpiActivity[];
   });
 
+  const allPending = [...canonicalPending, ...legacyPending];
+
   return Array.from(
-    pending
+    allPending
       .reduce(
         (unique, activity) =>
           unique.set(activity.id, unique.get(activity.id) || activity),
@@ -1354,7 +1382,7 @@ export const CurrentPeriodFocus: React.FC<CurrentPeriodFocusProps> = ({
                   {reopenCandidate && <div role="dialog" className="mt-3 rounded-lg border border-cyan-500/30 bg-slate-900 p-3"><p className="text-xs font-bold text-white">¿Reabrir este pendiente?</p><p className="mt-1 text-[10px] text-slate-400">Volverá a Pendientes y se conservará el historial de lo ocurrido.</p><div className="mt-2 flex justify-end gap-2"><button type="button" onClick={() => setReopenCandidate(null)} className="rounded px-2 py-1.5 text-[9px] font-black text-slate-400">CANCELAR</button><button type="button" onClick={() => void reopenResolution(reopenCandidate)} className="rounded bg-cyan-600 px-2 py-1.5 text-[9px] font-black text-white">REABRIR</button></div></div>}
                 </section>}
 
-              {activityMode && (
+              {(activityMode || visiblePendingKpiActivities.length > 0 || discardedActivities.length > 0 || (item.continuityCommitments && Object.keys(item.continuityCommitments).length > 0)) && (
                 <div className="space-y-3">
                   {pendingFeedback && (
                     <p role="status" className="rounded-xl border border-emerald-500/40 bg-emerald-500/15 px-3.5 py-2.5 text-[11px] font-bold text-emerald-200">
@@ -1401,20 +1429,22 @@ export const CurrentPeriodFocus: React.FC<CurrentPeriodFocusProps> = ({
                     </button>
                   </div>
                   {activityTab === "current" ? (
-                    <button
-                      onClick={() => setIsActivityManagerOpen(true)}
-                      className="w-full min-h-[48px] py-3 bg-gradient-to-r from-indigo-600/20 to-purple-600/20 border border-indigo-500/40 rounded-2xl flex items-center justify-between px-6 hover:from-indigo-600/30 hover:to-purple-600/30 transition-all border-dashed shadow-sm"
-                    >
-                      <div className="flex flex-col items-start">
-                        <span className="text-[9px] font-black text-indigo-400 uppercase tracking-widest leading-none mb-1">
-                          Elementos de este periodo
-                        </span>
-                        <span className="text-base font-bold text-white">
-                          Gestión Detallada
-                        </span>
-                      </div>
-                      <span className="text-xl">📝</span>
-                    </button>
+                    activityMode ? (
+                      <button
+                        onClick={() => setIsActivityManagerOpen(true)}
+                        className="w-full min-h-[48px] py-3 bg-gradient-to-r from-indigo-600/20 to-purple-600/20 border border-indigo-500/40 rounded-2xl flex items-center justify-between px-6 hover:from-indigo-600/30 hover:to-purple-600/30 transition-all border-dashed shadow-sm"
+                      >
+                        <div className="flex flex-col items-start">
+                          <span className="text-[9px] font-black text-indigo-400 uppercase tracking-widest leading-none mb-1">
+                            Elementos de este periodo
+                          </span>
+                          <span className="text-base font-bold text-white">
+                            Gestión Detallada
+                          </span>
+                        </div>
+                        <span className="text-xl">📝</span>
+                      </button>
+                    ) : null
                   ) : (
                     <div className="rounded-2xl border border-slate-700/60 bg-slate-950/80 p-4 shadow-lg">
                       {visiblePendingKpiActivities.length === 0 && discardedActivities.length === 0 ? (

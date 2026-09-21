@@ -8,7 +8,7 @@ interface LineChartProps {
   goalDefinedData?: (boolean | undefined)[];
   goalData: (number | null)[];
   unit: string;
-  type: 'accumulative' | 'average';
+  type?: 'accumulative' | 'average' | 'stock';
   status: ComplianceStatus;
   indicator?: string; // Optional indicator name for unique gradient IDs
   frequency?: 'monthly' | 'weekly';
@@ -36,7 +36,7 @@ export const LineChart: React.FC<LineChartProps> = React.memo(({ progressData, c
     return ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
   }, [isWeekly]);
 
-  const processLineData = (data: (number | null)[], calculationType: 'accumulative' | 'average') => {
+  const processLineData = (data: (number | null)[], calculationType?: 'accumulative' | 'average' | 'stock') => {
     if (calculationType === 'accumulative') {
       return data.reduce((acc, value, i) => {
         if (value === null || value === undefined) {

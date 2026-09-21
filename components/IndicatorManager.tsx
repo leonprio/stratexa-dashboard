@@ -284,6 +284,7 @@ export const IndicatorManager = React.memo(({ initialItems, onSaveChanges, onCan
                                             <select aria-label="Tipo de cálculo" value={item.type} onChange={(e) => handleInputChange(item.id, 'type', e.target.value)} className="w-full bg-slate-700 border border-slate-600 rounded-md p-2 text-white text-sm focus:ring-2 focus:ring-cyan-500 outline-none h-[42px]">
                                                 <option value="accumulative">Sumar</option>
                                                 <option value="average">Promediar</option>
+                                                <option value="stock">Corte / Stock</option>
                                             </select>
                                         )}
                                     </td>

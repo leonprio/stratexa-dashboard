@@ -67,8 +67,8 @@ export const SummaryDetails = ({ item, currentProgress, currentTarget, overallCo
         return formatNumberWithCommas(num, decimalPrecision);
     };
 
-    const goalLabel = type === 'accumulative' ? `Meta Anual (${unit})` : `Meta Promedio (${unit})`;
-    const progressLabel = type === 'accumulative' ? 'Avance Acumulado' : 'Avance Promedio';
+    const goalLabel = type === 'accumulative' ? `Meta Anual (${unit})` : type === 'stock' ? `Meta al Corte (${unit})` : `Meta Promedio (${unit})`;
+    const progressLabel = type === 'accumulative' ? 'Avance Acumulado' : type === 'stock' ? 'Avance al Corte' : 'Avance Promedio';
 
     const summaryItems = [
         { label: 'Tipo de Meta', value: lowerIsBetter ? 'Minimizar' : 'Maximizar' },

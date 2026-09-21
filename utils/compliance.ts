@@ -19,7 +19,7 @@ export const isOperationalPeriodCaptured = (value: unknown, goal: unknown): bool
  * Determina si un indicador debe sumarse (acumulativo) basándose en su nombre o tipo explícito.
  */
 export const isAccumulativeIndicator = (indicatorName: string | undefined, type?: string): boolean => {
-  if (type === 'average') return false;
+  if (type === 'average' || type === 'stock') return false;
   if (type === 'accumulative') return true;
   if (!indicatorName) return false;
 
@@ -574,6 +574,34 @@ export const calculateCompliance = (
     } else {
       currentTarget = evaluateFormula(item.formula, cumulatedItems, 0, 'monthlyGoals', year);
     }
+  } else if (item.type === 'stock') {
+    // 🎯 INDICADOR DE CORTE / EXISTENCIA (STOCK):
+    // El resultado al corte corresponde al último valor válido registrado hasta el periodo consultado (idx).
+    // No equivale a la suma ni al promedio de las observaciones anteriores.
+    // Un cero explícito capturado es válido; la ausencia de captura (sin datos) no lo es.
+    let lastValidProgress: number | null = null;
+    let lastValidTarget: number | null = null;
+
+    for (let i = idx; i >= 0; i--) {
+      const p = monthlyProgress[i];
+      const pCap = item.monthlyProgressCaptured?.[i];
+      const isValidP = p !== null && p !== undefined && (pCap === true || (pCap === undefined && !isNaN(Number(p))));
+      if (lastValidProgress === null && isValidP) {
+        lastValidProgress = Number(p);
+      }
+
+      const g = monthlyGoals[i];
+      const gCap = item.monthlyGoalCaptured?.[i];
+      const isValidG = g !== null && g !== undefined && (gCap === true || (gCap === undefined && !isNaN(Number(g))));
+      if (lastValidTarget === null && isValidG) {
+        lastValidTarget = Number(g);
+      }
+
+      if (lastValidProgress !== null && lastValidTarget !== null) break;
+    }
+
+    currentProgress = lastValidProgress !== null ? lastValidProgress : 0;
+    currentTarget = lastValidTarget !== null ? lastValidTarget : 0;
   } else if (isAccumulative) {
     // ➕ SUMATORIA: Sumar desde enero hasta el índice límite
     for (let i = 0; i <= idx; i++) {

@@ -139,14 +139,57 @@ export const calculateAggregateDashboard = (
 
 
 
-        // 🛡️ REGLA v9.1.0-PRO-FINAL-SHIELDED (NUCLEAR RECOVERY):
-        // Usamos el helper centralizado para decidir si sumamos o promediamos.
-        const effectiveType = isAccumulativeIndicator(data.name, base.type) ? 'accumulative' : 'average';
+        // 🛡️ REGLA v9.1.0-PRO-FINAL-SHIELDED (NUCLEAR RECOVERY) + v9.6.10:
+        // Usamos el helper centralizado para decidir si sumamos, promediamos o tratamos como stock.
+        const effectiveType = base.type === 'stock'
+            ? 'stock'
+            : (isAccumulativeIndicator(data.name, base.type) ? 'accumulative' : 'average');
         aggItem.type = effectiveType; // 👈 CRÍTICO: Persistir en el objeto devuelto
 
-        if (effectiveType === 'accumulative') {
+        // 🛡️ REGLA v9.6.10: ELIMINACIÓN DE DOBLE CONTEO JERÁRQUICO
+        // Si entre los sourceBoards existe un tablero concentrador cuyos valores mensuales equivalen exactamente
+        // a la suma de los demás tableros subordinados/hijos para este indicador, sumarlos a ambos causaría un doble conteo.
+        // Identificamos y excluimos el tablero concentrador pre-agregado, conservando los tableros fuente elementales.
+        let effectiveSourceBoards = data.sourceBoards;
+        if (data.sourceBoards.length >= 2 && (effectiveType === 'accumulative' || effectiveType === 'stock')) {
+            const resolvedSeries = data.sourceBoards.map(sb => {
+                const res = resolveItemValues(sb.item, sb.board.items, sb.board.year || new Date().getFullYear());
+                return {
+                    sb,
+                    progress: res.monthlyProgress,
+                    goals: res.monthlyGoals
+                };
+            });
+
+            const concentratorIdx = resolvedSeries.findIndex((parent, pIdx) => {
+                const otherSeries = resolvedSeries.filter((_, idx) => idx !== pIdx);
+                let hasPositiveComparison = false;
+                let isExactMatchForAllMonths = true;
+
+                for (let m = 0; m < 12; m++) {
+                    const sumOtherP = otherSeries.reduce((acc, s) => acc + (s.progress[m] !== null && s.progress[m] !== undefined ? Number(s.progress[m]) : 0), 0);
+                    const parentP = parent.progress[m] !== null && parent.progress[m] !== undefined ? Number(parent.progress[m]) : 0;
+
+                    if (sumOtherP > 0 || parentP > 0) {
+                        hasPositiveComparison = true;
+                        if (Math.abs(sumOtherP - parentP) > 0.001) {
+                            isExactMatchForAllMonths = false;
+                            break;
+                        }
+                    }
+                }
+
+                return hasPositiveComparison && isExactMatchForAllMonths;
+            });
+
+            if (concentratorIdx >= 0) {
+                effectiveSourceBoards = data.sourceBoards.filter((_, idx) => idx !== concentratorIdx);
+            }
+        }
+
+        if (effectiveType === 'accumulative' || effectiveType === 'stock') {
             // SUMA CON PROPAGACIÓN DE NULL
-            data.sourceBoards.forEach(({ item, board }) => {
+            effectiveSourceBoards.forEach(({ item, board }) => {
                 // 🚀 RESOLVE VALUES FIRST (v9.1.0-PRO-FINAL-SHIELDED)
                 // Esto asegura que si es 'Bajas Totales' (Compuesto), usemos el valor calculado y no el 0 de la BD.
                 const { monthlyProgress: resolvedProgress, monthlyGoals: resolvedGoals } =
