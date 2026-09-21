@@ -305,6 +305,14 @@ const HierarchySidebar: React.FC<HierarchySidebarProps> = React.memo(({
             });
         });
 
+        // 🛡️ REGLA UNIVERSAL DE NAVEGACIÓN v9.6.10:
+        // Identificar grupos visibles y determinar si el cliente tiene una única agrupación funcional
+        const visibleGroups = Array.from(dashboardsByGroup.keys()).filter(
+            (g) => g !== 'SINTESIS' && g !== 'TODOS'
+        );
+        const nonGeneralGroups = visibleGroups.filter(g => g !== 'GENERAL');
+        const hasSingleSpecificGroup = nonGeneralGroups.length === 1 && visibleGroups.length === 1 && superDirectors.length === 0;
+
         const orphans: TreeNode[] = [];
         dashboardsByGroup.forEach((dashes, normG) => {
             if (assignedGroups.has(normG) || normG === 'SINTESIS' || normG === 'TODOS') return;
@@ -313,10 +321,9 @@ const HierarchySidebar: React.FC<HierarchySidebarProps> = React.memo(({
             const originalName = (dashes[0]?.group || (normG === 'GENERAL' ? 'GENERAL' : normG));
             const result = buildGroupChildren(originalName);
             if (result) {
-                // GENERAL puede existir como agrupador técnico de varios
-                // tableros físicos. No debe competir con CONSOLIDADO como
-                // nodo navegable: se aplanan sus dashboards hijos.
-                if (normG === 'GENERAL' && result.node.children.length > 1 && result.node.children.every(child => !child.isAggregate)) {
+                // GENERAL o agrupación única funcional: los tableros se presentan directamente
+                // para evitar niveles redundantes (Reglas B y D).
+                if ((normG === 'GENERAL' || hasSingleSpecificGroup) && result.node.children.length > 1 && result.node.children.every(child => !child.isAggregate)) {
                     orphans.push(...result.node.children);
                     return;
                 }
@@ -329,13 +336,12 @@ const HierarchySidebar: React.FC<HierarchySidebarProps> = React.memo(({
             }
         });
 
-        // 🛡️ Agregar el único agregado global al inicio
-        // 🛡️ REGLA DE LECTURA: mostrar el consolidado a cualquier usuario
-        // con más de un tablero operativo autorizado del cliente actual.
+        // 🛡️ Agregar el único agregado global al inicio solo cuando represente una síntesis genuina
+        // (múltiples agrupaciones independientes o tableros en GENERAL sin jerarquía duplicada).
         const globalAgg = dashboards.find(d => String(d.id).includes('agg-global-total'));
         const hasSpecificSuperDirectorAccess = superDirectors.length > 0;
 
-        if (globalAgg && !hasSpecificSuperDirectorAccess && realDashboards.length > 1) {
+        if (globalAgg && !hasSpecificSuperDirectorAccess && realDashboards.length > 1 && !hasSingleSpecificGroup) {
             const globalItems = realDashboards.flatMap(d => d.items || []);
             const globalMetrics = getMetricsForItems(globalItems);
             nodes.unshift({
@@ -352,8 +358,6 @@ const HierarchySidebar: React.FC<HierarchySidebarProps> = React.memo(({
         }
 
         nodes.push(...orphans);
-        // Los agregados técnicos siguen disponibles para cálculos, pero el
-        // agregado global conserva un único nombre de navegación: CONSOLIDADO.
         return nodes;
     }, [dashboards, areaFilteredDashboards, allUsers, userProfile, isGlobalAdmin, isDirector, clientNorm, selectedArea, realDashboards.length, settings]);
 

@@ -1315,76 +1315,6 @@ export default function App() {
           return { ...r, group: finalGroup };
         });
 
-        // 2. AGREGACIONES POR GRUPO (v2.2.3)
-        const groupAggregates: DashboardType[] = [];
-        // 🛡️ REGLA v2.3.5: Si tengo subgrupos, iterar sobre ELLOS para generar agregados parciales
-        // Si no, iterar sobre officialGroups globales.
-        const groupsToAggregate =
-          userProfile?.subGroups && userProfile.subGroups.length > 0
-            ? userProfile.subGroups
-            : localOfficialGroups;
-
-        groupsToAggregate.forEach((gName) => {
-          const normGName = normalizeGroupName(gName);
-          const groupBoards = enrichedRows.filter(
-            (r) => normalizeGroupName(r.group) === normGName,
-          );
-
-          if (groupBoards.length > 0) {
-            const agg = calculateAggregateDashboard(groupBoards, settings);
-            let displayTitle = gName;
-
-            if (!userProfile?.subGroups?.length) {
-              const director = allUsers.find(
-                (u) =>
-                  (u.globalRole === "Director" || u.globalRole === "Admin") &&
-                  (u.clientId || "").trim().toUpperCase() ===
-                    currentClientAgg &&
-                  (normalizeGroupName(u.directorTitle) === normGName ||
-                    normalizeGroupName(u.group) === normGName),
-              );
-              if (director?.directorTitle)
-                displayTitle = director.directorTitle.trim().toUpperCase();
-            }
-
-            const isHierarchyRoot =
-              isMeSuperDirector &&
-              userProfile?.subGroups?.some(
-                (sg) => normalizeGroupName(sg) === normGName,
-              );
-            const areaCounts = new Map<string, number>();
-            groupBoards.forEach((b) => {
-              const a = (b as any).area
-                ? (b as any).area.trim().toUpperCase()
-                : "";
-              if (a) areaCounts.set(a, (areaCounts.get(a) || 0) + 1);
-            });
-            const dominantArea = isHierarchyRoot
-              ? ""
-              : areaCounts.size > 0
-                ? Array.from(areaCounts.entries()).sort(
-                    (a, b) => b[1] - a[1],
-                  )[0][0]
-                : normGName;
-
-            groupAggregates.push({
-              ...agg,
-              id: `agg-${normGName}-${selectedYear}`,
-              title: `★ RESUMEN DIRECTIVO: ${displayTitle.toUpperCase()}`, // 🛡️ v7.8.27: Nombre institucional para evitar confusión con tableros operativos
-              group: gName,
-              area: dominantArea,
-              navigationParent: isHierarchyRoot
-                ? userProfile?.directorTitle?.trim().toUpperCase()
-                : undefined,
-              clientId: currentClientAgg,
-              year: selectedYear,
-              orderNumber: -1,
-              isHierarchyRoot,
-              isAggregate: true,
-            });
-          }
-        });
-
         // 🏢 NIVEL 4 (v7.2.1): Agregación por SuperGrupos (Grupo de Grupos)
         const superGroupsFound = Array.from(
           new Set(
@@ -1400,6 +1330,98 @@ export default function App() {
             u.subGroups &&
             u.subGroups.length > 0,
         );
+
+        // 🛡️ REGLA UNIVERSAL DE NAVEGACIÓN v9.6.10:
+        // Identificar si todos los tableros pertenecen a una única agrupación funcional
+        const readableOperationalBoards = enrichedRows.filter(
+          (r) => !String(r.id).startsWith("agg-") && r.id !== -1,
+        );
+        const distinctOperationalGroups = Array.from(
+          new Set(
+            readableOperationalBoards
+              .map((r) => normalizeGroupName(r.group || "GENERAL"))
+              .filter((g) => g && g !== "SINTESIS" && g !== "TODOS"),
+          ),
+        );
+        const nonGeneralGroups = distinctOperationalGroups.filter(
+          (g) => g !== "GENERAL",
+        );
+        const hasSingleSpecificGroup =
+          nonGeneralGroups.length === 1 &&
+          distinctOperationalGroups.length === 1 &&
+          hierarchyDirectors.length === 0;
+
+        // 2. AGREGACIONES POR GRUPO (v2.2.3)
+        const groupAggregates: DashboardType[] = [];
+        // 🛡️ REGLA v2.3.5: Si tengo subgrupos, iterar sobre ELLOS para generar agregados parciales
+        // Si no, iterar sobre officialGroups globales.
+        const groupsToAggregate =
+          userProfile?.subGroups && userProfile.subGroups.length > 0
+            ? userProfile.subGroups
+            : localOfficialGroups;
+
+        if (!hasSingleSpecificGroup) {
+          groupsToAggregate.forEach((gName) => {
+            const normGName = normalizeGroupName(gName);
+            const groupBoards = enrichedRows.filter(
+              (r) => normalizeGroupName(r.group) === normGName,
+            );
+
+            if (groupBoards.length > 0) {
+              const agg = calculateAggregateDashboard(groupBoards, settings);
+              let displayTitle = gName;
+
+              if (!userProfile?.subGroups?.length) {
+                const director = allUsers.find(
+                  (u) =>
+                    (u.globalRole === "Director" || u.globalRole === "Admin") &&
+                    (u.clientId || "").trim().toUpperCase() ===
+                      currentClientAgg &&
+                    (normalizeGroupName(u.directorTitle) === normGName ||
+                      normalizeGroupName(u.group) === normGName),
+                );
+                if (director?.directorTitle)
+                  displayTitle = director.directorTitle.trim().toUpperCase();
+              }
+
+              const isHierarchyRoot =
+                isMeSuperDirector &&
+                userProfile?.subGroups?.some(
+                  (sg) => normalizeGroupName(sg) === normGName,
+                );
+              const areaCounts = new Map<string, number>();
+              groupBoards.forEach((b) => {
+                const a = (b as any).area
+                  ? (b as any).area.trim().toUpperCase()
+                  : "";
+                if (a) areaCounts.set(a, (areaCounts.get(a) || 0) + 1);
+              });
+              const dominantArea = isHierarchyRoot
+                ? ""
+                : areaCounts.size > 0
+                  ? Array.from(areaCounts.entries()).sort(
+                      (a, b) => b[1] - a[1],
+                    )[0][0]
+                  : normGName;
+
+              groupAggregates.push({
+                ...agg,
+                id: `agg-${normGName}-${selectedYear}`,
+                title: `★ RESUMEN DIRECTIVO: ${displayTitle.toUpperCase()}`, // 🛡️ v7.8.27: Nombre institucional para evitar confusión con tableros operativos
+                group: gName,
+                area: dominantArea,
+                navigationParent: isHierarchyRoot
+                  ? userProfile?.directorTitle?.trim().toUpperCase()
+                  : undefined,
+                clientId: currentClientAgg,
+                year: selectedYear,
+                orderNumber: -1,
+                isHierarchyRoot,
+                isAggregate: true,
+              });
+            }
+          });
+        }
 
         hierarchyDirectors.forEach((dir) => {
           const dirName = (dir.directorTitle || dir.name || "DIRECTOR")
@@ -1456,10 +1478,10 @@ export default function App() {
         // El consolidado es una vista de lectura sobre todos los tableros
         // autorizados del cliente, no una capacidad de edición ni un privilegio
         // exclusivo de Director/Admin.
-        const readableOperationalBoards = enrichedRows.filter(
-          (r) => !String(r.id).startsWith("agg-") && r.id !== -1,
-        );
-        const shouldCreateGlobalAgg = readableOperationalBoards.length > 1;
+        // Solo debe crearse cuando aporte un alcance distinto (múltiples tableros independientes en GENERAL
+        // o múltiples agrupaciones/áreas).
+        const shouldCreateGlobalAgg =
+          readableOperationalBoards.length > 1 && !hasSingleSpecificGroup;
 
         if (shouldCreateGlobalAgg) {
           // `enrichedRows` ya proviene de fetchDashboardsForYear, que aplica
