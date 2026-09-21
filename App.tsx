@@ -1360,68 +1360,66 @@ export default function App() {
             ? userProfile.subGroups
             : localOfficialGroups;
 
-        if (!hasSingleSpecificGroup) {
-          groupsToAggregate.forEach((gName) => {
-            const normGName = normalizeGroupName(gName);
-            const groupBoards = enrichedRows.filter(
-              (r) => normalizeGroupName(r.group) === normGName,
-            );
+        groupsToAggregate.forEach((gName) => {
+          const normGName = normalizeGroupName(gName);
+          const groupBoards = enrichedRows.filter(
+            (r) => normalizeGroupName(r.group) === normGName,
+          );
 
-            if (groupBoards.length > 0) {
-              const agg = calculateAggregateDashboard(groupBoards, settings);
-              let displayTitle = gName;
+          if (groupBoards.length > 0) {
+            const agg = calculateAggregateDashboard(groupBoards, settings);
+            let displayTitle = gName;
 
-              if (!userProfile?.subGroups?.length) {
-                const director = allUsers.find(
-                  (u) =>
-                    (u.globalRole === "Director" || u.globalRole === "Admin") &&
-                    (u.clientId || "").trim().toUpperCase() ===
-                      currentClientAgg &&
-                    (normalizeGroupName(u.directorTitle) === normGName ||
-                      normalizeGroupName(u.group) === normGName),
-                );
-                if (director?.directorTitle)
-                  displayTitle = director.directorTitle.trim().toUpperCase();
-              }
-
-              const isHierarchyRoot =
-                isMeSuperDirector &&
-                userProfile?.subGroups?.some(
-                  (sg) => normalizeGroupName(sg) === normGName,
-                );
-              const areaCounts = new Map<string, number>();
-              groupBoards.forEach((b) => {
-                const a = (b as any).area
-                  ? (b as any).area.trim().toUpperCase()
-                  : "";
-                if (a) areaCounts.set(a, (areaCounts.get(a) || 0) + 1);
-              });
-              const dominantArea = isHierarchyRoot
-                ? ""
-                : areaCounts.size > 0
-                  ? Array.from(areaCounts.entries()).sort(
-                      (a, b) => b[1] - a[1],
-                    )[0][0]
-                  : normGName;
-
-              groupAggregates.push({
-                ...agg,
-                id: `agg-${normGName}-${selectedYear}`,
-                title: `★ RESUMEN DIRECTIVO: ${displayTitle.toUpperCase()}`, // 🛡️ v7.8.27: Nombre institucional para evitar confusión con tableros operativos
-                group: gName,
-                area: dominantArea,
-                navigationParent: isHierarchyRoot
-                  ? userProfile?.directorTitle?.trim().toUpperCase()
-                  : undefined,
-                clientId: currentClientAgg,
-                year: selectedYear,
-                orderNumber: -1,
-                isHierarchyRoot,
-                isAggregate: true,
-              });
+            if (!userProfile?.subGroups?.length) {
+              const director = allUsers.find(
+                (u) =>
+                  (u.globalRole === "Director" || u.globalRole === "Admin") &&
+                  (u.clientId || "").trim().toUpperCase() ===
+                    currentClientAgg &&
+                  (normalizeGroupName(u.directorTitle) === normGName ||
+                    normalizeGroupName(u.group) === normGName),
+              );
+              if (director?.directorTitle)
+                displayTitle = director.directorTitle.trim().toUpperCase();
             }
-          });
-        }
+
+            const isHierarchyRoot =
+              isMeSuperDirector &&
+              userProfile?.subGroups?.some(
+                (sg) => normalizeGroupName(sg) === normGName,
+              );
+            const areaCounts = new Map<string, number>();
+            groupBoards.forEach((b) => {
+              const a = (b as any).area
+                ? (b as any).area.trim().toUpperCase()
+                : "";
+              if (a) areaCounts.set(a, (areaCounts.get(a) || 0) + 1);
+            });
+            const dominantArea = isHierarchyRoot
+              ? ""
+              : areaCounts.size > 0
+                ? Array.from(areaCounts.entries()).sort(
+                    (a, b) => b[1] - a[1],
+                  )[0][0]
+                : normGName;
+
+            groupAggregates.push({
+              ...agg,
+              id: `agg-${normGName}-${selectedYear}`,
+              title: `★ RESUMEN DIRECTIVO: ${displayTitle.toUpperCase()}`, // 🛡️ v7.8.27: Nombre institucional para evitar confusión con tableros operativos
+              group: gName,
+              area: dominantArea,
+              navigationParent: isHierarchyRoot
+                ? userProfile?.directorTitle?.trim().toUpperCase()
+                : undefined,
+              clientId: currentClientAgg,
+              year: selectedYear,
+              orderNumber: -1,
+              isHierarchyRoot,
+              isAggregate: true,
+            });
+          }
+        });
 
         hierarchyDirectors.forEach((dir) => {
           const dirName = (dir.directorTitle || dir.name || "DIRECTOR")

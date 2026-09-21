@@ -321,16 +321,16 @@ const HierarchySidebar: React.FC<HierarchySidebarProps> = React.memo(({
             const originalName = (dashes[0]?.group || (normG === 'GENERAL' ? 'GENERAL' : normG));
             const result = buildGroupChildren(originalName);
             if (result) {
-                // GENERAL o agrupación única funcional: los tableros se presentan directamente
-                // para evitar niveles redundantes (Reglas B y D).
-                if ((normG === 'GENERAL' || hasSingleSpecificGroup) && result.node.children.length > 1 && result.node.children.every(child => !child.isAggregate)) {
+                // GENERAL: los tableros independientes se aplanan directamente (Regla B).
+                if (normG === 'GENERAL' && result.node.children.length > 1 && result.node.children.every(child => !child.isAggregate)) {
                     orphans.push(...result.node.children);
                     return;
                 }
-                // 🛡️ UX REFLUX: Si el grupo solo tiene un tablero, lo aplanamos al nivel superior
+                // Si el grupo solo tiene un tablero, lo aplanamos al nivel superior (Regla A).
                 if (result.node.children.length === 1 && !result.node.children[0].isAggregate) {
                     orphans.push(result.node.children[0]);
                 } else {
+                    // Si el grupo tiene múltiples tableros, se conserva el nodo de agrupación como concentrado seleccionable (Reglas B, C, D).
                     orphans.push(result.node);
                 }
             }

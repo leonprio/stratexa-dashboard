@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { HierarchySidebar } from '../components/HierarchySidebar';
 import { Dashboard as DashboardType, User, GlobalUserRole } from '../types';
@@ -53,9 +53,7 @@ describe('Universal Navigation & Hierarchy Rules (v9.6.10)', () => {
       />
     );
 
-    // Debe mostrarse el tablero
     expect(screen.getByText('Tablero Único Regional')).toBeInTheDocument();
-    // NO debe existir un nodo CONSOLIDADO
     expect(screen.queryByText('CONSOLIDADO')).not.toBeInTheDocument();
   });
 
@@ -85,20 +83,17 @@ describe('Universal Navigation & Hierarchy Rules (v9.6.10)', () => {
       />
     );
 
-    // Debe existir CONSOLIDADO
     expect(screen.getByText('CONSOLIDADO')).toBeInTheDocument();
-    // Y los 3 tableros independientes
     expect(screen.getByText('Operación Norte')).toBeInTheDocument();
     expect(screen.getByText('Operación Centro')).toBeInTheDocument();
     expect(screen.getByText('Operación Sur')).toBeInTheDocument();
-    // NO debe existir una carpeta GENERAL redundante compitiendo con CONSOLIDADO
     expect(screen.queryByText('★ RESUMEN DIRECTIVO: GENERAL')).not.toBeInTheDocument();
   });
 
   // ─────────────────────────────────────────────────────────────
   // REGLA C: VARIAS AGRUPACIONES O ÁREAS (LVP / IPS)
   // ─────────────────────────────────────────────────────────────
-  test('Regla C: Múltiples agrupaciones conservan CONSOLIDADO general como síntesis multi-área', () => {
+  test('Regla C: Múltiples agrupaciones conservan CONSOLIDADO general como síntesis multi-área y muestran cada agrupación', () => {
     const op1 = createDashboard('OP1', 'Planta Norte', 'OPERACIONES', 1);
     const op2 = createDashboard('OP2', 'Planta Sur', 'OPERACIONES', 2);
     const com1 = createDashboard('COM1', 'Ventas Retail', 'COMERCIAL', 1);
@@ -122,9 +117,7 @@ describe('Universal Navigation & Hierarchy Rules (v9.6.10)', () => {
       />
     );
 
-    // Debe existir CONSOLIDADO multi-grupo
     expect(screen.getByText('CONSOLIDADO')).toBeInTheDocument();
-    // Deben existir las dos agrupaciones
     expect(screen.getByText('OPERACIONES')).toBeInTheDocument();
     expect(screen.getByText('COMERCIAL')).toBeInTheDocument();
   });
@@ -132,16 +125,19 @@ describe('Universal Navigation & Hierarchy Rules (v9.6.10)', () => {
   // ─────────────────────────────────────────────────────────────
   // REGLA D: UNA SOLA AGRUPACIÓN FUNCIONAL (SOMOS)
   // ─────────────────────────────────────────────────────────────
-  test('Regla D (SOMOS): Una sola agrupación funcional no crea consolidado redundante y lista los 3 tableros directamente', () => {
-    const som1 = createDashboard('SOMOS_2026_1', 'SECRETARÍA DE INCLUSIÓN', 'SECRETARÍA DE INCLUSIÓN', 1);
-    const som2 = createDashboard('SOMOS_2026_2', 'Inclusión — Guanajuato', 'SECRETARÍA DE INCLUSIÓN', 2);
-    const som3 = createDashboard('SOMOS_2026_3', 'Inclusión — Querétaro', 'SECRETARÍA DE INCLUSIÓN', 3);
+  test('Regla D (SOMOS): Una sola agrupación funcional conserva el concentrado de la agrupación y sus 3 tableros sin consolidado general redundante', () => {
+    const aggSecretaria = createDashboard('agg-SECRETARIA DE INCLUSION-2026', '★ RESUMEN DIRECTIVO: SECRETARÍA DE INCLUSIÓN', 'SECRETARÍA DE INCLUSIÓN', -1, true);
+    const som1 = createDashboard('SOMOS_2026_1', 'Inclusión Nacional', 'SECRETARÍA DE INCLUSIÓN', 1);
+    const som2 = createDashboard('SOMOS_2026_GTO', 'Inclusión — Guanajuato', 'SECRETARÍA DE INCLUSIÓN', 2);
+    const som3 = createDashboard('SOMOS_2026_QRO', 'Inclusión — Querétaro', 'SECRETARÍA DE INCLUSIÓN', 3);
+
+    const onSelect = jest.fn();
 
     render(
       <HierarchySidebar
-        dashboards={[som1, som2, som3]}
-        selectedDashboardId={'SOMOS_2026_1'}
-        onSelectDashboard={jest.fn()}
+        dashboards={[aggSecretaria, som1, som2, som3]}
+        selectedDashboardId={'agg-SECRETARIA DE INCLUSION-2026'}
+        onSelectDashboard={onSelect}
         isGlobalAdmin={true}
         isDirector={false}
         isCollapsed={false}
@@ -152,10 +148,19 @@ describe('Universal Navigation & Hierarchy Rules (v9.6.10)', () => {
       />
     );
 
-    // NO debe existir un nivel CONSOLIDADO redundante
+    // NO debe existir un nivel CONSOLIDADO global redundante
     expect(screen.queryByText('CONSOLIDADO')).not.toBeInTheDocument();
-    // Deben estar exactamente y directamente los 3 tableros
-    expect(screen.getByText('SECRETARÍA DE INCLUSIÓN')).toBeInTheDocument();
+
+    // Debe mostrarse la agrupación seleccionable
+    const groupButton = screen.getByText('SECRETARÍA DE INCLUSIÓN');
+    expect(groupButton).toBeInTheDocument();
+
+    // Al hacer click en la agrupación, debe seleccionarse su concentrado
+    fireEvent.click(groupButton);
+    expect(onSelect).toHaveBeenCalledWith('agg-SECRETARIA DE INCLUSION-2026');
+
+    // Deben mostrarse los 3 tableros operativos hijos
+    expect(screen.getByText('Inclusión Nacional')).toBeInTheDocument();
     expect(screen.getByText('Inclusión — Guanajuato')).toBeInTheDocument();
     expect(screen.getByText('Inclusión — Querétaro')).toBeInTheDocument();
   });
@@ -163,8 +168,8 @@ describe('Universal Navigation & Hierarchy Rules (v9.6.10)', () => {
   // ─────────────────────────────────────────────────────────────
   // REGLA F: PERMISOS PARCIALES
   // ─────────────────────────────────────────────────────────────
-  test('Regla F: Usuario con permiso parcial a 1 solo tablero en cliente multi-tablero ve solo su tablero', () => {
-    const som2 = createDashboard('SOMOS_2026_2', 'Inclusión — Guanajuato', 'SECRETARÍA DE INCLUSIÓN', 2);
+  test('Regla F: Usuario con permiso parcial a 1 solo tablero en cliente multi-tablero ve solo su tablero sin consolidado', () => {
+    const som2 = createDashboard('SOMOS_2026_GTO', 'Inclusión — Guanajuato', 'SECRETARÍA DE INCLUSIÓN', 2);
 
     const partialUser: User = {
       id: 'gto-user',
@@ -173,14 +178,14 @@ describe('Universal Navigation & Hierarchy Rules (v9.6.10)', () => {
       globalRole: GlobalUserRole.Viewer,
       clientId: 'SOMOS',
       dashboardAccess: {
-        SOMOS_2026_2: 'Viewer' as any,
+        SOMOS_2026_GTO: 'Viewer' as any,
       },
     };
 
     render(
       <HierarchySidebar
         dashboards={[som2]}
-        selectedDashboardId={'SOMOS_2026_2'}
+        selectedDashboardId={'SOMOS_2026_GTO'}
         onSelectDashboard={jest.fn()}
         isGlobalAdmin={false}
         isDirector={false}
@@ -193,7 +198,7 @@ describe('Universal Navigation & Hierarchy Rules (v9.6.10)', () => {
     );
 
     expect(screen.getByText('Inclusión — Guanajuato')).toBeInTheDocument();
-    expect(screen.queryByText('SECRETARÍA DE INCLUSIÓN')).not.toBeInTheDocument();
+    expect(screen.queryByText('Inclusión Nacional')).not.toBeInTheDocument();
     expect(screen.queryByText('Inclusión — Querétaro')).not.toBeInTheDocument();
     expect(screen.queryByText('CONSOLIDADO')).not.toBeInTheDocument();
   });
