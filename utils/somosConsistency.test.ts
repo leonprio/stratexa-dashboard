@@ -20,6 +20,7 @@ describe('SOMOS Consistency & Stock Indicators & Continuity (v9.6.10)', () => {
         {
           id: 1,
           indicator: 'Actividades de inclusión realizadas',
+          semanticKey: 'somos-inclusion-activities',
           weight: 100,
           unit: 'Actividades',
           type: 'accumulative',
@@ -44,6 +45,7 @@ describe('SOMOS Consistency & Stock Indicators & Continuity (v9.6.10)', () => {
         {
           id: 1,
           indicator: 'Actividades de inclusión realizadas',
+          semanticKey: 'somos-inclusion-activities',
           weight: 100,
           unit: 'Actividades',
           type: 'accumulative',
@@ -92,14 +94,26 @@ describe('SOMOS Consistency & Stock Indicators & Continuity (v9.6.10)', () => {
         {
           id: 3,
           indicator: 'Actividades de inclusión realizadas',
+          semanticKey: 'somos-inclusion-activities',
+          contributionKind: 'derived',
+          derivedFrom: [
+            { dashboardId: 'SOMOS_2026_GTO', itemId: 1 },
+            { dashboardId: 'SOMOS_2026_QRO', itemId: 1 },
+          ],
           weight: 33.34,
           unit: 'Actividades',
           type: 'accumulative',
           goalType: 'maximize',
-          monthlyGoals: [3, 4, 5, 6, 7, 8, 10, 12, null, null, null, null],
-          monthlyGoalCaptured: [true, true, true, true, true, true, true, true, false, false, false, false],
-          monthlyProgress: [3, 3, 5, 5, 6, 8, 9, 10, null, null, null, null],
-          monthlyProgressCaptured: [true, true, true, true, true, true, true, true, false, false, false, false],
+          // The old state projection is retained as provenance, not shown as a
+          // national own capture.
+          derivedProjection: {
+            monthlyGoals: [3, 4, 5, 6, 7, 8, 10, 12, null, null, null, null],
+            monthlyProgress: [3, 3, 5, 5, 6, 8, 9, 10, null, null, null, null],
+          },
+          monthlyGoals: [null, null, null, null, null, null, null, null, null, null, null, null],
+          monthlyGoalCaptured: [false, false, false, false, false, false, false, false, false, false, false, false],
+          monthlyProgress: [null, null, null, null, null, null, null, null, null, null, null, null],
+          monthlyProgressCaptured: [false, false, false, false, false, false, false, false, false, false, false, false],
         },
       ],
     };

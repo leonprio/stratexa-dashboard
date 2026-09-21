@@ -102,6 +102,21 @@ export interface DashboardItem {
   formulaOutputMode?: 'RESULT_IS_COMPLIANCE' | 'VALUE_VS_TARGET'; // 🛡️ v9.4.9: Modo de salida del resultado de la fórmula
   semanticKey?: string; // 🛡️ v9.4.8: Identificador semántico de equivalencia
   parentDefinitionId?: string; // 🛡️ v9.4.8: ID de la plantilla/definición padre
+  /**
+   * Explicit provenance for an output calculated from KPI instances in other
+   * dashboards.  Legacy instances leave this unset and remain independent.
+   */
+  contributionKind?: 'own' | 'derived';
+  /** Physical KPI instances that produced a derived contribution. */
+  derivedFrom?: AggregationSource[];
+  /** Read-only historical projection retained when a legacy derived value is disentangled from own capture. */
+  derivedProjection?: {
+    monthlyGoals?: (number | null)[];
+    monthlyProgress?: (number | null)[];
+    monthlyGoalCaptured?: boolean[];
+    monthlyProgressCaptured?: boolean[];
+    migratedAt?: string;
+  };
   alertThreshold?: number; // 🔔 FIX v6.1.9
   alertUnit?: string; // 🔔 FIX v6.1.9
 
@@ -153,6 +168,12 @@ export interface DashboardItem {
   operationalStartPeriod?: any;
   responsible?: string;
   progress?: any;
+}
+
+/** Stable physical identity of a KPI contribution across dashboards. */
+export interface AggregationSource {
+  dashboardId: number | string;
+  itemId: number | string;
 }
 
 export type ActionPlanStatus = 'planned' | 'in_progress' | 'completed' | 'cancelled';

@@ -1,4 +1,4 @@
-import { Dashboard, DashboardItem, SystemSettings } from '../types';
+import { AggregationSource, Dashboard, DashboardItem, SystemSettings } from '../types';
 import { resolveItemValues, isAccumulativeIndicator, calculateCapturePct } from './compliance';
 
 // Helper para obtener el último valor válido de un array (mes actual o anterior con datos)
@@ -49,6 +49,40 @@ const haveIdenticalIndicators = (dashboards: Dashboard[]): boolean => {
         );
         return key === refKey;
     });
+};
+
+const normalizeIndicator = (value?: string) => (value || '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toUpperCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+
+/**
+ * A semantic key is authoritative when present.  The old title-based match is
+ * deliberately retained only for records that predate semantic identities.
+ */
+const logicalIndicatorKey = (item: DashboardItem) => {
+    if (item.semanticKey) return `semantic:${item.semanticKey.trim()}`;
+    if (item.parentDefinitionId) return `definition:${item.parentDefinitionId.trim()}`;
+    return `legacy:${normalizeIndicator(item.indicator)}|${normalizeIndicator(item.unit)}|${item.type}`;
+};
+
+const physicalSourceKey = (source: AggregationSource) =>
+    `${String(source.dashboardId)}:${String(source.itemId)}`;
+
+const isIndependentContribution = (
+    candidate: { board: Dashboard; item: DashboardItem },
+    available: { board: Dashboard; item: DashboardItem }[],
+) => {
+    if (candidate.item.contributionKind !== 'derived' || !candidate.item.derivedFrom?.length) return true;
+
+    const availableSources = new Set(available.map(({ board, item }) =>
+        physicalSourceKey({ dashboardId: board.id, itemId: item.id }),
+    ));
+    // A derived value is useful when its inputs are outside this view.  It is
+    // redundant only when every declared input is already represented here.
+    return !candidate.item.derivedFrom.every(source => availableSources.has(physicalSourceKey(source)));
 };
 
 
@@ -105,21 +139,21 @@ export const calculateAggregateDashboard = (
         d.items.forEach(item => {
             if (!item || !item.indicator) return; // 🛡️ BLINDAJE v9.1.0-PRO-FINAL-SHIELDED: Saltar si el item está corrupto
             // 🛡️ FIX v9.1.0-PRO-FINAL-SHIELDED: ROBUST NORMALIZATION (handles extra spaces and accents)
-            const normName = item.indicator.replace(/\s+/g, ' ').trim().toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-            if (!uniqueIndicators.has(normName)) {
-                uniqueIndicators.set(normName, {
+            const indicatorKey = logicalIndicatorKey(item);
+            if (!uniqueIndicators.has(indicatorKey)) {
+                uniqueIndicators.set(indicatorKey, {
                     name: item.indicator.trim().toUpperCase(),
                     representative: item,
                     sourceBoards: []
                 });
             }
-            uniqueIndicators.get(normName)!.sourceBoards.push({ board: d, item });
+            uniqueIndicators.get(indicatorKey)!.sourceBoards.push({ board: d, item });
         });
     });
 
     // Procesar cada indicador único
     let virtualId = -100;
-    uniqueIndicators.forEach((data, _normName) => {
+    uniqueIndicators.forEach((data, _indicatorKey) => {
         const base = data.representative;
         const aggItem: DashboardItem = {
             ...base,
@@ -146,46 +180,16 @@ export const calculateAggregateDashboard = (
             : (isAccumulativeIndicator(data.name, base.type) ? 'accumulative' : 'average');
         aggItem.type = effectiveType; // 👈 CRÍTICO: Persistir en el objeto devuelto
 
-        // 🛡️ REGLA v9.6.10: ELIMINACIÓN DE DOBLE CONTEO JERÁRQUICO
-        // Si entre los sourceBoards existe un tablero concentrador cuyos valores mensuales equivalen exactamente
-        // a la suma de los demás tableros subordinados/hijos para este indicador, sumarlos a ambos causaría un doble conteo.
-        // Identificamos y excluimos el tablero concentrador pre-agregado, conservando los tableros fuente elementales.
-        let effectiveSourceBoards = data.sourceBoards;
-        if (data.sourceBoards.length >= 2 && (effectiveType === 'accumulative' || effectiveType === 'stock')) {
-            const resolvedSeries = data.sourceBoards.map(sb => {
-                const res = resolveItemValues(sb.item, sb.board.items, sb.board.year || new Date().getFullYear());
-                return {
-                    sb,
-                    progress: res.monthlyProgress,
-                    goals: res.monthlyGoals
-                };
-            });
-
-            const concentratorIdx = resolvedSeries.findIndex((parent, pIdx) => {
-                const otherSeries = resolvedSeries.filter((_, idx) => idx !== pIdx);
-                let hasPositiveComparison = false;
-                let isExactMatchForAllMonths = true;
-
-                for (let m = 0; m < 12; m++) {
-                    const sumOtherP = otherSeries.reduce((acc, s) => acc + (s.progress[m] !== null && s.progress[m] !== undefined ? Number(s.progress[m]) : 0), 0);
-                    const parentP = parent.progress[m] !== null && parent.progress[m] !== undefined ? Number(parent.progress[m]) : 0;
-
-                    if (sumOtherP > 0 || parentP > 0) {
-                        hasPositiveComparison = true;
-                        if (Math.abs(sumOtherP - parentP) > 0.001) {
-                            isExactMatchForAllMonths = false;
-                            break;
-                        }
-                    }
-                }
-
-                return hasPositiveComparison && isExactMatchForAllMonths;
-            });
-
-            if (concentratorIdx >= 0) {
-                effectiveSourceBoards = data.sourceBoards.filter((_, idx) => idx !== concentratorIdx);
-            }
-        }
+        // A derived instance is excluded only when its explicitly declared
+        // physical inputs already contribute to this same view.  Numeric
+        // equality, titles and local item IDs are never used as provenance.
+        const effectiveSourceBoards = data.sourceBoards.filter(source =>
+            isIndependentContribution(source, data.sourceBoards),
+        );
+        (aggItem as DashboardItem & { sources: AggregationSource[] }).sources = effectiveSourceBoards.map(sb => ({
+            boardId: sb.board.id,
+            itemId: sb.item.id,
+        }));
 
         if (effectiveType === 'accumulative' || effectiveType === 'stock') {
             // SUMA CON PROPAGACIÓN DE NULL

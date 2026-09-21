@@ -31,3 +31,4 @@ build_output
 .vite-cache
 .gemini
 tmp
+.backups/
