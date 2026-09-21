@@ -170,6 +170,8 @@ export const calculateAggregateDashboard = (
         // 🛡️ REGLA v9.1.0-PRO-FINAL-SHIELDED: Inicializar con null para auditoría real
         aggItem.monthlyProgress = new Array(12).fill(null);
         aggItem.monthlyGoals = new Array(12).fill(null);
+        aggItem.monthlyProgressCaptured = new Array(12).fill(false);
+        aggItem.monthlyGoalCaptured = new Array(12).fill(false);
         if (base.weeklyProgress) aggItem.weeklyProgress = new Array(53).fill(null);
         if (base.weeklyGoals) aggItem.weeklyGoals = new Array(53).fill(null);
 
@@ -204,11 +206,13 @@ export const calculateAggregateDashboard = (
                 resolvedProgress.forEach((v, idx) => {
                     if (idx < 12 && v !== null && v !== undefined) {
                         aggItem.monthlyProgress[idx] = (aggItem.monthlyProgress[idx] || 0) + Number(v);
+                        aggItem.monthlyProgressCaptured![idx] = true;
                     }
                 });
                 resolvedGoals.forEach((v, idx) => {
                     if (idx < 12 && v !== null && v !== undefined) {
                         aggItem.monthlyGoals[idx] = (aggItem.monthlyGoals[idx] || 0) + Number(v);
+                        aggItem.monthlyGoalCaptured![idx] = true;
                     }
                 });
 
@@ -235,6 +239,7 @@ export const calculateAggregateDashboard = (
             // PROMEDIO PONDERADO CON PROPAGACIÓN DE NULL
             const calculateWeightedArr = (isProgress: boolean) => {
                 const result = new Array(12).fill(null);
+                const captured = new Array(12).fill(false);
                 const precision = settings?.decimalPrecision ?? 2;
 
                 for (let t = 0; t < 12; t++) {
@@ -242,7 +247,7 @@ export const calculateAggregateDashboard = (
                     let sumW = 0;
                     let hasData = false;
 
-                    data.sourceBoards.forEach(({ board, item }) => {
+                    effectiveSourceBoards.forEach(({ board, item }) => {
                         // 🚀 RESOLVE VALUES FIRST (v9.1.0-PRO-FINAL-SHIELDED)
                         // Indispensable para indicadores semanales que no tienen data mensual en la BD.
                         const { monthlyProgress: resolvedProgress, monthlyGoals: resolvedGoals } =
@@ -260,13 +265,18 @@ export const calculateAggregateDashboard = (
 
                     if (hasData) {
                         result[t] = sumW > 0 ? sumVal / sumW : 0;
+                        captured[t] = true;
                     }
                 }
-                return result;
+                return { result, captured };
             };
 
-            aggItem.monthlyProgress = calculateWeightedArr(true);
-            aggItem.monthlyGoals = calculateWeightedArr(false);
+            const progress = calculateWeightedArr(true);
+            const goals = calculateWeightedArr(false);
+            aggItem.monthlyProgress = progress.result;
+            aggItem.monthlyProgressCaptured = progress.captured;
+            aggItem.monthlyGoals = goals.result;
+            aggItem.monthlyGoalCaptured = goals.captured;
 
             if (base.weeklyProgress) {
                 const resultW = new Array(53).fill(null);

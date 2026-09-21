@@ -58,5 +58,21 @@ describe('universal aggregation lineage', () => {
     const aggregate = calculateAggregateDashboard([zero, absent]);
     expect(aggregate.items[0].monthlyProgress[0]).toBe(0);
     expect(aggregate.items[0].monthlyProgress[1]).toBeNull();
+    expect(aggregate.items[0].monthlyProgressCaptured?.[0]).toBe(true);
+    expect(aggregate.items[0].monthlyProgressCaptured?.[1]).toBe(false);
+  });
+
+  test('consolidated capture evidence follows the contributing physical sources', () => {
+    const derived = board('NATIONAL', item('national-derived', [null, null, null, null, null, null, null, null], {
+      contributionKind: 'derived',
+      monthlyGoalCaptured: new Array(12).fill(false),
+      monthlyProgressCaptured: new Array(12).fill(false),
+      derivedFrom: [{ dashboardId: 'GTO', itemId: 'gto-activities' }, { dashboardId: 'QRO', itemId: 'qro-activities' }],
+    }));
+    const aggregate = calculateAggregateDashboard([derived, gto, qro]);
+    expect(aggregate.items[0].monthlyGoals[7]).toBe(2);
+    expect(aggregate.items[0].monthlyProgress[7]).toBe(10);
+    expect(aggregate.items[0].monthlyGoalCaptured?.[7]).toBe(true);
+    expect(aggregate.items[0].monthlyProgressCaptured?.[7]).toBe(true);
   });
 });
