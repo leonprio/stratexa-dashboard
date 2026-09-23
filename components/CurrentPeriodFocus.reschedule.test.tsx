@@ -1,11 +1,11 @@
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { derivePendingKpiActivities, deriveRescheduledKpiCommitments, RescheduledCommitmentsSection } from './CurrentPeriodFocus';
 import { CurrentPeriodFocus } from './CurrentPeriodFocus';
 import { DashboardItem } from '../types';
 
 jest.mock('./ActionPlan', () => ({ ActionPlan: () => null }));
-jest.mock('./RelatedActionPlans', () => ({ RelatedActionPlans: () => null }));
+jest.mock('./RelatedActionPlans', () => ({ RelatedActionPlans: (props: any) => <section aria-label="Planes relacionados"><button type="button" aria-expanded={!props.collapsed} onClick={props.onToggle}>{props.collapsed ? 'Ver planes' : 'Volver al indicador'}</button><div hidden={props.collapsed}><span>Plan ejecutivo de prueba {props.initialPlanId || ''}</span><label>Borrador de prueba<input aria-label="Borrador de prueba" defaultValue="borrador inicial" /></label></div></section> }));
 
 const item = (): DashboardItem => ({
   id: 1, indicator: 'KPI semanal', weight: 100, frequency: 'weekly', unit: 'act', type: 'accumulative', goalType: 'maximize',
@@ -80,5 +80,31 @@ describe('operational reschedule S13 -> S36', () => {
     expect(screen.getByText('1 compromiso en seguimiento')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'VER ACCIONES' })).toBeInTheDocument();
     jest.useRealTimers();
+  });
+
+  test('KPI opens in indicator zone and toggles to and from the related plans zone', () => {
+    const source = { ...item(), monthlyProgress: Array(12).fill(7) };
+    render(<CurrentPeriodFocus item={source} globalThresholds={{ onTrack: 90, atRisk: 80 }} year={2026} dashboardId={2} clientId="LEON" onUpdateItem={jest.fn()} canEdit onClose={jest.fn()} />);
+    expect(screen.getByText(/Tendencia Histórica/)).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Ver planes' })).toHaveAttribute('aria-expanded', 'false');
+    fireEvent.click(screen.getByRole('button', { name: 'Ver planes' }));
+    expect(screen.getByText(/Tendencia Histórica/)).not.toBeVisible();
+    expect(screen.getByText('Plan ejecutivo de prueba')).toBeVisible();
+    expect(screen.getByText('Indicador seleccionado')).toBeVisible();
+    fireEvent.change(screen.getByLabelText('Borrador de prueba'), { target: { value: 'cambio local' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Volver al indicador' }));
+    expect(screen.getByText(/Tendencia Histórica/)).toBeVisible();
+    expect(screen.getByText('Plan ejecutivo de prueba')).not.toBeVisible();
+    expect(screen.getByLabelText('Borrador de prueba')).toHaveValue('cambio local');
+    fireEvent.click(screen.getByRole('button', { name: 'Ver planes' }));
+    expect(screen.getByLabelText('Borrador de prueba')).toHaveValue('cambio local');
+  });
+
+  test('direct navigation to an action plan opens the plans zone', () => {
+    const source = item();
+    render(<CurrentPeriodFocus item={source} globalThresholds={{ onTrack: 90, atRisk: 80 }} year={2026} dashboardId={2} clientId="LEON" initialActionPlanId="plan-1" onUpdateItem={jest.fn()} canEdit onClose={jest.fn()} />);
+    expect(screen.getByText('Plan ejecutivo de prueba plan-1')).toBeVisible();
+    expect(screen.getByText(/Tendencia Histórica/)).not.toBeVisible();
+    expect(screen.getByRole('button', { name: 'Volver al indicador' })).toBeVisible();
   });
 });

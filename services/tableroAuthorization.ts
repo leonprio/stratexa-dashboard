@@ -132,6 +132,17 @@ export function canAdminTenant(profile: User, clientId: string): boolean {
   return getMembershipForClient(profile, clientId)?.role === 'tenant_admin';
 }
 
+/** Mirrors Firestore canEditActionPlan: tenant admins or explicit plan_editor capability plus editable board scope. */
+export function canEditActionPlan(profile: User, dashboard: Pick<Dashboard, 'id' | 'clientId'> & { originalId?: string | number }): boolean {
+  const clientId = normalizeClient(dashboard.clientId);
+  const membership = getMembershipForClient(profile, clientId);
+  if (!membership) return false;
+  if (membership.role === 'tenant_admin') return true;
+  if (membership.source !== 'canonical' || !membership.capabilities.includes('plan_editor')) return false;
+  const editableIds = membership.editableDashboardIds;
+  return editableIds.includes(String(dashboard.id)) || (!!dashboard.originalId && editableIds.includes(String(dashboard.originalId)));
+}
+
 export function canAccessDashboard(profile: User, dashboard: Pick<Dashboard, 'id' | 'clientId' | 'group' | 'superGroup'>, capability: 'viewer' | 'editor' = 'viewer'): boolean {
   const membership = getMembershipForClient(profile, dashboard.clientId || '');
   if (!membership) return false;

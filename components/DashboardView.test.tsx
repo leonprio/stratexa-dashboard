@@ -12,12 +12,17 @@ jest.mock('./ReportCenter', () => ({
     ReportCenter: () => React.createElement('div', { 'data-testid': 'report-center' }, 'Mock Report Center')
 }));
 
+jest.mock('./operational/OperationalControlCenter', () => ({
+    OperationalControlCenter: ({ canEdit }: { canEdit: boolean }) => React.createElement('div', { 'data-testid': 'control-center', 'data-can-edit': String(canEdit) }, 'Mock Control Center')
+}));
+
 jest.mock('../utils/ExecutiveOperationalExport', () => ({
     exportToExecutiveExcelJS: jest.fn()
 }));
 
 const mockDashboard = {
     id: 1,
+    clientId: 'A',
     title: 'Tablero de Prueba',
     subtitle: '',
     items: [],
@@ -34,6 +39,38 @@ const mockUser = {
 } as any;
 
 describe('DashboardView Component', () => {
+    test('CONTROL does not grant plan mutations to a platform admin without tenant membership', () => {
+        render(
+            <DashboardView
+                dashboard={mockDashboard}
+                onUpdateItem={jest.fn()}
+                userRole={DashboardRole.Editor}
+                isGlobalAdmin={true}
+                currentUser={{ ...mockUser, globalRole: 'platform_admin', clientId: undefined, memberships: [] } as any}
+            />
+        );
+        fireEvent.click(screen.getByLabelText(/Ver Control Operativo/i));
+        expect(screen.getByTestId('control-center')).toHaveAttribute('data-can-edit', 'false');
+    });
+
+    test('CONTROL grants plan mutations for explicit plan_editor capability and editable dashboard', () => {
+        render(
+            <DashboardView
+                dashboard={mockDashboard}
+                onUpdateItem={jest.fn()}
+                userRole={DashboardRole.Viewer}
+                isGlobalAdmin={false}
+                currentUser={{
+                    ...mockUser,
+                    clientId: undefined,
+                    memberships: [{ clientId: 'A', role: 'standard_user', status: 'active', dashboardScopes: { '1': 'viewer' }, editableDashboardIds: ['1'], capabilities: ['plan_editor'] }],
+                } as any}
+            />
+        );
+        fireEvent.click(screen.getByLabelText(/Ver Control Operativo/i));
+        expect(screen.getByTestId('control-center')).toHaveAttribute('data-can-edit', 'true');
+    });
+
     test('debe renderizar el título del tablero y cumplimiento', () => {
         render(
             <DashboardView

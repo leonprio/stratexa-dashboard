@@ -37,7 +37,7 @@ import {
 } from "../utils/scrollUtils";
 import { orderDashboardItemsForStrategicPresentation } from "../strategicDisplayOrder";
 import { findDashboardItemById } from "../dashboardItemNavigation";
-import { canConfigureTracking } from '../services/tableroAuthorization';
+import { canConfigureTracking, canEditActionPlan } from '../services/tableroAuthorization';
 
 interface DashboardViewProps {
   dashboard: DashboardType;
@@ -653,10 +653,8 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(
               globalThresholds={activeThresholds}
               year={year}
               onUpdateItem={onUpdateItem}
-              canEdit={
-                (userRole === DashboardRole.Editor && !isAggregate) ||
-                isGlobalAdmin
-              }
+              canEdit={(userRole === DashboardRole.Editor && !isAggregate) || isGlobalAdmin}
+              canEditPlans={!isAggregate && canEditActionPlan(currentUser, dashboard)}
               onClose={handleCloseFocus}
               allDashboardItems={safeItems}
               decimalPrecision={localDecimalPrecision as 0 | 1 | 2}
@@ -786,6 +784,9 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(
             currentDashboard={dashboard}
             globalThresholds={activeThresholds}
             year={year || 2026}
+            canEdit={
+              canEditActionPlan(currentUser, dashboard)
+            }
             clientSettings={settings}
             onNavigateToPlan={onNavigateToPlan}
             onNavigateToKpi={(dashboardId, itemId) =>

@@ -1335,7 +1335,7 @@ export const ObjectivesView: React.FC<Props> = ({
                             }}
                             className="font-black uppercase tracking-widest text-cyan-300"
                           >
-                            VER PLANES
+                            VER PLANES ({areaPlans.length})
                           </button>
                         )}
                       </div>

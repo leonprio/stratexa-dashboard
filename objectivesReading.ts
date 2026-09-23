@@ -9,6 +9,7 @@ import {
   calculateMonthlyCompliancePercentage,
   resolveItemValues,
 } from "./utils/compliance";
+import { classifyActionPlanActivity, normalizeActionImpact } from "./utils/actionPlanLogic";
 
 export type ExecutiveKpiStatus =
   | "BAJO CONTROL"
@@ -54,18 +55,20 @@ export function buildObjectiveExecutionSummary(
   now: Date = new Date(),
 ): ObjectiveExecutionSummary {
   const uniquePlans = Array.from(new Map(plans.map((plan) => [plan.id, plan])).values());
-  const activities = uniquePlans.flatMap((plan) => plan.activities || []);
+  const activePlans = uniquePlans.filter((plan) => plan.status === "planned" || plan.status === "in_progress");
+  const activities = activePlans.flatMap((plan) => plan.activities || []);
   const impact = { favorable: 0, partial: 0, low: 0, notEvaluated: 0 };
   for (const activity of activities) {
-    if (activity.impact === "FAVORABLE" || activity.impact === "positive") impact.favorable++;
-    else if (activity.impact === "PARTIAL") impact.partial++;
-    else if (activity.impact === "LOW_OR_NONE" || activity.impact === "low" || activity.impact === "none") impact.low++;
+    const normalized = normalizeActionImpact(activity.impact);
+    if (normalized === "FAVORABLE") impact.favorable++;
+    else if (normalized === "PARTIAL") impact.partial++;
+    else if (normalized === "LOW_OR_NONE") impact.low++;
     else impact.notEvaluated++;
   }
   return {
-    activePlans: uniquePlans.length,
+    activePlans: activePlans.length,
     activeActivities: activities.filter((activity) => activity.progress < 100).length,
-    overdueActivities: activities.filter((activity) => activity.progress < 100 && activity.targetDate && new Date(activity.targetDate) < now).length,
+    overdueActivities: activities.filter((activity) => classifyActionPlanActivity(activity, now) === "overdue").length,
     impact,
   };
 }

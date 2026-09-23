@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo, useEffect, useRef } from "react";
 import { DashboardItem, ComplianceThresholds, TrackingStartPeriod } from "../types";
 import { TrackingStartPeriodControls, formatTrackingStartPeriod } from './TrackingStartPeriodControls';
 import { getEffectiveTrackingStartPeriod, hasTrackingFactsBeforePeriod } from '../utils/trackingObligation';
@@ -34,6 +34,7 @@ interface CurrentPeriodFocusProps {
   year?: number;
   onUpdateItem: (updatedItem: DashboardItem) => Promise<void> | void;
   canEdit: boolean;
+  canEditPlans?: boolean;
   onClose: () => void;
   allDashboardItems?: DashboardItem[];
   decimalPrecision?: 0 | 1 | 2;
@@ -446,6 +447,7 @@ export const CurrentPeriodFocus: React.FC<CurrentPeriodFocusProps> = ({
   year,
   onUpdateItem,
   canEdit,
+  canEditPlans = false,
   onClose,
   allDashboardItems = [],
   decimalPrecision = 0,
@@ -462,6 +464,9 @@ export const CurrentPeriodFocus: React.FC<CurrentPeriodFocusProps> = ({
   const [localNote, setLocalNote] = useState<string>("");
   const [isSaving, setIsSaving] = useState(false);
   const [isFullEditMode, setIsFullEditMode] = useState(false);
+  const [plansFocused, setPlansFocused] = useState(Boolean(initialActionPlanId));
+  const plansSectionRef = useRef<HTMLDivElement | null>(null);
+  const indicatorSectionRef = useRef<HTMLDivElement | null>(null);
   const [isActivityManagerOpen, setIsActivityManagerOpen] = useState(false);
   const [activityTab, setActivityTab] = useState<"current" | "pending" | "history">(
     "current",
@@ -489,6 +494,26 @@ export const CurrentPeriodFocus: React.FC<CurrentPeriodFocusProps> = ({
   const [trackingBlocked, setTrackingBlocked] = useState('');
   const [confirmTrackingSave, setConfirmTrackingSave] = useState(false);
   const [isDiscardedExpanded, setIsDiscardedExpanded] = useState(false);
+  const scrollToView = (ref: React.RefObject<HTMLDivElement | null>) => {
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      ref.current?.scrollIntoView?.({ behavior: "smooth", block: "start" });
+    }));
+  };
+  useEffect(() => {
+    const openPlansForDirectNavigation = Boolean(initialActionPlanId);
+    setPlansFocused(openPlansForDirectNavigation);
+    if (openPlansForDirectNavigation) {
+      scrollToView(plansSectionRef);
+    }
+  }, [item.id, initialActionPlanId]);
+  const openPlans = () => {
+    setPlansFocused(true);
+    scrollToView(plansSectionRef);
+  };
+  const returnToIndicator = () => {
+    setPlansFocused(false);
+    scrollToView(indicatorSectionRef);
+  };
   const effectiveTracking = getEffectiveTrackingStartPeriod(item, { defaultTrackingStartPeriod: dashboardTrackingStartPeriod }, { defaultTrackingStartPeriod: clientTrackingStartPeriod });
   const saveTrackingOverride = async () => {
     if (!trackingDraft) return;
@@ -1070,7 +1095,8 @@ export const CurrentPeriodFocus: React.FC<CurrentPeriodFocusProps> = ({
       id="gestion-detallada-focus"
       className="relative bg-slate-900/40 backdrop-blur-3xl border border-cyan-500/40 rounded-[2.5rem] p-4 md:p-6 animate-in zoom-in-95 duration-500 z-10 scroll-mt-24"
     >
-      <div className="sticky top-16 z-30 bg-slate-950/95 backdrop-blur-md p-4 rounded-3xl border border-slate-800 shadow-2xl flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-8">
+      <div hidden={plansFocused} className="sticky top-16 z-30 bg-slate-950/95 backdrop-blur-md p-4 rounded-3xl border border-slate-800 shadow-2xl flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-8">
+        {plansFocused ? <div className="w-full"><span className="text-[9px] font-black uppercase tracking-widest text-slate-400">Planes ejecutivos · indicador</span><h2 className="text-base font-black text-white">{getCleanIndicatorName(indicator)}</h2></div> : <>
         <div className="flex-1 w-full">
           <div className="flex flex-wrap items-center gap-3 mb-4">
             <div className="flex items-center bg-slate-950/80 rounded-2xl border border-white/5 p-1">
@@ -1220,8 +1246,9 @@ export const CurrentPeriodFocus: React.FC<CurrentPeriodFocusProps> = ({
             CERRAR
           </button>
         </div>
+        </>}
       </div>
-      <section className="mb-6 rounded-2xl border border-cyan-500/25 bg-cyan-950/15 p-4">
+      <section hidden={plansFocused} className="mb-6 rounded-2xl border border-cyan-500/25 bg-cyan-950/15 p-4">
         <h3 className="text-xs font-black uppercase tracking-widest text-cyan-200">Seguimiento</h3>
         <p className="mt-1 text-sm font-bold text-white">Inicio efectivo: {formatTrackingStartPeriod(effectiveTracking.period)}</p>
         <p className="text-xs text-slate-400">{effectiveTracking.source === 'KPI' ? 'EXCEPCIÓN DE SEGUIMIENTO' : effectiveTracking.source === 'UNDEFINED' ? 'Inicio de seguimiento sin configurar.' : `Heredado del ${effectiveTracking.source === 'DASHBOARD' ? 'tablero' : 'cliente'}`}</p>
@@ -1268,6 +1295,7 @@ export const CurrentPeriodFocus: React.FC<CurrentPeriodFocusProps> = ({
         </div>
       ) : (
         <>
+          <div ref={indicatorSectionRef} hidden={plansFocused} className="scroll-mt-24">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 mb-3">
             <div className="lg:col-span-6 flex flex-col gap-3">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -1688,21 +1716,36 @@ export const CurrentPeriodFocus: React.FC<CurrentPeriodFocusProps> = ({
               canEdit={canEdit}
               year={year}
             />
-            {dashboardId !== undefined && (
+          </div>
+          </div>
+          {plansFocused && <aside className="mb-4 scroll-mt-24 rounded-xl border border-cyan-500/25 bg-slate-950/70 p-3" aria-label="Referencia compacta del indicador">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Indicador seleccionado</p>
+                <h3 className="truncate text-sm font-black text-white">{getCleanIndicatorName(indicator)}</h3>
+              </div>
+              <p className="text-xs text-slate-300"><span className="font-bold text-emerald-300">Resultado:</span> {localActual !== "" ? formatMonthlyProgress(parseFormattedNumber(localActual), item.monthlyProgressCaptured?.[currentIdx], unit, 0) : "Sin datos"} <span className="mx-1 text-slate-600">·</span> <span className="font-bold text-cyan-200">Cumplimiento:</span> {Math.round(compliance.overallPercentage)}% <span className="mx-1 text-slate-600">·</span> <span className="font-bold text-slate-300">Brecha:</span> {isPositiveGap ? "▲" : "▼"} {isCalculated ? `${(Math.abs(gap) * 100).toFixed(1)} pp` : `${formatNumberWithCommas(Math.abs(gap), 0)} ${unit}`}</p>
+            </div>
+          </aside>}
+          {dashboardId !== undefined && (
+            <div ref={plansSectionRef} className="scroll-mt-28">
               <RelatedActionPlans
+                key={`${clientId || ""}:${dashboardId}:${item.id}`}
                 indicatorId={item.id}
                 dashboardId={dashboardId}
                 clientId={clientId}
                 year={year || new Date().getFullYear()}
                 periodType={isWeekly ? "weekly" : "monthly"}
                 periodIndex={currentIdx}
-                canEdit={canEdit}
+                canEdit={canEditPlans}
                 initialPlanId={initialActionPlanId}
                 onCancelEdit={onActionPlanExit}
                 onSaved={onActionPlanExit}
+                collapsed={!plansFocused}
+                onToggle={() => plansFocused ? returnToIndicator() : openPlans()}
               />
-            )}
-          </div>
+            </div>
+          )}
         </>
       )}
 

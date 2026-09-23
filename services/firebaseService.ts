@@ -27,7 +27,7 @@ import {
 
 import { db, auth } from "../firebase";
 import { readTableroScope, requestedTenants, dashboardQueryConstraints } from './tableroReadScope';
-import { resolveEffectiveMemberships } from './tableroAuthorization';
+import { canEditActionPlan as canEditActionPlanForUser, resolveEffectiveMemberships } from './tableroAuthorization';
 
 import type {
     User,
@@ -71,7 +71,15 @@ const itemsCollectionRef = (dashboardId: number | string) =>
  * @version v9.1.0-PRO-FINAL-SHIELDED
  */
 export const firebaseService = {
+    assertActionPlanEditScope: async (clientId: string | undefined, dashboardId: number | string): Promise<void> => {
+        const scope = await readTableroScope();
+        const tenant = String(clientId || '').trim().toUpperCase();
+        if (!tenant || !scope.profile || !canEditActionPlanForUser(scope.profile, { id: dashboardId, clientId: tenant })) {
+            throw new Error('Permiso plan_editor y alcance editable requeridos.');
+        }
+    },
     createActionPlan: async (plan: ActionPlan): Promise<ActionPlan> => {
+        await firebaseService.assertActionPlanEditScope(plan.clientId, plan.dashboardId);
         const id = plan.id || crypto.randomUUID();
         const now = new Date().toISOString();
         const value = { ...plan, id, createdAt: plan.createdAt || now, updatedAt: now };
@@ -80,7 +88,12 @@ export const firebaseService = {
     },
 
     updateActionPlan: async (id: string, changes: Partial<ActionPlan>): Promise<boolean> => {
-        await updateDoc(doc(db, ACTION_PLANS_COLLECTION, id), { ...changes, updatedAt: new Date().toISOString() });
+        const ref = doc(db, ACTION_PLANS_COLLECTION, id);
+        const snap = await getDoc(ref);
+        if (!snap.exists()) throw new Error('Plan de acción no encontrado.');
+        const stored = snap.data() as ActionPlan;
+        await firebaseService.assertActionPlanEditScope(stored.clientId, stored.dashboardId);
+        await updateDoc(ref, { ...changes, updatedAt: new Date().toISOString() });
         return true;
     },
 
@@ -88,8 +101,10 @@ export const firebaseService = {
         const ref = doc(db, ACTION_PLANS_COLLECTION, id);
         const snap = await getDoc(ref);
         if (!snap.exists()) return false;
-        const storedClientId = String(snap.data().clientId || '').trim().toUpperCase();
+        const stored = snap.data() as ActionPlan;
+        const storedClientId = String(stored.clientId || '').trim().toUpperCase();
         if (storedClientId !== clientId.trim().toUpperCase()) throw new Error('ActionPlan fuera del alcance del cliente activo.');
+        await firebaseService.assertActionPlanEditScope(stored.clientId, stored.dashboardId);
         await deleteDoc(ref);
         return true;
     },

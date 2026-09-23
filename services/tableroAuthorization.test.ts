@@ -2,6 +2,7 @@ import { DashboardRole, GlobalUserRole, type User } from '../types';
 import {
   canAccessDashboard,
   canAdminTenant,
+  canEditActionPlan,
   canReadBusinessData,
   getAuthorizedClientIds,
   getMembershipForClient,
@@ -96,6 +97,23 @@ describe('canonical Tablero authorization compatibility', () => {
     expect(canAccessDashboard(member, { id: 1, clientId: 'A' }, 'editor')).toBe(false);
     expect(canAccessDashboard(member, { id: 2, clientId: 'A' }, 'editor')).toBe(true);
     expect(canAccessDashboard(member, { id: 2, clientId: 'B' })).toBe(false);
+  });
+
+  it('authorizes action-plan editing only for tenant admins or explicit plan_editor editable scope', () => {
+    const dashboard = { id: 'D1', clientId: 'A' };
+    const viewer = legacy({ memberships: [{ clientId: 'A', role: 'standard_user', status: 'active', dashboardScopes: { D1: 'viewer' }, capabilities: [] }] });
+    const editorWithoutPlanCapability = legacy({ memberships: [{ clientId: 'A', role: 'standard_user', status: 'active', dashboardScopes: { D1: 'editor' }, editableDashboardIds: ['D1'], capabilities: ['editor'] }] });
+    const planEditor = legacy({ memberships: [{ clientId: 'A', role: 'standard_user', status: 'active', dashboardScopes: { D1: 'viewer' }, editableDashboardIds: ['D1'], capabilities: ['plan_editor'] }] });
+    const platformAdmin = legacy({ globalRole: 'platform_admin' as GlobalUserRole, clientId: undefined });
+    const platformWithExplicitMembership = { ...platformAdmin, memberships: planEditor.memberships };
+
+    expect(canEditActionPlan(viewer, dashboard)).toBe(false);
+    expect(canEditActionPlan(editorWithoutPlanCapability, dashboard)).toBe(false);
+    expect(canEditActionPlan(planEditor, dashboard)).toBe(true);
+    expect(canEditActionPlan(planEditor, { ...dashboard, id: 'D2' })).toBe(false);
+    expect(canEditActionPlan(platformAdmin, dashboard)).toBe(false);
+    expect(canEditActionPlan(platformWithExplicitMembership, dashboard)).toBe(true);
+    expect(canEditActionPlan(legacy({ globalRole: GlobalUserRole.Admin }), dashboard)).toBe(true);
   });
 
   it('fails closed for canonical writes without an explicit editable scope', () => {

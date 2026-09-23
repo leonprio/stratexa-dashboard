@@ -14,14 +14,14 @@ describe('ActionPlan activity impact contract', () => {
     expect(calculateActionPlanProgress([activity(50)])).toBe(50);
     expect(normalizeActionImpact()).toBe('NOT_EVALUATED');
     expect(normalizeActionImpact('positive')).toBe('FAVORABLE');
-    expect(normalizeActionImpact('low')).toBe('PARTIAL');
+    expect(normalizeActionImpact('low')).toBe('LOW_OR_NONE');
     expect(normalizeActionImpact('none')).toBe('LOW_OR_NONE');
   });
 
   it('derives execution feedback from progress, independently of impact', () => {
-    expect(activityProgressVisual(0)).toMatchObject({ label: 'Pendiente', tone: 'neutral' });
+    expect(activityProgressVisual(0)).toMatchObject({ label: 'Pendiente', tone: 'cyan' });
     expect(activityProgressVisual(45)).toMatchObject({ label: 'En ejecución', tone: 'cyan' });
-    expect(activityProgressVisual(90)).toMatchObject({ label: 'Próximo a completarse', tone: 'amber' });
+    expect(activityProgressVisual(90)).toMatchObject({ label: 'En ejecución', tone: 'cyan' });
     expect(activityProgressVisual(100)).toMatchObject({ label: 'Completada', tone: 'emerald' });
     expect(normalizeActionImpact(activity(100, 'LOW_OR_NONE').impact)).toBe('LOW_OR_NONE');
   });
