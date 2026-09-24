@@ -1,7 +1,8 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Search, Plus, Trash2, Edit2, CheckCircle2, AlertCircle, Save, ArrowLeft, ArrowRight } from 'lucide-react';
+import { X, Search, Plus, Trash2, Edit2, CheckCircle2, AlertCircle, Upload, Download } from 'lucide-react';
 import { calculateMonthlyCompliancePercentage } from '../utils/compliance';
+import { checklistCsvTemplate, createChecklistElement, previewChecklistCsv, type ChecklistImportPreview } from '../utils/checklistBulkImport';
 
 /**
  * Representa un elemento individual dentro de la lista de gestión detallada.
@@ -68,6 +69,11 @@ const ActivityManager = React.memo((props: ActivityManagerProps) => {
   const [newActivityName, setNewActivityName] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [showImport, setShowImport] = useState(false);
+  const [importPreview, setImportPreview] = useState<ChecklistImportPreview | null>(null);
+  const [importFileName, setImportFileName] = useState('');
+  const [importSummary, setImportSummary] = useState('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // LOG DE AUDITORÍA v8.6.0
   useEffect(() => {
@@ -78,16 +84,52 @@ const ActivityManager = React.memo((props: ActivityManagerProps) => {
     const val = newActivityName.trim();
     if (!val) return;
 
-    const newAct: Activity = {
-      id: `act-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
-      label: val,
-      targetCount: 1,
-      completedCount: 0
-    };
+    const newAct: Activity = createChecklistElement(val);
 
     setActivities(prev => [...prev, newAct]);
     setNewActivityName("");
     console.log("🛡️ [v9.1.0-PRO-FINAL-SHIELDED] Actividad añadida:", val);
+  };
+
+  const downloadTemplate = () => {
+    const url = URL.createObjectURL(new Blob([checklistCsvTemplate()], { type: 'text/csv;charset=utf-8' }));
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = 'plantilla-elementos-checklist.csv';
+    anchor.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const readFileAsText = (file: File) => new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ''));
+    reader.onerror = () => reject(reader.error);
+    reader.readAsText(file, 'UTF-8');
+  });
+
+  const handleImportFile = async (file?: File) => {
+    setImportSummary('');
+    if (!file) return;
+    setImportFileName(file.name);
+    if (!file.name.toLocaleLowerCase().endsWith('.csv')) {
+      setImportPreview({ rowsRead: 0, valid: [], duplicateCount: 0, existingCount: 0, rejectedCount: 0, emptyCount: 0, issues: [], fatalError: 'Selecciona un archivo CSV UTF-8.' });
+      return;
+    }
+    try {
+      setImportPreview(previewChecklistCsv(await readFileAsText(file), activities.map(activity => activity.label)));
+    } catch {
+      setImportPreview({ rowsRead: 0, valid: [], duplicateCount: 0, existingCount: 0, rejectedCount: 0, emptyCount: 0, issues: [], fatalError: 'No fue posible leer el archivo seleccionado.' });
+    }
+  };
+
+  const confirmImport = () => {
+    if (!importPreview || importPreview.fatalError || importPreview.valid.length === 0) return;
+    const imported = importPreview.valid.map(createChecklistElement);
+    setActivities(previous => [...previous, ...imported]);
+    setImportSummary(`${imported.length} elemento${imported.length === 1 ? '' : 's'} incorporado${imported.length === 1 ? '' : 's'} a la lista. Confirma la lista para guardar.`);
+    setImportPreview(null);
+    setImportFileName('');
+    if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
   const handleDelete = (id: string) => {
@@ -174,6 +216,61 @@ const ActivityManager = React.memo((props: ActivityManagerProps) => {
             </button>
           </div>
         </div>
+
+        {/* IMPORTACIÓN MASIVA: disponible únicamente dentro del gestor checklist y sólo con permiso de edición. */}
+        {canEdit && (
+          <div className="border-b border-slate-800 bg-slate-950/40 px-6 py-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-widest text-cyan-300">Importación masiva CSV</p>
+                <p className="mt-1 text-xs text-slate-400">Agrega elementos al periodo abierto sin reemplazar los existentes.</p>
+              </div>
+              <button type="button" onClick={() => setShowImport(value => !value)} className="inline-flex items-center gap-2 rounded-xl border border-cyan-500/30 bg-cyan-500/10 px-4 py-2 text-xs font-black text-cyan-200 hover:bg-cyan-500/20">
+                <Upload className="h-4 w-4" /> {showImport ? 'OCULTAR IMPORTACIÓN' : 'IMPORTAR ELEMENTOS'}
+              </button>
+            </div>
+
+            {showImport && (
+              <section aria-label="Importar elementos" className="mt-4 rounded-2xl border border-white/10 bg-slate-900/70 p-4">
+                <div className="flex flex-wrap gap-2">
+                  <button type="button" onClick={downloadTemplate} className="inline-flex min-h-[40px] items-center gap-2 rounded-lg border border-white/10 px-3 py-2 text-[10px] font-black text-slate-200 hover:bg-white/5">
+                    <Download className="h-4 w-4" /> DESCARGAR PLANTILLA
+                  </button>
+                  <label className="inline-flex min-h-[40px] cursor-pointer items-center gap-2 rounded-lg bg-indigo-600 px-3 py-2 text-[10px] font-black text-white hover:bg-indigo-500">
+                    <Upload className="h-4 w-4" /> SELECCIONAR ARCHIVO
+                    <input ref={fileInputRef} aria-label="Seleccionar archivo CSV" type="file" accept=".csv,text/csv" className="sr-only" onChange={event => void handleImportFile(event.target.files?.[0])} />
+                  </label>
+                  {importFileName && <span className="self-center text-xs text-slate-400">{importFileName}</span>}
+                </div>
+
+                {importPreview?.fatalError && <p role="alert" className="mt-3 rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-xs font-bold text-rose-200">{importPreview.fatalError}</p>}
+
+                {importPreview && !importPreview.fatalError && (
+                  <div className="mt-4">
+                    <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
+                      {[
+                        ['Filas leídas', importPreview.rowsRead], ['Válidos', importPreview.valid.length],
+                        ['Duplicados', importPreview.duplicateCount], ['Existentes', importPreview.existingCount],
+                        ['Rechazados', importPreview.rejectedCount], ['Nuevos', importPreview.valid.length],
+                      ].map(([label, value]) => <div key={label} className="rounded-lg bg-slate-950/70 p-2"><p className="text-[8px] font-black uppercase text-slate-500">{label}</p><p className="text-lg font-black text-white">{value}</p></div>)}
+                    </div>
+                    {importPreview.issues.length > 0 && (
+                      <div className="mt-3 max-h-28 overflow-y-auto rounded-lg border border-amber-500/20 bg-amber-500/5 p-2" aria-label="Errores de importación">
+                        {importPreview.issues.slice(0, 20).map(issue => <p key={`${issue.row}-${issue.type}`} className="text-[10px] text-amber-100">Fila {issue.row}: {issue.message}{issue.value ? ` — ${issue.value}` : ''}</p>)}
+                        {importPreview.issues.length > 20 && <p className="mt-1 text-[10px] font-bold text-amber-300">Y {importPreview.issues.length - 20} incidencias más.</p>}
+                      </div>
+                    )}
+                    <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+                      <p className="text-[10px] text-slate-400">Los nuevos elementos iniciarán con meta 1 y realizado 0.</p>
+                      <button type="button" onClick={confirmImport} disabled={importPreview.valid.length === 0} className="rounded-lg bg-emerald-600 px-4 py-2 text-[10px] font-black text-white disabled:cursor-not-allowed disabled:opacity-40">CONFIRMAR IMPORTACIÓN</button>
+                    </div>
+                  </div>
+                )}
+                {importSummary && <p role="status" className="mt-3 rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-xs font-bold text-emerald-200">{importSummary}</p>}
+              </section>
+            )}
+          </div>
+        )}
 
         {/* CONTROLES */}
         <div className="p-6 bg-slate-900/30 grid grid-cols-1 md:grid-cols-2 gap-4 border-b border-slate-800">

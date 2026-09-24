@@ -105,4 +105,29 @@ describe('ActivityManager Component v9.2.2', () => {
 
         expect(mockOnClose).toHaveBeenCalled();
     });
+
+    it('oculta la importación a usuarios de solo lectura', () => {
+        render(<ActivityManager title="Test" initialActivities={mockActivities} onSave={mockOnSave} onClose={mockOnClose} canEdit={false} />);
+        expect(screen.queryByText('IMPORTAR ELEMENTOS')).not.toBeInTheDocument();
+    });
+
+    it('muestra la vista previa y agrega únicamente elementos nuevos tras confirmar', async () => {
+        render(<ActivityManager title="Test" initialActivities={mockActivities} onSave={mockOnSave} onClose={mockOnClose} />);
+        fireEvent.click(screen.getByText('IMPORTAR ELEMENTOS'));
+        const file = new File(['elemento\nActividad 1\nNueva Uno\nNueva Uno\nNueva Dos'], 'elementos.csv', { type: 'text/csv' });
+        fireEvent.change(screen.getByLabelText('Seleccionar archivo CSV'), { target: { files: [file] } });
+
+        expect(await screen.findByText('Filas leídas')).toBeInTheDocument();
+        expect(screen.getByText('CONFIRMAR IMPORTACIÓN')).toBeEnabled();
+        fireEvent.click(screen.getByText('CONFIRMAR IMPORTACIÓN'));
+
+        expect(screen.getByText('Nueva Uno')).toBeInTheDocument();
+        expect(screen.getByText('Nueva Dos')).toBeInTheDocument();
+        fireEvent.click(screen.getByText('CONFIRMAR LISTA'));
+        expect(mockOnSave).toHaveBeenCalledWith(expect.arrayContaining([
+            expect.objectContaining({ label: 'Actividad 1', id: '1' }),
+            expect.objectContaining({ label: 'Nueva Uno', targetCount: 1, completedCount: 0 }),
+            expect.objectContaining({ label: 'Nueva Dos', targetCount: 1, completedCount: 0 }),
+        ]));
+    });
 });

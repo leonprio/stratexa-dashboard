@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import type { DashboardItem } from '../types';
 import { ContinuityWorkspace } from '../components/continuity/ContinuityWorkspace';
+import { ActivityManager } from '../components/ActivityManager';
 import type { ContinuityPanelPending } from '../components/continuity/ContinuityPanel';
 import { createSimpleKpiContinuityCommitment } from '../utils/continuityAdapter';
 import '../index.css';
@@ -100,6 +101,7 @@ function LabApp() {
   const [data, setData] = useState<{ activity: DashboardItem; simple: DashboardItem; annual: DashboardItem }>(load);
   const [selected, setSelected] = useState<{ item: DashboardItem; pending: ContinuityPanelPending } | null>(null);
   const [message, setMessage] = useState('');
+  const [checklistOpen, setChecklistOpen] = useState(false);
 
   const localhost = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
 
@@ -209,6 +211,13 @@ function LabApp() {
           <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
             <button
               type="button"
+              onClick={() => setChecklistOpen(true)}
+              style={{ minHeight: 44, padding: '10px 14px', borderRadius: 10, border: '1px solid #06b6d4', background: '#0e7490', color: '#ffffff', fontWeight: 800, fontSize: 12, cursor: 'pointer' }}
+            >
+              ABRIR CHECKLIST E IMPORTACIÓN
+            </button>
+            <button
+              type="button"
               onClick={() => open(data.activity, 'test-activity-a', 'Actividad A')}
               style={{
                 minHeight: 44,
@@ -274,6 +283,29 @@ function LabApp() {
           <button type="button" onClick={() => open(data.annual, ANNUAL_KPI_KEY, 'ALIANZAS DE CERTIFICACIÓN — CRUCE ANUAL')} style={{ minHeight: 44, padding: '10px 16px', borderRadius: 10, border: '1px solid #f59e0b', background: '#b45309', color: '#fff', fontWeight: 800, fontSize: 12, cursor: 'pointer' }}>ABRIR CONTINUIDAD ANUAL</button>
         </article>
       </section>
+
+      {checklistOpen && (
+        <ActivityManager
+          title={data.activity.indicator}
+          subtitle="Agosto 2026 · entorno aislado"
+          periodLabel="Ago 2026"
+          initialActivities={data.activity.activityConfig?.[7] || []}
+          canEdit
+          onClose={() => setChecklistOpen(false)}
+          onSave={(activities) => {
+            const totalGoal = activities.reduce((sum, activity) => sum + activity.targetCount, 0);
+            const totalProgress = activities.reduce((sum, activity) => sum + activity.completedCount, 0);
+            const monthlyGoals = [...data.activity.monthlyGoals];
+            const monthlyProgress = [...data.activity.monthlyProgress];
+            monthlyGoals[7] = totalGoal;
+            monthlyProgress[7] = totalProgress;
+            update({ ...data.activity, activityConfig: { ...data.activity.activityConfig, 7: activities }, monthlyGoals, monthlyProgress });
+            setChecklistOpen(false);
+            setMessage(`Checklist guardado en el laboratorio: ${activities.length} elementos.`);
+          }}
+          goalType={data.activity.goalType}
+        />
+      )}
 
       {selected && (
         <ContinuityWorkspace
