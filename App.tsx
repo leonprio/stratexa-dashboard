@@ -97,7 +97,7 @@ const PageShell: React.FC<{ children: React.ReactNode }> = ({ children }) => (
  * Componente principal de la aplicación Stratexa Dashboard.
  * Gestiona el estado global de autenticación, carga de tableros, ruteo interno y administración.
  *
- * @version v9.4.1-STABLE-QA-HARDENING
+ * @version v9.6.12-CHECKLIST-BULK-MANAGEMENT
  * @architecture Critical Nuclear Shield (Atomic Isolation)
  *
  * @returns {JSX.Element} El árbol de componentes de la aplicación.
@@ -107,8 +107,8 @@ export default function App() {
   const [_errorMsg, setErrorMsg] = useState<string>("");
   const [user, setUser] = useState<FirebaseUser | null>(null);
   const [userProfile, setUserProfile] = useState<User | null>(null);
-  // 🛡️ v9.6.11-RELATED-PLANS-SECURITY
-  const VERSION_LABEL = "v9.6.11-RELATED-PLANS-SECURITY";
+  // 🛡️ v9.6.12-CHECKLIST-BULK-MANAGEMENT
+  const VERSION_LABEL = "v9.6.12-CHECKLIST-BULK-MANAGEMENT";
   const SHIELD_ID = "GOLD MASTER";
   const [activeAdminSection, setActiveAdminSection] =
     useState<AdminSection>("none");
