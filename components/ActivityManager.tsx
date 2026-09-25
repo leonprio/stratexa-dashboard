@@ -73,6 +73,12 @@ const ActivityManager = React.memo((props: ActivityManagerProps) => {
   const [importPreview, setImportPreview] = useState<ChecklistImportPreview | null>(null);
   const [importFileName, setImportFileName] = useState('');
   const [importSummary, setImportSummary] = useState('');
+  const [importMode, setImportMode] = useState<'add' | 'update'>('add');
+  const [filter, setFilter] = useState<'all' | 'none' | 'progress' | 'completed'>('all');
+  const [sort, setSort] = useState<'name-asc' | 'name-desc' | 'progress-asc' | 'progress-desc' | 'target-asc' | 'target-desc' | 'pending'>('name-asc');
+  const [page, setPage] = useState(0);
+  const [managingList, setManagingList] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // LOG DE AUDITORÍA v8.6.0
@@ -112,21 +118,25 @@ const ActivityManager = React.memo((props: ActivityManagerProps) => {
     if (!file) return;
     setImportFileName(file.name);
     if (!file.name.toLocaleLowerCase().endsWith('.csv')) {
-      setImportPreview({ rowsRead: 0, valid: [], duplicateCount: 0, existingCount: 0, rejectedCount: 0, emptyCount: 0, issues: [], fatalError: 'Selecciona un archivo CSV UTF-8.' });
+      setImportPreview({ rowsRead: 0, valid: [], updates: [], unchangedCount: 0, metaDelta: 0, duplicateCount: 0, existingCount: 0, rejectedCount: 0, emptyCount: 0, issues: [], fatalError: 'Selecciona un archivo CSV UTF-8.' });
       return;
     }
     try {
-      setImportPreview(previewChecklistCsv(await readFileAsText(file), activities.map(activity => activity.label)));
+      setImportPreview(previewChecklistCsv(await readFileAsText(file), activities));
     } catch {
-      setImportPreview({ rowsRead: 0, valid: [], duplicateCount: 0, existingCount: 0, rejectedCount: 0, emptyCount: 0, issues: [], fatalError: 'No fue posible leer el archivo seleccionado.' });
+      setImportPreview({ rowsRead: 0, valid: [], updates: [], unchangedCount: 0, metaDelta: 0, duplicateCount: 0, existingCount: 0, rejectedCount: 0, emptyCount: 0, issues: [], fatalError: 'No fue posible leer el archivo seleccionado.' });
     }
   };
 
   const confirmImport = () => {
-    if (!importPreview || importPreview.fatalError || importPreview.valid.length === 0) return;
-    const imported = importPreview.valid.map(createChecklistElement);
-    setActivities(previous => [...previous, ...imported]);
-    setImportSummary(`${imported.length} elemento${imported.length === 1 ? '' : 's'} incorporado${imported.length === 1 ? '' : 's'} a la lista. Confirma la lista para guardar.`);
+    if (!importPreview || importPreview.fatalError || (importPreview.valid.length === 0 && (importMode !== 'update' || importPreview.updates.length === 0))) return;
+    const imported = importPreview.valid.map(({ label, targetCount }) => createChecklistElement(label, targetCount));
+    setActivities(previous => previous.map(activity => {
+      const update = importMode === 'update' ? importPreview.updates.find(item => item.existingId === activity.id) : undefined;
+      return update ? { ...activity, targetCount: update.targetCount } : activity;
+    }).concat(imported));
+    const changed = importMode === 'update' ? importPreview.updates.length : 0;
+    setImportSummary(`${imported.length} nuevos y ${changed} metas actualizadas. Confirma la lista para guardar.`);
     setImportPreview(null);
     setImportFileName('');
     if (fileInputRef.current) fileInputRef.current.value = '';
@@ -143,11 +153,32 @@ const ActivityManager = React.memo((props: ActivityManagerProps) => {
     ));
   };
 
-  const filtered = useMemo(() => {
-    return activities.filter(a => 
-      a.label.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-  }, [activities, searchTerm]);
+  const filtered = useMemo(() => activities.filter(a => {
+    const matchesSearch = a.label.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesFilter = filter === 'all' || (filter === 'none' && a.completedCount === 0) || (filter === 'progress' && a.completedCount > 0 && a.completedCount < a.targetCount) || (filter === 'completed' && a.completedCount >= a.targetCount);
+    return matchesSearch && matchesFilter;
+  }).sort((a, b) => {
+    if (sort === 'name-asc') return a.label.localeCompare(b.label, 'es');
+    if (sort === 'name-desc') return b.label.localeCompare(a.label, 'es');
+    if (sort === 'progress-asc') return a.completedCount - b.completedCount;
+    if (sort === 'progress-desc') return b.completedCount - a.completedCount;
+    if (sort === 'target-asc') return a.targetCount - b.targetCount;
+    if (sort === 'target-desc') return b.targetCount - a.targetCount;
+    return (b.targetCount - b.completedCount) - (a.targetCount - a.completedCount);
+  }), [activities, searchTerm, filter, sort]);
+  const pageSize = 50;
+  const pageCount = Math.max(1, Math.ceil(filtered.length / pageSize));
+  const visibleActivities = filtered.slice(page * pageSize, (page + 1) * pageSize);
+  useEffect(() => setPage(current => Math.min(current, pageCount - 1)), [pageCount]);
+  const toggleSelected = (id: string) => setSelectedIds(previous => { const next = new Set(previous); next.has(id) ? next.delete(id) : next.add(id); return next; });
+  const selectVisible = () => setSelectedIds(previous => new Set([...previous, ...filtered.map(a => a.id)]));
+  const deleteSelected = () => { if (selectedIds.size === 0 || !window.confirm(`Eliminar ${selectedIds.size} elementos del periodo seleccionado?`)) return; setActivities(previous => previous.filter(a => !selectedIds.has(a.id))); setSelectedIds(new Set()); };
+  const exportCsv = (scope: 'all' | 'filtered') => {
+    const rows = scope === 'all' ? activities : filtered;
+    const escape = (value: string) => `"${(value.startsWith('=') || value.startsWith('+') || value.startsWith('-') || value.startsWith('@') ? `'${value}` : value).replace(/"/g, '""')}"`;
+    const body = rows.map(a => [escape(a.label), a.targetCount, a.completedCount, Math.max(0, a.targetCount - a.completedCount), `${calculateMonthlyCompliancePercentage(a.completedCount, a.targetCount, goalType === 'minimize').toFixed(2)}%`].join(',')).join('\r\n');
+    const url = URL.createObjectURL(new Blob([`\uFEFFelemento,meta,realizado,pendiente,cumplimiento\r\n${body}\r\n`], { type: 'text/csv;charset=utf-8' })); const anchor = document.createElement('a'); anchor.href = url; anchor.download = 'checklist-periodo.csv'; anchor.click(); URL.revokeObjectURL(url);
+  };
 
   const stats = useMemo(() => {
     const total = activities.reduce((sum, a) => sum + a.targetCount, 0);
@@ -242,6 +273,10 @@ const ActivityManager = React.memo((props: ActivityManagerProps) => {
                   </label>
                   {importFileName && <span className="self-center text-xs text-slate-400">{importFileName}</span>}
                 </div>
+                <div className="mt-3 flex flex-wrap gap-2 text-[10px] font-black">
+                  <button type="button" onClick={() => setImportMode('add')} className={`rounded-lg px-3 py-2 ${importMode === 'add' ? 'bg-cyan-600 text-white' : 'bg-slate-800 text-slate-300'}`}>AGREGAR NUEVOS</button>
+                  <button type="button" onClick={() => setImportMode('update')} className={`rounded-lg px-3 py-2 ${importMode === 'update' ? 'bg-cyan-600 text-white' : 'bg-slate-800 text-slate-300'}`}>AGREGAR Y ACTUALIZAR METAS</button>
+                </div>
 
                 {importPreview?.fatalError && <p role="alert" className="mt-3 rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-xs font-bold text-rose-200">{importPreview.fatalError}</p>}
 
@@ -254,6 +289,18 @@ const ActivityManager = React.memo((props: ActivityManagerProps) => {
                         ['Rechazados', importPreview.rejectedCount], ['Nuevos', importPreview.valid.length],
                       ].map(([label, value]) => <div key={label} className="rounded-lg bg-slate-950/70 p-2"><p className="text-[8px] font-black uppercase text-slate-500">{label}</p><p className="text-lg font-black text-white">{value}</p></div>)}
                     </div>
+                    <p className="mt-2 text-[10px] text-slate-400">Existentes: {importPreview.existingCount} · Meta a actualizar: {importPreview.updates.length} · Sin cambio: {importPreview.unchangedCount} · Variación neta: {importPreview.metaDelta >= 0 ? '+' : ''}{importPreview.metaDelta.toLocaleString()}</p>
+                    {importMode === 'update' && importPreview.updates.length > 0 ? (
+                      <div className="mt-3 rounded-lg border border-cyan-500/20 bg-cyan-500/5 p-3">
+                        <div className="mb-2 flex items-center justify-between gap-3 text-[10px] font-black uppercase tracking-widest text-cyan-200"><span>Vista previa de actualización</span><span>{importPreview.updates.length} metas por actualizar · Variación: {importPreview.metaDelta >= 0 ? '+' : ''}{importPreview.metaDelta.toLocaleString()}</span></div>
+                        <div className="grid grid-cols-[1fr_auto_auto] gap-x-4 gap-y-1 text-xs text-slate-200"><span className="text-[9px] font-black uppercase text-slate-500">Elemento</span><span className="text-[9px] font-black uppercase text-slate-500">Meta actual</span><span className="text-[9px] font-black uppercase text-slate-500">Meta propuesta</span>{importPreview.updates.slice(0, 3).map(item => <React.Fragment key={item.existingId}><span className="truncate">{item.label}</span><span>{item.existingTargetCount?.toLocaleString()}</span><span>{item.targetCount.toLocaleString()}</span></React.Fragment>)}</div>
+                      </div>
+                    ) : importPreview.valid.length > 0 ? (
+                      <div className="mt-3 rounded-lg border border-cyan-500/20 bg-cyan-500/5 p-3">
+                        <div className="mb-2 flex items-center justify-between gap-3 text-[10px] font-black uppercase tracking-widest text-cyan-200"><span>Muestra de importación</span><span>Suma de metas nuevas: {importPreview.valid.reduce((sum, item) => sum + item.targetCount, 0).toLocaleString()}</span></div>
+                        <div className="grid grid-cols-[1fr_auto] gap-x-4 gap-y-1 text-xs text-slate-200"><span className="text-[9px] font-black uppercase text-slate-500">Elemento</span><span className="text-[9px] font-black uppercase text-slate-500">Meta</span>{importPreview.valid.slice(0, 3).map(item => <React.Fragment key={item.label}><span className="truncate">{item.label}</span><span>{item.targetCount.toLocaleString()}</span></React.Fragment>)}</div>
+                      </div>
+                    ) : importMode === 'update' && importPreview.existingCount > 0 ? <p role="status" className="mt-3 text-xs font-bold text-slate-300">Los elementos ya existen y sus metas no presentan cambios.</p> : null}
                     {importPreview.issues.length > 0 && (
                       <div className="mt-3 max-h-28 overflow-y-auto rounded-lg border border-amber-500/20 bg-amber-500/5 p-2" aria-label="Errores de importación">
                         {importPreview.issues.slice(0, 20).map(issue => <p key={`${issue.row}-${issue.type}`} className="text-[10px] text-amber-100">Fila {issue.row}: {issue.message}{issue.value ? ` — ${issue.value}` : ''}</p>)}
@@ -261,8 +308,8 @@ const ActivityManager = React.memo((props: ActivityManagerProps) => {
                       </div>
                     )}
                     <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
-                      <p className="text-[10px] text-slate-400">Los nuevos elementos iniciarán con meta 1 y realizado 0.</p>
-                      <button type="button" onClick={confirmImport} disabled={importPreview.valid.length === 0} className="rounded-lg bg-emerald-600 px-4 py-2 text-[10px] font-black text-white disabled:cursor-not-allowed disabled:opacity-40">CONFIRMAR IMPORTACIÓN</button>
+                      <p className="text-[10px] text-slate-400">Los elementos se agregarán al periodo seleccionado; iniciarán con realizado 0.</p>
+                      <button type="button" onClick={confirmImport} disabled={importPreview.valid.length === 0 && (importMode !== 'update' || importPreview.updates.length === 0)} className="rounded-lg bg-emerald-600 px-4 py-2 text-[10px] font-black text-white disabled:cursor-not-allowed disabled:opacity-40">CONFIRMAR IMPORTACIÓN</button>
                     </div>
                   </div>
                 )}
@@ -304,6 +351,15 @@ const ActivityManager = React.memo((props: ActivityManagerProps) => {
               AÑADIR ELEMENTO
             </button>
           </div>
+          <div className="md:col-span-2 flex flex-wrap items-center gap-2">
+            <select aria-label="Filtrar elementos" value={filter} onChange={e => setFilter(e.target.value as typeof filter)} className="rounded-lg bg-slate-950 p-2 text-xs text-white"><option value="all">TODOS</option><option value="none">SIN AVANCE</option><option value="progress">EN PROCESO</option><option value="completed">COMPLETADOS</option></select>
+            <select aria-label="Ordenar elementos" value={sort} onChange={e => setSort(e.target.value as typeof sort)} className="rounded-lg bg-slate-950 p-2 text-xs text-white"><option value="name-asc">Nombre: A a Z</option><option value="name-desc">Nombre: Z a A</option><option value="progress-asc">Avance: menor a mayor</option><option value="progress-desc">Avance: mayor a menor</option><option value="target-asc">Meta: menor a mayor</option><option value="target-desc">Meta: mayor a menor</option><option value="pending">Mayor pendiente primero</option></select>
+            <span className="text-xs text-slate-400">Mostrando {filtered.length} de {activities.length} elementos</span>
+            <button type="button" onClick={() => exportCsv('all')} className="ml-auto rounded-lg border border-white/10 px-3 py-2 text-[10px] font-black text-slate-200">EXPORTAR LISTA</button>
+            <button type="button" onClick={() => exportCsv('filtered')} className="rounded-lg border border-white/10 px-3 py-2 text-[10px] font-black text-slate-200">EXPORTAR FILTRADOS</button>
+            {canEdit && <button type="button" onClick={() => setManagingList(value => !value)} className="rounded-lg border border-rose-500/30 px-3 py-2 text-[10px] font-black text-rose-200">GESTIONAR LISTA</button>}
+          </div>
+          {managingList && canEdit && <div className="md:col-span-2 flex flex-wrap items-center gap-2 rounded-lg border border-rose-500/20 bg-rose-500/5 p-3"><span className="text-xs text-rose-100">{selectedIds.size} seleccionados</span><button type="button" onClick={selectVisible} className="rounded px-2 py-1 text-[10px] font-black text-slate-200">SELECCIONAR RESULTADOS ({filtered.length})</button><button type="button" onClick={() => setSelectedIds(new Set(activities.map(a => a.id)))} className="rounded px-2 py-1 text-[10px] font-black text-slate-200">SELECCIONAR TODA LA LISTA ({activities.length})</button><button type="button" onClick={deleteSelected} disabled={selectedIds.size === 0} className="rounded bg-rose-600 px-2 py-1 text-[10px] font-black text-white disabled:opacity-40">ELIMINAR {selectedIds.size}</button><button type="button" onClick={() => { if (activities.length > 0 && window.confirm(`Vaciar los ${activities.length} elementos del periodo seleccionado?`)) { setActivities([]); setSelectedIds(new Set()); } }} className="rounded border border-rose-500 px-2 py-1 text-[10px] font-black text-rose-200">VACIAR LISTA DEL PERIODO</button></div>}
         </div>
 
         {/* LISTADO */}
@@ -314,8 +370,9 @@ const ActivityManager = React.memo((props: ActivityManagerProps) => {
               <p className="font-bold uppercase tracking-widest text-sm">No hay elementos registrados</p>
             </div>
           ) : (
-            filtered.map(a => (
-              <div key={a.id} className="group bg-slate-900/40 border border-slate-800/50 hover:border-indigo-500/50 rounded-2xl p-4 transition-all flex items-center justify-between gap-4">
+            visibleActivities.map(a => (
+                <div key={a.id} className="group bg-slate-900/40 border border-slate-800/50 hover:border-indigo-500/50 rounded-2xl p-4 transition-all flex items-center justify-between gap-4">
+                {managingList && <input aria-label={`Seleccionar ${a.label}`} type="checkbox" checked={selectedIds.has(a.id)} onChange={() => toggleSelected(a.id)} />}
                 <div className="flex-1 flex flex-col gap-1">
                    {editingId === a.id ? (
                      <input 
@@ -406,12 +463,14 @@ const ActivityManager = React.memo((props: ActivityManagerProps) => {
                   <div className="flex items-center gap-3 ml-4">
                     <button 
                       onClick={() => setEditingId(a.id === editingId ? null : a.id)}
+                      disabled={!canEdit}
                       className="p-2 text-slate-500 hover:text-indigo-400 transition-colors"
                     >
                       <Edit2 className="w-4 h-4" />
                     </button>
                     <button 
                       onClick={() => handleDelete(a.id)}
+                      disabled={!canEdit}
                       className="p-2 text-slate-500 hover:text-rose-500 transition-colors"
                     >
                       <Trash2 className="w-4 h-4" />
@@ -422,6 +481,7 @@ const ActivityManager = React.memo((props: ActivityManagerProps) => {
             ))
           )}
         </div>
+        {filtered.length > pageSize && <div className="flex items-center justify-center gap-3 border-t border-slate-800 p-3"><button type="button" onClick={() => setPage(value => Math.max(0, value - 1))} disabled={page === 0} className="rounded px-3 py-1 text-xs text-slate-200 disabled:opacity-40">ANTERIOR</button><span className="text-xs text-slate-400">Página {page + 1} de {pageCount}</span><button type="button" onClick={() => setPage(value => Math.min(pageCount - 1, value + 1))} disabled={page >= pageCount - 1} className="rounded px-3 py-1 text-xs text-slate-200 disabled:opacity-40">SIGUIENTE</button></div>}
 
         {/* FOOTER */}
         <div className="p-6 bg-slate-900 border-t border-slate-800 flex items-center justify-between">

@@ -1,14 +1,19 @@
 import {
   CHECKLIST_IMPORT_MAX_ROWS,
+  checklistCsvTemplate,
   createChecklistElement,
   previewChecklistCsv,
 } from './checklistBulkImport';
 
 describe('importación masiva de checklist', () => {
+  it('genera plantilla UTF-8 con BOM y encabezados de dos columnas', () => {
+    expect(checklistCsvTemplate()).toBe('\uFEFFelemento,meta\r\nProspecto ficticio 001,1\r\nProspecto ficticio 002,2\r\nProspecto ficticio 003,3\r\n');
+  });
+
   it('acepta un elemento y conserva caracteres habituales', () => {
     const result = previewChecklistCsv('\uFEFFelemento\r\nJosé Álvarez & Asociados\r\n', []);
     expect(result.fatalError).toBeUndefined();
-    expect(result.valid).toEqual(['José Álvarez & Asociados']);
+    expect(result.valid).toEqual([{ label: 'José Álvarez & Asociados', targetCount: 1 }]);
   });
 
   it.each([70, 500])('acepta %i elementos', count => {
@@ -18,9 +23,31 @@ describe('importación masiva de checklist', () => {
     expect(result.valid).toHaveLength(count);
   });
 
+  it('acepta dos columnas y suma 85 metas para 70 elementos variados', () => {
+    const csv = ['elemento,meta', ...Array.from({ length: 70 }, (_, index) => `Prospecto ${index + 1},${index < 60 ? 1 : index < 65 ? 2 : 3}`)].join('\n');
+    const result = previewChecklistCsv(csv, []);
+    expect(result.valid).toHaveLength(70);
+    expect(result.valid.reduce((sum, item) => sum + item.targetCount, 0)).toBe(85);
+  });
+
+  it.each(['', '0', '-1', '1.5', 'uno', '9007199254740992'])('rechaza meta inválida: %s', meta => {
+    const result = previewChecklistCsv(`elemento,meta\nProspecto,${meta}`, []);
+    expect(result.valid).toHaveLength(0);
+    expect(result.rejectedCount).toBe(1);
+  });
+
+  it('clasifica metas existentes para actualización sin alterar id ni realizado', () => {
+    const existing = { id: 'existente-1', label: 'Prospecto', targetCount: 2, completedCount: 1 };
+    const result = previewChecklistCsv('elemento,meta\nProspecto,5\nIgual,1', [existing, { id: 'igual', label: 'Igual', targetCount: 1, completedCount: 0 }]);
+    expect(result.valid).toHaveLength(0);
+    expect(result.updates).toEqual([expect.objectContaining({ existingId: 'existente-1', targetCount: 5, existingTargetCount: 2 })]);
+    expect(result.unchangedCount).toBe(1);
+    expect(result.metaDelta).toBe(3);
+  });
+
   it('clasifica duplicados internos, existentes, vacíos e inválidos', () => {
     const result = previewChecklistCsv('elemento\nNuevo\nnuevo\nExistente\n\nValor,Extra', [' existente ']);
-    expect(result.valid).toEqual(['Nuevo']);
+    expect(result.valid).toEqual([{ label: 'Nuevo', targetCount: 1 }]);
     expect(result.duplicateCount).toBe(1);
     expect(result.existingCount).toBe(1);
     expect(result.emptyCount).toBe(1);
@@ -35,15 +62,15 @@ describe('importación masiva de checklist', () => {
   });
 
   it('crea el mismo modelo canónico de la captura individual', () => {
-    const element = createChecklistElement(' Prospecto 001 ');
-    expect(element).toEqual(expect.objectContaining({ label: 'Prospecto 001', targetCount: 1, completedCount: 0 }));
+    const element = createChecklistElement(' Prospecto 001 ', 3);
+    expect(element).toEqual(expect.objectContaining({ label: 'Prospecto 001', targetCount: 3, completedCount: 0 }));
     expect(element.id).toMatch(/^act-/);
   });
 
   it('una segunda importación detecta todos los elementos como existentes', () => {
     const csv = 'elemento\nUno\nDos';
     const first = previewChecklistCsv(csv, []);
-    const second = previewChecklistCsv(csv, first.valid);
+    const second = previewChecklistCsv(csv, first.valid.map(item => item.label));
     expect(second.valid).toHaveLength(0);
     expect(second.existingCount).toBe(2);
   });

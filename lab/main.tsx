@@ -166,6 +166,7 @@ function LabApp() {
   const simpleReal = Number(data.simple.monthlyProgress[7] ?? 0);
   const simplePending = Math.max(0, simpleGoal - simpleReal);
 
+  const actGoal = Number(data.activity.monthlyGoals?.[7] ?? 0);
   const actProgress = Number(data.activity.monthlyProgress?.[7] ?? 0);
 
   return (
@@ -206,7 +207,7 @@ function LabApp() {
         <article style={{ border: '1px solid #334155', borderRadius: 16, padding: 20, background: '#0f172a' }}>
           <h2 style={{ fontSize: 17, fontWeight: 800, margin: '0 0 8px', color: '#f8fafc' }}>EVENTOS DE CERTIFICACIÓN</h2>
           <p style={{ color: '#94a3b8', fontSize: 14, margin: '0 0 16px' }}>
-            Agosto 2026 · Meta 3 · Real {actProgress}
+            Agosto 2026 · Meta {actGoal} · Real {actProgress}
           </p>
           <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
             <button
