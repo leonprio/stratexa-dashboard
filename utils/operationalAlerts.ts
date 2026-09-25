@@ -1,4 +1,7 @@
 import { Dashboard, DashboardItem, ComplianceThresholds } from '../types';
+import { currentControlPeriod } from './controlNavigation';
+import type { TrackingPeriod } from './trackingObligation';
+import { readControlPeriodValues } from './controlValues';
 import { enrichDashboardsWithOperationalMetrics, resolveOperationalIdentity } from './operationalControl';
 import { isOperationalPeriodCaptured } from './compliance';
 import { getWeekNumber } from './weeklyUtils';
@@ -10,6 +13,9 @@ export type OperationalDataStatus = 'AL DÍA' | 'DATOS INCOMPLETOS' | 'DATOS VEN
 export interface OperationalAlert {
   id: string | number;
   dashboardId: string | number;
+  dashboardTitle: string;
+  clientId?: string;
+  period: TrackingPeriod;
   indicator: string;
   direction: string;
   area: string;
@@ -21,6 +27,12 @@ export interface OperationalAlert {
   stalenessDays: number;
   missingPeriods: number;
   performanceScore: number;
+  goal?: number;
+  progress?: number;
+  pending?: number;
+  periodGoal?: number;
+  periodProgress?: number;
+  periodPending?: number;
   realOperationalScore: number;
   isOvertRisk: boolean; // Alerta Roja: 3+ periodos vencidos
   isHiddenRisk: boolean; // Riesgo Oculto: Alto desempeño + baja captura
@@ -129,6 +141,13 @@ export const buildOperationalAlerts = (
     if (d.isAggregate || String(d.id).includes('agg-') || d.id === -1) return;
 
     (d.items || []).forEach(item => {
+      const period = currentControlPeriod(item.frequency || d.periodicity || 'monthly', year);
+      const periodValues = readControlPeriodValues(item, period);
+      const periodCount = period.frequency === 'monthly' ? period.monthIndex + 1 : period.weekNumber;
+      const observed = Array.from({ length: periodCount }, (_, index) => readControlPeriodValues(item,
+        period.frequency === 'monthly' ? { frequency: 'monthly', year, monthIndex: index } : { frequency: 'weekly', year, weekNumber: index + 1 }));
+      const hasGoal = observed.some(value => value.goal !== undefined);
+      const hasProgress = observed.some(value => value.progress !== undefined);
       const identity = resolveOperationalIdentity(d, item);
       const m = item.operationalMetrics;
       if (!m) return;
@@ -158,6 +177,9 @@ export const buildOperationalAlerts = (
       alerts.push({
         id: item.id,
         dashboardId: d.id,
+        dashboardTitle: d.title,
+        clientId: d.clientId,
+        period,
         indicator: item.indicator,
         direction: identity.direction,
         area: identity.area,
@@ -169,6 +191,14 @@ export const buildOperationalAlerts = (
         stalenessDays: m.stalenessDays,
         missingPeriods: m.missingPeriods,
         performanceScore: m.sourcePerformanceScore ?? m.performanceScore,
+        goal: hasGoal && typeof (m as any).currentTarget === 'number' ? (m as any).currentTarget : undefined,
+        progress: hasProgress && typeof (m as any).currentProgress === 'number' ? (m as any).currentProgress : undefined,
+        pending: hasGoal && hasProgress && typeof (m as any).currentTarget === 'number' && typeof (m as any).currentProgress === 'number'
+          ? Math.max(0, item.goalType === 'minimize' ? (m as any).currentProgress - (m as any).currentTarget : (m as any).currentTarget - (m as any).currentProgress)
+          : undefined,
+        periodGoal: periodValues.goal,
+        periodProgress: periodValues.progress,
+        periodPending: periodValues.pending,
         realOperationalScore: m.realOperationalScore,
         isOvertRisk,
         isHiddenRisk,

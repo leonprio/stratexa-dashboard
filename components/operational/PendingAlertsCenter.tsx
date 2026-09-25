@@ -2,21 +2,16 @@ import React, { useMemo, useState } from 'react';
 import type { Dashboard, SystemSettings } from '../../types';
 import { buildPendingItems, getPendingActionTarget, getPendingCategoryCounts, type PendingCategory, type PendingItem } from '../../utils/pendingAlerts';
 import type { TrackingPeriod } from '../../utils/trackingObligation';
+import { currentControlPeriod, type ControlNavigationTarget } from '../../utils/controlNavigation';
 
 interface PendingAlertsCenterProps {
   dashboards: Dashboard[];
   year: number;
   authorizedDashboardIds: Array<Dashboard['id']>;
-  onNavigateToKpi?: (dashboardId: number | string, itemId: number | string) => void;
+  clientId?: string;
+  onNavigateToKpi?: (target: ControlNavigationTarget) => void;
   clientSettings?: Pick<SystemSettings, 'defaultTrackingStartPeriod'>;
 }
-
-const currentPeriod = (frequency: 'monthly' | 'weekly', year: number): TrackingPeriod => {
-  const now = new Date();
-  if (frequency === 'monthly') return { frequency, year, monthIndex: year < now.getFullYear() ? 11 : year > now.getFullYear() ? 0 : now.getMonth() };
-  const weekNumber = year < now.getFullYear() ? 53 : Math.max(1, Math.min(53, Math.ceil((now.getTime() - new Date(now.getFullYear(), 0, 1).getTime()) / 604800000)));
-  return { frequency, year, weekNumber };
-};
 
 const periodLabel = (period: TrackingPeriod) => period.frequency === 'monthly'
   ? new Intl.DateTimeFormat('es-MX', { month: 'short', year: 'numeric' }).format(new Date(period.year, period.monthIndex, 1))
@@ -34,13 +29,13 @@ const categoryStyles: Record<PendingCategory, { badge: string; border: string; c
   RESULTADO: { badge: 'bg-rose-500/15 text-rose-200 border-rose-500/30', border: 'border-rose-500/25', count: 'bg-rose-500/10 text-rose-200', cta: 'bg-rose-600 hover:bg-rose-500' },
 };
 
-export const PendingAlertsCenter: React.FC<PendingAlertsCenterProps> = ({ dashboards, year, authorizedDashboardIds, onNavigateToKpi, clientSettings }) => {
+export const PendingAlertsCenter: React.FC<PendingAlertsCenterProps> = ({ dashboards, year, authorizedDashboardIds, clientId, onNavigateToKpi, clientSettings }) => {
   const [area, setArea] = useState('TODAS');
   const [responsible, setResponsible] = useState('TODOS');
   const [category, setCategory] = useState<'TODAS' | PendingCategory>('TODAS');
   const pending = useMemo(() => (['monthly', 'weekly'] as const).flatMap(frequency => {
     const scoped = dashboards.filter(d => (d.periodicity || 'monthly') === frequency);
-    const period = currentPeriod(frequency, year);
+    const period = currentControlPeriod(frequency, year);
     return buildPendingItems(scoped, period, period, authorizedDashboardIds, clientSettings);
   }), [authorizedDashboardIds, clientSettings, dashboards, year]);
   const counts = useMemo(() => getPendingCategoryCounts(pending), [pending]);
@@ -58,6 +53,6 @@ export const PendingAlertsCenter: React.FC<PendingAlertsCenterProps> = ({ dashbo
       <select aria-label="Filtrar pendientes por área" value={area} onChange={e => setArea(e.target.value)} className="min-h-[36px] rounded-lg border border-white/10 bg-slate-950 px-2 text-[10px] font-black text-slate-300">{areas.map(value => <option key={value}>{value}</option>)}</select>
       <select aria-label="Filtrar pendientes por responsable" value={responsible} onChange={e => setResponsible(e.target.value)} className="min-h-[36px] rounded-lg border border-white/10 bg-slate-950 px-2 text-[10px] font-black text-slate-300">{responsibles.map(value => <option key={value}>{value}</option>)}</select>
     </div>
-    <div className="mt-4 grid gap-3 xl:grid-cols-3">{(['CONFIGURACIÓN', 'CAPTURA', 'RESULTADO'] as const).map(group => { const style = categoryStyles[group]; return <div key={group}><h4 className="mb-2 text-[9px] font-black uppercase tracking-[0.22em] text-slate-400">{group}</h4><div className="space-y-2">{visible.filter(x => x.category === group).map(item => <article key={item.id} className={`rounded-lg border ${style.border} bg-slate-950/40 p-3`}><div className="flex items-start justify-between gap-2"><span className={`rounded border px-2 py-0.5 text-[9px] font-black uppercase tracking-wider ${style.badge}`}>{pendingLabel(item)}</span><span className="text-[9px] text-slate-500">{periodLabel(item.period)}</span></div><h5 className="mt-2 text-sm font-black text-white">{item.indicatorName}</h5><p className="mt-1 text-xs leading-relaxed text-slate-300">{item.message}</p><p className="mt-2 text-[9px] font-bold uppercase tracking-wide text-slate-500">{item.area || 'Área no registrada'} · {item.responsible || 'Responsable no registrado'}</p><button type="button" onClick={() => { const target = getPendingActionTarget(item); onNavigateToKpi?.(target.dashboardId, target.itemId); }} className={`mt-3 min-h-[36px] rounded-md px-3 text-[9px] font-black uppercase tracking-wider text-white ${style.cta}`}>{item.actionLabel}</button></article>)}{visible.filter(x => x.category === group).length === 0 && <p className="rounded-lg border border-dashed border-white/10 p-3 text-xs text-slate-500">Sin asuntos.</p>}</div></div>; })}</div>
+    <div className="mt-4 grid gap-3 xl:grid-cols-3">{(['CONFIGURACIÓN', 'CAPTURA', 'RESULTADO'] as const).map(group => { const style = categoryStyles[group]; return <div key={group}><h4 className="mb-2 text-[9px] font-black uppercase tracking-[0.22em] text-slate-400">{group}</h4><div className="space-y-2">{visible.filter(x => x.category === group).map(item => <article key={item.id} className={`rounded-lg border ${style.border} bg-slate-950/40 p-3`}><div className="flex items-start justify-between gap-2"><span className={`rounded border px-2 py-0.5 text-[9px] font-black uppercase uppercase tracking-wider ${style.badge}`}>{pendingLabel(item)}</span><span className="text-[9px] text-slate-500">{periodLabel(item.period)}</span></div><h5 className="mt-2 text-sm font-black text-white">{item.indicatorName}</h5><p className="text-[9px] font-bold uppercase tracking-wide text-cyan-300">{item.dashboardTitle}</p><p className="mt-1 text-xs leading-relaxed text-slate-300">{item.message}</p><div className="mt-2 grid grid-cols-3 gap-1 text-[9px] font-bold uppercase tracking-wide text-slate-400"><span>Meta: {item.goal === undefined ? 'Sin meta definida' : item.goal}</span><span>Realizado: {item.progress === undefined ? '—' : item.progress}</span><span>Pendiente: {item.pending === undefined ? '—' : item.pending}</span></div><p className="mt-2 text-[9px] font-bold uppercase tracking-wide text-slate-500">{item.area || 'Área no registrada'} · {item.responsible || 'Responsable no registrado'}</p><button type="button" onClick={() => { const target = getPendingActionTarget(item); onNavigateToKpi?.({ clientId: item.clientId || clientId || '', ...target, period: item.period, operation: item.category === 'CONFIGURACIÓN' ? 'CONFIGURAR' : item.category === 'CAPTURA' ? 'REGISTRAR_AVANCE' : 'GESTIONAR', origin: 'control' }); }} className={`mt-3 min-h-[36px] rounded-md px-3 text-[9px] font-black uppercase tracking-wider text-white ${style.cta}`}>{item.actionLabel}</button></article>)}{visible.filter(x => x.category === group).length === 0 && <p className="rounded-lg border border-dashed border-white/10 p-3 text-xs text-slate-500">Sin asuntos.</p>}</div></div>; })}</div>
   </section>;
 };

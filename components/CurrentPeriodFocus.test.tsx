@@ -65,6 +65,27 @@ describe('CurrentPeriodFocus Runtime & Derived Indicators Render Test (v9.4.13)'
     expect(screen.queryByText(/Guardar Cambios/i)).not.toBeInTheDocument();
   });
 
+  test('CONTROL opens the explicit September target instead of the last captured month', () => {
+    render(<CurrentPeriodFocus item={mockItems[0]} allDashboardItems={mockItems} globalThresholds={{ onTrack: 90, atRisk: 80 }} year={2026} canEdit onUpdateItem={jest.fn()} onClose={jest.fn()} controlTarget={{ clientId: 'LAB-A', dashboardId: 101, itemId: 2, period: { frequency: 'monthly', year: 2026, monthIndex: 8 }, operation: 'REGISTRAR_AVANCE', origin: 'control' }} />);
+    expect(screen.getAllByText('Septiembre').length).toBeGreaterThan(0);
+    expect(screen.getByRole('status')).toHaveTextContent('REGISTRAR AVANCE');
+    expect(document.activeElement).toHaveAttribute('id', 'actual-input');
+  });
+
+  test('CONTROL opens the explicit supported weekly period', () => {
+    const weekly = { ...mockItems[0], frequency: 'weekly' as const, weeklyGoals: Array(53).fill(null), weeklyProgress: Array(53).fill(null) };
+    render(<CurrentPeriodFocus item={weekly} allDashboardItems={[weekly]} globalThresholds={{ onTrack: 90, atRisk: 80 }} year={2026} canEdit onUpdateItem={jest.fn()} onClose={jest.fn()} controlTarget={{ clientId: 'LAB-B', dashboardId: 202, itemId: 2, period: { frequency: 'weekly', year: 2026, weekNumber: 39 }, operation: 'CONFIGURAR', origin: 'control' }} />);
+    expect(screen.getAllByText('Semana 39').length).toBeGreaterThan(0);
+    expect(document.activeElement).toHaveAttribute('id', 'goal-input');
+  });
+
+  test('GESTIONAR opens the existing checklist manager for the selected month', () => {
+    const item = { ...mockItems[0], isActivityMode: true, activityConfig: { 8: [{ id: 'synthetic-a', label: 'Actividad ficticia', targetCount: 10, completedCount: 3 }] } };
+    render(<CurrentPeriodFocus item={item} allDashboardItems={[item]} globalThresholds={{ onTrack: 90, atRisk: 80 }} year={2026} canEdit onUpdateItem={jest.fn()} onClose={jest.fn()} controlTarget={{ clientId: 'LAB-A', dashboardId: 101, itemId: 2, period: { frequency: 'monthly', year: 2026, monthIndex: 8 }, operation: 'GESTIONAR', origin: 'control' }} />);
+    expect(screen.getByText('CONFIRMAR LISTA')).toBeInTheDocument();
+    expect(screen.getByText('Actividad ficticia')).toBeInTheDocument();
+  });
+
   test('volver a heredar emits an explicit override deletion only after persistence succeeds', async () => {
     const onUpdateItem = jest.fn().mockResolvedValue(undefined);
     const item = { ...mockItems[0], trackingStartPeriod: { frequency: 'monthly' as const, year: 2026, monthIndex: 8 } };

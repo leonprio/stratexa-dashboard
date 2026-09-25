@@ -41,6 +41,15 @@ describe('OperationalControlCenter simplificado', () => {
     expect(selectControlDashboards(sources, aggregate)).toEqual(sources);
   });
 
+  it('does not mix physical dashboards from another synthetic client', () => {
+    const a = { ...dashboard, id: 101, clientId: 'LAB-A' };
+    const a2 = { ...dashboard, id: 102, clientId: 'LAB-A' };
+    const b = { ...dashboard, id: 201, clientId: 'LAB-B' };
+    expect(selectControlDashboards([a, a2, b], a, 'LAB-A')).toEqual([a, a2]);
+    expect(selectControlDashboards([a, a2, b], b, 'LAB-B')).toEqual([b]);
+    expect(selectControlDashboards([a, a2, b], b, 'all')).toEqual([b]);
+  });
+
   it('oculta la navegación redundante sin eliminar el acceso al historial', () => {
     render(<OperationalControlCenter dashboards={[dashboard]} currentDashboard={dashboard} globalThresholds={dashboard.thresholds} year={2026} />);
     expect(screen.queryByText('Mapa de Calor')).not.toBeInTheDocument();

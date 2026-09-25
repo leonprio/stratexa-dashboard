@@ -27,6 +27,7 @@ import {
 } from "../utils/formatters";
 import { buildResolutionHistory, type ResolutionHistoryRow } from "../utils/resolutionHistory";
 import { reopenActivityResolution } from "../utils/activityResolutionMerge";
+import type { ControlNavigationTarget } from '../utils/controlNavigation';
 
 interface CurrentPeriodFocusProps {
   item: DashboardItem;
@@ -45,6 +46,7 @@ interface CurrentPeriodFocusProps {
   dashboardTrackingStartPeriod?: TrackingStartPeriod;
   clientTrackingStartPeriod?: TrackingStartPeriod;
   canConfigureTracking?: boolean;
+  controlTarget?: ControlNavigationTarget;
 }
 
 export interface PendingKpiActivity {
@@ -458,6 +460,7 @@ export const CurrentPeriodFocus: React.FC<CurrentPeriodFocusProps> = ({
   dashboardTrackingStartPeriod,
   clientTrackingStartPeriod,
   canConfigureTracking = false,
+  controlTarget,
 }) => {
   const [localGoal, setLocalGoal] = useState<string>("");
   const [localActual, setLocalActual] = useState<string>("");
@@ -468,6 +471,9 @@ export const CurrentPeriodFocus: React.FC<CurrentPeriodFocusProps> = ({
   const plansSectionRef = useRef<HTMLDivElement | null>(null);
   const indicatorSectionRef = useRef<HTMLDivElement | null>(null);
   const [isActivityManagerOpen, setIsActivityManagerOpen] = useState(false);
+  const controlActionOpened = useRef(false);
+  const goalInputRef = useRef<HTMLInputElement | null>(null);
+  const actualInputRef = useRef<HTMLInputElement | null>(null);
   const [activityTab, setActivityTab] = useState<"current" | "pending" | "history">(
     "current",
   );
@@ -549,7 +555,9 @@ export const CurrentPeriodFocus: React.FC<CurrentPeriodFocusProps> = ({
   };
   const monthlyProgressCaptured = item.monthlyProgressCaptured || [];
 
-  const [activePeriodIdx, setActivePeriodIdx] = useState<number>(-1);
+  const [activePeriodIdx, setActivePeriodIdx] = useState<number>(() => controlTarget
+    ? controlTarget.period.frequency === 'monthly' ? controlTarget.period.monthIndex : controlTarget.period.weekNumber - 1
+    : -1);
 
   const isWeekly = frequency === "weekly";
   const currentYear = new Date().getFullYear();
@@ -619,6 +627,17 @@ export const CurrentPeriodFocus: React.FC<CurrentPeriodFocusProps> = ({
   }, [periodIdx]);
 
   const currentIdx = activePeriodIdx === -1 ? periodIdx : activePeriodIdx;
+  useEffect(() => {
+    if (!controlTarget || controlActionOpened.current) return;
+    controlActionOpened.current = true;
+    if (item.isActivityMode) {
+      setIsActivityManagerOpen(true);
+    } else if (canEdit && controlTarget.operation === 'CONFIGURAR') {
+      goalInputRef.current?.focus();
+    } else if (canEdit && controlTarget.operation === 'REGISTRAR_AVANCE') {
+      actualInputRef.current?.focus();
+    }
+  }, [canEdit, controlTarget, currentIdx, item.activityConfig, item.isActivityMode]);
   const pendingCurrentIdx = isWeekly
     ? currentIdx
     : year && year < currentYear
@@ -1095,6 +1114,7 @@ export const CurrentPeriodFocus: React.FC<CurrentPeriodFocusProps> = ({
       id="gestion-detallada-focus"
       className="relative bg-slate-900/40 backdrop-blur-3xl border border-cyan-500/40 rounded-[2.5rem] p-4 md:p-6 animate-in zoom-in-95 duration-500 z-10 scroll-mt-24"
     >
+      {controlTarget && <p className="mb-3 text-[10px] font-black uppercase tracking-widest text-cyan-300" role="status">CONTROL · {controlTarget.operation.replace('_', ' ')} · {controlTarget.period.frequency === 'monthly' ? `Mes ${controlTarget.period.monthIndex + 1}` : `Semana ${controlTarget.period.weekNumber}`} de {controlTarget.period.year}</p>}
       <div hidden={plansFocused} className="sticky top-16 z-30 bg-slate-950/95 backdrop-blur-md p-4 rounded-3xl border border-slate-800 shadow-2xl flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-8">
         {plansFocused ? <div className="w-full"><span className="text-[9px] font-black uppercase tracking-widest text-slate-400">Planes ejecutivos · indicador</span><h2 className="text-base font-black text-white">{getCleanIndicatorName(indicator)}</h2></div> : <>
         <div className="flex-1 w-full">
@@ -1311,6 +1331,7 @@ export const CurrentPeriodFocus: React.FC<CurrentPeriodFocusProps> = ({
                     </span>
                   </div>
                   <input
+                    ref={goalInputRef}
                     type="text"
                     inputMode="decimal"
                     value={
@@ -1354,6 +1375,7 @@ export const CurrentPeriodFocus: React.FC<CurrentPeriodFocusProps> = ({
                     </span>
                   </div>
                   <input
+                    ref={actualInputRef}
                     type="text"
                     inputMode="decimal"
                     value={

@@ -1058,6 +1058,8 @@ export const calculateOperationalMetrics = (
     missingPeriods,
     captureRate,
     performanceScore,
+    currentTarget: sourcePerformance.currentTarget,
+    currentProgress: sourcePerformance.currentProgress,
     sourcePerformanceScore: sourcePerformance.overallPercentage,
     realOperationalScore,
     stalenessDays,

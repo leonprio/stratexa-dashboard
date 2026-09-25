@@ -48,6 +48,7 @@ import {
 import { firebaseService } from "./services/firebaseService";
 import { shieldItem } from "./utils/compliance";
 import { mergeActivityConfigPreservingResolutions } from "./utils/activityResolutionMerge";
+import { isValidControlTarget, type ControlNavigationTarget } from "./utils/controlNavigation";
 
 import { IPS_INDICATORS } from "./utils/standardStructure";
 import { exportBulkDataToCSV } from "./utils/exportUtils";
@@ -169,6 +170,7 @@ export default function App() {
     dashboardId: number | string;
     itemId: number | string;
     source: "objectives" | "areas" | "contribution" | "plans" | "control";
+    control?: ControlNavigationTarget;
   } | null>(null);
   const [pendingActionPlanTarget, setPendingActionPlanTarget] = useState<{
     actionPlanId: number | string;
@@ -342,10 +344,16 @@ export default function App() {
     if (selectedDashboardId === null) return null;
     // 🛡️ RELAXED MATCH: Allow string/number comparison (e.g. "101" == 101)
     return (
-      dashboards.find((d) => String(d.id) === String(selectedDashboardId)) ||
+      dashboards.find((d) =>
+        String(d.id) === String(selectedDashboardId) &&
+        (!pendingKpiNavigation?.control ||
+          (String(d.id) === String(pendingKpiNavigation.control.dashboardId) &&
+            (!d.clientId || d.clientId.trim().toUpperCase() === pendingKpiNavigation.control.clientId.trim().toUpperCase()))) &&
+        (selectedClientId === 'all' || !d.clientId || d.clientId.trim().toUpperCase() === selectedClientId.trim().toUpperCase()),
+      ) ||
       null
     );
-  }, [dashboards, selectedDashboardId]);
+  }, [dashboards, selectedDashboardId, pendingKpiNavigation, selectedClientId]);
 
   const isAggregate = useMemo(
     () =>
@@ -3293,6 +3301,7 @@ Esto corregirá cualquier inconsistencia en colores (ej. Amarillo vs Rojo).`)
             {selectedDashboard ? (
               <DashboardView
                 dashboard={selectedDashboard}
+                activeClientId={selectedClientId}
                 onUpdateItem={handleUpdateItem}
                 userRole={userRole}
                 isGlobalAdmin={isGlobalAdmin}
@@ -3320,6 +3329,7 @@ Esto corregirá cualquier inconsistencia en colores (ej. Amarillo vs Rojo).`)
                     : null
                 }
                 requestedNavigationSource={pendingKpiNavigation?.source}
+                requestedControlTarget={pendingKpiNavigation?.control}
                 requestedActionPlanId={pendingActionPlanTarget?.actionPlanId}
                 onActionPlanExit={() => setPendingActionPlanTarget(null)}
                 onNavigateToPlan={(target) => {
@@ -3342,6 +3352,13 @@ Esto corregirá cualquier inconsistencia en colores (ej. Amarillo vs Rojo).`)
                     source,
                   });
                   setSelectedDashboardId(dashboardId);
+                }}
+                onNavigateToControlTarget={(target) => {
+                  if (selectedClientId !== 'all' && target.clientId.trim().toUpperCase() !== selectedClientId.trim().toUpperCase()) return;
+                  if (!isValidControlTarget(target, dashboards, selectedYear, selectedClientId === 'all' ? undefined : selectedClientId)) return;
+                  if (selectedClientId === 'all') selectClientContext(target.clientId);
+                  setPendingKpiNavigation({ dashboardId: target.dashboardId, itemId: target.itemId, source: 'control', control: target });
+                  setSelectedDashboardId(target.dashboardId);
                 }}
                 onNavigationConsumed={() => setPendingKpiNavigation(null)}
                 onUpdateMetadata={

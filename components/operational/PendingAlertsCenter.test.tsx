@@ -5,7 +5,7 @@ import type { Dashboard } from '../../types';
 
 const period = { frequency: 'monthly' as const, year: 2026, monthIndex: 8 };
 const dashboard = (id: number, goal: number | null, progress: number | null, start: any): Dashboard => ({
-  id, title: `Área ${id}`, subtitle: '', area: 'Operaciones', periodicity: 'monthly', thresholds: { onTrack: 95, atRisk: 85 },
+  id, clientId: 'LAB-A', title: `Área ${id}`, subtitle: '', area: 'Operaciones', periodicity: 'monthly', thresholds: { onTrack: 95, atRisk: 85 },
   items: [{ id, indicator: `KPI ${id}`, weight: 1, unit: 'u', type: 'accumulative', goalType: 'maximize', trackingStartPeriod: start,
     monthlyGoals: Object.assign(Array(12).fill(null), { 8: goal }), monthlyProgress: Object.assign(Array(12).fill(null), { 8: progress }),
     monthlyGoalCaptured: Object.assign(Array(12).fill(false), { 8: goal !== null }), monthlyProgressCaptured: Object.assign(Array(12).fill(false), { 8: progress !== null }) }],
@@ -25,6 +25,6 @@ describe('PendingAlertsCenter', () => {
     expect(screen.queryByText('KPI 4')).not.toBeInTheDocument();
     expect(screen.queryByText('KPI 5')).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'CONFIGURAR' }));
-    expect(onNavigateToKpi).toHaveBeenCalledWith(2, 2);
+    expect(onNavigateToKpi).toHaveBeenCalledWith({ clientId: 'LAB-A', dashboardId: 2, itemId: 2, period: { frequency: 'monthly', year: 2026, monthIndex: 8 }, operation: 'CONFIGURAR', origin: 'control' });
   });
 });

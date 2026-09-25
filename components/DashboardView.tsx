@@ -38,9 +38,11 @@ import {
 import { orderDashboardItemsForStrategicPresentation } from "../strategicDisplayOrder";
 import { findDashboardItemById } from "../dashboardItemNavigation";
 import { canConfigureTracking, canEditActionPlan } from '../services/tableroAuthorization';
+import type { ControlNavigationTarget } from '../utils/controlNavigation';
 
 interface DashboardViewProps {
   dashboard: DashboardType;
+  activeClientId?: string;
   onUpdateItem: (item: DashboardItem) => Promise<void> | void;
   userRole: DashboardRole | null;
   isGlobalAdmin: boolean;
@@ -69,6 +71,8 @@ interface DashboardViewProps {
   areaConfigs?: AreaStrategyConfig[];
   hasStrategyForSelectedClient?: boolean;
   requestedItemId?: number | string | null;
+  requestedControlTarget?: ControlNavigationTarget;
+  onNavigateToControlTarget?: (target: ControlNavigationTarget) => void;
   onNavigateToKpi?: (
     dashboardId: number | string,
     itemId: number | string,
@@ -102,6 +106,7 @@ interface DashboardViewProps {
 export const DashboardView: React.FC<DashboardViewProps> = React.memo(
   ({
     dashboard,
+    activeClientId,
     onUpdateItem,
     userRole,
     isGlobalAdmin,
@@ -121,6 +126,8 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(
     areaConfigs = [],
     hasStrategyForSelectedClient = false,
     requestedItemId,
+    requestedControlTarget,
+    onNavigateToControlTarget,
     requestedNavigationSource = "objectives",
     requestedActionPlanId,
     onNavigateToKpi,
@@ -179,6 +186,10 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(
     const [activeView, setActiveView] = useState<
       "dashboard" | "objectives" | "reports" | "control"
     >("dashboard");
+    const [controlVisited, setControlVisited] = useState(false);
+    useEffect(() => {
+      if (activeView === 'control') setControlVisited(true);
+    }, [activeView]);
     useEffect(() => {
       if (!hasStrategyForSelectedClient && activeView === "objectives") {
         setActiveView("dashboard");
@@ -649,6 +660,7 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(
             id="gestion-detallada-focus"
           >
             <CurrentPeriodFocus
+              key={`${dashboard.id}:${selectedItem.id}:${requestedControlTarget?.period.year || year}:${requestedControlTarget?.period.frequency || ''}:${requestedControlTarget?.period.frequency === 'monthly' ? requestedControlTarget.period.monthIndex : requestedControlTarget?.period.weekNumber || ''}:${requestedControlTarget?.operation || ''}`}
               item={selectedItem}
               globalThresholds={activeThresholds}
               year={year}
@@ -665,6 +677,7 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(
               canConfigureTracking={isGlobalAdmin || canConfigureTracking(currentUser, dashboard.clientId || currentUser.clientId || '', dashboard)}
               initialActionPlanId={requestedActionPlanId}
               onActionPlanExit={handleActionPlanExit}
+              controlTarget={requestedControlTarget && String(requestedControlTarget.dashboardId) === String(dashboard.id) && String(requestedControlTarget.itemId) === String(selectedItem.id) ? requestedControlTarget : undefined}
             />
           </div>
         )}
@@ -701,10 +714,13 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(
           <button
             type="button"
             onClick={() => {
+              const returningToControl = returnContext === 'control';
               setSelectedItemId(null);
               setActiveView(
                 returnContext === "control" ? "control" : "objectives",
               );
+              setReturnContext(null);
+              if (returningToControl) onNavigationConsumed?.();
             }}
             className="mb-3 rounded-lg border border-violet-500/30 px-3 py-2 text-[10px] font-black text-violet-300"
           >
@@ -778,22 +794,22 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(
               setActiveView("dashboard");
             }}
           />
-        ) : (
+        ) : null}
+        {controlVisited && <div hidden={activeView !== 'control'}>
           <OperationalControlCenter
             dashboards={allDashboards}
             currentDashboard={dashboard}
             globalThresholds={activeThresholds}
             year={year || 2026}
+            activeClientId={activeClientId}
             canEdit={
               canEditActionPlan(currentUser, dashboard)
             }
             clientSettings={settings}
             onNavigateToPlan={onNavigateToPlan}
-            onNavigateToKpi={(dashboardId, itemId) =>
-              onNavigateToKpi?.(dashboardId, itemId, "control")
-            }
+            onNavigateToKpi={onNavigateToControlTarget}
           />
-        )}
+        </div>}
 
         {/* MODALS */}
         <AIAnalysisModal

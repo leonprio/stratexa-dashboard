@@ -1,13 +1,15 @@
 import React, { useMemo, useState } from 'react';
 import { Dashboard, DashboardItem, ComplianceThresholds } from '../../types';
 import { buildOperationalAlerts, AlertSeverity, OperationalTrend } from '../../utils/operationalAlerts';
+import type { ControlNavigationTarget } from '../../utils/controlNavigation';
 
 interface OperationalAlertsCenterProps {
   dashboards: Dashboard[];
   globalThresholds: ComplianceThresholds;
   year: number;
   compact?: boolean;
-  onNavigateToKpi?: (dashboardId: number | string, itemId: number | string) => void;
+  clientId?: string;
+  onNavigateToKpi?: (target: ControlNavigationTarget) => void;
   exceptionFilter?: 'CRÍTICO' | 'REQUIERE ATENCIÓN' | 'DATA';
 }
 
@@ -16,6 +18,7 @@ export const OperationalAlertsCenter: React.FC<OperationalAlertsCenterProps> = (
   globalThresholds,
   year,
   compact = false,
+  clientId,
   onNavigateToKpi, exceptionFilter
 }) => {
   const [selectedSeverity, setSelectedSeverity] = useState<string>('TODAS');
@@ -290,12 +293,14 @@ export const OperationalAlertsCenter: React.FC<OperationalAlertsCenterProps> = (
                 const trend = getTrendIconAndColor(alert.trend);
 
                 return (
-                  <tr key={`${alert.id}-${idx}`} onClick={() => onNavigateToKpi?.(alert.dashboardId, alert.id)} className="group cursor-pointer hover:bg-white/5 border-b border-white/5 transition-colors" tabIndex={0} onKeyDown={event => { if (event.key === 'Enter' || event.key === ' ') onNavigateToKpi?.(alert.dashboardId, alert.id); }}>
+                  <tr key={`${alert.dashboardId}:${alert.id}:${idx}`} onClick={() => onNavigateToKpi?.({ clientId: alert.clientId || clientId || '', dashboardId: alert.dashboardId, itemId: alert.id, period: alert.period, operation: 'GESTIONAR', origin: 'control' })} className="group cursor-pointer hover:bg-white/5 border-b border-white/5 transition-colors" tabIndex={0} onKeyDown={event => { if (event.key === 'Enter' || event.key === ' ') onNavigateToKpi?.({ clientId: alert.clientId || clientId || '', dashboardId: alert.dashboardId, itemId: alert.id, period: alert.period, operation: 'GESTIONAR', origin: 'control' }); }}>
                     
                     {/* ORIGEN Y NOMBRE DE KPI */}
                     <td className="p-3 text-[11px] font-black text-white uppercase tracking-tight max-w-[260px]">
                       <div className="flex flex-col">
                         <span className="truncate">{alert.indicator}</span>
+                        <span className="mt-1 truncate text-[8px] text-cyan-300">{alert.dashboardTitle}</span>
+                        {alert.period && <span className="mt-0.5 text-[8px] text-slate-400">{alert.period.frequency === 'monthly' ? `${alert.period.monthIndex + 1}/${alert.period.year}` : `S${alert.period.weekNumber}/${alert.period.year}`}</span>}
                         <span className="mt-1 text-[8px] font-black text-cyan-400 opacity-70 group-hover:opacity-100"><span>REVISAR →</span><span className="ml-2">VER KPI</span></span>
                         <span className="text-[7px] text-slate-500 font-bold uppercase tracking-widest mt-0.5">
                           {alert.direction} • {alert.area}
@@ -324,7 +329,7 @@ export const OperationalAlertsCenter: React.FC<OperationalAlertsCenterProps> = (
 
                     {/* SPARKLINE COMPACTO */}
                     <td className="p-3 text-center">
-                      <div className="flex flex-col items-center gap-1"><span className={`inline-flex min-w-max whitespace-nowrap rounded px-2 py-1 text-[8px] font-black ${alert.dataStatus === 'AL DÍA' ? 'text-emerald-400' : alert.dataStatus === 'DATOS INCOMPLETOS' || alert.dataStatus === 'DATOS VENCIDOS' ? 'text-amber-300' : 'text-slate-300'}`}>{alert.dataStatus}</span><span className="text-[8px] font-bold text-slate-500">{Math.round(alert.captureRate)}% captura</span></div>
+                      <div className="flex flex-col items-center gap-1"><span className={`inline-flex min-w-max whitespace-nowrap rounded px-2 py-1 text-[8px] font-black ${alert.dataStatus === 'AL DÍA' ? 'text-emerald-400' : alert.dataStatus === 'DATOS INCOMPLETOS' || alert.dataStatus === 'DATOS VENCIDOS' ? 'text-amber-300' : 'text-slate-300'}`}>{alert.dataStatus}</span><span className="text-[8px] font-bold text-slate-500">{Math.round(alert.captureRate)}% captura</span><span className="text-[8px] text-slate-400">Período: Meta {alert.periodGoal === undefined ? 'sin definir' : alert.periodGoal} · Real {alert.periodProgress === undefined ? '—' : alert.periodProgress} · Pend {alert.periodPending === undefined ? '—' : alert.periodPending}</span><span className="text-[8px] text-slate-500">Acumulado evaluado: Meta {alert.goal === undefined ? 'sin definir' : alert.goal} · Real {alert.progress === undefined ? '—' : alert.progress} · Pend {alert.pending === undefined ? '—' : alert.pending}</span></div>
                     </td>
 
                     {/* CONFIDENCE SCORE */}

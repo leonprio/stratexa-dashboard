@@ -1,6 +1,7 @@
 import type { Dashboard, DashboardItem, SystemSettings } from '../types';
 import { getEffectiveTrackingStartPeriod, getKpiTrackingObligation, type TrackingPeriod, type TrackingObligation } from './trackingObligation';
 import { getObligationStatus, type ObligationStatus } from './obligationStatus';
+import { readControlPeriodValues } from './controlValues';
 
 export type PendingType = 'MISSING_GOAL' | 'MISSING_PROGRESS' | 'TRACKING_START_UNDEFINED' | 'RESULT_CRITICAL' | 'RESULT_AT_RISK';
 export type PendingCategory = 'CONFIGURACIÓN' | 'CAPTURA' | 'RESULTADO';
@@ -9,7 +10,8 @@ export interface PendingItem {
   type: PendingType;
   category: PendingCategory;
   severity: 'CRÍTICA' | 'ALTA' | 'MEDIA';
-  indicatorId: DashboardItem['id']; indicatorName: string; dashboardId: Dashboard['id']; area?: string; responsible?: string;
+  indicatorId: DashboardItem['id']; indicatorName: string; dashboardId: Dashboard['id']; dashboardTitle: string; clientId?: string; area?: string; responsible?: string;
+  goal?: number; progress?: number; pending?: number; compliance?: number;
   period: TrackingPeriod; message: string; actionLabel: string; source: 'trackingObligation' | 'performance';
   obligationStatus?: ObligationStatus;
 }
@@ -52,11 +54,16 @@ export const buildPendingItems = (dashboards: Dashboard[], period: TrackingPerio
     const type: PendingType | undefined = obligation === 'TRACKING_START_UNDEFINED' ? 'TRACKING_START_UNDEFINED' : obligation === 'GOAL_REQUIRED' ? 'MISSING_GOAL' : obligation === 'PROGRESS_REQUIRED' ? 'MISSING_PROGRESS' : undefined;
     // An inherited commitment is not a missing goal for its scheduled period.
     // A real goal configured for that period still follows ordinary obligation logic.
-    if (type && !(activeContinuity && type === 'MISSING_GOAL')) { const x = detail[type]; result.push({ id: `${d.id}:${item.id}:${type}`, type, ...x, indicatorId: item.id, indicatorName: item.indicator, dashboardId: d.id, area: d.area, responsible: item.responsible, period, source: 'trackingObligation', obligationStatus }); return; }
+    const { goal: goalValue, progress: progressValue, pending: pendingValue } = readControlPeriodValues(item, period);
+    const complianceValue = goalValue !== undefined && progressValue !== undefined && goalValue !== 0
+      ? item.goalType === 'minimize' ? (progressValue <= goalValue ? 100 : (goalValue / progressValue) * 100) : (progressValue / goalValue) * 100
+      : undefined;
+    const canonical = { indicatorId: item.id, indicatorName: item.indicator, dashboardId: d.id, dashboardTitle: d.title, clientId: d.clientId, area: d.area, responsible: item.responsible, period, goal: goalValue, progress: progressValue, pending: pendingValue, compliance: complianceValue };
+    if (type && !(activeContinuity && type === 'MISSING_GOAL')) { const x = detail[type]; result.push({ id: `${d.id}:${item.id}:${type}`, type, ...x, ...canonical, source: 'trackingObligation', obligationStatus }); return; }
     if (obligation !== 'CAPTURE_COMPLETE' || typeof goal !== 'number' || typeof progress !== 'number' || goal === 0) return;
     const score = item.goalType === 'minimize' ? (progress <= goal ? 100 : (goal / progress) * 100) : (progress / goal) * 100;
     const performanceType = score < 70 ? 'RESULT_CRITICAL' : score < 85 ? 'RESULT_AT_RISK' : undefined;
-    if (performanceType) { const x = detail[performanceType]; result.push({ id: `${d.id}:${item.id}:${performanceType}`, type: performanceType, ...x, indicatorId: item.id, indicatorName: item.indicator, dashboardId: d.id, area: d.area, responsible: item.responsible, period, source: 'performance' }); }
+    if (performanceType) { const x = detail[performanceType]; result.push({ id: `${d.id}:${item.id}:${performanceType}`, type: performanceType, ...x, ...canonical, source: 'performance' }); }
   }));
   return result.sort((a, b) => rank[a.type] - rank[b.type] || a.indicatorName.localeCompare(b.indicatorName));
 };

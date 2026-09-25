@@ -13,7 +13,11 @@ jest.mock('./ReportCenter', () => ({
 }));
 
 jest.mock('./operational/OperationalControlCenter', () => ({
-    OperationalControlCenter: ({ canEdit }: { canEdit: boolean }) => React.createElement('div', { 'data-testid': 'control-center', 'data-can-edit': String(canEdit) }, 'Mock Control Center')
+    OperationalControlCenter: ({ canEdit }: { canEdit: boolean }) => {
+        const [filter, setFilter] = React.useState('TODAS');
+        return React.createElement('div', { 'data-testid': 'control-center', 'data-can-edit': String(canEdit) },
+            'Mock Control Center', React.createElement('input', { 'aria-label': 'Filtro de CONTROL simulado', value: filter, onChange: (event: React.ChangeEvent<HTMLInputElement>) => setFilter(event.target.value) }));
+    }
 }));
 
 jest.mock('../utils/ExecutiveOperationalExport', () => ({
@@ -39,6 +43,14 @@ const mockUser = {
 } as any;
 
 describe('DashboardView Component', () => {
+    test('conserva filtros de CONTROL al visitar el tablero y regresar', () => {
+        render(<DashboardView dashboard={mockDashboard} onUpdateItem={jest.fn()} userRole={DashboardRole.Viewer} isGlobalAdmin={false} currentUser={mockUser} />);
+        fireEvent.click(screen.getByLabelText(/Ver Control Operativo/i));
+        fireEvent.change(screen.getByLabelText('Filtro de CONTROL simulado'), { target: { value: 'RESULTADO' } });
+        fireEvent.click(screen.getByLabelText('Ver Tablero de Indicadores'));
+        fireEvent.click(screen.getByLabelText(/Ver Control Operativo/i));
+        expect(screen.getByLabelText('Filtro de CONTROL simulado')).toHaveValue('RESULTADO');
+    });
     test('CONTROL does not grant plan mutations to a platform admin without tenant membership', () => {
         render(
             <DashboardView
