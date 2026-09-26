@@ -799,6 +799,7 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(
           <OperationalControlCenter
             dashboards={allDashboards}
             currentDashboard={dashboard}
+            currentUser={currentUser}
             globalThresholds={activeThresholds}
             year={year || 2026}
             activeClientId={activeClientId}

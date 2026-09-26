@@ -32,3 +32,8 @@ build_output
 .gemini
 tmp
 .backups/
+
+review-artifacts/
+.qa-control-reports/
+scripts/generate-review-docs.cjs
+scripts/generate-review-docs.mts

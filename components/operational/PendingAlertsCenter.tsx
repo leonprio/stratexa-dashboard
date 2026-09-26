@@ -11,6 +11,7 @@ interface PendingAlertsCenterProps {
   clientId?: string;
   onNavigateToKpi?: (target: ControlNavigationTarget) => void;
   clientSettings?: Pick<SystemSettings, 'defaultTrackingStartPeriod'>;
+  onFiltersChange?: (filters: { area: string; responsible: string; category: 'TODAS' | PendingCategory }) => void;
 }
 
 const periodLabel = (period: TrackingPeriod) => period.frequency === 'monthly'
@@ -29,10 +30,11 @@ const categoryStyles: Record<PendingCategory, { badge: string; border: string; c
   RESULTADO: { badge: 'bg-rose-500/15 text-rose-200 border-rose-500/30', border: 'border-rose-500/25', count: 'bg-rose-500/10 text-rose-200', cta: 'bg-rose-600 hover:bg-rose-500' },
 };
 
-export const PendingAlertsCenter: React.FC<PendingAlertsCenterProps> = ({ dashboards, year, authorizedDashboardIds, clientId, onNavigateToKpi, clientSettings }) => {
+export const PendingAlertsCenter: React.FC<PendingAlertsCenterProps> = ({ dashboards, year, authorizedDashboardIds, clientId, onNavigateToKpi, clientSettings, onFiltersChange }) => {
   const [area, setArea] = useState('TODAS');
   const [responsible, setResponsible] = useState('TODOS');
   const [category, setCategory] = useState<'TODAS' | PendingCategory>('TODAS');
+  React.useEffect(() => { onFiltersChange?.({ area, responsible, category }); }, [area, responsible, category, onFiltersChange]);
   const pending = useMemo(() => (['monthly', 'weekly'] as const).flatMap(frequency => {
     const scoped = dashboards.filter(d => (d.periodicity || 'monthly') === frequency);
     const period = currentControlPeriod(frequency, year);
