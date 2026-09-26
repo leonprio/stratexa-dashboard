@@ -1,6 +1,6 @@
 {
   "name": "stratexa-iapriori",
-  "version": "9.6.13",
+  "version": "9.6.14",
   "type": "module",
   "scripts": {
     "dev": "vite --configLoader runner",

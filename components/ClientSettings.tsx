@@ -117,7 +117,7 @@ export const ClientSettings: React.FC<ClientSettingsProps> = React.memo(({
         targetDashboards,
         selectedClientId,
         selectedYear,
-        "v9.6.13-CONTROL-TRACEABILITY"
+        "v9.6.14-CONTROL-REPORTS"
       );
 
       const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
@@ -143,7 +143,7 @@ export const ClientSettings: React.FC<ClientSettingsProps> = React.memo(({
         realDashboards,
         selectedClientId,
         selectedYear,
-        "v9.6.13-CONTROL-TRACEABILITY"
+        "v9.6.14-CONTROL-REPORTS"
       );
       const blob = new Blob([manifestContent], { type: "application/json" });
       const url = URL.createObjectURL(blob);
@@ -262,7 +262,7 @@ export const ClientSettings: React.FC<ClientSettingsProps> = React.memo(({
             <p className="text-slate-400 text-xs mt-1 uppercase font-mono tracking-widest">
               CLIENTE: <span className="text-white font-bold">{selectedClientId}</span> •
               AÑO: <span className="text-white font-bold">{selectedYear}</span> •
-              VERS: <span className="text-white font-bold">v9.6.13-CONTROL-TRACEABILITY</span>
+              VERS: <span className="text-white font-bold">v9.6.14-CONTROL-REPORTS</span>
             </p>
           </div>
           <button
