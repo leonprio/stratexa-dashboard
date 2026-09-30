@@ -19,6 +19,8 @@ jobs:
           node-version: 20
           cache: npm
       - run: npm ci
+      - run: npm test -- --runInBand
+      - run: npm run predeploy
       - run: npm run build
       - uses: google-github-actions/auth@v3
         with:
