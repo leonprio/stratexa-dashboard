@@ -109,7 +109,7 @@ export default function App() {
   const [user, setUser] = useState<FirebaseUser | null>(null);
   const [userProfile, setUserProfile] = useState<User | null>(null);
   // 🛡️ v9.6.14-CONTROL-REPORTS
-  const VERSION_LABEL = "v9.6.14-CONTROL-REPORTS";
+  const VERSION_LABEL = "v9.7.0-RESULT-REVIEW-CONTINUITY";
   const SHIELD_ID = "GOLD MASTER";
   const [activeAdminSection, setActiveAdminSection] =
     useState<AdminSection>("none");
