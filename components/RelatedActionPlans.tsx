@@ -5,7 +5,9 @@ import {
   ActionPlanActivity,
   ActionPlanOriginPeriodType,
   ActionPlanStatus,
+  User,
 } from "../types";
+import { ActionPlanResultReviewPanel } from "./ActionPlanResultReviewPanel";
 import { firebaseService } from "../services/firebaseService";
 import {
   calculateActionPlanProgress,
@@ -134,7 +136,10 @@ interface Props {
   periodType: ActionPlanOriginPeriodType;
   periodIndex: number;
   canEdit: boolean;
+  currentUser?: User;
   initialPlanId?: number | string;
+  initialActivityId?: string;
+  initialOpenResultReview?: boolean;
   onCancelEdit?: () => void;
   onSaved?: () => void;
   collapsed?: boolean;
@@ -148,7 +153,10 @@ export const RelatedActionPlans: React.FC<Props> = ({
   periodType,
   periodIndex,
   canEdit,
+  currentUser,
   initialPlanId,
+  initialActivityId,
+  initialOpenResultReview,
   onCancelEdit,
   onSaved,
   collapsed = false,
@@ -174,8 +182,15 @@ export const RelatedActionPlans: React.FC<Props> = ({
   const load = async () => {
     setState("loading");
     try {
+      const tenant = (clientId || "").trim().toUpperCase();
       setPlans(
-        Array.from(new Map((await firebaseService.getActionPlansForIndicator(indicatorId, clientId)).map((plan) => [String(plan.id), plan])).values()),
+        Array.from(new Map((await firebaseService.getActionPlansForIndicator(indicatorId, clientId))
+          .filter((plan) =>
+            String(plan.clientId || "").trim().toUpperCase() === tenant &&
+            String(plan.dashboardId) === String(dashboardId) &&
+            String(plan.indicatorId) === String(indicatorId),
+          )
+          .map((plan) => [String(plan.id), plan])).values()),
       );
       setHasLoaded(true);
       setState("saved");
@@ -197,10 +212,19 @@ export const RelatedActionPlans: React.FC<Props> = ({
       setPlanSettingsOpen(false);
       setExpandedActivityId(null);
       setQuickActivityId(null);
+      setResultExpandedActivityId(initialActivityId || null);
       setPlanMode("view");
       setDraft({ ...requested, activities: requested.activities || [] });
     }
-  }, [initialPlanId, canEdit, draft, plans, state]);
+  }, [initialPlanId, initialActivityId, canEdit, draft, plans, state]);
+  useEffect(() => {
+    if (!initialActivityId || planMode !== "view") return;
+    requestAnimationFrame(() => {
+      const activityElement = document.getElementById(`action-plan-activity-${initialActivityId}`);
+      activityElement?.scrollIntoView?.({ behavior: "smooth", block: "center" });
+      activityElement?.focus();
+    });
+  }, [initialActivityId, draft?.id, planMode]);
   const origin = (p: ActionPlan) =>
     p.originPeriodType === "weekly"
       ? `Semana ${(p.originPeriodIndex || 0) + 1} · ${p.originYear}`
@@ -436,7 +460,7 @@ export const RelatedActionPlans: React.FC<Props> = ({
                 {(draft.activities || []).map((activity) => {
                   const visual = impactVisual(activity.impact);
                   const expanded = resultExpandedActivityId === activity.id;
-                  return <article key={activity.id} className="rounded-lg border border-slate-700/70 bg-slate-950/50 p-3">
+                  return <article id={`action-plan-activity-${activity.id}`} tabIndex={-1} key={activity.id} className="rounded-lg border border-slate-700/70 bg-slate-950/50 p-3 focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-300">
                     <div className="flex flex-wrap items-start justify-between gap-2">
                       <div><p className="font-bold text-slate-100">{activity.title || "Actividad sin título"}</p><p className="mt-1 text-xs text-slate-400">{activity.responsible || "Sin responsable"} · {activity.targetDate || "Sin fecha"}</p><p className="mt-1 text-[10px] font-black uppercase text-slate-300">{activityTimeLabel[activityTimeState(activity)]} · {activity.progress}%</p><span className={`mt-1 inline-flex text-[10px] font-bold uppercase ${visual.className}`}>{visual.icon} {visual.label}</span></div>
                       <div className="flex flex-wrap items-center justify-end gap-2"><div className="h-1.5 w-24 rounded-full bg-slate-800"><div className="h-full rounded-full bg-cyan-500" style={{ width: `${activity.progress}%` }} /></div>{canEdit && <><button type="button" onClick={() => quickActivityId === activity.id ? setQuickActivityId(null) : openQuickEdit(draft, activity.id)} className="rounded-lg bg-cyan-600 px-3 py-2 text-[10px] font-black text-white">{quickActivityId === activity.id ? "OCULTAR ACTUALIZACIÓN" : "ACTUALIZAR"}</button><button type="button" onClick={() => expandedActivityId === activity.id ? setExpandedActivityId(null) : openActivityEdit(draft, activity.id)} className="px-2 py-2 text-[10px] font-black text-cyan-300">{expandedActivityId === activity.id ? "OCULTAR EDICIÓN" : "EDITAR"}</button><button type="button" aria-label={`Eliminar actividad ${activity.title || "sin título"}`} onClick={() => requestActivityDelete(draft, activity.id)} className="inline-flex items-center gap-1 rounded-lg border border-rose-500/30 px-2 py-2 text-[10px] font-black text-rose-300"><Trash2 className="h-3.5 w-3.5" aria-hidden="true" />ELIMINAR</button></>}</div>
@@ -448,6 +472,19 @@ export const RelatedActionPlans: React.FC<Props> = ({
                 {(draft.activities || []).length === 0 && <p className="text-xs text-slate-500">Este plan no tiene actividades registradas.</p>}
               </div>
             </div>
+            <ActionPlanResultReviewPanel
+              plan={draft}
+              canEdit={canEdit}
+              currentUser={currentUser}
+              initialOpen={initialOpenResultReview}
+              year={year}
+              periodType={periodType === "weekly" ? "weekly" : "monthly"}
+              periodIndex={periodIndex}
+              onSaved={(updated) => {
+                setDraft({ ...updated, activities: updated.activities || [] });
+                setPlans((current) => current.map((plan) => String(plan.id) === String(updated.id) ? updated : plan));
+              }}
+            />
             <div className="mt-5 flex justify-end gap-3"><button type="button" onClick={closePlan} className="text-xs text-slate-400">Contraer plan</button>{canEdit && <button type="button" onClick={() => openEdit(draft)} className="rounded-lg bg-cyan-600 px-5 py-2 text-xs font-bold text-white">Editar plan</button>}</div>
           </> : <>
           <button type="button" onClick={() => { setPlanSettingsOpen(value => !value); setExpandedActivityId(null); setQuickActivityId(null); }} className="mt-4 text-[10px] font-black uppercase tracking-widest text-cyan-400">{planSettingsOpen ? "Ocultar edición del plan" : "Editar plan"}</button>

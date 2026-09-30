@@ -178,6 +178,8 @@ export default function App() {
     itemId: number | string;
     clientId?: string;
     year: number;
+    activityId?: string;
+    openResultReview?: boolean;
   } | null>(null);
   const [loadingDashboards, setLoadingDashboards] = useState<boolean>(false);
   const [dashboardLoadCompleted, setDashboardLoadCompleted] = useState(false);
@@ -3331,13 +3333,18 @@ Esto corregirá cualquier inconsistencia en colores (ej. Amarillo vs Rojo).`)
                 requestedNavigationSource={pendingKpiNavigation?.source}
                 requestedControlTarget={pendingKpiNavigation?.control}
                 requestedActionPlanId={pendingActionPlanTarget?.actionPlanId}
+                requestedActionPlanActivityId={pendingActionPlanTarget?.activityId}
+                requestedOpenResultReview={pendingActionPlanTarget?.openResultReview}
                 onActionPlanExit={() => setPendingActionPlanTarget(null)}
                 onNavigateToPlan={(target) => {
                   setPendingActionPlanTarget(target);
                   setPendingKpiNavigation({
                     dashboardId: target.dashboardId,
                     itemId: target.itemId,
-                    source: "plans",
+                    source: target.source || "plans",
+                    ...(target.source === 'control' && target.period && target.clientId ? {
+                      control: { clientId: target.clientId, dashboardId: target.dashboardId, itemId: target.itemId, period: target.period, operation: 'GESTIONAR', origin: 'control' },
+                    } : {}),
                   });
                   setSelectedDashboardId(target.dashboardId);
                 }}
@@ -3357,6 +3364,7 @@ Esto corregirá cualquier inconsistencia en colores (ej. Amarillo vs Rojo).`)
                   if (selectedClientId !== 'all' && target.clientId.trim().toUpperCase() !== selectedClientId.trim().toUpperCase()) return;
                   if (!isValidControlTarget(target, dashboards, selectedYear, selectedClientId === 'all' ? undefined : selectedClientId)) return;
                   if (selectedClientId === 'all') selectClientContext(target.clientId);
+                  setPendingActionPlanTarget(null);
                   setPendingKpiNavigation({ dashboardId: target.dashboardId, itemId: target.itemId, source: 'control', control: target });
                   setSelectedDashboardId(target.dashboardId);
                 }}

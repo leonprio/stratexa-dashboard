@@ -110,7 +110,9 @@ test("ActionPlan service permits an explicit plan_editor scoped to the editable 
       }],
     },
   });
+  const dashboardSpy = jest.spyOn(firebaseService, "getDashboards").mockResolvedValue([{ id: "D", clientId: "A", items: [{ id: 1 }] }] as any);
   const created = await firebaseService.createActionPlan(actionPlan);
+  dashboardSpy.mockRestore();
   expect(setDoc).toHaveBeenCalledTimes(1);
   expect(created.title).toBe("Plan ficticio");
 
@@ -119,6 +121,25 @@ test("ActionPlan service permits an explicit plan_editor scoped to the editable 
   expect(await firebaseService.deleteActionPlan("A", "P1")).toBe(true);
   expect(updateDoc).toHaveBeenCalledTimes(1);
   expect(deleteDoc).toHaveBeenCalledTimes(1);
+});
+test("ActionPlan creation rejects an absent or unlinked indicator before writing", async () => {
+  (readTableroScope as jest.Mock).mockResolvedValue({
+    platform: false, tenants: ["A"], profile: {
+      id: "u", email: "u@example.test", memberships: [{
+        clientId: "A", role: "standard_user", status: "active", dashboardScopes: { D: "viewer" },
+        editableDashboardIds: ["D"], capabilities: ["plan_editor"],
+      }],
+    },
+  });
+  const dashboardSpy = jest.spyOn(firebaseService, "getDashboards").mockResolvedValue([{ id: "D", clientId: "A", items: [{ id: 1 }] }] as any);
+
+  await expect(firebaseService.createActionPlan({ ...actionPlan, indicatorId: "missing-kpi" }))
+    .rejects.toThrow(/indicador del plan debe existir/);
+  await expect(firebaseService.createActionPlan({ ...actionPlan, indicatorId: "" }))
+    .rejects.toThrow(/indicador del plan debe existir/);
+
+  expect(setDoc).not.toHaveBeenCalled();
+  dashboardSpy.mockRestore();
 });
 test("ActionPlan update/delete service denies readers of an existing scoped plan", async () => {
   (getDoc as jest.Mock).mockResolvedValue({ exists: () => true, data: () => actionPlan });

@@ -188,6 +188,39 @@ service cloud.firestore {
           'plan_editor' in get(/databases/$(database)/documents/tbl_userMemberships/$(membershipId(data.clientId))).data.capabilities &&
           canonicalEditableDashboardScope(board, dashboardId)));
     }
+    function validActionPlanResultReview(review) {
+      return review is map &&
+        review.keys().hasOnly([
+          'id', 'reviewedAt', 'reviewedByUserId', 'reviewedByLabel', 'observedResult',
+          'effect', 'decision', 'note', 'evidenceRef', 'nextReviewDate',
+          'nextCommitmentPlanId', 'nextCommitmentActivityId', 'reviewYear',
+          'reviewPeriodType', 'reviewPeriodIndex'
+        ]) &&
+        review.keys().hasAll(['id', 'reviewedAt', 'reviewedByLabel', 'observedResult', 'effect', 'decision']) &&
+        review.id is string && review.id.size() > 0 &&
+        review.reviewedAt is string && review.reviewedAt.size() > 0 &&
+        review.reviewedByLabel is string && review.reviewedByLabel.size() > 0 &&
+        review.observedResult is string && review.observedResult.size() > 0 &&
+        review.effect in ['FAVORABLE', 'PARTIAL', 'LOW_OR_NONE', 'NOT_EVALUABLE'] &&
+        review.decision in ['CLOSE', 'CONTINUE', 'ADJUST'] &&
+        (!('reviewedByUserId' in review) || (review.reviewedByUserId is string && review.reviewedByUserId == request.auth.uid)) &&
+        (!('note' in review) || review.note is string) &&
+        (!('evidenceRef' in review) || review.evidenceRef is string) &&
+        (!('nextReviewDate' in review) || (review.nextReviewDate is string && review.nextReviewDate.size() > 0)) &&
+        (!('nextCommitmentPlanId' in review) || (review.nextCommitmentPlanId is string && review.nextCommitmentPlanId.size() > 0)) &&
+        (!('nextCommitmentActivityId' in review) || (review.nextCommitmentActivityId is string && review.nextCommitmentActivityId.size() > 0)) &&
+        !('nextCommitmentPlanId' in review && 'nextCommitmentActivityId' in review) &&
+        (!('reviewYear' in review) || review.reviewYear is int) &&
+        (!('reviewPeriodType' in review) || review.reviewPeriodType in ['monthly', 'weekly', 'manual']) &&
+        (!('reviewPeriodIndex' in review) || review.reviewPeriodIndex is int);
+    }
+    function preservesActionPlanResultReviewHistory() {
+      let oldReviews = resource.data.get('resultReviews', []);
+      let newReviews = request.resource.data.get('resultReviews', []);
+      return oldReviews is list && newReviews is list &&
+        newReviews.hasAll(oldReviews) && newReviews.size() <= oldReviews.size() + 1 &&
+        (newReviews.size() == oldReviews.size() || validActionPlanResultReview(newReviews[newReviews.size() - 1]));
+    }
 
     function canManageProfile(data) {
       // Multi-tenant directory administration needs all memberships, not one
@@ -334,7 +367,8 @@ service cloud.firestore {
       allow update: if isTableroUser() && canEditActionPlan(resource.data) &&
         request.resource.data.clientId == resource.data.clientId &&
         request.resource.data.dashboardId == resource.data.dashboardId &&
-        request.resource.data.get('indicatorId', '') == resource.data.get('indicatorId', '');
+        request.resource.data.get('indicatorId', '') == resource.data.get('indicatorId', '') &&
+        preservesActionPlanResultReviewHistory();
       allow delete: if isTableroUser() && canEditActionPlan(resource.data);
     }
 

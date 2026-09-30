@@ -1,5 +1,12 @@
-import { classifyDue, dedupePlans, filterPlans, getOverdueActivities, hasOverdueActivity } from './TransversalActionPlansControl';
-import { ActionPlan } from '../../types';
+import React from 'react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { classifyDue, dedupePlans, filterPlans, getOverdueActivities, hasOverdueActivity, TransversalActionPlansControl } from './TransversalActionPlansControl';
+import { ActionPlan, Dashboard } from '../../types';
+import { firebaseService } from '../../services/firebaseService';
+import { currentControlPeriod } from '../../utils/controlNavigation';
+import { getActionPlanControlContinuity } from '../../utils/actionPlanControlContinuity';
+
+afterEach(() => jest.restoreAllMocks());
 
 const plan = (overrides: Partial<ActionPlan> = {}) => ({ id: '1', indicatorId: 1, dashboardId: 10, title: 'Plan', originYear: 2026, originPeriodType: 'monthly' as const, status: 'planned' as const, startDate: '2026-01-01', progress: 0, createdAt: '', updatedAt: '', indicator: 'KPI', area: 'Ventas', ...overrides });
 
@@ -51,5 +58,154 @@ describe('transversal action plans control logic', () => {
     ] })];
     expect(dedupePlans(items)).toHaveLength(1);
     expect(getOverdueActivities(items[0], now)).toHaveLength(2);
+  });
+});
+
+const controlDashboard = (id = 10, frequency: 'monthly' | 'weekly' = 'monthly'): Dashboard => ({
+  id, clientId: 'ACME', title: `Tablero ${id}`, subtitle: '', group: 'Operaciones', area: 'Operaciones', periodicity: frequency,
+  thresholds: { onTrack: 95, atRisk: 85 }, items: [{ id: 7, indicator: 'Indicador homónimo', weight: 1, unit: 'u', type: 'accumulative', goalType: 'maximize', frequency, monthlyGoals: [], monthlyProgress: [] }],
+});
+const controlPlan = (overrides: Partial<ActionPlan> = {}): ActionPlan => ({
+  id: 'plan-control', clientId: 'ACME', dashboardId: 10, indicatorId: 7, title: 'Plan con efecto pendiente', originYear: 2024,
+  originPeriodType: 'monthly', originPeriodIndex: 9, status: 'completed', startDate: '2024-10-01', progress: 100,
+  createdAt: '2024-10-01T00:00:00.000Z', updatedAt: '2024-12-01T00:00:00.000Z', ...overrides,
+});
+
+describe('TransversalActionPlansControl review continuity', () => {
+  beforeEach(() => jest.restoreAllMocks());
+
+  test('a KPI with zero linked ActionPlans has no plan or result-review CTA', async () => {
+    jest.spyOn(firebaseService, 'getActionPlansForIndicator').mockResolvedValue([]);
+    render(<TransversalActionPlansControl dashboards={[controlDashboard()]} currentDashboard={controlDashboard()} managementYear={2026} />);
+    expect(await screen.findByText('No hay planes registrados.')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'REVISAR PLAN' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'REVISAR RESULTADO' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'GESTIONAR PLAN' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'VER PLAN' })).not.toBeInTheDocument();
+  });
+
+  test('a plan without indicatorId is not rendered with plan or KPI CTAs', async () => {
+    jest.spyOn(firebaseService, 'getActionPlansForIndicator').mockResolvedValue([controlPlan({ indicatorId: '' })]);
+    render(<TransversalActionPlansControl dashboards={[controlDashboard()]} currentDashboard={controlDashboard()} managementYear={2026} />);
+    expect(await screen.findByText('No hay planes registrados.')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'REVISAR PLAN' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'VER KPI' })).not.toBeInTheDocument();
+  });
+
+  test('VER KPI navigates with the indicator and dashboard attached to that plan', async () => {
+    const plan = controlPlan({ id: 'kpi-target', indicatorId: 7 });
+    jest.spyOn(firebaseService, 'getActionPlansForIndicator').mockResolvedValue([plan]);
+    const onNavigateToKpi = jest.fn();
+    render(<TransversalActionPlansControl dashboards={[controlDashboard()]} currentDashboard={controlDashboard()} managementYear={2026} onNavigateToKpi={onNavigateToKpi} />);
+    fireEvent.click(await screen.findByRole('button', { name: 'VER KPI' }));
+    expect(onNavigateToKpi).toHaveBeenCalledWith(10, 7);
+  });
+
+  test('same-title plans keep separate plan ids when navigating from their own cards', async () => {
+    const first = controlPlan({ id: 'same-title-1', title: 'Plan con título repetido', status: 'in_progress' });
+    const second = controlPlan({ id: 'same-title-2', title: 'Plan con título repetido', status: 'in_progress' });
+    jest.spyOn(firebaseService, 'getActionPlansForIndicator').mockResolvedValue([first, second]);
+    const onNavigateToPlan = jest.fn();
+    render(<TransversalActionPlansControl dashboards={[controlDashboard()]} currentDashboard={controlDashboard()} managementYear={2026} onNavigateToPlan={onNavigateToPlan} />);
+
+    const sameTitleCards = await screen.findAllByText('Plan con título repetido');
+    expect(sameTitleCards).toHaveLength(2);
+    fireEvent.click(within(sameTitleCards[1].parentElement!.parentElement!).getByRole('button', { name: 'GESTIONAR PLAN' }));
+    expect(onNavigateToPlan).toHaveBeenCalledWith(expect.objectContaining({ actionPlanId: 'same-title-2', itemId: 7, dashboardId: 10 }));
+  });
+
+  test('effect-pending completed plans stay visible outside the eight recent completed slots', async () => {
+    const history = Array.from({ length: 9 }, (_, index) => controlPlan({ id: `reviewed-${index}`, title: `Revisado ${index}`, resultReviews: [{ id: `r-${index}`, reviewedAt: `2026-06-${String(index + 1).padStart(2, '0')}T12:00:00.000Z`, reviewedByLabel: 'Ana', observedResult: 'Dato', effect: 'FAVORABLE', decision: 'CLOSE' }] }));
+    const pending = controlPlan();
+    jest.spyOn(firebaseService, 'getActionPlansForIndicator').mockResolvedValue([...history, pending]);
+    render(<TransversalActionPlansControl dashboards={[controlDashboard()]} currentDashboard={controlDashboard()} managementYear={2026} />);
+    expect(await screen.findByText('Efecto pendiente')).toBeInTheDocument();
+    expect(screen.getByText('Plan con efecto pendiente')).toBeInTheDocument();
+    expect(screen.getAllByRole('button', { name: 'VER PLAN' })).toHaveLength(8);
+    expect(screen.getByText('(8)')).toBeInTheDocument();
+  });
+
+  test('refreshes CONTROL after a result review is saved', async () => {
+    let current = controlPlan();
+    jest.spyOn(firebaseService, 'getActionPlansForIndicator').mockImplementation(async () => [current]);
+    render(<TransversalActionPlansControl dashboards={[controlDashboard()]} currentDashboard={controlDashboard()} managementYear={2026} />);
+    expect(await screen.findByText('Efecto pendiente')).toBeInTheDocument();
+    current = { ...current, resultReviews: [{ id: 'saved', reviewedAt: '2026-06-15T12:00:00.000Z', reviewedByLabel: 'Ana', observedResult: 'Medido', effect: 'FAVORABLE', decision: 'CLOSE' }] };
+    fireEvent(window, new Event('action-plan-review-saved'));
+    await waitFor(() => expect(screen.queryByText('Efecto pendiente')).not.toBeInTheDocument());
+    expect(screen.getByRole('button', { name: 'VER PLAN' })).toBeInTheDocument();
+  });
+
+  test('future review date remains informational and review navigation uses current management year and period', async () => {
+      const reviewed = controlPlan({ resultReviews: [{ id: 'r1', reviewedAt: '2026-06-01T12:00:00.000Z', reviewedByLabel: 'Ana', observedResult: 'Mejoró', effect: 'PARTIAL', decision: 'CONTINUE', nextReviewDate: '2026-06-20' }] });
+      expect(getActionPlanControlContinuity(reviewed, [reviewed], new Date('2026-06-15T12:00:00.000Z')).reviewDueDate).toBe('2026-06-20');
+      expect(getActionPlanControlContinuity(reviewed, [reviewed], new Date('2026-06-15T12:00:00.000Z'))).toEqual(expect.objectContaining({ reviewDueDate: '2026-06-20', commitmentPending: false, commitment: undefined }));
+      jest.spyOn(firebaseService, 'getActionPlansForIndicator').mockResolvedValue([reviewed]);
+      const onNavigateToPlan = jest.fn();
+      render(<TransversalActionPlansControl dashboards={[controlDashboard()]} currentDashboard={controlDashboard()} managementYear={2026} now={new Date('2026-06-15T12:00:00.000Z')} onNavigateToPlan={onNavigateToPlan} />);
+      expect(await screen.findByText('Próxima revisión: 2026-06-20')).toBeInTheDocument();
+      expect(screen.queryByText(/Revisión vencida/)).not.toBeInTheDocument();
+      fireEvent.click(screen.getByRole('button', { name: 'VER PLAN' }));
+      expect(onNavigateToPlan).toHaveBeenCalledWith(expect.objectContaining({ actionPlanId: 'plan-control', year: 2026, period: currentControlPeriod('monthly', 2026, new Date('2026-06-15T12:00:00.000Z')), source: 'control' }));
+  });
+
+  test('review overdue and effect pending offer a direct result-review route without using originYear', async () => {
+    const plan = controlPlan({ resultReviews: [{ id: 'r1', reviewedAt: '2026-01-01T12:00:00.000Z', reviewedByLabel: 'Ana', observedResult: 'Dato', effect: 'PARTIAL', decision: 'CONTINUE', nextReviewDate: '2026-06-01' }] });
+    jest.spyOn(firebaseService, 'getActionPlansForIndicator').mockResolvedValue([plan]);
+    const onNavigateToPlan = jest.fn();
+    render(<TransversalActionPlansControl dashboards={[controlDashboard()]} currentDashboard={controlDashboard()} managementYear={2026} onNavigateToPlan={onNavigateToPlan} />);
+    expect(await screen.findByText(/Revisión vencida/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'REVISAR RESULTADO' }));
+    expect(onNavigateToPlan).toHaveBeenCalledWith(expect.objectContaining({ actionPlanId: plan.id, dashboardId: 10, itemId: 7, clientId: 'ACME', year: 2026, openResultReview: true, source: 'control' }));
+  });
+
+  test('open activity successors are attached to their plan and navigate by activity id', async () => {
+    const source = controlPlan({ status: 'in_progress', activities: [{ id: 'next-activity', title: 'Validar mejora', progress: 20, targetDate: '2026-06-10', createdAt: '', updatedAt: '' }], resultReviews: [{ id: 'r1', reviewedAt: '2026-01-01T12:00:00.000Z', reviewedByLabel: 'Ana', observedResult: 'Dato', effect: 'PARTIAL', decision: 'CONTINUE', nextCommitmentActivityId: 'next-activity' }] });
+    jest.spyOn(firebaseService, 'getActionPlansForIndicator').mockResolvedValue([source]);
+    const onNavigateToPlan = jest.fn();
+    render(<TransversalActionPlansControl dashboards={[controlDashboard()]} currentDashboard={controlDashboard()} managementYear={2026} onNavigateToPlan={onNavigateToPlan} />);
+    expect(await screen.findByText(/Siguiente compromiso vencido · Validar mejora/)).toBeInTheDocument();
+    fireEvent.click(screen.getAllByRole('button', { name: 'GESTIONAR PLAN' })[0]);
+    expect(onNavigateToPlan).toHaveBeenCalledWith(expect.objectContaining({ actionPlanId: source.id, activityId: 'next-activity', year: 2026 }));
+  });
+
+  test('open successor plan appears once as a distinct plan and its completed state satisfies the link', async () => {
+    const root = controlPlan({ resultReviews: [{ id: 'r1', reviewedAt: '2026-01-01T12:00:00.000Z', reviewedByLabel: 'Ana', observedResult: 'Dato', effect: 'PARTIAL', decision: 'ADJUST', nextCommitmentPlanId: 'successor' }] });
+    const successor = controlPlan({ id: 'successor', title: 'Plan sucesor abierto', status: 'in_progress', progress: 20, originYear: 2026, originPeriodIndex: 5 });
+    jest.spyOn(firebaseService, 'getActionPlansForIndicator').mockResolvedValue([root, successor]);
+    const onNavigateToPlan = jest.fn();
+    render(<TransversalActionPlansControl dashboards={[controlDashboard()]} currentDashboard={controlDashboard()} managementYear={2026} onNavigateToPlan={onNavigateToPlan} />);
+    expect(await screen.findByText('Siguiente compromiso pendiente · derivado de Plan con efecto pendiente')).toBeInTheDocument();
+    expect(screen.getAllByText('Plan con efecto pendiente')).toHaveLength(1);
+    fireEvent.click(screen.getAllByRole('button', { name: 'GESTIONAR PLAN' }).find(button => button.parentElement?.parentElement?.textContent?.includes('derivado de'))!);
+    expect(onNavigateToPlan).toHaveBeenCalledWith(expect.objectContaining({ actionPlanId: 'successor', year: 2026 }));
+  });
+
+  test('homonymous KPIs in separate physical dashboards remain separate, and period changes preserve plan data', async () => {
+    jest.useFakeTimers().setSystemTime(new Date('2026-12-15T12:00:00.000Z'));
+    try {
+      const monthly = controlDashboard(10, 'monthly');
+      const weekly = controlDashboard(11, 'weekly');
+      const one = controlPlan({ id: 'same-id', title: 'Plan tablero diez' });
+      const two = controlPlan({ id: 'same-id', dashboardId: 11, title: 'Plan tablero once', resultReviews: [{ id: 'r1', reviewedAt: '2026-01-01T12:00:00.000Z', reviewedByLabel: 'Ana', observedResult: 'Dato', effect: 'FAVORABLE', decision: 'CLOSE' }] });
+      const loadSpy = jest.spyOn(firebaseService, 'getActionPlansForIndicator').mockResolvedValue([one, two]);
+      const onNavigateToPlan = jest.fn();
+      const view = render(<TransversalActionPlansControl dashboards={[monthly, weekly]} currentDashboard={monthly} managementYear={2026} onNavigateToPlan={onNavigateToPlan} />);
+      expect(await screen.findByText('Plan tablero diez')).toBeInTheDocument();
+      expect(screen.getByText('Plan tablero once')).toBeInTheDocument();
+      expect(screen.getAllByText('Efecto pendiente')).toHaveLength(1);
+      fireEvent.click(screen.getByRole('button', { name: 'REVISAR RESULTADO' }));
+      expect(onNavigateToPlan).toHaveBeenLastCalledWith(expect.objectContaining({ dashboardId: 10, period: { frequency: 'monthly', year: 2026, monthIndex: 11 } }));
+      view.rerender(<TransversalActionPlansControl dashboards={[weekly]} currentDashboard={weekly} managementYear={2027} onNavigateToPlan={onNavigateToPlan} />);
+      expect(await screen.findByText('Plan tablero once')).toBeInTheDocument();
+      fireEvent.click(screen.getByRole('button', { name: 'VER PLAN' }));
+      expect(onNavigateToPlan).toHaveBeenLastCalledWith(expect.objectContaining({ actionPlanId: 'same-id', dashboardId: 11, year: 2027, period: expect.objectContaining({ frequency: 'weekly', year: 2027 }) }));
+      expect(two.originYear).toBe(2024);
+      expect(two.originPeriodIndex).toBe(9);
+      expect(two.resultReviews).toHaveLength(1);
+      expect(loadSpy).toHaveBeenCalledTimes(3);
+      expect(jest.spyOn(firebaseService, 'updateActionPlan')).not.toHaveBeenCalled();
+      expect(jest.spyOn(firebaseService, 'createActionPlan')).not.toHaveBeenCalled();
+    } finally { jest.useRealTimers(); }
   });
 });

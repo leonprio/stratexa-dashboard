@@ -9,6 +9,8 @@ jest.mock('./TransversalActionPlansControl', () => ({ TransversalActionPlansCont
 jest.mock('./OperationalHistoryCenter', () => ({ OperationalHistoryCenter: () => <div>TRAZABILIDAD OPERATIVA</div> }));
 
 const dashboard = { id: 1, title: 'Control', subtitle: '', group: 'Dirección', area: 'Área', thresholds: { onTrack: 90, atRisk: 70 }, items: [] } as any;
+const viewer = { id: 'viewer', name: 'Lector', email: 'lector@example.com', globalRole: 'Member', clientId: 'LEON', dashboardAccess: { '1': 'Viewer' } } as any;
+const authorizedDashboard = { ...dashboard, clientId: 'LEON' };
 
 describe('OperationalControlCenter simplificado', () => {
   beforeEach(() => {
@@ -16,17 +18,17 @@ describe('OperationalControlCenter simplificado', () => {
   });
 
   it('presenta atención y planes en una sola lectura vertical', () => {
-    render(<OperationalControlCenter dashboards={[dashboard]} currentDashboard={dashboard} globalThresholds={dashboard.thresholds} year={2026} />);
+    render(<OperationalControlCenter dashboards={[authorizedDashboard]} currentDashboard={authorizedDashboard} currentUser={viewer} globalThresholds={dashboard.thresholds} year={2026} />);
     expect(screen.getByRole('heading', { name: 'Gestión por excepción' })).toBeInTheDocument();
     expect(screen.getAllByText('LISTA PRIORIZADA DE ALERTAS')).toHaveLength(1);
     expect(screen.getByText('RESUMEN EJECUTIVO DE PLANES')).toBeInTheDocument();
-    expect(buildOperationalAlerts).toHaveBeenCalledWith([dashboard], dashboard.thresholds, 2026);
+    expect(buildOperationalAlerts).toHaveBeenCalledWith([authorizedDashboard], dashboard.thresholds, 2026);
   });
 
   it('mantiene los planes en solo lectura por defecto y propaga la autorización explícita', () => {
-    const { rerender } = render(<OperationalControlCenter dashboards={[dashboard]} currentDashboard={dashboard} globalThresholds={dashboard.thresholds} year={2026} />);
+    const { rerender } = render(<OperationalControlCenter dashboards={[authorizedDashboard]} currentDashboard={authorizedDashboard} currentUser={viewer} globalThresholds={dashboard.thresholds} year={2026} />);
     expect(screen.getByTestId('control-plans')).toHaveAttribute('data-can-edit', 'false');
-    rerender(<OperationalControlCenter dashboards={[dashboard]} currentDashboard={dashboard} globalThresholds={dashboard.thresholds} year={2026} canEdit />);
+    rerender(<OperationalControlCenter dashboards={[authorizedDashboard]} currentDashboard={authorizedDashboard} currentUser={viewer} globalThresholds={dashboard.thresholds} year={2026} canEdit />);
     expect(screen.getByTestId('control-plans')).toHaveAttribute('data-can-edit', 'true');
   });
 
@@ -41,6 +43,13 @@ describe('OperationalControlCenter simplificado', () => {
     expect(selectControlDashboards(sources, aggregate)).toEqual(sources);
   });
 
+  it('fails closed for users outside the dashboard scope', () => {
+    const outsider = { ...viewer, dashboardAccess: {} };
+    render(<OperationalControlCenter dashboards={[authorizedDashboard]} currentDashboard={authorizedDashboard} currentUser={outsider} globalThresholds={dashboard.thresholds} year={2026} />);
+    expect(screen.queryByTestId('control-plans')).not.toBeInTheDocument();
+    expect(buildOperationalAlerts).toHaveBeenCalledWith([], dashboard.thresholds, 2026);
+  });
+
   it('does not mix physical dashboards from another synthetic client', () => {
     const a = { ...dashboard, id: 101, clientId: 'LAB-A' };
     const a2 = { ...dashboard, id: 102, clientId: 'LAB-A' };
@@ -51,7 +60,7 @@ describe('OperationalControlCenter simplificado', () => {
   });
 
   it('oculta la navegación redundante sin eliminar el acceso al historial', () => {
-    render(<OperationalControlCenter dashboards={[dashboard]} currentDashboard={dashboard} globalThresholds={dashboard.thresholds} year={2026} />);
+    render(<OperationalControlCenter dashboards={[authorizedDashboard]} currentDashboard={authorizedDashboard} currentUser={viewer} globalThresholds={dashboard.thresholds} year={2026} />);
     expect(screen.queryByText('Mapa de Calor')).not.toBeInTheDocument();
     expect(screen.queryByText('Rankings de Disciplina')).not.toBeInTheDocument();
     expect(screen.queryByText('Alertas de Atraso')).not.toBeInTheDocument();

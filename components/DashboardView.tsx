@@ -22,6 +22,7 @@ import { CurrentPeriodFocus } from "./CurrentPeriodFocus";
 import { exportDashboardToExcel } from "../utils/exportUtils";
 import { exportToExecutiveExcelJS } from "../utils/ExecutiveOperationalExport";
 import { OperationalControlCenter } from "./operational/OperationalControlCenter";
+import type { ActionPlanControlNavigationTarget } from "./operational/TransversalActionPlansControl";
 import { ObjectivesView } from "./ObjectivesView";
 import type {
   AreaStrategyConfig,
@@ -78,13 +79,7 @@ interface DashboardViewProps {
     itemId: number | string,
     source?: "objectives" | "areas" | "contribution" | "plans" | "control",
   ) => void;
-  onNavigateToPlan?: (target: {
-    actionPlanId: number | string;
-    dashboardId: number | string;
-    itemId: number | string;
-    clientId?: string;
-    year: number;
-  }) => void;
+  onNavigateToPlan?: (target: ActionPlanControlNavigationTarget) => void;
   onNavigationConsumed?: () => void;
   requestedNavigationSource?:
     | "objectives"
@@ -93,6 +88,8 @@ interface DashboardViewProps {
     | "plans"
     | "control";
   requestedActionPlanId?: number | string | null;
+  requestedActionPlanActivityId?: string;
+  requestedOpenResultReview?: boolean;
   onActionPlanExit?: () => void;
 }
 
@@ -130,6 +127,8 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(
     onNavigateToControlTarget,
     requestedNavigationSource = "objectives",
     requestedActionPlanId,
+    requestedActionPlanActivityId,
+    requestedOpenResultReview,
     onNavigateToKpi,
     onNavigateToPlan,
     onNavigationConsumed,
@@ -667,6 +666,7 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(
               onUpdateItem={onUpdateItem}
               canEdit={(userRole === DashboardRole.Editor && !isAggregate) || isGlobalAdmin}
               canEditPlans={!isAggregate && canEditActionPlan(currentUser, dashboard)}
+              currentUser={currentUser}
               onClose={handleCloseFocus}
               allDashboardItems={safeItems}
               decimalPrecision={localDecimalPrecision as 0 | 1 | 2}
@@ -676,6 +676,8 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(
               clientTrackingStartPeriod={settings?.defaultTrackingStartPeriod}
               canConfigureTracking={isGlobalAdmin || canConfigureTracking(currentUser, dashboard.clientId || currentUser.clientId || '', dashboard)}
               initialActionPlanId={requestedActionPlanId}
+              initialActionPlanActivityId={requestedActionPlanActivityId}
+              initialOpenResultReview={requestedOpenResultReview}
               onActionPlanExit={handleActionPlanExit}
               controlTarget={requestedControlTarget && String(requestedControlTarget.dashboardId) === String(dashboard.id) && String(requestedControlTarget.itemId) === String(selectedItem.id) ? requestedControlTarget : undefined}
             />

@@ -9,6 +9,7 @@ import {
     updateDoc,
     deleteDoc,
     writeBatch,
+    runTransaction,
     query,
     where,
     DocumentReference,
@@ -28,6 +29,7 @@ import {
 import { db, auth } from "../firebase";
 import { readTableroScope, requestedTenants, dashboardQueryConstraints } from './tableroReadScope';
 import { canEditActionPlan as canEditActionPlanForUser, resolveEffectiveMemberships } from './tableroAuthorization';
+import { calculateActionPlanProgress, reconcileActionPlanStatus } from '../utils/actionPlanLogic';
 
 import type {
     User,
@@ -35,6 +37,8 @@ import type {
     DashboardItem,
     SystemSettings,
     ActionPlan,
+    ActionPlanActivity,
+    ActionPlanResultReview,
 } from "../types";
 
 const COLLECTION_PREFIX = "tbl_"; // BLINDAJE ACTIVO: Todas las colecciones inician con 'tbl_'
@@ -44,6 +48,75 @@ const SYSTEM_SETTINGS_COLLECTION = `${COLLECTION_PREFIX}systemSettings`;
 const SYSTEM_SETTINGS_DOC_ID = "main";
 const CLIENTS_COLLECTION = `${COLLECTION_PREFIX}managedClients`;
 const ACTION_PLANS_COLLECTION = `${COLLECTION_PREFIX}actionPlans`;
+
+type ResultReviewCommitment =
+    | { type: 'activity'; activity: ActionPlanActivity }
+    | { type: 'plan'; plan: ActionPlan };
+
+const isValidResultReview = (review: ActionPlanResultReview): boolean => {
+    const effects = ['FAVORABLE', 'PARTIAL', 'LOW_OR_NONE', 'NOT_EVALUABLE'];
+    const decisions = ['CLOSE', 'CONTINUE', 'ADJUST'];
+    const forbiddenIdentity = ['clientId', 'dashboardId', 'indicatorId', 'planId'];
+    const allowedFields = [
+        'id', 'reviewedAt', 'reviewedByUserId', 'reviewedByLabel', 'observedResult', 'effect', 'decision',
+        'note', 'evidenceRef', 'nextReviewDate', 'nextCommitmentPlanId', 'nextCommitmentActivityId',
+        'reviewYear', 'reviewPeriodType', 'reviewPeriodIndex',
+    ];
+    const reviewData = review as ActionPlanResultReview & Record<string, unknown>;
+    return !!review && typeof review === 'object' &&
+        typeof review.id === 'string' && !!review.id.trim() &&
+        typeof review.reviewedAt === 'string' && !!review.reviewedAt.trim() && !Number.isNaN(Date.parse(review.reviewedAt)) &&
+        typeof review.reviewedByLabel === 'string' && !!review.reviewedByLabel.trim() &&
+        typeof review.observedResult === 'string' && !!review.observedResult.trim() &&
+        effects.includes(review.effect) && decisions.includes(review.decision) &&
+        !forbiddenIdentity.some((field) => Object.prototype.hasOwnProperty.call(reviewData, field)) &&
+        Object.keys(reviewData).every((field) => allowedFields.includes(field)) &&
+        (!('reviewedByUserId' in reviewData) || typeof review.reviewedByUserId === 'string') &&
+        (!('note' in reviewData) || typeof review.note === 'string') &&
+        (!('evidenceRef' in reviewData) || typeof review.evidenceRef === 'string') &&
+        (!('reviewYear' in reviewData) || Number.isInteger(review.reviewYear)) &&
+        (!('reviewPeriodType' in reviewData) || ['monthly', 'weekly', 'manual'].includes(review.reviewPeriodType as string)) &&
+        (!('reviewPeriodIndex' in reviewData) || Number.isInteger(review.reviewPeriodIndex)) &&
+        (!('nextReviewDate' in reviewData) || (typeof review.nextReviewDate === 'string' && !!review.nextReviewDate.trim() && !Number.isNaN(Date.parse(review.nextReviewDate)))) &&
+        (!('nextCommitmentPlanId' in reviewData) || (typeof review.nextCommitmentPlanId === 'string' && !!review.nextCommitmentPlanId.trim())) &&
+        (!('nextCommitmentActivityId' in reviewData) || (typeof review.nextCommitmentActivityId === 'string' && !!review.nextCommitmentActivityId.trim())) &&
+        !('nextCommitmentPlanId' in reviewData && 'nextCommitmentActivityId' in reviewData);
+};
+
+const sameResultReview = (left: ActionPlanResultReview, right: ActionPlanResultReview): boolean => {
+    const keys = new Set([...Object.keys(left), ...Object.keys(right)]);
+    return [...keys].every((key) => left[key as keyof ActionPlanResultReview] === right[key as keyof ActionPlanResultReview]);
+};
+
+const withoutUndefined = <T>(value: T): T => {
+    if (Array.isArray(value)) return value.map(withoutUndefined) as T;
+    if (value && typeof value === 'object') {
+        return Object.fromEntries(Object.entries(value as Record<string, unknown>)
+            .filter(([, entry]) => entry !== undefined)
+            .map(([key, entry]) => [key, withoutUndefined(entry)])) as T;
+    }
+    return value;
+};
+
+const assertValidSuccessorActivity = (activity: ActionPlanActivity): void => {
+    if (!activity || typeof activity.id !== 'string' || !activity.id.trim() ||
+        typeof activity.title !== 'string' || !activity.title.trim() ||
+        !Number.isFinite(activity.progress) || activity.progress < 0 || activity.progress > 100) {
+        throw new Error('La actividad sucesora no es válida.');
+    }
+};
+
+const assertValidSuccessorPlan = (source: ActionPlan, successor: ActionPlan): void => {
+    const sourceIndicatorId = String(source.indicatorId ?? '').trim();
+    const successorIndicatorId = String(successor?.indicatorId ?? '').trim();
+    if (!successor || typeof successor.id !== 'string' || !successor.id.trim() || successor.id === source.id ||
+        !successor.title?.trim() ||
+        !sourceIndicatorId || !successorIndicatorId || successorIndicatorId !== sourceIndicatorId ||
+        String(successor.clientId || '').trim().toUpperCase() !== String(source.clientId || '').trim().toUpperCase() ||
+        String(successor.dashboardId) !== String(source.dashboardId)) {
+        throw new Error('El plan sucesor debe tener id propio y conservar cliente, tablero e indicador.');
+    }
+};
 
 // -----------------------------
 // Helpers
@@ -59,6 +132,15 @@ const normalizeDashboardId = (value: unknown, fallback: number | string): number
 const itemsCollectionRef = (dashboardId: number | string) =>
     collection(db, DASHBOARDS_COLLECTION, String(dashboardId), "items");
 
+const getActionPlanEditProfile = async (clientId: string | undefined, dashboardId: number | string): Promise<User> => {
+    const scope = await readTableroScope();
+    const tenant = String(clientId || '').trim().toUpperCase();
+    if (!tenant || !scope.profile || !canEditActionPlanForUser(scope.profile, { id: dashboardId, clientId: tenant })) {
+        throw new Error('Permiso plan_editor y alcance editable requeridos.');
+    }
+    return scope.profile;
+};
+
 // -----------------------------
 // firebaseService
 // -----------------------------
@@ -72,14 +154,16 @@ const itemsCollectionRef = (dashboardId: number | string) =>
  */
 export const firebaseService = {
     assertActionPlanEditScope: async (clientId: string | undefined, dashboardId: number | string): Promise<void> => {
-        const scope = await readTableroScope();
-        const tenant = String(clientId || '').trim().toUpperCase();
-        if (!tenant || !scope.profile || !canEditActionPlanForUser(scope.profile, { id: dashboardId, clientId: tenant })) {
-            throw new Error('Permiso plan_editor y alcance editable requeridos.');
-        }
+        await getActionPlanEditProfile(clientId, dashboardId);
     },
     createActionPlan: async (plan: ActionPlan): Promise<ActionPlan> => {
         await firebaseService.assertActionPlanEditScope(plan.clientId, plan.dashboardId);
+        const indicatorId = String(plan.indicatorId ?? '').trim();
+        const dashboard = (await firebaseService.getDashboards(plan.clientId))
+            .find((candidate) => String(candidate.id) === String(plan.dashboardId));
+        if (!indicatorId || !dashboard?.items?.some((item) => String(item.id) === indicatorId)) {
+            throw new Error('El indicador del plan debe existir en el tablero indicado.');
+        }
         const id = plan.id || crypto.randomUUID();
         const now = new Date().toISOString();
         const value = { ...plan, id, createdAt: plan.createdAt || now, updatedAt: now };
@@ -93,8 +177,103 @@ export const firebaseService = {
         if (!snap.exists()) throw new Error('Plan de acción no encontrado.');
         const stored = snap.data() as ActionPlan;
         await firebaseService.assertActionPlanEditScope(stored.clientId, stored.dashboardId);
-        await updateDoc(ref, { ...changes, updatedAt: new Date().toISOString() });
+        // General plan edits never own the result review history. Omitting the field
+        // prevents a stale editor draft from erasing reviews written concurrently.
+        const { resultReviews: _ignoredResultReviews, ...planChanges } = changes;
+        await updateDoc(ref, { ...planChanges, updatedAt: new Date().toISOString() });
         return true;
+    },
+
+    /**
+     * Atomically appends a result review and, optionally, its successor activity
+     * or successor plan. Repeating the same review id and identical payload is
+     * idempotent; reusing an id for different content is rejected.
+     */
+    recordActionPlanResultReview: async (
+        planId: string,
+        review: ActionPlanResultReview,
+        nextCommitment?: ResultReviewCommitment,
+    ): Promise<ActionPlan> => {
+        if (!isValidResultReview(review)) throw new Error('La revisión de resultado no es válida.');
+        if (Object.prototype.hasOwnProperty.call(review, 'nextCommitmentPlanId') || Object.prototype.hasOwnProperty.call(review, 'nextCommitmentActivityId')) {
+            throw new Error('El vínculo al siguiente compromiso debe proporcionarse mediante nextCommitment.');
+        }
+        if (nextCommitment?.type === 'activity') assertValidSuccessorActivity(nextCommitment.activity);
+
+        const planRef = doc(db, ACTION_PLANS_COLLECTION, planId);
+        return runTransaction(db, async (transaction) => {
+            const planSnap = await transaction.get(planRef);
+            if (!planSnap.exists()) throw new Error('Plan de acción no encontrado.');
+            const stored = { ...planSnap.data(), id: planSnap.id } as ActionPlan;
+            const reviewer = await getActionPlanEditProfile(stored.clientId, stored.dashboardId);
+
+            const reviews = Array.isArray(stored.resultReviews) ? stored.resultReviews : [];
+            const linkedReview: ActionPlanResultReview = withoutUndefined({
+                ...review,
+                reviewedByUserId: reviewer.id || review.reviewedByUserId,
+                reviewedByLabel: reviewer.name?.trim() || reviewer.email?.trim() || review.reviewedByLabel.trim(),
+            });
+            if (nextCommitment?.type === 'activity') linkedReview.nextCommitmentActivityId = nextCommitment.activity.id;
+
+            let successorRef: DocumentReference<DocumentData> | undefined;
+            let successorPlan: ActionPlan | undefined;
+            if (nextCommitment?.type === 'plan') {
+                successorPlan = nextCommitment.plan;
+                assertValidSuccessorPlan(stored, successorPlan);
+                if (successorPlan.resultReviews?.length) throw new Error('Un plan sucesor nuevo no puede traer revisiones previas.');
+                linkedReview.nextCommitmentPlanId = successorPlan.id;
+                successorRef = doc(db, ACTION_PLANS_COLLECTION, successorPlan.id);
+            }
+
+            const existing = reviews.find((candidate) => candidate && candidate.id === linkedReview.id);
+            if (existing) {
+                if (!sameResultReview(existing, linkedReview)) throw new Error('Ya existe una revisión con ese id y contenido distinto.');
+                // The review and its commitment were written atomically, so an exact
+                // duplicate retry must not append or create either item again.
+                return stored;
+            }
+
+            let activities = Array.isArray(stored.activities) ? stored.activities : [];
+            if (nextCommitment?.type === 'activity') {
+                const matchingId = activities.find((activity) => activity.id === nextCommitment.activity.id);
+                if (matchingId) throw new Error('Ya existe una actividad con el id de la sucesora.');
+                activities = [...activities, {
+                    ...nextCommitment.activity,
+                    createdAt: nextCommitment.activity.createdAt || new Date().toISOString(),
+                    updatedAt: nextCommitment.activity.updatedAt || new Date().toISOString(),
+                }];
+            }
+
+            if (successorRef && successorPlan) {
+                const successorSnap = await transaction.get(successorRef);
+                if (successorSnap.exists()) throw new Error('Ya existe un plan con el id del sucesor.');
+                await getActionPlanEditProfile(successorPlan.clientId, successorPlan.dashboardId);
+                const now = new Date().toISOString();
+                transaction.set(successorRef, withoutUndefined({
+                    ...successorPlan,
+                    id: successorPlan.id,
+                    createdAt: successorPlan.createdAt || now,
+                    updatedAt: now,
+                    resultReviews: [],
+                }));
+            }
+
+            const executionUpdate = nextCommitment?.type === 'activity'
+                ? { progress: calculateActionPlanProgress(activities), status: reconcileActionPlanStatus(stored.status, activities) }
+                : {};
+            transaction.update(planRef, withoutUndefined({
+                resultReviews: [...reviews, linkedReview],
+                ...(nextCommitment?.type === 'activity' ? { activities } : {}),
+                ...executionUpdate,
+                updatedAt: new Date().toISOString(),
+            }));
+            return {
+                ...stored,
+                resultReviews: [...reviews, linkedReview],
+                ...(nextCommitment?.type === 'activity' ? { activities } : {}),
+                ...executionUpdate,
+            };
+        });
     },
 
     deleteActionPlan: async (clientId: string, id: string): Promise<boolean> => {

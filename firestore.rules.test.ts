@@ -581,6 +581,46 @@ describe('Firestore Security Rules — Strategy Module (v9.5.0 Foundation)', () 
     await assertFails(updateDoc(doc(admin,'tbl_actionPlans','b'),{status:'completed'}));
   });
 
+  it('allows one valid ActionPlan result review and preserves immutable review history', async () => {
+    await seedTablero();
+    await testEnv.withSecurityRulesDisabled(async context => {
+      await setDoc(doc(context.firestore(), 'tbl_userMemberships', 'member_a__A'), {
+        ...canonicalMembership('member_a', 'A'),
+        allowedDashboardIds: ['a', 'view'],
+        editableDashboardIds: ['a'],
+        capabilities: ['plan_editor'],
+      });
+    });
+    const editor = testEnv.authenticatedContext('member_a').firestore();
+    const reader = testEnv.authenticatedContext('director_a').firestore();
+    const wrongClient = testEnv.authenticatedContext('member_b').firestore();
+    const platformWithoutMembership = testEnv.authenticatedContext('super_admin', { email: 'leon@leonprior.com' }).firestore();
+    const admin = testEnv.authenticatedContext('admin_a').firestore();
+    const planRef = doc(admin, 'tbl_actionPlans', 'a');
+    const validReview = {
+      id: 'review-1', reviewedAt: '2026-09-28T12:00:00.000Z', reviewedByUserId: 'member_a',
+      reviewedByLabel: 'Member A', observedResult: 'KPI recuperó 10 puntos.',
+      effect: 'FAVORABLE', decision: 'CLOSE',
+    };
+    const adminReview = { ...validReview, id: 'admin-review', reviewedByUserId: 'admin_a', reviewedByLabel: 'Admin A' };
+    const editorPlanRef = doc(editor, 'tbl_actionPlans', 'a');
+    await assertFails(updateDoc(doc(reader, 'tbl_actionPlans', 'a'), { resultReviews: [validReview] }));
+    await assertFails(updateDoc(doc(wrongClient, 'tbl_actionPlans', 'a'), { resultReviews: [validReview] }));
+    await assertFails(updateDoc(doc(platformWithoutMembership, 'tbl_actionPlans', 'a'), { resultReviews: [validReview] }));
+    await assertFails(updateDoc(doc(editor, 'tbl_actionPlans', 'view'), { resultReviews: [validReview] }));
+    await assertFails(updateDoc(planRef, { resultReviews: [{ ...adminReview, effect: 'UNKNOWN' }] }));
+    await assertFails(updateDoc(planRef, { resultReviews: [{ ...adminReview, reviewedByUserId: 'someone-else' }] }));
+    await assertFails(updateDoc(planRef, { resultReviews: [{ ...adminReview, planId: 'forged-plan' }] }));
+    await assertFails(updateDoc(editorPlanRef, { resultReviews: [validReview], clientId: 'B' }));
+    await assertFails(updateDoc(editorPlanRef, { resultReviews: [validReview], dashboardId: 'view' }));
+    await assertFails(updateDoc(editorPlanRef, { resultReviews: [validReview], indicatorId: 'forged-kpi' }));
+    await assertFails(updateDoc(doc(admin, 'tbl_actionPlans', 'view'), { resultReviews: [adminReview, { ...adminReview, id: 'review-2' }] }));
+    await assertSucceeds(updateDoc(editorPlanRef, { resultReviews: [validReview] }));
+    await assertFails(updateDoc(editorPlanRef, { resultReviews: [] }));
+    await assertFails(updateDoc(editorPlanRef, { resultReviews: [{ ...validReview, reviewedAt: '2026-09-29T12:00:00.000Z' }] }));
+    await assertSucceeds(updateDoc(planRef, { status: 'completed' }));
+  });
+
   it('P0 preserves originalId scoped queries', async () => {
     await seedTablero();
     await testEnv.withSecurityRulesDisabled(async context => {

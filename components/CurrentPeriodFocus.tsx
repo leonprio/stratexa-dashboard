@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useRef } from "react";
-import { DashboardItem, ComplianceThresholds, TrackingStartPeriod } from "../types";
+import { DashboardItem, ComplianceThresholds, TrackingStartPeriod, User } from "../types";
 import { TrackingStartPeriodControls, formatTrackingStartPeriod } from './TrackingStartPeriodControls';
 import { getEffectiveTrackingStartPeriod, hasTrackingFactsBeforePeriod } from '../utils/trackingObligation';
 import { RelatedActionPlans } from "./RelatedActionPlans";
@@ -36,12 +36,15 @@ interface CurrentPeriodFocusProps {
   onUpdateItem: (updatedItem: DashboardItem) => Promise<void> | void;
   canEdit: boolean;
   canEditPlans?: boolean;
+  currentUser?: User;
   onClose: () => void;
   allDashboardItems?: DashboardItem[];
   decimalPrecision?: 0 | 1 | 2;
   dashboardId?: number | string;
   clientId?: string;
   initialActionPlanId?: number | string;
+  initialActionPlanActivityId?: string;
+  initialOpenResultReview?: boolean;
   onActionPlanExit?: () => void;
   dashboardTrackingStartPeriod?: TrackingStartPeriod;
   clientTrackingStartPeriod?: TrackingStartPeriod;
@@ -450,12 +453,15 @@ export const CurrentPeriodFocus: React.FC<CurrentPeriodFocusProps> = ({
   onUpdateItem,
   canEdit,
   canEditPlans = false,
+  currentUser,
   onClose,
   allDashboardItems = [],
   decimalPrecision = 0,
   dashboardId,
   clientId,
   initialActionPlanId,
+  initialActionPlanActivityId,
+  initialOpenResultReview,
   onActionPlanExit,
   dashboardTrackingStartPeriod,
   clientTrackingStartPeriod,
@@ -621,10 +627,13 @@ export const CurrentPeriodFocus: React.FC<CurrentPeriodFocusProps> = ({
   ]);
 
   useEffect(() => {
-    if (activePeriodIdx === -1) {
+    if (controlTarget?.period && controlTarget.period.year === year) {
+      const targetIndex = controlTarget.period.frequency === 'weekly' ? controlTarget.period.weekNumber - 1 : controlTarget.period.monthIndex;
+      if (Number.isInteger(targetIndex) && targetIndex >= 0) setActivePeriodIdx(targetIndex);
+    } else if (activePeriodIdx === -1) {
       setActivePeriodIdx(periodIdx);
     }
-  }, [periodIdx]);
+  }, [activePeriodIdx, controlTarget, periodIdx, year]);
 
   const currentIdx = activePeriodIdx === -1 ? periodIdx : activePeriodIdx;
   useEffect(() => {
@@ -1760,7 +1769,10 @@ export const CurrentPeriodFocus: React.FC<CurrentPeriodFocusProps> = ({
                 periodType={isWeekly ? "weekly" : "monthly"}
                 periodIndex={currentIdx}
                 canEdit={canEditPlans}
+                currentUser={currentUser}
                 initialPlanId={initialActionPlanId}
+                initialActivityId={initialActionPlanActivityId}
+                initialOpenResultReview={initialOpenResultReview}
                 onCancelEdit={onActionPlanExit}
                 onSaved={onActionPlanExit}
                 collapsed={!plansFocused}

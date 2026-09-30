@@ -178,6 +178,25 @@ export interface AggregationSource {
 
 export type ActionPlanStatus = 'planned' | 'in_progress' | 'completed' | 'cancelled';
 export type ActionPlanOriginPeriodType = 'monthly' | 'weekly' | 'manual';
+export type ActionPlanResultEffect = 'FAVORABLE' | 'PARTIAL' | 'LOW_OR_NONE' | 'NOT_EVALUABLE';
+export type ActionPlanResultDecision = 'CLOSE' | 'CONTINUE' | 'ADJUST';
+export interface ActionPlanResultReview {
+  id: string;
+  reviewedAt: string;
+  reviewedByUserId?: string;
+  reviewedByLabel: string;
+  observedResult: string;
+  effect: ActionPlanResultEffect;
+  decision: ActionPlanResultDecision;
+  note?: string;
+  evidenceRef?: string;
+  nextReviewDate?: string;
+  nextCommitmentPlanId?: string;
+  nextCommitmentActivityId?: string;
+  reviewYear?: number;
+  reviewPeriodType?: ActionPlanOriginPeriodType;
+  reviewPeriodIndex?: number;
+}
 export interface ActionPlanActivity {
   id: string;
   title: string;
@@ -211,6 +230,7 @@ export interface ActionPlan {
   updatedAt: string;
   closedAt?: string;
   activities?: ActionPlanActivity[];
+  resultReviews?: ActionPlanResultReview[];
 }
 
 /**

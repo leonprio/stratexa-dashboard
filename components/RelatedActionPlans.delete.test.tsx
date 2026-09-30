@@ -33,6 +33,20 @@ const props = { indicatorId: 2, dashboardId: 10, clientId: "LEON", year: 2026, p
 describe("RelatedActionPlans delete contract", () => {
   beforeEach(() => jest.clearAllMocks());
 
+  test("keeps same-indicator plans from another dashboard out of this KPI and its navigation target", async () => {
+    const foreignDashboardPlan = { ...plan, id: "plan-other-dashboard", dashboardId: 11, title: "Plan del otro tablero" };
+    const foreignTenantPlan = { ...plan, id: "plan-other-tenant", clientId: "OTRO", title: "Plan de otro cliente" };
+    (firebaseService.getActionPlansForIndicator as jest.Mock).mockResolvedValue([plan, foreignDashboardPlan, foreignTenantPlan]);
+
+    render(<RelatedActionPlans {...props} initialPlanId="plan-other-dashboard" />);
+
+    expect(await screen.findByText("Plan de prueba")).toBeInTheDocument();
+    expect(screen.queryByText("Plan del otro tablero")).not.toBeInTheDocument();
+    expect(screen.queryByText("Plan de otro cliente")).not.toBeInTheDocument();
+    expect(screen.queryByDisplayValue("Plan del otro tablero")).not.toBeInTheDocument();
+    expect(firebaseService.getActionPlansForIndicator).toHaveBeenCalledWith(2, "LEON");
+  });
+
   test("existing plan shows inline confirmation and cancel does not delete", async () => {
     (firebaseService.getActionPlansForIndicator as jest.Mock).mockResolvedValue([plan]);
     render(<RelatedActionPlans {...props} />);
