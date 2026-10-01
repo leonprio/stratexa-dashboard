@@ -62,7 +62,7 @@ import {
   reconcileClientSelectionResult,
 } from "./utils/clientReconciliation";
 import { isUniversalSuperAdmin } from "./utils/universalSuperAdmin";
-import { getAuthorizedClientIds } from "./services/tableroAuthorization";
+import { getAuthorizedClientIds, canAccessStrategy } from "./services/tableroAuthorization";
 import { getMainViewReadiness } from "./utils/mainViewReadiness";
 import {
   StrategicPerspective,
@@ -245,7 +245,9 @@ export default function App() {
     if (
       !settings?.enableStrategyMap ||
       !clientSelectionReady ||
-      !selectedClientId
+      !selectedClientId ||
+      !userProfile ||
+      !canAccessStrategy(userProfile, selectedClientId)
     ) {
       setPerspectives([]);
       setObjectives([]);
@@ -284,7 +286,7 @@ export default function App() {
         setRelationships([]);
       }
     }
-  }, [settings?.enableStrategyMap, clientSelectionReady, selectedClientId]);
+  }, [settings?.enableStrategyMap, clientSelectionReady, selectedClientId, userProfile]);
 
   const handleSaveRelationship = useCallback(
     async (rel: {

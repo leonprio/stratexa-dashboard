@@ -808,4 +808,129 @@ describe('Firestore Security Rules — Strategy Module (v9.5.0 Foundation)', () 
     });
   });
 
+  describe('HOTFIX: Legacy Client Identity Casing Normalization', () => {
+    beforeEach(async () => {
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        const db = context.firestore();
+
+        // Seed legacy users with mixed casing
+        await setDoc(doc(db, 'tbl_users', 'legacy_user_lower_ips'), {
+          uid: 'legacy_user_lower_ips',
+          clientId: 'ips',
+          globalRole: 'Member',
+          dashboardAccess: {
+            'board_ips_1': 'Viewer',
+            'board_ips_2': 'Editor',
+          },
+        });
+
+        await setDoc(doc(db, 'tbl_users', 'legacy_user_upper_ips'), {
+          uid: 'legacy_user_upper_ips',
+          clientId: 'IPS',
+          globalRole: 'Member',
+          dashboardAccess: {
+            'board_ips_1': 'Viewer',
+          },
+        });
+
+        await setDoc(doc(db, 'tbl_users', 'legacy_user_lower_lvp'), {
+          uid: 'legacy_user_lower_lvp',
+          clientId: 'lvp',
+          globalRole: 'Member',
+          dashboardAccess: {
+            'board_lvp_1': 'Viewer',
+          },
+        });
+
+        // Seed dashboards
+        await setDoc(doc(db, 'tbl_dashboards', 'board_ips_1'), {
+          id: 'board_ips_1',
+          clientId: 'IPS',
+          title: 'Board IPS 1',
+          year: 2026,
+        });
+
+        await setDoc(doc(db, 'tbl_dashboards', 'board_ips_2'), {
+          id: 'board_ips_2',
+          clientId: 'IPS',
+          title: 'Board IPS 2',
+          year: 2026,
+        });
+
+        await setDoc(doc(db, 'tbl_dashboards', 'board_ips_no_access'), {
+          id: 'board_ips_no_access',
+          clientId: 'IPS',
+          title: 'Board IPS No Access',
+          year: 2026,
+        });
+
+        await setDoc(doc(db, 'tbl_dashboards', 'board_lvp_1'), {
+          id: 'board_lvp_1',
+          clientId: 'LVP',
+          title: 'Board LVP 1',
+          year: 2026,
+        });
+
+        // Seed client catalog
+        await setDoc(doc(db, 'tbl_managedClients', 'IPS'), {
+          id: 'IPS',
+          name: 'GRUPO IPS',
+        });
+
+        await setDoc(doc(db, 'tbl_managedClients', 'LVP'), {
+          id: 'LVP',
+          name: 'LVP',
+        });
+      });
+    });
+
+    it('CASE 1: legacy user clientId = "ips" can read dashboard clientId = "IPS"', async () => {
+      const userDb = testEnv.authenticatedContext('legacy_user_lower_ips').firestore();
+      await assertSucceeds(getDoc(doc(userDb, 'tbl_dashboards', 'board_ips_1')));
+      const q = query(
+        collection(userDb, 'tbl_dashboards'),
+        where('clientId', '==', 'IPS'),
+        where('year', '==', 2026),
+        where(documentId(), 'in', ['board_ips_1'])
+      );
+      await assertSucceeds(getDocs(q));
+    });
+
+    it('CASE 2: legacy user clientId = "IPS" continues reading dashboard IPS', async () => {
+      const userDb = testEnv.authenticatedContext('legacy_user_upper_ips').firestore();
+      await assertSucceeds(getDoc(doc(userDb, 'tbl_dashboards', 'board_ips_1')));
+    });
+
+    it('CASE 3: legacy user clientId = "ips" can read tbl_managedClients/IPS', async () => {
+      const userDb = testEnv.authenticatedContext('legacy_user_lower_ips').firestore();
+      await assertSucceeds(getDoc(doc(userDb, 'tbl_managedClients', 'IPS')));
+    });
+
+    it('CASE 4: legacy user clientId = "ips" CANNOT read tenant LVP', async () => {
+      const userDb = testEnv.authenticatedContext('legacy_user_lower_ips').firestore();
+      await assertFails(getDoc(doc(userDb, 'tbl_dashboards', 'board_lvp_1')));
+      await assertFails(getDoc(doc(userDb, 'tbl_managedClients', 'LVP')));
+    });
+
+    it('CASE 5: legacy user clientId = "lvp" CANNOT read IPS', async () => {
+      const userDb = testEnv.authenticatedContext('legacy_user_lower_lvp').firestore();
+      await assertFails(getDoc(doc(userDb, 'tbl_dashboards', 'board_ips_1')));
+      await assertFails(getDoc(doc(userDb, 'tbl_managedClients', 'IPS')));
+    });
+
+    it('CASE 6: casing normalization does NOT grant SuperAdmin / Platform privileges', async () => {
+      const userDb = testEnv.authenticatedContext('legacy_user_lower_ips').firestore();
+      await assertFails(getDoc(doc(userDb, 'tbl_platformAdmins', 'other_admin')));
+      await assertFails(setDoc(doc(userDb, 'tbl_platformAdmins', 'legacy_user_lower_ips'), {
+        uid: 'legacy_user_lower_ips',
+        status: 'active',
+        schemaVersion: 1,
+      }));
+    });
+
+    it('CASE 7: dashboardAccess continues to be strictly enforced', async () => {
+      const userDb = testEnv.authenticatedContext('legacy_user_lower_ips').firestore();
+      await assertFails(getDoc(doc(userDb, 'tbl_dashboards', 'board_ips_no_access')));
+    });
+  });
 });

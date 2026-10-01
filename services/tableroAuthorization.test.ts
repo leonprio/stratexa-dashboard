@@ -1,6 +1,7 @@
 import { DashboardRole, GlobalUserRole, type User } from '../types';
 import {
   canAccessDashboard,
+  canAccessStrategy,
   canAdminTenant,
   canEditActionPlan,
   canReadBusinessData,
@@ -165,5 +166,61 @@ describe('canonical Tablero authorization compatibility', () => {
     expect(canReadBusinessData(sigmaUser, 'IPS')).toBe(false);
     expect(canReadBusinessData(sigmaUser, 'RED_CROP')).toBe(false);
     expect(canAccessDashboard(sigmaUser, { id: 101, clientId: 'IPS' })).toBe(false);
+  });
+
+  describe('strategy access contract (canAccessStrategy)', () => {
+    it('CASE A: allows strategy access for user with strategy_reader capability', () => {
+      const reader = legacy({
+        memberships: [{
+          clientId: 'IPS',
+          role: 'standard_user',
+          status: 'active',
+          capabilities: ['strategy_reader'],
+          dashboardScopes: {},
+        }],
+      });
+      expect(canAccessStrategy(reader, 'IPS')).toBe(true);
+      expect(canAccessStrategy(reader, 'LVP')).toBe(false);
+    });
+
+    it('CASE B: allows strategy access for tenant_admin', () => {
+      const canonicalAdmin = legacy({
+        memberships: [{
+          clientId: 'IPS',
+          role: 'tenant_admin',
+          status: 'active',
+          capabilities: [],
+          dashboardScopes: {},
+        }],
+      });
+      expect(canAccessStrategy(canonicalAdmin, 'IPS')).toBe(true);
+
+      const legacyAdmin = legacy({
+        clientId: 'IPS',
+        globalRole: GlobalUserRole.Admin,
+      });
+      expect(canAccessStrategy(legacyAdmin, 'IPS')).toBe(true);
+      expect(canAccessStrategy(legacyAdmin, 'LVP')).toBe(false);
+    });
+
+    it('CASE C: denies strategy access for legacy Member without strategy_reader capability', () => {
+      const legacyMember = legacy({
+        clientId: 'IPS',
+        globalRole: GlobalUserRole.Member,
+        dashboardAccess: { '1768429631798': DashboardRole.Editor },
+      });
+      expect(canAccessStrategy(legacyMember, 'IPS')).toBe(false);
+    });
+
+    it('CASE D: user without strategy capability can still access authorized dashboards', () => {
+      const legacyMember = legacy({
+        clientId: 'IPS',
+        globalRole: GlobalUserRole.Member,
+        dashboardAccess: { '1768429631798': DashboardRole.Editor },
+      });
+      expect(canAccessStrategy(legacyMember, 'IPS')).toBe(false);
+      expect(canAccessDashboard(legacyMember, { id: '1768429631798', clientId: 'IPS' })).toBe(true);
+      expect(canAccessDashboard(legacyMember, { id: 'other_board', clientId: 'IPS' })).toBe(false);
+    });
   });
 });
