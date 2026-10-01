@@ -25,6 +25,7 @@ import {
 import { Dashboard as DashboardType, User, GlobalUserRole } from "../../types";
 import { calculateCompliance } from "../../utils/compliance";
 import { ContributionDetailModal } from "./ContributionDetailModal";
+import { CellContributionModal } from "./CellContributionModal";
 import { StrategyConfigModal } from "./StrategyConfigModal";
 import { StrategyMapView } from "./StrategyMapView";
 
@@ -83,11 +84,22 @@ export const ContributionMatrixView: React.FC<ContributionMatrixViewProps> = ({
   const [subView, setSubView] = useState<"matrix" | "map">("map");
   const [selectedOCForDetail, setSelectedOCForDetail] =
     useState<ContributionObjective | null>(null);
+  const [activeCellModal, setActiveCellModal] = useState<{
+    areaName: string;
+    oe: StrategicObjective;
+    initialEditingOCId?: string | null;
+    initialFormOpen?: boolean;
+  } | null>(null);
   const [showConfigModal, setShowConfigModal] = useState(false);
   const [selectedAreaFilter, setSelectedAreaFilter] = useState<string>("TODAS");
 
   const handleCloseConfig = async () => {
     setShowConfigModal(false);
+    await onRefreshData();
+  };
+
+  const handleCloseCellModal = async () => {
+    setActiveCellModal(null);
     await onRefreshData();
   };
 
@@ -213,7 +225,7 @@ export const ContributionMatrixView: React.FC<ContributionMatrixViewProps> = ({
         <div>
           <div className="flex items-center gap-2">
             <span className="px-2.5 py-0.5 text-xs font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded">
-              v9.5.1
+              v9.7.0
             </span>
             <span className="text-xs font-semibold text-slate-400">
               BSC & Fundamentos de Estrategia
@@ -467,10 +479,26 @@ export const ContributionMatrixView: React.FC<ContributionMatrixViewProps> = ({
                                 className="p-3 align-top border-r border-slate-800/40"
                               >
                                 {cellOCs.length === 0 ? (
-                                  <div className="py-4 text-center">
-                                    <span className="text-[11px] font-medium text-slate-600 italic">
+                                  <div className="py-4 text-center space-y-2">
+                                    <span className="text-[11px] font-medium text-slate-600 italic block">
                                       No contribuye
                                     </span>
+                                    {isAdmin && (
+                                      <button
+                                        type="button"
+                                        onClick={() =>
+                                          setActiveCellModal({
+                                            areaName,
+                                            oe,
+                                            initialFormOpen: true,
+                                          })
+                                        }
+                                        className="inline-flex items-center gap-1 px-2 py-1 text-[10px] font-bold text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20 rounded-md transition-colors"
+                                      >
+                                        <Plus className="w-3 h-3" />
+                                        + Agregar objetivo
+                                      </button>
+                                    )}
                                   </div>
                                 ) : (
                                   <div className="space-y-2">
@@ -482,14 +510,25 @@ export const ContributionMatrixView: React.FC<ContributionMatrixViewProps> = ({
                                       return (
                                         <div
                                           key={oc.id}
-                                          onClick={() =>
-                                            setSelectedOCForDetail(oc)
-                                          }
+                                          onClick={() => {
+                                            if (isAdmin) {
+                                              setActiveCellModal({
+                                                areaName,
+                                                oe,
+                                                initialEditingOCId: oc.id,
+                                              });
+                                            } else {
+                                              setSelectedOCForDetail(oc);
+                                            }
+                                          }}
                                           className="p-3 rounded-lg bg-slate-950 border border-slate-800 hover:border-blue-500/50 cursor-pointer transition-all hover:scale-[1.01] shadow-sm group space-y-2"
                                         >
-                                          <div className="flex items-start justify-end gap-2">
+                                          <div className="flex items-start justify-between gap-2">
+                                            <span className="px-1.5 py-0.5 text-[9px] font-bold bg-blue-500/10 text-blue-400 border border-blue-500/20 rounded font-mono">
+                                              {oc.displayCode}
+                                            </span>
                                             <span className="text-[10px] font-semibold text-slate-400 group-hover:text-blue-400 transition-colors">
-                                              Ver detalle →
+                                              {isAdmin ? "Gestionar →" : "Ver detalle →"}
                                             </span>
                                           </div>
 
@@ -566,6 +605,23 @@ export const ContributionMatrixView: React.FC<ContributionMatrixViewProps> = ({
                                         </div>
                                       );
                                     })}
+
+                                    {isAdmin && (
+                                      <button
+                                        type="button"
+                                        onClick={() =>
+                                          setActiveCellModal({
+                                            areaName,
+                                            oe,
+                                            initialFormOpen: true,
+                                          })
+                                        }
+                                        className="w-full py-1 text-[10px] font-semibold text-slate-400 hover:text-emerald-400 hover:bg-slate-950/80 border border-dashed border-slate-800 hover:border-emerald-500/30 rounded flex items-center justify-center gap-1 transition-colors"
+                                      >
+                                        <Plus className="w-3 h-3" />
+                                        + Agregar
+                                      </button>
+                                    )}
                                   </div>
                                 )}
                               </td>
@@ -580,6 +636,38 @@ export const ContributionMatrixView: React.FC<ContributionMatrixViewProps> = ({
             </table>
           </div>
         </div>
+      )}
+
+      {/* Modal de Detalle Celda y Gestión Directa de OCs */}
+      {activeCellModal && (
+        <CellContributionModal
+          areaName={activeCellModal.areaName}
+          areaConfigs={areaConfigs}
+          oe={activeCellModal.oe}
+          perspective={
+            activePerspectives.find(
+              (p) => p.id === activeCellModal.oe.perspectiveId,
+            ) || null
+          }
+          cellOCs={contributionObjectives.filter((oc) => {
+            const normArea = activeCellModal.areaName.trim().toUpperCase();
+            const areaCfg = resolveAreaStrategyConfig(normArea, areaConfigs);
+            return (
+              ((areaCfg && oc.areaConfigId === areaCfg.id) ||
+                oc.areaName.trim().toUpperCase() === normArea) &&
+              oc.primaryStrategicObjectiveId === activeCellModal.oe.id
+            );
+          })}
+          assignments={assignments}
+          dashboards={dashboards}
+          selectedClientId={selectedClientId}
+          currentUser={currentUser}
+          onClose={handleCloseCellModal}
+          onRefreshData={onRefreshData}
+          onNavigateToDashboard={onNavigateToDashboard}
+          initialEditingOCId={activeCellModal.initialEditingOCId}
+          initialFormOpen={activeCellModal.initialFormOpen}
+        />
       )}
 
       {/* Modal de Detalle READ-ONLY */}
