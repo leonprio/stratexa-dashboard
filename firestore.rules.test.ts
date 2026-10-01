@@ -736,4 +736,76 @@ describe('Firestore Security Rules — Strategy Module (v9.5.0 Foundation)', () 
     await assertFails(getDoc(doc(db,'tbl_dashboards','a')));
   });
 
+  describe('AUD-04: ActionPlan indicatorId referential integrity', () => {
+    beforeEach(async () => {
+      await seedTablero();
+      await testEnv.withSecurityRulesDisabled(async context => {
+        const db = context.firestore();
+        await setDoc(doc(db, 'tbl_userMemberships', 'admin_a__A'), {
+          ...canonicalMembership('admin_a', 'A'),
+          role: 'tenant_admin',
+          capabilities: ['plan_editor', 'editor', 'viewer'],
+        });
+        await setDoc(doc(db, 'tbl_dashboards', 'a', 'items', 'kpi-valid'), { id: 'kpi-valid', monthlyProgress: [100] });
+        await setDoc(doc(db, 'tbl_dashboards', 'view', 'items', 'kpi-other-board'), { id: 'kpi-other-board', monthlyProgress: [50] });
+        await setDoc(doc(db, 'tbl_dashboards', 'b', 'items', 'kpi-other-tenant'), { id: 'kpi-other-tenant', monthlyProgress: [20] });
+      });
+    });
+
+    it('CASE 1: allows create when indicator exists in the target dashboard', async () => {
+      const admin = testEnv.authenticatedContext('admin_a').firestore();
+      await assertSucceeds(setDoc(doc(admin, 'tbl_actionPlans', 'plan-valid-indicator'), {
+        clientId: 'A',
+        dashboardId: 'a',
+        indicatorId: 'kpi-valid',
+        status: 'planned',
+      }));
+    });
+
+    it('CASE 2: denies create when indicator does not exist anywhere', async () => {
+      const admin = testEnv.authenticatedContext('admin_a').firestore();
+      await assertFails(setDoc(doc(admin, 'tbl_actionPlans', 'plan-missing-indicator'), {
+        clientId: 'A',
+        dashboardId: 'a',
+        indicatorId: 'kpi-does-not-exist',
+        status: 'planned',
+      }));
+    });
+
+    it('CASE 3: denies create when indicator exists but in another dashboard of same tenant', async () => {
+      const admin = testEnv.authenticatedContext('admin_a').firestore();
+      await assertFails(setDoc(doc(admin, 'tbl_actionPlans', 'plan-wrong-dashboard-indicator'), {
+        clientId: 'A',
+        dashboardId: 'a',
+        indicatorId: 'kpi-other-board',
+        status: 'planned',
+      }));
+    });
+
+    it('CASE 4: denies create when indicator belongs to another tenant', async () => {
+      const admin = testEnv.authenticatedContext('admin_a').firestore();
+      await assertFails(setDoc(doc(admin, 'tbl_actionPlans', 'plan-cross-tenant-indicator'), {
+        clientId: 'A',
+        dashboardId: 'a',
+        indicatorId: 'kpi-other-tenant',
+        status: 'planned',
+      }));
+    });
+
+    it('CASE 5: confirms indicatorId mutation is denied on update', async () => {
+      const admin = testEnv.authenticatedContext('admin_a').firestore();
+      await testEnv.withSecurityRulesDisabled(async context => {
+        await setDoc(doc(context.firestore(), 'tbl_actionPlans', 'plan-immutable-check'), {
+          clientId: 'A',
+          dashboardId: 'a',
+          indicatorId: 'kpi-valid',
+          status: 'planned',
+        });
+      });
+      await assertFails(updateDoc(doc(admin, 'tbl_actionPlans', 'plan-immutable-check'), {
+        indicatorId: 'kpi-does-not-exist',
+      }));
+    });
+  });
+
 });

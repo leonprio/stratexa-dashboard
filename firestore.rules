@@ -188,6 +188,12 @@ service cloud.firestore {
           'plan_editor' in get(/databases/$(database)/documents/tbl_userMemberships/$(membershipId(data.clientId))).data.capabilities &&
           canonicalEditableDashboardScope(board, dashboardId)));
     }
+    function validActionPlanIndicator(data) {
+      let dashboardId = string(data.dashboardId);
+      let indicatorId = string(data.indicatorId);
+      return indicatorId.size() > 0 &&
+        exists(/databases/$(database)/documents/tbl_dashboards/$(dashboardId)/items/$(indicatorId));
+    }
     function validActionPlanResultReview(review) {
       return review is map &&
         review.keys().hasOnly([
@@ -363,7 +369,9 @@ service cloud.firestore {
     }
     match /tbl_actionPlans/{planId} {
       allow read: if isTableroUser() && canReadActionPlan(resource.data);
-      allow create: if isTableroUser() && isSafeClientId(request.resource.data.clientId) && canEditActionPlan(request.resource.data);
+      allow create: if isTableroUser() && isSafeClientId(request.resource.data.clientId) &&
+        canEditActionPlan(request.resource.data) &&
+        validActionPlanIndicator(request.resource.data);
       allow update: if isTableroUser() && canEditActionPlan(resource.data) &&
         request.resource.data.clientId == resource.data.clientId &&
         request.resource.data.dashboardId == resource.data.dashboardId &&
