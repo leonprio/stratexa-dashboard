@@ -55,6 +55,7 @@ import { exportBulkDataToCSV } from "./utils/exportUtils";
 import { normalizeGroupName, generateSafeClientId } from "./utils/formatters";
 
 import { ContributionMatrixView } from "./components/strategy/ContributionMatrixView";
+import { CreateDashboardModal, type CreateDashboardData } from "./components/CreateDashboardModal";
 import { strategyService } from "./services/strategyService";
 import {
   reconcileClientSelection,
@@ -215,6 +216,7 @@ export default function App() {
     const saved = localStorage.getItem("sidebarCollapsed");
     return saved === "true";
   });
+  const [isCreateDashboardModalOpen, setIsCreateDashboardModalOpen] = useState<boolean>(false);
 
   // 🎯 Estado para Fundamentos de Estrategia y Mapa Estratégico (v9.5.1)
   const [perspectives, setPerspectives] = useState<StrategicPerspective[]>([]);
@@ -605,6 +607,15 @@ export default function App() {
     isGlobalAdmin,
     allRawDashboards,
   ]);
+
+  const availableCreationAreas = useMemo(() => {
+    const set = new Set<string>();
+    dashboards.forEach((d) => {
+      const a = (d.area || '').toString().trim().toUpperCase();
+      if (a) set.add(a);
+    });
+    return Array.from(set).sort();
+  }, [dashboards]);
 
   // REGLA: Sincronizar selectedGroupTab con el dashboard seleccionado para que sea "pegajoso"
   // Solo lo hacemos si el dashboard cambia y no coincide con el grupo actual, para mantener coherencia.
@@ -2049,7 +2060,7 @@ export default function App() {
     }
   };
 
-  const handleAddDashboard = async () => {
+  const handleAddDashboard = () => {
     if (!isGlobalAdmin) return;
 
     // 🛡️ BLOCKER: Obligar a seleccionar un cliente real
@@ -2060,48 +2071,39 @@ export default function App() {
       return;
     }
 
-    const title = prompt("Título del nuevo tablero:");
-    if (!title) return;
+    setIsCreateDashboardModalOpen(true);
+  };
 
-    try {
-      // const maxId = dashboards.reduce((max, d) => Math.max(max, typeof d.id === 'number' ? d.id : 0), 0); // Unused in v3.8.2+
+  const handleConfirmCreateDashboard = async (data: CreateDashboardData) => {
+    const timestamp = Date.now();
+    const targetClient = selectedClientId.trim().toUpperCase();
+    const newId = `${targetClient}_${selectedYear}_${timestamp}`;
 
-      // 🛡️ IDENTIFICADOR GLOBAL ÚNICO (v3.8.2)
-      // Usamos el cliente + año + timestamp para garantizar blindaje total entre cuentas.
-      const timestamp = Date.now();
-      const targetClient = selectedClientId.trim().toUpperCase();
-      const newId = `${targetClient}_${selectedYear}_${timestamp}`;
+    const maxOrder = dashboards.reduce(
+      (max, d) => Math.max(max, d.orderNumber || 0),
+      0,
+    );
 
-      const maxOrder = dashboards.reduce(
-        (max, d) => Math.max(max, d.orderNumber || 0),
-        0,
-      );
+    const newDashboard: DashboardType = {
+      id: newId,
+      title: data.title,
+      subtitle: "Nuevo Tablero",
+      group: data.group,
+      area: data.area,
+      items: [],
+      year: selectedYear,
+      clientId: targetClient,
+      orderNumber: maxOrder + 1,
+      thresholds: { onTrack: 90, atRisk: 80 },
+    };
 
-      // targetClient ya definido arriba
+    await firebaseService.saveDashboard(newDashboard);
+    const rows = await fetchDashboardsForYear(selectedYear);
+    setDashboards(rows);
+    setSelectedDashboardId(newId);
 
-      const newDashboard: DashboardType = {
-        id: newId,
-        title,
-        subtitle: "Nuevo Tablero",
-        group: "GENERAL",
-        items: [],
-        year: selectedYear,
-        clientId: targetClient,
-        orderNumber: maxOrder + 1,
-        thresholds: { onTrack: 90, atRisk: 80 },
-      };
-
-      await firebaseService.saveDashboard(newDashboard);
-      // Re-fetch to include the new one in permissions
-      const rows = await fetchDashboardsForYear(selectedYear);
-      setDashboards(rows);
-      setSelectedDashboardId(newId);
-
-      // 🛡️ RE-SINCRONIZACIÓN FORZADA (v2.2.8): Asegurar que los números sean 1, 2, 3... sin huecos
-      await handleFixOrder(rows);
-    } catch (err: any) {
-      console.error("Error adding dashboard:", err);
-    }
+    // 🛡️ RE-SINCRONIZACIÓN FORZADA (v2.2.8): Asegurar que los números sean 1, 2, 3... sin huecos
+    await handleFixOrder(rows);
   };
 
   const handleDeleteDashboard = async (id: number | string) => {
@@ -3422,6 +3424,16 @@ Esto corregirá cualquier inconsistencia en colores (ej. Amarillo vs Rojo).`)
           </div>
         )}
       </div>
+      {/* Modal de Creación de Tablero con Selección de Área y Grupo */}
+      <CreateDashboardModal
+        isOpen={isCreateDashboardModalOpen}
+        onClose={() => setIsCreateDashboardModalOpen(false)}
+        onConfirm={handleConfirmCreateDashboard}
+        availableAreas={availableCreationAreas}
+        availableGroups={officialGroups}
+        dashboards={dashboards}
+        dashboardLabel={settings?.dashboardLabel || "Tablero"}
+      />
     </PageShell>
   );
 }
