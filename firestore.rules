@@ -349,7 +349,8 @@ service cloud.firestore {
       allow delete: if isTableroUser() && isTenantAdmin(resource.data.clientId);
     }
     match /tbl_dashboards/{docId} {
-      allow read: if isTableroUser() && canReadDashboard(resource.data, docId);
+      allow get: if isTableroUser() && canReadDashboard(resource.data, docId);
+      allow list: if isTableroUser() && (resource == null || canReadDashboard(resource.data, docId));
       allow create: if isTableroUser() && isSafeClientId(request.resource.data.clientId) && isTenantAdmin(request.resource.data.clientId);
       allow update: if isTableroUser() && request.resource.data.clientId == resource.data.clientId &&
         (isTenantAdmin(resource.data.clientId) || (canConfigureTracking(resource.data, docId) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['defaultTrackingStartPeriod'])));

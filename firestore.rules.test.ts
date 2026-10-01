@@ -933,4 +933,103 @@ describe('Firestore Security Rules — Strategy Module (v9.5.0 Foundation)', () 
       await assertFails(getDoc(doc(userDb, 'tbl_dashboards', 'board_ips_no_access')));
     });
   });
+
+  describe('HOTFIX: Dashboard Query Null Resource Compatibility', () => {
+    beforeEach(async () => {
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        const db = context.firestore();
+
+        // Seed legacy user with access to board_ips_a and non-existent IDs in dashboardAccess
+        await setDoc(doc(db, 'tbl_users', 'legacy_user_null_res'), {
+          uid: 'legacy_user_null_res',
+          clientId: 'ips',
+          globalRole: 'Member',
+          dashboardAccess: {
+            'board_ips_a': 'Editor',
+            'non_existent_b': 'Editor',
+          },
+        });
+
+        // Seed authorized dashboard A
+        await setDoc(doc(db, 'tbl_dashboards', 'board_ips_a'), {
+          id: 'board_ips_a',
+          clientId: 'IPS',
+          title: 'Board IPS A',
+          year: 2026,
+        });
+
+        // Seed unauthorized dashboard B of same tenant
+        await setDoc(doc(db, 'tbl_dashboards', 'board_ips_unauthorized'), {
+          id: 'board_ips_unauthorized',
+          clientId: 'IPS',
+          title: 'Board IPS Unauthorized',
+          year: 2026,
+        });
+
+        // Seed dashboard of another tenant LVP
+        await setDoc(doc(db, 'tbl_dashboards', 'board_lvp_other'), {
+          id: 'board_lvp_other',
+          clientId: 'LVP',
+          title: 'Board LVP Other',
+          year: 2026,
+        });
+      });
+    });
+
+    it('CASE 1: query with [A, NON_EXISTENT_B] succeeds when A is authorized (demonstrating RED before fix)', async () => {
+      const userDb = testEnv.authenticatedContext('legacy_user_null_res').firestore();
+      const q = query(
+        collection(userDb, 'tbl_dashboards'),
+        where('clientId', '==', 'IPS'),
+        where('year', '==', 2026),
+        where(documentId(), 'in', ['board_ips_a', 'non_existent_b'])
+      );
+      await assertSucceeds(getDocs(q));
+    });
+
+    it('CASE 2: query with only [A] succeeds', async () => {
+      const userDb = testEnv.authenticatedContext('legacy_user_null_res').firestore();
+      const q = query(
+        collection(userDb, 'tbl_dashboards'),
+        where('clientId', '==', 'IPS'),
+        where('year', '==', 2026),
+        where(documentId(), 'in', ['board_ips_a'])
+      );
+      await assertSucceeds(getDocs(q));
+    });
+
+    it('CASE 3: direct get A succeeds', async () => {
+      const userDb = testEnv.authenticatedContext('legacy_user_null_res').firestore();
+      await assertSucceeds(getDoc(doc(userDb, 'tbl_dashboards', 'board_ips_a')));
+    });
+
+    it('CASE 4: query with [A, EXISTING_UNAUTHORIZED_B] fails and is NOT bypassed', async () => {
+      const userDb = testEnv.authenticatedContext('legacy_user_null_res').firestore();
+      const q = query(
+        collection(userDb, 'tbl_dashboards'),
+        where('clientId', '==', 'IPS'),
+        where('year', '==', 2026),
+        where(documentId(), 'in', ['board_ips_a', 'board_ips_unauthorized'])
+      );
+      await assertFails(getDocs(q));
+      await assertFails(getDoc(doc(userDb, 'tbl_dashboards', 'board_ips_unauthorized')));
+    });
+
+    it('CASE 5: legacy user IPS CANNOT read dashboard LVP', async () => {
+      const userDb = testEnv.authenticatedContext('legacy_user_null_res').firestore();
+      await assertFails(getDoc(doc(userDb, 'tbl_dashboards', 'board_lvp_other')));
+      const q = query(
+        collection(userDb, 'tbl_dashboards'),
+        where('clientId', '==', 'LVP'),
+        where('year', '==', 2026),
+        where(documentId(), 'in', ['board_lvp_other'])
+      );
+      await assertFails(getDocs(q));
+    });
+
+    it('CASE 6: nonexistent IDs do NOT grant additional access', async () => {
+      const userDb = testEnv.authenticatedContext('legacy_user_null_res').firestore();
+      await assertFails(getDoc(doc(userDb, 'tbl_dashboards', 'non_existent_b')));
+    });
+  });
 });
