@@ -270,8 +270,11 @@ service cloud.firestore {
     }
 
     function isStrategyCounterIdForClient(counterId, targetClientId) {
-      return isSafeClientId(targetClientId) &&
-        counterId.matches('^cnt_' + targetClientId + '_(OE|OC_.+)$');
+      return isSafeClientId(targetClientId) && (
+        counterId.matches('^cnt_' + targetClientId + '_(OE|OC_.+)$') ||
+        counterId.matches('^cnt_' + targetClientId.upper() + '_(OE|OC_.+)$') ||
+        counterId.lower().matches('^cnt_' + targetClientId.lower() + '_(oe|oc_.+)$')
+      );
     }
 
     function canInitializeStrategyCounter(counterId) {
@@ -424,7 +427,8 @@ service cloud.firestore {
     }
 
     match /tbl_strategyCounters/{docId} {
-      allow get: if canInitializeStrategyCounter(docId);
+      allow get: if canInitializeStrategyCounter(docId) ||
+        (resource != null && isTableroUser() && (isTenantAdmin(resource.data.clientId) || canReadStrategy(resource.data.clientId)));
       allow list: if isTableroUser() && isTenantAdmin(resource.data.clientId);
       allow create: if isTableroUser() &&
         isSafeClientId(request.resource.data.clientId) &&

@@ -8,7 +8,7 @@ import {
 } from '@firebase/rules-unit-testing';
 import * as fs from 'fs';
 import * as path from 'path';
-import { doc, getDoc, setDoc, updateDoc, getDocs, collection, query, where, documentId } from 'firebase/firestore';
+import { doc, getDoc, setDoc, updateDoc, deleteDoc, getDocs, collection, query, where, documentId } from 'firebase/firestore';
 
 const PROJECT_ID = 'demo-stratexa-rules';
 
@@ -1030,6 +1030,231 @@ describe('Firestore Security Rules — Strategy Module (v9.5.0 Foundation)', () 
     it('CASE 6: nonexistent IDs do NOT grant additional access', async () => {
       const userDb = testEnv.authenticatedContext('legacy_user_null_res').firestore();
       await assertFails(getDoc(doc(userDb, 'tbl_dashboards', 'non_existent_b')));
+    });
+  });
+
+  describe('Contribution Objectives Permissions', () => {
+    beforeEach(async () => {
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        const db = context.firestore();
+        // Usuario miembro sin capacidad estratégica
+        await setDoc(doc(db, 'tbl_users', 'member_no_strat'), {
+          uid: 'member_no_strat',
+          clientId: 'IPS',
+          globalRole: 'Member'
+        });
+        await setDoc(doc(db, 'tbl_userMemberships', 'member_no_strat__IPS'), {
+          ...canonicalMembership('member_no_strat', 'IPS'),
+          capabilities: []
+        });
+
+        // Asegurar existencia de OE y Dashboard para asignaciones
+        await setDoc(doc(db, 'tbl_strategicObjectives', 'oe_test_1'), {
+          id: 'oe_test_1',
+          clientId: 'IPS',
+          title: 'OE Test'
+        });
+        await setDoc(doc(db, 'tbl_contributionObjectives', 'oc_existing_1'), {
+          id: 'oc_existing_1',
+          clientId: 'IPS',
+          title: 'OC Existente',
+          primaryStrategicObjectiveId: 'oe_test_1'
+        });
+        await setDoc(doc(db, 'tbl_contributionIndicatorAssignments', 'asgn_existing_1'), {
+          id: 'asgn_existing_1',
+          clientId: 'IPS',
+          contributionObjectiveId: 'oc_existing_1'
+        });
+
+        // Usuario administrador legacy con clientId en minúsculas ("ips") representativo de producción
+        await setDoc(doc(db, 'tbl_users', 'admin_ips_lower'), {
+          uid: 'admin_ips_lower',
+          clientId: 'ips',
+          globalRole: 'Admin'
+        });
+      });
+    });
+
+    // CASE 2B: admin con clientId legacy en minúsculas puede leer e inicializar counter de OC
+    it('CASE 2B: admin con clientId legacy en minúsculas puede leer e inicializar counter de OC', async () => {
+      const adminDb = testEnv.authenticatedContext('admin_ips_lower').firestore();
+      const counterRef = doc(adminDb, 'tbl_strategyCounters', 'cnt_IPS_OC_ASAC');
+      await assertSucceeds(getDoc(counterRef));
+      await assertSucceeds(setDoc(counterRef, {
+        id: 'cnt_IPS_OC_ASAC',
+        clientId: 'IPS',
+        scope: 'ASAC',
+        lastIssuedSequence: 1
+      }));
+    });
+
+    // CASE 2C: admin con clientId legacy puede ejecutar la transacción completa de creación de OC con su counter
+    it('CASE 2C: admin con clientId legacy puede ejecutar la transacción completa de creación de OC con su counter', async () => {
+      const adminDb = testEnv.authenticatedContext('admin_ips_lower').firestore();
+      const counterRef = doc(adminDb, 'tbl_strategyCounters', 'cnt_IPS_OC_OPE');
+      const ocRef = doc(adminDb, 'tbl_contributionObjectives', 'oc_tx_new');
+
+      await assertSucceeds(adminDb.runTransaction(async (tx) => {
+        const snap = await tx.get(counterRef);
+        const lastSeq = snap.exists ? (snap.data().lastIssuedSequence || 0) : 0;
+        const nextSeq = lastSeq + 1;
+        tx.set(counterRef, {
+          id: 'cnt_IPS_OC_OPE',
+          clientId: 'IPS',
+          scope: 'OPE',
+          lastIssuedSequence: nextSeq
+        }, { merge: true });
+        tx.set(ocRef, {
+          id: 'oc_tx_new',
+          clientId: 'IPS',
+          areaName: 'OPERACIONES',
+          sequenceNumber: nextSeq,
+          displayCode: 'OC-OPE-01',
+          title: 'OC Transaccional',
+          primaryStrategicObjectiveId: 'oe_test_1'
+        }, { merge: true });
+      }));
+    });
+
+    // CASE 1: usuario autorizado puede listar contributionObjectives de su tenant
+    it('CASE 1: usuario autorizado puede listar contributionObjectives de su tenant', async () => {
+      const adminDb = testEnv.authenticatedContext('admin_ips').firestore();
+      const q = query(collection(adminDb, 'tbl_contributionObjectives'), where('clientId', '==', 'IPS'));
+      await assertSucceeds(getDocs(q));
+    });
+
+    // CASE 2: usuario autorizado puede crear un OC válido
+    it('CASE 2: usuario autorizado puede crear un OC válido', async () => {
+      const adminDb = testEnv.authenticatedContext('admin_ips').firestore();
+      const ref = doc(adminDb, 'tbl_contributionObjectives', 'oc_new_valid');
+      await assertSucceeds(setDoc(ref, {
+        id: 'oc_new_valid',
+        clientId: 'IPS',
+        title: 'Nuevo OC',
+        primaryStrategicObjectiveId: 'oe_test_1'
+      }));
+    });
+
+    // CASE 3: usuario autorizado puede actualizar un OC de su tenant
+    it('CASE 3: usuario autorizado puede actualizar un OC de su tenant', async () => {
+      const adminDb = testEnv.authenticatedContext('admin_ips').firestore();
+      const ref = doc(adminDb, 'tbl_contributionObjectives', 'oc_existing_1');
+      await assertSucceeds(updateDoc(ref, {
+        title: 'OC Actualizado'
+      }));
+    });
+
+    // CASE 4: usuario autorizado puede eliminar un OC cuando no viola integridad existente
+    it('CASE 4: usuario autorizado puede eliminar un OC cuando no viola integridad existente', async () => {
+      const adminDb = testEnv.authenticatedContext('admin_ips').firestore();
+      const ref = doc(adminDb, 'tbl_contributionObjectives', 'oc_existing_1');
+      await assertSucceeds(deleteDoc(ref));
+    });
+
+    // CASE 4B: admin con clientId legacy puede eliminar OC y actualizar el counter en transacción
+    it('CASE 4B: admin con clientId legacy puede eliminar OC y actualizar el counter en transacción', async () => {
+      const adminDb = testEnv.authenticatedContext('admin_ips_lower').firestore();
+      const counterRef = doc(adminDb, 'tbl_strategyCounters', 'cnt_IPS_OC_DEL');
+      const ocRef = doc(adminDb, 'tbl_contributionObjectives', 'oc_to_delete');
+
+      // Pre-sembrar
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        const db = context.firestore();
+        await setDoc(doc(db, 'tbl_strategyCounters', 'cnt_IPS_OC_DEL'), {
+          id: 'cnt_IPS_OC_DEL',
+          clientId: 'IPS',
+          scope: 'DEL',
+          lastIssuedSequence: 2
+        });
+        await setDoc(doc(db, 'tbl_contributionObjectives', 'oc_to_delete'), {
+          id: 'oc_to_delete',
+          clientId: 'IPS',
+          sequenceNumber: 2,
+          primaryStrategicObjectiveId: 'oe_test_1'
+        });
+      });
+
+      await assertSucceeds(adminDb.runTransaction(async (tx) => {
+        const snap = await tx.get(counterRef);
+        const counter = snap.data();
+        tx.set(counterRef, {
+          ...counter,
+          lastIssuedSequence: 1
+        }, { merge: true });
+        tx.delete(ocRef);
+      }));
+    });
+
+    // CASE 5: usuario autorizado puede leer contributionIndicatorAssignments
+    it('CASE 5: usuario autorizado puede leer contributionIndicatorAssignments', async () => {
+      const adminDb = testEnv.authenticatedContext('admin_ips').firestore();
+      const q = query(collection(adminDb, 'tbl_contributionIndicatorAssignments'), where('clientId', '==', 'IPS'));
+      await assertSucceeds(getDocs(q));
+    });
+
+    // CASE 6: usuario autorizado puede crear KPI → OC assignment
+    it('CASE 6: usuario autorizado puede crear KPI → OC assignment', async () => {
+      const adminDb = testEnv.authenticatedContext('admin_ips').firestore();
+      const ref = doc(adminDb, 'tbl_contributionIndicatorAssignments', 'asgn_new_valid');
+      await assertSucceeds(setDoc(ref, {
+        id: 'asgn_new_valid',
+        clientId: 'IPS',
+        contributionObjectiveId: 'oc_existing_1',
+        dashboardId: '10',
+        itemId: '1'
+      }));
+    });
+
+    // CASE 7: usuario de otro tenant NO puede leer OCs
+    it('CASE 7: usuario de otro tenant NO puede leer OCs', async () => {
+      const otherDb = testEnv.authenticatedContext('user_clientB').firestore();
+      const ref = doc(otherDb, 'tbl_contributionObjectives', 'oc_existing_1');
+      await assertFails(getDoc(ref));
+      const q = query(collection(otherDb, 'tbl_contributionObjectives'), where('clientId', '==', 'IPS'));
+      await assertFails(getDocs(q));
+    });
+
+    // CASE 8: usuario de otro tenant NO puede crear OCs
+    it('CASE 8: usuario de otro tenant NO puede crear OCs', async () => {
+      const otherDb = testEnv.authenticatedContext('user_clientB').firestore();
+      const ref = doc(otherDb, 'tbl_contributionObjectives', 'oc_cross_tenant');
+      await assertFails(setDoc(ref, {
+        id: 'oc_cross_tenant',
+        clientId: 'IPS',
+        title: 'Cross Tenant OC'
+      }));
+    });
+
+    // CASE 9: Member sin capacidad estratégica NO puede administrar OCs
+    it('CASE 9: Member sin capacidad estratégica NO puede administrar OCs', async () => {
+      const memberDb = testEnv.authenticatedContext('member_no_strat').firestore();
+      const ref = doc(memberDb, 'tbl_contributionObjectives', 'oc_member_attack');
+      await assertFails(setDoc(ref, {
+        id: 'oc_member_attack',
+        clientId: 'IPS',
+        title: 'Unauthorized Create'
+      }));
+      const refUpdate = doc(memberDb, 'tbl_contributionObjectives', 'oc_existing_1');
+      await assertFails(updateDoc(refUpdate, { title: 'Unauthorized Update' }));
+      await assertFails(deleteDoc(refUpdate));
+    });
+
+    // CASE 10: Viewer/Reader mantiene sólo lectura cuando corresponda
+    it('CASE 10: Viewer/Reader mantiene sólo lectura cuando corresponda', async () => {
+      const readerDb = testEnv.authenticatedContext('user_ips').firestore();
+      // Reader puede leer
+      const q = query(collection(readerDb, 'tbl_contributionObjectives'), where('clientId', '==', 'IPS'));
+      await assertSucceeds(getDocs(q));
+      const ref = doc(readerDb, 'tbl_contributionObjectives', 'oc_existing_1');
+      await assertSucceeds(getDoc(ref));
+      // Reader NO puede mutar (crear, actualizar, eliminar)
+      await assertFails(setDoc(doc(readerDb, 'tbl_contributionObjectives', 'oc_reader_create'), {
+        id: 'oc_reader_create',
+        clientId: 'IPS',
+        title: 'Reader Create'
+      }));
+      await assertFails(updateDoc(ref, { title: 'Reader Edit' }));
+      await assertFails(deleteDoc(ref));
     });
   });
 });
