@@ -1257,4 +1257,183 @@ describe('Firestore Security Rules — Strategy Module (v9.5.0 Foundation)', () 
       await assertFails(deleteDoc(ref));
     });
   });
+
+  describe('Contribution Objectives Read Permissions — Initial Load', () => {
+    beforeEach(async () => {
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        const db = context.firestore();
+
+        // Usuario administrador legacy con clientId en minúsculas ("ips")
+        await setDoc(doc(db, 'tbl_users', 'admin_ips_lower'), {
+          uid: 'admin_ips_lower',
+          clientId: 'ips',
+          globalRole: 'Admin'
+        });
+
+        // Documentos de estrategia con clientId en mayúsculas ("IPS")
+        await setDoc(doc(db, 'tbl_areaStrategyConfigs', 'area_cfg_asac'), {
+          id: 'area_cfg_asac',
+          clientId: 'IPS',
+          areaName: 'ATENCIÓN Y SERVICIO AL CLIENTE',
+          code: 'ASAC'
+        });
+
+        await setDoc(doc(db, 'tbl_strategicObjectives', 'oe_prod_1'), {
+          id: 'oe_prod_1',
+          clientId: 'IPS',
+          code: 'OE01',
+          title: 'OE Producción'
+        });
+
+        // Usuario de otro tenant (CLIENT_B)
+        await setDoc(doc(db, 'tbl_users', 'other_tenant_user'), {
+          uid: 'other_tenant_user',
+          clientId: 'CLIENT_B',
+          globalRole: 'Director'
+        });
+
+        // Usuario miembro de IPS sin capacidad estratégica
+        await setDoc(doc(db, 'tbl_users', 'prod_member_no_strat'), {
+          uid: 'prod_member_no_strat',
+          clientId: 'IPS',
+          globalRole: 'Member'
+        });
+      });
+    });
+
+    // CASE 1: admin IPS puede listar OCs IPS
+    it('CASE 1: admin IPS puede listar OCs IPS', async () => {
+      const adminDb = testEnv.authenticatedContext('admin_ips_lower').firestore();
+      const q = query(collection(adminDb, 'tbl_contributionObjectives'), where('clientId', '==', 'IPS'));
+      await assertSucceeds(getDocs(q));
+    });
+
+    // CASE 2: admin IPS puede listar assignments IPS
+    it('CASE 2: admin IPS puede listar assignments IPS', async () => {
+      const adminDb = testEnv.authenticatedContext('admin_ips_lower').firestore();
+      const q = query(collection(adminDb, 'tbl_contributionIndicatorAssignments'), where('clientId', '==', 'IPS'));
+      await assertSucceeds(getDocs(q));
+    });
+
+    // CASE 3: admin IPS puede leer area configs IPS
+    it('CASE 3: admin IPS puede leer area configs IPS', async () => {
+      const adminDb = testEnv.authenticatedContext('admin_ips_lower').firestore();
+      const q = query(collection(adminDb, 'tbl_areaStrategyConfigs'), where('clientId', '==', 'IPS'));
+      await assertSucceeds(getDocs(q));
+    });
+
+    // CASE 4: admin IPS puede leer strategic objectives IPS
+    it('CASE 4: admin IPS puede leer strategic objectives IPS', async () => {
+      const adminDb = testEnv.authenticatedContext('admin_ips_lower').firestore();
+      const q = query(collection(adminDb, 'tbl_strategicObjectives'), where('clientId', '==', 'IPS'));
+      await assertSucceeds(getDocs(q));
+    });
+
+    // CASE 5: otro tenant continúa DENY
+    it('CASE 5: otro tenant continúa DENY', async () => {
+      const otherDb = testEnv.authenticatedContext('other_tenant_user').firestore();
+      const q = query(collection(otherDb, 'tbl_contributionObjectives'), where('clientId', '==', 'IPS'));
+      await assertFails(getDocs(q));
+    });
+
+    // CASE 6: Member sin capacidad estratégica continúa DENY cuando corresponda
+    it('CASE 6: Member sin capacidad estratégica continúa DENY cuando corresponda', async () => {
+      const memberDb = testEnv.authenticatedContext('prod_member_no_strat').firestore();
+      const q = query(collection(memberDb, 'tbl_contributionObjectives'), where('clientId', '==', 'IPS'));
+      await assertFails(getDocs(q));
+    });
+
+    // CASE 7: leonprior@gmail.com (admin con clientId "LVP,IPS,all") consultando IPS e IPS_DIRECCION
+    it('CASE 7: leonprior@gmail.com con email de plataforma y clientId multi-tenant', async () => {
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        const db = context.firestore();
+        await setDoc(doc(db, 'tbl_users', 'user_leon_gmail'), {
+          uid: 'user_leon_gmail',
+          email: 'leonprior@gmail.com',
+          clientId: 'LVP,IPS,all',
+          globalRole: 'Admin'
+        });
+        await setDoc(doc(db, 'tbl_areaStrategyConfigs', 'area_cfg_ips_dir'), {
+          id: 'area_cfg_ips_dir',
+          clientId: 'IPS_DIRECCION',
+          areaName: 'OPERACIONES',
+          code: 'OPE'
+        });
+      });
+      const db = testEnv.authenticatedContext('user_leon_gmail', { email: 'leonprior@gmail.com' }).firestore();
+
+      // Lecturas de colecciones estratégicas
+      const qIps = query(collection(db, 'tbl_contributionObjectives'), where('clientId', '==', 'IPS'));
+      await assertSucceeds(getDocs(qIps));
+      const qIpsDir = query(collection(db, 'tbl_contributionObjectives'), where('clientId', '==', 'IPS_DIRECCION'));
+      await assertSucceeds(getDocs(qIpsDir));
+      const qAssignments = query(collection(db, 'tbl_contributionIndicatorAssignments'), where('clientId', '==', 'IPS'));
+      await assertSucceeds(getDocs(qAssignments));
+      const qAreaConfigs = query(collection(db, 'tbl_areaStrategyConfigs'), where('clientId', '==', 'IPS_DIRECCION'));
+      await assertSucceeds(getDocs(qAreaConfigs));
+      const qStrategic = query(collection(db, 'tbl_strategicObjectives'), where('clientId', '==', 'IPS'));
+      await assertSucceeds(getDocs(qStrategic));
+
+      // Creación, edición y eliminación de OC
+      const ocRef = doc(db, 'tbl_contributionObjectives', 'oc_leon_gmail_test');
+      await assertSucceeds(setDoc(ocRef, {
+        id: 'oc_leon_gmail_test',
+        clientId: 'IPS',
+        displayCode: 'OC-TEST-01',
+        title: 'OC Test Platform Admin',
+        areaName: 'OPERACIONES'
+      }));
+      await assertSucceeds(updateDoc(ocRef, { title: 'OC Test Platform Admin Updated' }));
+      await assertSucceeds(deleteDoc(ocRef));
+
+      // Asignación de KPI a OC
+      const asgnRef = doc(db, 'tbl_contributionIndicatorAssignments', 'asgn_leon_gmail_test');
+      await assertSucceeds(setDoc(asgnRef, {
+        id: 'asgn_leon_gmail_test',
+        clientId: 'IPS',
+        contributionObjectiveId: 'oc_test',
+        dashboardId: 'd1',
+        itemId: 'kpi1'
+      }));
+      await assertSucceeds(deleteDoc(asgnRef));
+    });
+
+    // CASE 8: leon@leonprior.com con membresía canónica en IPS e IPS_DIRECCION
+    it('CASE 8: leon@leonprior.com con membresía canónica en IPS e IPS_DIRECCION', async () => {
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        const db = context.firestore();
+        await setDoc(doc(db, 'tbl_users', 'user_leon_corp'), {
+          uid: 'user_leon_corp',
+          email: 'leon@leonprior.com',
+          clientId: 'IPS',
+          globalRole: 'Admin'
+        });
+        await setDoc(doc(db, 'tbl_userMemberships', 'user_leon_corp__IPS'), {
+          userId: 'user_leon_corp',
+          clientId: 'IPS',
+          role: 'tenant_admin',
+          status: 'active',
+          scopeType: 'tenant',
+          capabilities: ['viewer', 'editor', 'metadata_editor', 'plan_editor', 'strategy_reader']
+        });
+        await setDoc(doc(db, 'tbl_userMemberships', 'user_leon_corp__IPS_DIRECCION'), {
+          userId: 'user_leon_corp',
+          clientId: 'IPS_DIRECCION',
+          role: 'tenant_admin',
+          status: 'active',
+          scopeType: 'tenant',
+          capabilities: ['viewer', 'editor', 'metadata_editor', 'plan_editor', 'strategy_reader']
+        });
+      });
+      const db = testEnv.authenticatedContext('user_leon_corp', { email: 'leon@leonprior.com' }).firestore();
+      const qIps = query(collection(db, 'tbl_contributionObjectives'), where('clientId', '==', 'IPS'));
+      await assertSucceeds(getDocs(qIps));
+      const qIpsDir = query(collection(db, 'tbl_contributionObjectives'), where('clientId', '==', 'IPS_DIRECCION'));
+      await assertSucceeds(getDocs(qIpsDir));
+      const qAssignments = query(collection(db, 'tbl_contributionIndicatorAssignments'), where('clientId', '==', 'IPS_DIRECCION'));
+      await assertSucceeds(getDocs(qAssignments));
+      const qAreaConfigs = query(collection(db, 'tbl_areaStrategyConfigs'), where('clientId', '==', 'IPS_DIRECCION'));
+      await assertSucceeds(getDocs(qAreaConfigs));
+    });
+  });
 });

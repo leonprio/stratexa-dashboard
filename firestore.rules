@@ -67,7 +67,11 @@ service cloud.firestore {
         storedClientId == targetClientId ||
         storedClientId.lower() == targetClientId.lower() ||
         storedClientId.matches('(.*,|^)\\s*' + targetClientId + '\\s*(,.*|$)') ||
-        storedClientId.lower().matches('(.*,|^)\\s*' + targetClientId.lower() + '\\s*(,.*|$)')
+        storedClientId.lower().matches('(.*,|^)\\s*' + targetClientId.lower() + '\\s*(,.*|$)') ||
+        storedClientId == 'all' ||
+        storedClientId.lower() == 'all' ||
+        storedClientId.matches('(.*,|^)\\s*all\\s*(,.*|$)') ||
+        storedClientId.lower().matches('(.*,|^)\\s*all\\s*(,.*|$)')
       );
     }
 
@@ -77,7 +81,12 @@ service cloud.firestore {
       return isAuthenticated() &&
         isSafeClientId(targetClientId) &&
         exists(/databases/$(database)/documents/tbl_users/$(request.auth.uid)) &&
-        !hasCanonicalMembership(targetClientId) && !isPlatformAdmin() &&
+        !hasCanonicalMembership(targetClientId) &&
+        (!isPlatformAdmin() || (
+          getUserProfile().get('globalRole', '') in ['Admin', 'admin'] &&
+          request.auth.token.keys().hasAll(['email']) &&
+          request.auth.token.email == 'leonprior@gmail.com'
+        )) &&
         matchesLegacyTenant(getUserProfile().get('clientId', ''), targetClientId);
     }
 
