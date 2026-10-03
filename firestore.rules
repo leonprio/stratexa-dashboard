@@ -288,9 +288,15 @@ service cloud.firestore {
 
     function canInitializeStrategyCounter(counterId) {
       return isAuthenticated() && (
-        isTenantAdmin(getUserProfile().clientId) &&
-        isSafeClientId(getUserProfile().clientId) &&
-        isStrategyCounterIdForClient(counterId, getUserProfile().clientId)
+        (isSafeClientId(getUserProfile().clientId) &&
+         isTenantAdmin(getUserProfile().clientId) &&
+         isStrategyCounterIdForClient(counterId, getUserProfile().clientId)) ||
+        (isStrategyCounterIdForClient(counterId, 'IPS_DIRECCION') && (isTenantAdmin('IPS_DIRECCION') || canReadStrategy('IPS_DIRECCION'))) ||
+        (isStrategyCounterIdForClient(counterId, 'IPS') && (isTenantAdmin('IPS') || canReadStrategy('IPS'))) ||
+        (isStrategyCounterIdForClient(counterId, 'LVP') && (isTenantAdmin('LVP') || canReadStrategy('LVP'))) ||
+        (isStrategyCounterIdForClient(counterId, 'LEÓN') && (isTenantAdmin('LEÓN') || canReadStrategy('LEÓN'))) ||
+        (isStrategyCounterIdForClient(counterId, 'LEON') && (isTenantAdmin('LEON') || canReadStrategy('LEON'))) ||
+        (isStrategyCounterIdForClient(counterId, 'CEMENTOS_SIGMA') && (isTenantAdmin('CEMENTOS_SIGMA') || canReadStrategy('CEMENTOS_SIGMA')))
       );
     }
 

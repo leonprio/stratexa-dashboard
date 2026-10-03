@@ -1436,4 +1436,124 @@ describe('Firestore Security Rules — Strategy Module (v9.5.0 Foundation)', () 
       await assertSucceeds(getDocs(qAreaConfigs));
     });
   });
+
+  describe('Strategy Counters — Multi-Tenant & IPS_DIRECCION Permissions', () => {
+    beforeEach(async () => {
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        const db = context.firestore();
+
+        // Admin leonprior@gmail.com con clientId multi-tenant "LVP,IPS,all"
+        await setDoc(doc(db, 'tbl_users', 'user_admin_multi'), {
+          uid: 'user_admin_multi',
+          email: 'leonprior@gmail.com',
+          clientId: 'LVP,IPS,all',
+          globalRole: 'Admin'
+        });
+
+        // Admin con membresía canónica en IPS_DIRECCION
+        await setDoc(doc(db, 'tbl_users', 'user_admin_ips_dir'), {
+          uid: 'user_admin_ips_dir',
+          email: 'leon@leonprior.com',
+          clientId: 'IPS',
+          globalRole: 'Admin'
+        });
+        await setDoc(doc(db, 'tbl_userMemberships', 'user_admin_ips_dir__IPS_DIRECCION'), {
+          userId: 'user_admin_ips_dir',
+          clientId: 'IPS_DIRECCION',
+          role: 'tenant_admin',
+          status: 'active',
+          scopeType: 'tenant',
+          capabilities: ['viewer', 'editor', 'metadata_editor', 'plan_editor', 'strategy_reader']
+        });
+
+        // Usuario de otro tenant (CLIENT_B)
+        await setDoc(doc(db, 'tbl_users', 'other_tenant_user_b'), {
+          uid: 'other_tenant_user_b',
+          clientId: 'CLIENT_B',
+          globalRole: 'Director'
+        });
+
+        // Usuario Member de IPS_DIRECCION sin rol admin ni capacidad de estrategia
+        await setDoc(doc(db, 'tbl_users', 'member_ips_dir_no_strat'), {
+          uid: 'member_ips_dir_no_strat',
+          clientId: 'IPS_DIRECCION',
+          globalRole: 'Member'
+        });
+
+        // OE para transacciones
+        await setDoc(doc(db, 'tbl_strategicObjectives', 'oe_ips_dir_1'), {
+          id: 'oe_ips_dir_1',
+          clientId: 'IPS_DIRECCION',
+          title: 'OE Dirección'
+        });
+      });
+    });
+
+    // CASE 1: usuario administrador autorizado para IPS_DIRECCION intenta get cnt_IPS_DIRECCION_OC_ASAC (o OPE)
+    it('CASE 1: usuario administrador autorizado puede leer (get) el strategy counter no existente/existente de IPS_DIRECCION', async () => {
+      const db = testEnv.authenticatedContext('user_admin_multi', { email: 'leonprior@gmail.com' }).firestore();
+      const counterRef = doc(db, 'tbl_strategyCounters', 'cnt_IPS_DIRECCION_OC_ASAC');
+      await assertSucceeds(getDoc(counterRef));
+    });
+
+    // CASE 2: puede inicializar el contador IPS_DIRECCION
+    it('CASE 2: puede inicializar el contador IPS_DIRECCION', async () => {
+      const db = testEnv.authenticatedContext('user_admin_multi', { email: 'leonprior@gmail.com' }).firestore();
+      const counterRef = doc(db, 'tbl_strategyCounters', 'cnt_IPS_DIRECCION_OC_ASAC');
+      await assertSucceeds(setDoc(counterRef, {
+        id: 'cnt_IPS_DIRECCION_OC_ASAC',
+        clientId: 'IPS_DIRECCION',
+        scope: 'ASAC',
+        lastIssuedSequence: 1
+      }));
+    });
+
+    // CASE 3: puede actualizar el contador mediante la transacción OC
+    it('CASE 3: puede actualizar el contador mediante la transacción OC', async () => {
+      const db = testEnv.authenticatedContext('user_admin_multi', { email: 'leonprior@gmail.com' }).firestore();
+      const counterRef = doc(db, 'tbl_strategyCounters', 'cnt_IPS_DIRECCION_OC_OPE');
+      const ocRef = doc(db, 'tbl_contributionObjectives', 'oc_ips_dir_tx_1');
+
+      await assertSucceeds(db.runTransaction(async (tx) => {
+        const snap = await tx.get(counterRef);
+        const lastSeq = snap.exists ? (snap.data().lastIssuedSequence || 0) : 0;
+        const nextSeq = lastSeq + 1;
+        tx.set(counterRef, {
+          id: 'cnt_IPS_DIRECCION_OC_OPE',
+          clientId: 'IPS_DIRECCION',
+          scope: 'OPE',
+          lastIssuedSequence: nextSeq
+        }, { merge: true });
+        tx.set(ocRef, {
+          id: 'oc_ips_dir_tx_1',
+          clientId: 'IPS_DIRECCION',
+          areaName: 'OPERACIONES',
+          sequenceNumber: nextSeq,
+          displayCode: 'OC-OPE-01',
+          title: 'OC Transaccional Dirección',
+          primaryStrategicObjectiveId: 'oe_ips_dir_1'
+        }, { merge: true });
+      }));
+    });
+
+    // CASE 4: usuario de otro tenant NO puede leerlo
+    it('CASE 4: usuario de otro tenant NO puede leerlo', async () => {
+      const otherDb = testEnv.authenticatedContext('other_tenant_user_b').firestore();
+      const counterRef = doc(otherDb, 'tbl_strategyCounters', 'cnt_IPS_DIRECCION_OC_ASAC');
+      await assertFails(getDoc(counterRef));
+    });
+
+    // CASE 5: Member sin capacidad estratégica NO puede administrarlo
+    it('CASE 5: Member sin capacidad estratégica NO puede administrarlo', async () => {
+      const memberDb = testEnv.authenticatedContext('member_ips_dir_no_strat').firestore();
+      const counterRef = doc(memberDb, 'tbl_strategyCounters', 'cnt_IPS_DIRECCION_OC_ASAC');
+      await assertFails(getDoc(counterRef));
+      await assertFails(setDoc(counterRef, {
+        id: 'cnt_IPS_DIRECCION_OC_ASAC',
+        clientId: 'IPS_DIRECCION',
+        scope: 'ASAC',
+        lastIssuedSequence: 1
+      }));
+    });
+  });
 });
