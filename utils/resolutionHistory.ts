@@ -1,6 +1,6 @@
 import type { DashboardItem } from '../types';
 
-export type ResolutionHistoryStatus = 'COMPLETADO' | 'DESCARTADO' | 'REPROGRAMADO' | 'REABIERTO';
+export type ResolutionHistoryStatus = 'COMPLETADO' | 'CERRADO' | 'DESCARTADO' | 'REPROGRAMADO' | 'REABIERTO';
 export interface ResolutionHistoryRow { id: string; title: string; originalPeriodIndex: number; originalYear: number; status: ResolutionHistoryStatus; resolvedAt?: string; reason?: string; scheduledPeriodIndex?: number; scheduledYear?: number; canReopen: boolean; activityId: string; }
 
 export const buildResolutionHistory = (item: DashboardItem, year: number): ResolutionHistoryRow[] => {
@@ -12,9 +12,9 @@ export const buildResolutionHistory = (item: DashboardItem, year: number): Resol
     const reason = status === 'REPROGRAMADO' && resolution.scheduledResolutionPeriodIndex !== undefined
       ? `Reprogramado a ${monthNames[resolution.scheduledResolutionPeriodIndex] || `periodo ${resolution.scheduledResolutionPeriodIndex + 1}`}`
       : resolution.resolutionNote;
-    const currentRow = { id: `${item.id}:${year}:${period}:${activity.id}`, title: activity.label, originalPeriodIndex: Number(period), originalYear: resolution.resolvedYear || year, status, resolvedAt: resolution.reopenedAt || resolution.resolvedAt, reason, scheduledPeriodIndex: resolution.scheduledResolutionPeriodIndex, scheduledYear: resolution.scheduledResolutionYear, canReopen: status === 'COMPLETADO' || status === 'DESCARTADO', activityId: activity.id };
+    const currentRow: ResolutionHistoryRow = { id: `${item.id}:${year}:${period}:${activity.id}`, title: activity.label, originalPeriodIndex: Number(period), originalYear: resolution.resolvedYear || year, status, resolvedAt: resolution.reopenedAt || resolution.resolvedAt, reason, scheduledPeriodIndex: resolution.scheduledResolutionPeriodIndex, scheduledYear: resolution.scheduledResolutionYear, canReopen: status === 'COMPLETADO' || status === 'DESCARTADO', activityId: activity.id };
     const events = resolution.resolutionHistory || [];
-    const historicalRows = events
+    const historicalRows: ResolutionHistoryRow[] = events
       .filter(event => ['completed_later', 'discarded', 'rescheduled'].includes(event.event))
       .map((event, index) => ({
         ...currentRow,
@@ -31,11 +31,15 @@ export const buildResolutionHistory = (item: DashboardItem, year: number): Resol
     .filter(c => c.sourceType === 'SIMPLE_KPI' || !c.sourceActivityId)
     .flatMap(commitment => {
       const history = commitment.resolutionHistory || [];
-      return history.map((event, index) => {
-        const status: ResolutionHistoryStatus =
-          event.type === 'CLOSE_COMPLETED' ? 'COMPLETADO' :
+      return history.flatMap<ResolutionHistoryRow>((event, index) => {
+        const status: ResolutionHistoryStatus | undefined =
+          event.type === 'COMPLETE' ? 'COMPLETADO' :
+          event.type === 'CLOSE_UNMET' ? 'CERRADO' :
+          event.type === 'REOPEN' ? 'REABIERTO' :
           event.type === 'DISCARD' ? 'DESCARTADO' :
-          event.type === 'RESCHEDULE' ? 'REPROGRAMADO' : 'REABIERTO';
+          event.type === 'RESCHEDULE' ? 'REPROGRAMADO' :
+          event.type === 'UNDO_RESCHEDULE' ? 'REPROGRAMADO' : undefined;
+        if (!status) return [];
         let title = commitment.sourceActivityId;
         if (item.activityConfig) {
           for (const raw of Object.values(item.activityConfig)) {
@@ -49,7 +53,7 @@ export const buildResolutionHistory = (item: DashboardItem, year: number): Resol
         if (!title || title === commitment.sourceActivityId) {
           title = (event as any).reason || item.indicator || 'Compromiso de continuidad';
         }
-        return {
+        return [{
           id: `${commitment.id}:history:${index}`,
           title,
           originalPeriodIndex: commitment.originPeriod,
@@ -61,7 +65,7 @@ export const buildResolutionHistory = (item: DashboardItem, year: number): Resol
           scheduledYear: commitment.scheduledYear || year,
           canReopen: false,
           activityId: commitment.sourceActivityId || commitment.id,
-        };
+        }];
       });
     });
 

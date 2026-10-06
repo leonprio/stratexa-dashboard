@@ -224,3 +224,34 @@ describe('canonical Tablero authorization compatibility', () => {
     });
   });
 });
+
+// S01: wildcard display metadata must never become a tenant membership.
+test.each(['ALL', 'all', 'A, ALL', 'A, all'])('S01 legacy %s excludes wildcard authority', clientId => {
+  const profile = legacy({ clientId, globalRole: GlobalUserRole.Admin });
+  expect(getAuthorizedClientIds(profile)).toEqual(clientId.startsWith('A,') ? ['A'] : []);
+  expect(canAdminTenant(profile, 'B')).toBe(false);
+  expect(canAccessDashboard(profile, { id: 'b', clientId: 'B' })).toBe(false);
+  expect(canEditActionPlan(profile, { id: 'b', clientId: 'B' })).toBe(false);
+});
+
+test('S01 canonical viewer and admin override ALL conservatively, including suspension', () => {
+  const viewer = legacy({ clientId: 'ALL', memberships: [{ clientId: 'A', role: 'standard_user', status: 'active', dashboardScopes: { a: 'viewer' }, capabilities: ['viewer'] }] });
+  expect(canAccessDashboard(viewer, { id: 'a', clientId: 'A' })).toBe(true);
+  expect(canAccessDashboard(viewer, { id: 'a', clientId: 'A' }, 'editor')).toBe(false);
+  expect(canEditActionPlan(viewer, { id: 'a', clientId: 'A' })).toBe(false);
+  const admin = legacy({ clientId: 'A,ALL', globalRole: GlobalUserRole.Admin, memberships: [{ clientId: 'A', role: 'tenant_admin', status: 'active' }] });
+  expect(canAdminTenant(admin, 'A')).toBe(true);
+  expect(canAdminTenant(admin, 'B')).toBe(false);
+  expect(canEditActionPlan(admin, { id: 'b', clientId: 'B' })).toBe(false);
+  admin.memberships![0].status = 'suspended';
+  expect(getAuthorizedClientIds(admin)).toEqual([]);
+  expect(canAdminTenant(admin, 'A')).toBe(false);
+});
+
+test('S01 platform email with explicit legacy tenants still needs canonical business grants', () => {
+  const profile = legacy({ email: 'leonprior@gmail.com', clientId: 'A,all', globalRole: GlobalUserRole.Admin });
+  expect(isPlatformAdmin(profile)).toBe(true);
+  expect(getAuthorizedClientIds(profile)).toEqual([]);
+  expect(canAccessStrategy(profile, 'A')).toBe(false);
+  expect(canEditActionPlan(profile, { id: 'a', clientId: 'A' })).toBe(false);
+});

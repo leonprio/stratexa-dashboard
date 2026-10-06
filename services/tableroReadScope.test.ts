@@ -121,3 +121,20 @@ test('protected membership grants platform only its explicit scope and suspended
  (getDocs as jest.Mock).mockResolvedValue({docs:[{data:()=>({userId:'member',clientId:'A',role:'tenant_admin',status:'suspended',scopeType:'tenant',capabilities:[]})}]});
  expect((await readTableroScope()).tenants).toEqual([]);
 });
+
+test.each(['standard_user', 'tenant_admin'])('S02 USER_PROFILE_IS_REQUIRED with active canonical %s grant', async role => {
+  (getDoc as jest.Mock).mockResolvedValue({ exists: () => false });
+  (getDocs as jest.Mock).mockResolvedValue({ docs: [{ data: () => ({ userId: 'member', clientId: 'A', role, status: 'active', scopeType: 'tenant', allowedDashboardIds: ['a'], capabilities: ['viewer'] }) }] });
+  await expect(readTableroScope()).rejects.toThrow('Perfil Tablero requerido');
+  expect(getDocs).not.toHaveBeenCalled();
+});
+
+test('S02 platform authority is an explicit exception to profile prerequisite, without business access', async () => {
+  (auth as any).currentUser = { uid: 'platform', email: 'leonprior@gmail.com' };
+  (getDoc as jest.Mock).mockResolvedValue({ exists: () => false });
+  (getDocs as jest.Mock).mockResolvedValue({ docs: [] });
+  const resolved = await readTableroScope();
+  expect(resolved.platform).toBe(true);
+  expect(resolved.tenants).toEqual([]);
+  expect(() => requestedTenants(resolved, 'A')).toThrow();
+});

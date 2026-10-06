@@ -1,3 +1,4 @@
+import { canAdminTenant } from '../../services/tableroAuthorization';
 import React, { useState } from 'react';
 import { X, ArrowUpRight, ArrowDownRight, Target, Layers, CheckCircle2, AlertTriangle, Info, Compass } from 'lucide-react';
 import {
@@ -78,7 +79,7 @@ export const OEDetailModal: React.FC<OEDetailModalProps> = ({
   const [editTitle, setEditTitle] = useState(objective.title);
   const [editDescription, setEditDescription] = useState(objective.description || '');
 
-  const canManageOE = currentUser?.globalRole === GlobalUserRole.Admin && Boolean(selectedClientId && onRefreshData);
+  const canManageOE = Boolean(currentUser && canAdminTenant(currentUser, selectedClientId)) && Boolean(selectedClientId && onRefreshData);
 
   const allKpis = dashboards.flatMap(d => (d.items || []).map(item => ({ dashboard: d, item })));
   const ownership = ownershipResolution || resolveStrategicKpiOwnership(dashboards, allObjectives, contributions, assignments);

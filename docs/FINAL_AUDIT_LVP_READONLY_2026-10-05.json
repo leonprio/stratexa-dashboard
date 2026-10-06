@@ -1,0 +1,38 @@
+{
+  "project": "prior-01",
+  "dashboardId": "LVP_2026_1783802885613",
+  "itemId": "2",
+  "clientId": "LVP",
+  "year": 2026,
+  "updateTime": "2026-10-05T17:14:31.441642Z",
+  "periods": [
+    {
+      "index": 7,
+      "goal": 0,
+      "progress": null,
+      "goalCaptured": true,
+      "progressCaptured": false,
+      "notePresent": false,
+      "activityCount": 0
+    },
+    {
+      "index": 8,
+      "goal": 0,
+      "progress": null,
+      "goalCaptured": true,
+      "progressCaptured": false,
+      "notePresent": false,
+      "activityCount": 0
+    }
+  ],
+  "continuityCount": 0,
+  "octoberStartGuard": {
+    "hasFacts": false
+  },
+  "dataUnchanged": true,
+  "operations": [
+    "GET dashboard",
+    "GET item"
+  ],
+  "writes": 0
+}

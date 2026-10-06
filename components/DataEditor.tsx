@@ -18,6 +18,8 @@ interface DataEditorProps {
   year?: number;
 }
 
+type ActivityConfigEntry = NonNullable<DashboardItem['activityConfig']>[number][number];
+
 export const DataEditor: React.FC<DataEditorProps> = React.memo(({ item, allDashboardItems = [], onSave, onCancel, canEdit, year = 2025 }) => {
   const isCalculated = item.indicatorType === 'formula' || item.indicatorType === 'compound';
 
@@ -239,6 +241,9 @@ export const DataEditor: React.FC<DataEditorProps> = React.memo(({ item, allDash
   );
   const [isActivityMode, setIsActivityMode] = useState<boolean>(item.isActivityMode || false);
   const [activeActivityPeriod, setActiveActivityPeriod] = useState<number | null>(null);
+  const [isCopyingActivities, setIsCopyingActivities] = useState(false);
+  const [copyActivitiesError, setCopyActivitiesError] = useState('');
+  const copyActivitiesInFlightRef = useRef(false);
   const [managedCommitment, setManagedCommitment] = useState<RescheduledKpiCommitment | null>(null);
   const [selectedMonthForManage, setSelectedMonthForManage] = useState<number | null>(null);
   const [continuityCommitments, setContinuityCommitments] = useState(item.continuityCommitments);
@@ -606,7 +611,7 @@ export const DataEditor: React.FC<DataEditorProps> = React.memo(({ item, allDash
           initialActivities={Array.isArray(activityConfig[activeActivityPeriod]) ? activityConfig[activeActivityPeriod] as any : (activityConfig[activeActivityPeriod] ? Object.values(activityConfig[activeActivityPeriod] || {}) : [])}
           canEdit={canEdit}
           onClose={() => setActiveActivityPeriod(null)}
-          onSave={(updatedList) => {
+          onSave={async (updatedList) => {
             // 🛡️ FIX v8.7.2 (CRITICAL): Sincronización completa para evitar pérdida de datos
             const currentPeriodToUpdate = activeActivityPeriod;
             const newConfig = { ...activityConfig, [currentPeriodToUpdate]: updatedList };
@@ -633,11 +638,9 @@ export const DataEditor: React.FC<DataEditorProps> = React.memo(({ item, allDash
               setMonthlyProgress(finalMonthlyProgress);
             }
 
-            setActiveActivityPeriod(null);
-            
             // 🚀 AUTO-SAVE NUCLEAR: Persistir TODO en Firebase inmediatamente
             const syncedCommitments = syncCommitmentsWithActivityConfig(item, newConfig);
-            onSave({ 
+            await onSave({
               activityConfig: newConfig,
               continuityCommitments: syncedCommitments,
               isActivityMode: true,
@@ -649,26 +652,52 @@ export const DataEditor: React.FC<DataEditorProps> = React.memo(({ item, allDash
               weeklyNotes
             }, true);
           }}
-          onCopyToAll={canEdit ? (sourceActivities) => {
-            if (!sourceActivities || sourceActivities.length === 0) return;
+          onCopyToAll={canEdit ? async (sourceActivities) => {
+            if (copyActivitiesInFlightRef.current || !sourceActivities || sourceActivities.length === 0) return;
             if (!confirm(`¿Copiar esta estructura a TODO EL AÑO?\n(Los avances se reiniciarán a 0 en los otros periodos)`)) return;
 
-            const newTotalConfig: any = { ...activityConfig };
-            const limit = isWeekly ? 53 : 12;
-            for (let i = 0; i < limit; i++) {
-              newTotalConfig[i] = sourceActivities.map((a: any) => ({ ...a, completedCount: 0 }));
-            }
-            setActivityConfig(newTotalConfig);
-            
-            const syncedCommitments = syncCommitmentsWithActivityConfig(item, newTotalConfig);
-            onSave({ 
-              activityConfig: newTotalConfig,
-              continuityCommitments: syncedCommitments,
-              isActivityMode: true 
-            }, true);
+            copyActivitiesInFlightRef.current = true;
+            setIsCopyingActivities(true);
+            setCopyActivitiesError('');
+            try {
+              const newTotalConfig: NonNullable<DashboardItem['activityConfig']> = { ...activityConfig };
+              const limit = isWeekly ? 53 : 12;
+              for (let i = 0; i < limit; i++) {
+                if (i === activeActivityPeriod) continue;
+                const previousDestination = newTotalConfig[i];
+                const previousActivities: ActivityConfigEntry[] = Array.isArray(previousDestination)
+                  ? previousDestination
+                  : previousDestination ? Object.values(previousDestination as unknown as Record<string, ActivityConfigEntry>) : [];
+                newTotalConfig[i] = sourceActivities.map((activity) => {
+                  const destinationActivity = previousActivities.find((candidate) => candidate.id === activity.id);
+                  return {
+                    id: activity.id,
+                    label: activity.label,
+                    targetCount: activity.targetCount,
+                    completedCount: 0,
+                    ...(destinationActivity?.resolution ? { resolution: destinationActivity.resolution } : {}),
+                  };
+                });
+              }
 
-            alert("Estructura copiada exitosamente.");
+              const syncedCommitments = syncCommitmentsWithActivityConfig(item, newTotalConfig);
+              await onSave({
+                activityConfig: newTotalConfig,
+                continuityCommitments: syncedCommitments,
+                isActivityMode: true,
+              }, true);
+              setActivityConfig(newTotalConfig);
+              setContinuityCommitments(syncedCommitments);
+              alert("Estructura copiada exitosamente.");
+            } catch {
+              setCopyActivitiesError('No se pudo copiar la estructura. Los datos siguen disponibles; puedes reintentar.');
+            } finally {
+              copyActivitiesInFlightRef.current = false;
+              setIsCopyingActivities(false);
+            }
           } : undefined}
+          isCopying={isCopyingActivities}
+          copyError={copyActivitiesError}
           goalType={item.goalType}
         />
       )}

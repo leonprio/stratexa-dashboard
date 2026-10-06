@@ -1,0 +1,382 @@
+[
+  {
+    "file": "components/ActivityManager.test.tsx",
+    "code": 2305,
+    "message": "Module '\"../types\"' has no exported member 'Activity'."
+  },
+  {
+    "file": "components/AggregateBuilder.test.tsx",
+    "code": 2739,
+    "message": "Type '{ id: number; indicator: string; unit: string; indicatorType: \"compound\"; type: \"accumulative\"; componentIds: number[]; monthlyProgress: any[]; monthlyGoals: any[]; }' is missing the following properties from type 'DashboardItem': weight, goalType"
+  },
+  {
+    "file": "components/AggregateBuilder.test.tsx",
+    "code": 2739,
+    "message": "Type '{ id: number; indicator: string; unit: string; indicatorType: \"simple\"; monthlyProgress: number[]; monthlyGoals: number[]; }' is missing the following properties from type 'DashboardItem': weight, type, goalType"
+  },
+  {
+    "file": "components/AggregateBuilder.test.tsx",
+    "code": 2739,
+    "message": "Type '{ id: number; indicator: string; unit: string; indicatorType: \"simple\"; monthlyProgress: number[]; monthlyGoals: number[]; }' is missing the following properties from type 'DashboardItem': weight, type, goalType"
+  },
+  {
+    "file": "components/AggregateBuilder.test.tsx",
+    "code": 2739,
+    "message": "Type '{ id: number; indicator: string; unit: string; indicatorType: \"simple\"; monthlyProgress: number[]; monthlyGoals: number[]; }' is missing the following properties from type 'DashboardItem': weight, type, goalType"
+  },
+  {
+    "file": "components/AggregateBuilder.test.tsx",
+    "code": 2739,
+    "message": "Type '{ id: number; indicator: string; unit: string; indicatorType: \"simple\"; monthlyProgress: number[]; monthlyGoals: number[]; }' is missing the following properties from type 'DashboardItem': weight, type, goalType"
+  },
+  {
+    "file": "components/AggregateBuilder.test.tsx",
+    "code": 2739,
+    "message": "Type '{ id: number; indicator: string; unit: string; indicatorType: \"simple\"; monthlyProgress: number[]; monthlyGoals: number[]; }' is missing the following properties from type 'DashboardItem': weight, type, goalType"
+  },
+  {
+    "file": "components/AggregateBuilder.test.tsx",
+    "code": 2739,
+    "message": "Type '{ id: number; indicator: string; unit: string; indicatorType: \"compound\"; type: \"accumulative\"; componentIds: number[]; monthlyProgress: any[]; monthlyGoals: any[]; }' is missing the following properties from type 'DashboardItem': weight, goalType"
+  },
+  {
+    "file": "components/CurrentPeriodFocus.test.tsx",
+    "code": 2741,
+    "message": "Property 'weight' is missing in type '{ id: number; indicator: string; indicatorType: \"simple\"; type: \"accumulative\"; frequency: \"monthly\"; monthlyProgress: number[]; monthlyGoals: number[]; unit: string; goalType: \"maximize\"; }' but required in type 'DashboardItem'."
+  },
+  {
+    "file": "components/CurrentPeriodFocus.test.tsx",
+    "code": 2741,
+    "message": "Property 'weight' is missing in type '{ id: number; indicator: string; indicatorType: \"simple\"; type: \"accumulative\"; frequency: \"monthly\"; monthlyProgress: number[]; monthlyGoals: number[]; unit: string; goalType: \"maximize\"; }' but required in type 'DashboardItem'."
+  },
+  {
+    "file": "components/CurrentPeriodFocus.test.tsx",
+    "code": 2741,
+    "message": "Property 'weight' is missing in type '{ id: number; indicator: string; indicatorType: \"formula\"; formula: string; goalMode: \"DERIVED_FROM_SOURCES\"; formulaOutputMode: \"RESULT_IS_COMPLIANCE\"; type: \"average\"; frequency: \"monthly\"; monthlyProgress: number[]; monthlyGoals: number[]; unit: string; goalType: \"maximize\"; }' but required in type 'DashboardItem'."
+  },
+  {
+    "file": "components/CurrentPeriodFocus.tsx",
+    "code": 2322,
+    "message": "Type '{ id: string; sourceActivityId: string; label: string; periodIndex: number; periodLabel: string; commitmentLabel: string; rescheduleHistory: RescheduleRecord[]; status: \"ATRASADA\" | ... 1 more ... | \"COMPROMISO ACTUAL\"; }[]' is not assignable to type 'PendingKpiActivity[]'.\n  Type '{ id: string; sourceActivityId: string; label: string; periodIndex: number; periodLabel: string; commitmentLabel: string; rescheduleHistory: RescheduleRecord[]; status: \"ATRASADA\" | ... 1 more ... | \"COMPROMISO ACTUAL\"; }' is not assignable to type 'PendingKpiActivity'.\n    Types of property 'rescheduleHistory' are incompatible.\n      Type 'RescheduleRecord[]' is not assignable to type '{ fromYear: number; fromPeriodType: \"monthly\" | \"weekly\"; fromPeriodIndex: number; toYear: number; toPeriodType: \"monthly\" | \"weekly\"; toPeriodIndex: number; changedAt: string; }[]'.\n        Type 'RescheduleRecord' is missing the following properties from type '{ fromYear: number; fromPeriodType: \"monthly\" | \"weekly\"; fromPeriodIndex: number; toYear: number; toPeriodType: \"monthly\" | \"weekly\"; toPeriodIndex: number; changedAt: string; }': fromPeriodType, fromPeriodIndex, toPeriodType, toPeriodIndex, changedAt"
+  },
+  {
+    "file": "components/CurrentPeriodFocus.tsx",
+    "code": 2345,
+    "message": "Argument of type '{ id: string; sourceActivityId: string; label: string; periodIndex: number; periodLabel: string; commitmentLabel: string; status: \"DESCARTADO\"; }' is not assignable to parameter of type 'SetStateAction<PendingKpiActivity>'.\n  Type '{ id: string; sourceActivityId: string; label: string; periodIndex: number; periodLabel: string; commitmentLabel: string; status: \"DESCARTADO\"; }' is not assignable to type 'PendingKpiActivity'.\n    Types of property 'status' are incompatible.\n      Type '\"DESCARTADO\"' is not assignable to type '\"PENDIENTE\" | \"ATENCIÓN\" | \"ATRASADA\" | \"REPROGRAMADA\" | \"COMPROMISO ACTUAL\"'."
+  },
+  {
+    "file": "components/strategy/ContributionMatrixUX.test.tsx",
+    "code": 2741,
+    "message": "Property 'order' is missing in type '{ id: string; code: string; title: string; description: string; perspectiveId: string; clientId: string; }' but required in type 'StrategicObjective'."
+  },
+  {
+    "file": "components/strategy/ContributionMatrixUX.test.tsx",
+    "code": 2741,
+    "message": "Property 'order' is missing in type '{ id: string; code: string; title: string; description: string; perspectiveId: string; clientId: string; }' but required in type 'StrategicObjective'."
+  },
+  {
+    "file": "components/strategy/ContributionMatrixUX.test.tsx",
+    "code": 2322,
+    "message": "Type '\"Acumulado\"' is not assignable to type '\"accumulative\" | \"average\" | \"stock\"'."
+  },
+  {
+    "file": "components/strategy/ContributionMatrixUX.test.tsx",
+    "code": 2322,
+    "message": "Type '\"Acumulado\"' is not assignable to type '\"accumulative\" | \"average\" | \"stock\"'."
+  },
+  {
+    "file": "components/strategy/ContributionMatrixUX.test.tsx",
+    "code": 2322,
+    "message": "Type '\"Mensual\"' is not assignable to type '\"accumulative\" | \"average\" | \"stock\"'."
+  },
+  {
+    "file": "components/strategy/ContributionMatrixUX.test.tsx",
+    "code": 2741,
+    "message": "Property 'areaCode' is missing in type '{ id: string; displayCode: string; sequenceNumber: number; title: string; description: string; areaName: string; areaConfigId: string; primaryStrategicObjectiveId: string; clientId: string; }' but required in type 'ContributionObjective'."
+  },
+  {
+    "file": "components/strategy/ContributionMatrixUX.test.tsx",
+    "code": 2741,
+    "message": "Property 'areaCode' is missing in type '{ id: string; displayCode: string; sequenceNumber: number; title: string; description: string; areaName: string; areaConfigId: string; primaryStrategicObjectiveId: string; clientId: string; }' but required in type 'ContributionObjective'."
+  },
+  {
+    "file": "components/strategy/ContributionMatrixUX.test.tsx",
+    "code": 2741,
+    "message": "Property 'dashboardAccess' is missing in type '{ id: string; email: string; name: string; globalRole: GlobalUserRole.Admin; clientId: string; }' but required in type 'User'."
+  },
+  {
+    "file": "components/strategy/ContributionMatrixUX.test.tsx",
+    "code": 2741,
+    "message": "Property 'dashboardAccess' is missing in type '{ id: string; email: string; name: string; globalRole: any; clientId: string; }' but required in type 'User'."
+  },
+  {
+    "file": "components/strategy/ContributionMatrixUX.test.tsx",
+    "code": 2339,
+    "message": "Property 'Viewer' does not exist on type 'typeof GlobalUserRole'."
+  },
+  {
+    "file": "components/strategy/ContributionMatrixUX.test.tsx",
+    "code": 2322,
+    "message": "Type '{ id: string; code: string; title: string; description: string; perspectiveId: string; clientId: string; }[]' is not assignable to type 'StrategicObjective[]'.\n  Property 'order' is missing in type '{ id: string; code: string; title: string; description: string; perspectiveId: string; clientId: string; }' but required in type 'StrategicObjective'."
+  },
+  {
+    "file": "components/strategy/ContributionMatrixUX.test.tsx",
+    "code": 2322,
+    "message": "Type '{ id: string; title: string; clientId: string; area: string; year: number; items: { id: string; indicator: string; unit: string; type: \"Mensual\"; monthlyGoals: any[]; monthlyProgress: any[]; }[]; }[]' is not assignable to type 'Dashboard[]'.\n  Type '{ id: string; title: string; clientId: string; area: string; year: number; items: { id: string; indicator: string; unit: string; type: \"Mensual\"; monthlyGoals: any[]; monthlyProgress: any[]; }[]; }' is missing the following properties from type 'Dashboard': subtitle, thresholds"
+  },
+  {
+    "file": "components/strategy/ContributionMatrixUX.test.tsx",
+    "code": 2741,
+    "message": "Property 'areaCode' is missing in type '{ id: string; displayCode: string; sequenceNumber: number; title: string; description: string; areaName: string; areaConfigId: string; primaryStrategicObjectiveId: string; clientId: string; }' but required in type 'ContributionObjective'."
+  },
+  {
+    "file": "components/strategy/ContributionMatrixUX.test.tsx",
+    "code": 2741,
+    "message": "Property 'areaCode' is missing in type '{ id: string; displayCode: string; sequenceNumber: number; title: string; description: string; areaName: string; areaConfigId: string; primaryStrategicObjectiveId: string; clientId: string; }' but required in type 'ContributionObjective'."
+  },
+  {
+    "file": "components/strategy/ContributionMatrixUX.test.tsx",
+    "code": 2741,
+    "message": "Property 'areaCode' is missing in type '{ id: string; displayCode: string; sequenceNumber: number; title: string; description: string; areaName: string; areaConfigId: string; primaryStrategicObjectiveId: string; clientId: string; }' but required in type 'ContributionObjective'."
+  },
+  {
+    "file": "components/TrackingStartPeriodControls.tsx",
+    "code": 2339,
+    "message": "Property 'monthIndex' does not exist on type 'TrackingStartPeriod'.\n  Property 'monthIndex' does not exist on type '{ frequency: \"weekly\"; year: number; weekNumber: number; }'."
+  },
+  {
+    "file": "components/TrackingStartPeriodControls.tsx",
+    "code": 2339,
+    "message": "Property 'weekNumber' does not exist on type 'TrackingStartPeriod'.\n  Property 'weekNumber' does not exist on type '{ frequency: \"monthly\"; year: number; monthIndex: number; }'."
+  },
+  {
+    "file": "contributionParity.test.ts",
+    "code": 2345,
+    "message": "Argument of type '{ strategicObjectiveId: string; contributionObjectiveId: string; dashboardId: string; itemId: string; }[]' is not assignable to parameter of type 'ContributionIndicatorAssignment[]'.\n  Type '{ strategicObjectiveId: string; contributionObjectiveId: string; dashboardId: string; itemId: string; }' is missing the following properties from type 'ContributionIndicatorAssignment': id, clientId"
+  },
+  {
+    "file": "contributionParity.test.ts",
+    "code": 2345,
+    "message": "Argument of type '{ strategicObjectiveId: string; contributionObjectiveId: string; dashboardId: string; itemId: string; }[]' is not assignable to parameter of type 'ContributionIndicatorAssignment[]'.\n  Type '{ strategicObjectiveId: string; contributionObjectiveId: string; dashboardId: string; itemId: string; }' is missing the following properties from type 'ContributionIndicatorAssignment': id, clientId"
+  },
+  {
+    "file": "firestore.rules.test.ts",
+    "code": 2345,
+    "message": "Argument of type 'DocumentReference<DocumentData, DocumentData>' is not assignable to parameter of type 'DocumentReference<unknown>'.\n  Type 'DocumentReference<DocumentData, DocumentData>' is missing the following properties from type 'DocumentReference<unknown>': collection, isEqual, set, update, and 3 more."
+  },
+  {
+    "file": "firestore.rules.test.ts",
+    "code": 2339,
+    "message": "Property 'lastIssuedSequence' does not exist on type 'unknown'."
+  },
+  {
+    "file": "firestore.rules.test.ts",
+    "code": 2345,
+    "message": "Argument of type 'DocumentReference<DocumentData, DocumentData>' is not assignable to parameter of type 'DocumentReference<{ id: string; clientId: string; scope: string; lastIssuedSequence: any; }>'.\n  Type 'DocumentReference<DocumentData, DocumentData>' is missing the following properties from type 'DocumentReference<{ id: string; clientId: string; scope: string; lastIssuedSequence: any; }>': collection, isEqual, set, update, and 3 more."
+  },
+  {
+    "file": "firestore.rules.test.ts",
+    "code": 2345,
+    "message": "Argument of type 'DocumentReference<DocumentData, DocumentData>' is not assignable to parameter of type 'DocumentReference<{ id: string; clientId: string; areaName: string; sequenceNumber: any; displayCode: string; title: string; primaryStrategicObjectiveId: string; }>'.\n  Type 'DocumentReference<DocumentData, DocumentData>' is missing the following properties from type 'DocumentReference<{ id: string; clientId: string; areaName: string; sequenceNumber: any; displayCode: string; title: string; primaryStrategicObjectiveId: string; }>': collection, isEqual, set, update, and 3 more."
+  },
+  {
+    "file": "firestore.rules.test.ts",
+    "code": 2345,
+    "message": "Argument of type 'DocumentReference<DocumentData, DocumentData>' is not assignable to parameter of type 'DocumentReference<unknown>'.\n  Type 'DocumentReference<DocumentData, DocumentData>' is missing the following properties from type 'DocumentReference<unknown>': collection, isEqual, set, update, and 3 more."
+  },
+  {
+    "file": "firestore.rules.test.ts",
+    "code": 2345,
+    "message": "Argument of type 'DocumentReference<DocumentData, DocumentData>' is not assignable to parameter of type 'DocumentReference<unknown>'.\n  Type 'DocumentReference<DocumentData, DocumentData>' is missing the following properties from type 'DocumentReference<unknown>': collection, isEqual, set, update, and 3 more."
+  },
+  {
+    "file": "firestore.rules.test.ts",
+    "code": 2698,
+    "message": "Spread types may only be created from object types."
+  },
+  {
+    "file": "firestore.rules.test.ts",
+    "code": 2345,
+    "message": "Argument of type 'DocumentReference<DocumentData, DocumentData>' is not assignable to parameter of type 'DocumentReference<any>'.\n  Type 'DocumentReference<DocumentData, DocumentData>' is missing the following properties from type 'DocumentReference<any>': collection, isEqual, set, update, and 3 more."
+  },
+  {
+    "file": "firestore.rules.test.ts",
+    "code": 2345,
+    "message": "Argument of type 'DocumentReference<DocumentData, DocumentData>' is not assignable to parameter of type 'DocumentReference<unknown>'.\n  Type 'DocumentReference<DocumentData, DocumentData>' is missing the following properties from type 'DocumentReference<unknown>': collection, isEqual, set, update, and 3 more."
+  },
+  {
+    "file": "firestore.rules.test.ts",
+    "code": 2339,
+    "message": "Property 'lastIssuedSequence' does not exist on type 'unknown'."
+  },
+  {
+    "file": "firestore.rules.test.ts",
+    "code": 2345,
+    "message": "Argument of type 'DocumentReference<DocumentData, DocumentData>' is not assignable to parameter of type 'DocumentReference<{ id: string; clientId: string; scope: string; lastIssuedSequence: any; }>'.\n  Type 'DocumentReference<DocumentData, DocumentData>' is missing the following properties from type 'DocumentReference<{ id: string; clientId: string; scope: string; lastIssuedSequence: any; }>': collection, isEqual, set, update, and 3 more."
+  },
+  {
+    "file": "firestore.rules.test.ts",
+    "code": 2345,
+    "message": "Argument of type 'DocumentReference<DocumentData, DocumentData>' is not assignable to parameter of type 'DocumentReference<{ id: string; clientId: string; areaName: string; sequenceNumber: any; displayCode: string; title: string; primaryStrategicObjectiveId: string; }>'.\n  Type 'DocumentReference<DocumentData, DocumentData>' is missing the following properties from type 'DocumentReference<{ id: string; clientId: string; areaName: string; sequenceNumber: any; displayCode: string; title: string; primaryStrategicObjectiveId: string; }>': collection, isEqual, set, update, and 3 more."
+  },
+  {
+    "file": "index.tsx",
+    "code": 2339,
+    "message": "Property 'env' does not exist on type 'ImportMeta'."
+  },
+  {
+    "file": "index.tsx",
+    "code": 2339,
+    "message": "Property 'env' does not exist on type 'ImportMeta'."
+  },
+  {
+    "file": "index.tsx",
+    "code": 2339,
+    "message": "Property 'env' does not exist on type 'ImportMeta'."
+  },
+  {
+    "file": "services/tableroReadScope.ts",
+    "code": 2352,
+    "message": "Conversion of type '{ globalRole?: \"platform_admin\"; id: string; email: string; }' to type 'User' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.\n  Type '{ globalRole?: \"platform_admin\"; id: string; email: string; }' is missing the following properties from type 'User': name, dashboardAccess"
+  },
+  {
+    "file": "testUtils/inMemoryKpiBackend.test.ts",
+    "code": 2339,
+    "message": "Property 'activities' does not exist on type '{ [periodIdx: number]: { id: string; label: string; targetCount: number; completedCount: number; resolution?: { resolutionStatus: \"discarded\" | \"completed_later\" | \"rescheduled\" | \"reopened\"; resolvedAt?: string; ... 10 more ...; rescheduleHistory?: { ...; }[]; }; }[]; }'."
+  },
+  {
+    "file": "testUtils/inMemoryKpiBackend.ts",
+    "code": 2322,
+    "message": "Type '[string, TestDashboard][]' is not assignable to type 'TestDashboard[]'.\n  Type '[string, TestDashboard]' is not assignable to type 'TestDashboard'."
+  },
+  {
+    "file": "utils/aggregationUtils.ts",
+    "code": 2322,
+    "message": "Type '{ boardId: string | number; itemId: string | number; }[]' is not assignable to type 'AggregationSource[]'.\n  Property 'dashboardId' is missing in type '{ boardId: string | number; itemId: string | number; }' but required in type 'AggregationSource'."
+  },
+  {
+    "file": "utils/checklistBulkImport.ts",
+    "code": 2339,
+    "message": "Property 'targetCount' does not exist on type 'ChecklistElement | { label: string; }'.\n  Property 'targetCount' does not exist on type '{ label: string; }'."
+  },
+  {
+    "file": "utils/checklistBulkImport.ts",
+    "code": 2339,
+    "message": "Property 'id' does not exist on type 'ChecklistElement | { label: string; }'.\n  Property 'id' does not exist on type '{ label: string; }'."
+  },
+  {
+    "file": "utils/compliance.ts",
+    "code": 2339,
+    "message": "Property 'isAggregate' does not exist on type 'DashboardItem'."
+  },
+  {
+    "file": "utils/compliance.ts",
+    "code": 2339,
+    "message": "Property 'isAggregate' does not exist on type 'DashboardItem'."
+  },
+  {
+    "file": "utils/continuityAdapter.ts",
+    "code": 2339,
+    "message": "Property 'id' does not exist on type 'unknown'."
+  },
+  {
+    "file": "utils/continuityAdapter.ts",
+    "code": 2339,
+    "message": "Property 'id' does not exist on type 'unknown'."
+  },
+  {
+    "file": "utils/continuityAdapter.ts",
+    "code": 2339,
+    "message": "Property 'id' does not exist on type 'unknown'."
+  },
+  {
+    "file": "utils/continuityAdapter.ts",
+    "code": 2339,
+    "message": "Property 'targetCount' does not exist on type 'unknown'."
+  },
+  {
+    "file": "utils/continuityAdapter.ts",
+    "code": 2339,
+    "message": "Property 'targetCount' does not exist on type 'unknown'."
+  },
+  {
+    "file": "utils/controlExecutiveReportDocx.ts",
+    "code": 2353,
+    "message": "Object literal may only specify known properties, and 'widowControl' does not exist in type 'IParagraphStylePropertiesOptions'."
+  },
+  {
+    "file": "utils/enterpriseRecoveryUtils.ts",
+    "code": 2741,
+    "message": "Property 'diagonal' is missing in type '{ top: { style: \"thin\"; color: { argb: string; }; }; left: { style: \"thin\"; color: { argb: string; }; }; bottom: { style: \"thin\"; color: { argb: string; }; }; right: { style: \"thin\"; color: { argb: string; }; }; }' but required in type 'Borders'."
+  },
+  {
+    "file": "utils/ExecutiveOperationalExport.ts",
+    "code": 2741,
+    "message": "Property 'diagonal' is missing in type '{ top: { style: \"thin\"; color: { argb: string; }; }; left: { style: \"thin\"; color: { argb: string; }; }; bottom: { style: \"thin\"; color: { argb: string; }; }; right: { style: \"thin\"; color: { argb: string; }; }; }' but required in type 'Borders'."
+  },
+  {
+    "file": "utils/ExecutiveOperationalExport.ts",
+    "code": 2741,
+    "message": "Property 'diagonal' is missing in type '{ top: { style: \"thin\"; color: { argb: string; }; }; left: { style: \"thin\"; color: { argb: string; }; }; bottom: { style: \"double\"; color: { argb: string; }; }; right: { style: \"thin\"; color: { argb: string; }; }; }' but required in type 'Borders'."
+  },
+  {
+    "file": "utils/ExecutiveOperationalExport.ts",
+    "code": 2367,
+    "message": "This comparison appears to be unintentional because the types 'string' and 'number' have no overlap."
+  },
+  {
+    "file": "utils/ExecutiveOperationalExport.ts",
+    "code": 2367,
+    "message": "This comparison appears to be unintentional because the types 'string' and 'number' have no overlap."
+  },
+  {
+    "file": "utils/formula_audit.test.ts",
+    "code": 2741,
+    "message": "Property 'weight' is missing in type '{ id: number; indicator: string; indicatorType: \"simple\"; type: \"accumulative\"; frequency: \"monthly\"; monthlyProgress: number[]; monthlyGoals: number[]; unit: string; goalType: \"maximize\"; }' but required in type 'DashboardItem'."
+  },
+  {
+    "file": "utils/formula_audit.test.ts",
+    "code": 2741,
+    "message": "Property 'weight' is missing in type '{ id: number; indicator: string; indicatorType: \"simple\"; type: \"accumulative\"; frequency: \"monthly\"; monthlyProgress: number[]; monthlyGoals: number[]; unit: string; goalType: \"maximize\"; }' but required in type 'DashboardItem'."
+  },
+  {
+    "file": "utils/formula_audit.test.ts",
+    "code": 2741,
+    "message": "Property 'weight' is missing in type '{ id: number; indicator: string; indicatorType: \"formula\"; formula: string; goalMode: \"DERIVED_FROM_SOURCES\"; formulaOutputMode: \"RESULT_IS_COMPLIANCE\"; type: \"average\"; frequency: \"monthly\"; monthlyProgress: number[]; monthlyGoals: number[]; unit: string; goalType: \"maximize\"; }' but required in type 'DashboardItem'."
+  },
+  {
+    "file": "utils/operationalAlerts.test.ts",
+    "code": 2739,
+    "message": "Type '{ id: number; title: string; group: string; area: string; year: number; items: DashboardItem[]; }' is missing the following properties from type 'Dashboard': subtitle, thresholds"
+  },
+  {
+    "file": "utils/operationalAlerts.test.ts",
+    "code": 2739,
+    "message": "Type '{ id: number; title: string; isAggregate: true; group: string; area: string; items: undefined[]; }' is missing the following properties from type 'Dashboard': subtitle, thresholds"
+  },
+  {
+    "file": "utils/operationalHistory.test.ts",
+    "code": 2741,
+    "message": "Property 'subtitle' is missing in type '{ id: number; title: string; group: string; area: string; year: number; thresholds: { onTrack: number; atRisk: number; }; items: DashboardItem[]; }' but required in type 'Dashboard'."
+  },
+  {
+    "file": "utils/operationalHistory.test.ts",
+    "code": 2741,
+    "message": "Property 'subtitle' is missing in type '{ id: number; title: string; isAggregate: true; group: string; area: string; thresholds: { onTrack: number; atRisk: number; }; items: undefined[]; }' but required in type 'Dashboard'."
+  },
+  {
+    "file": "utils/resolutionHistory.ts",
+    "code": 2367,
+    "message": "This comparison appears to be unintentional because the types '\"CREATE_CONTINUITY\" | \"RECORD_PROGRESS\" | \"ADJUST_PERIOD_PROGRESS\" | \"VOID_PERIOD_PROGRESS\" | \"RESCHEDULE\" | \"UNDO_RESCHEDULE\" | \"VOID_AND_UNDO_RESCHEDULE\" | \"COMPLETE\" | \"CLOSE_UNMET\" | \"DISCARD\" | \"REOPEN\"' and '\"CLOSE_COMPLETED\"' have no overlap."
+  },
+  {
+    "file": "utils/resolutionHistory.ts",
+    "code": 2322,
+    "message": "Type '(ResolutionHistoryRow | { id: string; title: string; originalPeriodIndex: number; originalYear: number; status: string; resolvedAt: string; reason: string; scheduledPeriodIndex: number; scheduledYear: number; canReopen: boolean; activityId: string; })[]' is not assignable to type 'ResolutionHistoryRow[]'.\n  Type 'ResolutionHistoryRow | { id: string; title: string; originalPeriodIndex: number; originalYear: number; status: string; resolvedAt: string; reason: string; scheduledPeriodIndex: number; scheduledYear: number; canReopen: boolean; activityId: string; }' is not assignable to type 'ResolutionHistoryRow'.\n    Type '{ id: string; title: string; originalPeriodIndex: number; originalYear: number; status: string; resolvedAt: string; reason: string; scheduledPeriodIndex: number; scheduledYear: number; canReopen: boolean; activityId: string; }' is not assignable to type 'ResolutionHistoryRow'.\n      Types of property 'status' are incompatible.\n        Type 'string' is not assignable to type 'ResolutionHistoryStatus'."
+  },
+  {
+    "file": "utils/universalNavigation.test.tsx",
+    "code": 2339,
+    "message": "Property 'Viewer' does not exist on type 'typeof GlobalUserRole'."
+  }
+]

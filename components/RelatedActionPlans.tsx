@@ -370,13 +370,13 @@ export const RelatedActionPlans: React.FC<Props> = ({
     "mt-1 w-full rounded-lg border border-slate-700 bg-slate-950/80 px-3 py-2 text-sm text-slate-100 outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-500/30 placeholder:text-slate-500";
   return (
     <section className={collapsed || (state === "saved" && plans.length === 0 && !draft) ? "" : "mt-6 rounded-2xl border border-cyan-500/20 bg-slate-950/30 p-6"}>
-      {collapsed ? <div className="flex justify-end">
+      {collapsed ? <div className="flex flex-wrap justify-end gap-2">
         {state === "saved" && plans.length > 0 && onToggle && <button type="button" aria-expanded="false" onClick={onToggle} className="min-h-[40px] rounded-lg border border-cyan-500/30 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-cyan-200 hover:bg-cyan-500/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-300">VER PLANES ({plans.length})</button>}
         {state === "loading" && <span className="text-xs text-slate-500">Cargando planes…</span>}
         {state === "error" && <span className="text-xs text-red-400">No se pudieron cargar los planes.</span>}
-        {canEdit && state === "saved" && plans.length === 0 && <button type="button" onClick={() => { onToggle?.(); begin(); }} className="min-h-[40px] rounded-xl bg-cyan-600 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-white">+ Nuevo plan</button>}
+        {canEdit && state === "saved" && <button type="button" onClick={() => { onToggle?.(); begin(); }} className="min-h-[40px] rounded-xl bg-cyan-600 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-white">+ Nuevo plan</button>}
       </div> : <>
-      {state === "saved" && plans.length > 0 && <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+      {state === "saved" && <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
         <div>
           <h4 className="text-sm font-black uppercase tracking-widest text-cyan-300">
             Planes relacionados

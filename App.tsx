@@ -62,7 +62,7 @@ import {
   reconcileClientSelectionResult,
 } from "./utils/clientReconciliation";
 import { isUniversalSuperAdmin } from "./utils/universalSuperAdmin";
-import { getAuthorizedClientIds, canAccessStrategy } from "./services/tableroAuthorization";
+import { getAuthorizedClientIds, canAccessStrategy, canAccessDashboard, getMembershipForClient, resolveEffectiveMemberships, hydratePersistedMemberships } from "./services/tableroAuthorization";
 import { getMainViewReadiness } from "./utils/mainViewReadiness";
 import {
   StrategicPerspective,
@@ -371,6 +371,11 @@ export default function App() {
   );
 
   const userRole = useMemo(() => {
+    const membership = userProfile && selectedDashboard && getMembershipForClient(userProfile, selectedDashboard.clientId || "");
+    if (membership?.source === "canonical" && !selectedDashboard?.isAggregate) {
+      if (canAccessDashboard(userProfile!, selectedDashboard!, "editor")) return DashboardRole.Editor;
+      return canAccessDashboard(userProfile!, selectedDashboard!) ? DashboardRole.Viewer : null;
+    }
     if (isGlobalAdmin) return DashboardRole.Editor;
 
     const dashIdStr = String(selectedDashboardId || "");
@@ -531,8 +536,7 @@ export default function App() {
       const accessibleBoardGroups = allRawDashboards
         .filter(
           (d) =>
-            userProfile.dashboardAccess?.[d.id] ||
-            (d.originalId && userProfile.dashboardAccess?.[d.originalId]),
+            canAccessDashboard(userProfile, d),
         )
         .map((d) => (d.group ? d.group.trim().toUpperCase() : null))
         .filter(Boolean) as string[];
@@ -705,11 +709,7 @@ export default function App() {
               ),
             );
             if (!canonicalSnap.empty) {
-              const canonicalList = canonicalSnap.docs.map((d) => d.data());
-              prof = {
-                ...prof,
-                memberships: canonicalList as any,
-              };
+              hydratePersistedMemberships(prof, canonicalSnap.docs.map((d) => d.data()), u.uid);
             }
           } catch (mErr) {
             console.error("Error al cargar membresías canónicas de usuario:", mErr);
@@ -1074,8 +1074,7 @@ export default function App() {
           const accessibleBoardGroups = rows
             .filter(
               (d) =>
-                userProfile.dashboardAccess?.[d.id] ||
-                (d.originalId && userProfile.dashboardAccess?.[d.originalId]),
+                canAccessDashboard(userProfile, d),
             )
             .map((d) => (d.group ? d.group.trim().toUpperCase() : null))
             .filter(Boolean) as string[];
@@ -1148,12 +1147,17 @@ export default function App() {
           return r;
         });
 
-        let filteredRows = processedRows;
+        let filteredRows = processedRows.filter((r) => {
+          const membership = userProfile && resolveEffectiveMemberships(userProfile).memberships.find(m => m.clientId === (r.clientId || "").trim().toUpperCase());
+          return membership?.source !== "canonical" || canAccessDashboard(userProfile!, r);
+        });
         if (!isGlobalAdmin && userProfile) {
           const userClients = (userProfile.clientId || "IPS")
             .split(",")
             .map((c) => c.trim().toUpperCase());
-          filteredRows = processedRows.filter((r) => {
+          filteredRows = filteredRows.filter((r) => {
+            const membership = resolveEffectiveMemberships(userProfile).memberships.find(m => m.clientId === (r.clientId || "").trim().toUpperCase());
+            if (membership?.source === "canonical") return canAccessDashboard(userProfile, r);
             const docClient = (r.clientId || "").trim().toUpperCase();
             if (!userClients.includes(docClient)) return false;
 
@@ -1207,7 +1211,7 @@ export default function App() {
           selectedClientId !== "all"
         ) {
           const targetClient = selectedClientId.trim().toUpperCase();
-          filteredRows = processedRows.filter(
+          filteredRows = filteredRows.filter(
             (r) => (r.clientId || "").trim().toUpperCase() === targetClient,
           );
         }
@@ -2618,7 +2622,7 @@ export default function App() {
         </div>
 
         <div className="flex w-full min-w-0 flex-wrap items-center justify-center md:w-auto md:justify-end gap-2 scale-100 md:scale-[0.85] origin-right">
-          {(isGlobalAdmin || userProfile?.canManageKPIs) && (
+          {(isGlobalAdmin || userProfile?.canManageKPIs || (userProfile && canAccessStrategy(userProfile, selectedClientId))) && (
             <nav className="flex max-w-full flex-wrap items-center gap-0.5 bg-black/40 p-0.5 rounded-xl border border-white/5">
               {isGlobalAdmin && (
                 <>
@@ -2644,6 +2648,7 @@ export default function App() {
                 </>
               )}
 
+              {(isGlobalAdmin || userProfile?.canManageKPIs) && (
               <button
                 onClick={() => {
                   setActiveAdminSection("indicators");
@@ -2662,6 +2667,7 @@ export default function App() {
               >
                 KPIs
               </button>
+              )}
 
               {isGlobalAdmin && (
                 <button
@@ -2673,6 +2679,7 @@ export default function App() {
                 </button>
               )}
 
+              {(isGlobalAdmin || userProfile?.canManageKPIs) && (
               <button
                 onClick={() => {
                   setActiveAdminSection("kpiWeights");
@@ -2692,6 +2699,7 @@ export default function App() {
               >
                 Pesos KPI
               </button>
+              )}
 
               {isGlobalAdmin && (
                 <>
@@ -2716,7 +2724,7 @@ export default function App() {
                 </>
               )}
 
-              {settings?.enableStrategyMap && (
+              {settings?.enableStrategyMap && userProfile && canAccessStrategy(userProfile, selectedClientId) && (
                 <button
                   onClick={() => setActiveAdminSection("strategy")}
                   className={`px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${activeAdminSection === "strategy" ? "bg-emerald-600 text-white shadow-lg shadow-emerald-950/40" : "text-slate-400 hover:text-white hover:bg-white/5"}`}
@@ -3153,7 +3161,24 @@ Esto corregirá cualquier inconsistencia en colores (ej. Amarillo vs Rojo).`)
             onDeleteRelationship={handleDeleteRelationship}
             onExit={() => setActiveAdminSection("none")}
             onNavigateToDashboard={(dashboardId, itemId) => {
+              const targetDashboard = dashboards.find(
+                (dashboard) => String(dashboard.id) === String(dashboardId),
+              );
+              if (
+                !targetDashboard ||
+                (selectedClientId !== "all" &&
+                  targetDashboard.clientId &&
+                  targetDashboard.clientId.trim().toUpperCase() !==
+                    selectedClientId.trim().toUpperCase())
+              ) {
+                return;
+              }
               setActiveAdminSection("none");
+              setPendingKpiNavigation(
+                itemId === null || itemId === undefined
+                  ? null
+                  : { dashboardId, itemId, source: "contribution" },
+              );
               setSelectedDashboardId(dashboardId);
             }}
           />

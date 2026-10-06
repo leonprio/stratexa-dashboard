@@ -1,0 +1,10 @@
+{
+  "sourcePeriod": 0,
+  "originalCompletedCount": 1,
+  "submittedCompletedCount": 0,
+  "warning": "¿Copiar esta estructura a TODO EL AÑO?\n(Los avances se reiniciarán a 0 en los otros periodos)",
+  "successWhileUnsettled": true,
+  "savesBeforeSettled": 2,
+  "fixtureOnly": true,
+  "firebaseWrites": 0
+}

@@ -30,7 +30,7 @@ const assignments = [
 it('uses the map ownership resolution to exclude all globally occupied KPI from OE03 availability', () => {
   const ownership = resolveStrategicKpiOwnership(dashboards, objectives, contributions, assignments);
   expect(ownership.occupiedCanonicalKpiIdentities.size).toBe(4);
-  render(<OEDetailModal objective={objectives[2]} perspective={{ id: 'P', name: 'Procesos' } as any} allObjectives={objectives} relationships={[]} contributions={contributions} assignments={assignments} dashboards={dashboards} selectedClientId="CEMENTOS_SIGMA" currentUser={{ globalRole: GlobalUserRole.Admin } as any} onRefreshData={jest.fn()} onClose={jest.fn()} currentObjectiveAlignedKpis={ownership.kpisByStrategicObjective.get('OE03')} ownershipResolution={ownership} />);
+  render(<OEDetailModal objective={objectives[2]} perspective={{ id: 'P', name: 'Procesos' } as any} allObjectives={objectives} relationships={[]} contributions={contributions} assignments={assignments} dashboards={dashboards} selectedClientId="CEMENTOS_SIGMA" currentUser={{ globalRole: GlobalUserRole.Admin, clientId: 'CEMENTOS_SIGMA' } as any} onRefreshData={jest.fn()} onClose={jest.fn()} currentObjectiveAlignedKpis={ownership.kpisByStrategicObjective.get('OE03')} ownershipResolution={ownership} />);
   fireEvent.click(screen.getByRole('button', { name: 'ALINEAR INDICADORES' }));
   expect(screen.getAllByRole('checkbox')).toHaveLength(5);
   for (const occupied of ['Ventas', 'Margen de Contribución Neto', 'Cumplimiento de Entregas', 'Rotación de Inventario']) expect(screen.queryByRole('checkbox', { name: new RegExp(`^${occupied}`) })).not.toBeInTheDocument();

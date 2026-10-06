@@ -1,8 +1,9 @@
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom';
+import { canAccessDashboard } from '../services/tableroAuthorization';
 import { HierarchySidebar } from '../components/HierarchySidebar';
-import { Dashboard as DashboardType, User, GlobalUserRole } from '../types';
+import { Dashboard as DashboardType, User, GlobalUserRole, DashboardRole } from '../types';
 
 describe('Universal Navigation & Hierarchy Rules (v9.6.10)', () => {
   const adminUser: User = {
@@ -175,12 +176,17 @@ describe('Universal Navigation & Hierarchy Rules (v9.6.10)', () => {
       id: 'gto-user',
       name: 'GTO User',
       email: 'gto@somos.org',
-      globalRole: GlobalUserRole.Viewer,
+      globalRole: GlobalUserRole.Member,
       clientId: 'SOMOS',
+      memberships: [{ clientId: 'SOMOS', role: 'standard_user', status: 'active', dashboardScopes: { SOMOS_2026_GTO: 'viewer' }, editableDashboardIds: [], capabilities: ['viewer'] }],
       dashboardAccess: {
-        SOMOS_2026_GTO: 'Viewer' as any,
+        SOMOS_2026_GTO: DashboardRole.Viewer,
       },
     };
+
+    expect(canAccessDashboard(partialUser, som2, 'viewer')).toBe(true);
+    expect(canAccessDashboard(partialUser, som2, 'editor')).toBe(false);
+    expect(canAccessDashboard(partialUser, createDashboard('SOMOS_2026_QRO', 'Querétaro'), 'viewer')).toBe(false);
 
     render(
       <HierarchySidebar

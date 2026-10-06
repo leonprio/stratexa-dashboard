@@ -47,6 +47,7 @@ describe('OperationalControlCenter simplificado', () => {
     const outsider = { ...viewer, dashboardAccess: {} };
     render(<OperationalControlCenter dashboards={[authorizedDashboard]} currentDashboard={authorizedDashboard} currentUser={outsider} globalThresholds={dashboard.thresholds} year={2026} />);
     expect(screen.queryByTestId('control-plans')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Exportar informe' })).toBeDisabled();
     expect(buildOperationalAlerts).toHaveBeenCalledWith([], dashboard.thresholds, 2026);
   });
 

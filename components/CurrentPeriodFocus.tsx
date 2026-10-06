@@ -469,6 +469,7 @@ export const CurrentPeriodFocus: React.FC<CurrentPeriodFocusProps> = ({
   controlTarget,
 }) => {
   const [localGoal, setLocalGoal] = useState<string>("");
+  const goalEdited = useRef(false);
   const [localActual, setLocalActual] = useState<string>("");
   const [localNote, setLocalNote] = useState<string>("");
   const [isSaving, setIsSaving] = useState(false);
@@ -529,8 +530,8 @@ export const CurrentPeriodFocus: React.FC<CurrentPeriodFocusProps> = ({
   const effectiveTracking = getEffectiveTrackingStartPeriod(item, { defaultTrackingStartPeriod: dashboardTrackingStartPeriod }, { defaultTrackingStartPeriod: clientTrackingStartPeriod });
   const saveTrackingOverride = async () => {
     if (!trackingDraft) return;
-    const facts = hasTrackingFactsBeforePeriod(isWeekly ? 'weekly' : 'monthly', year || currentYear, trackingDraft, isWeekly ? weeklyGoals : monthlyGoals, isWeekly ? weeklyProgress : monthlyProgress, isWeekly ? undefined : item.monthlyGoalCaptured, isWeekly ? undefined : item.monthlyProgressCaptured);
-    if (facts.hasFacts) { setTrackingBlocked(`No se puede cambiar el inicio a ${formatTrackingStartPeriod(trackingDraft)}. Este indicador ya tiene información registrada en ${formatTrackingStartPeriod(facts.firstPeriod)}: Meta ${facts.goal ?? '—'} · Avance ${facts.progress ?? '—'}. El inicio no puede dejar fuera periodos con información real.`); return; }
+    const facts = hasTrackingFactsBeforePeriod(isWeekly ? 'weekly' : 'monthly', year || currentYear, trackingDraft, isWeekly ? weeklyGoals : monthlyGoals, isWeekly ? weeklyProgress : monthlyProgress, isWeekly ? undefined : item.monthlyGoalCaptured, isWeekly ? undefined : item.monthlyProgressCaptured, item);
+    if (facts.hasFacts) { setTrackingBlocked(`No se puede cambiar el inicio a ${formatTrackingStartPeriod(trackingDraft)}. Este indicador ya tiene información registrada en ${formatTrackingStartPeriod(facts.firstPeriod)}: Meta ${facts.goal ?? '—'} · Avance ${facts.progress ?? '—'}${facts.detail ? ` · ${facts.detail}` : ''}. El inicio no puede dejar fuera periodos con información real.`); return; }
     setConfirmTrackingSave(true);
   };
 
@@ -936,6 +937,7 @@ export const CurrentPeriodFocus: React.FC<CurrentPeriodFocusProps> = ({
         ? item.weeklyNotes?.[currentIdx]
         : item.monthlyNotes?.[currentIdx]) || "";
 
+    goalEdited.current = false;
     const strGoal = goal !== null && goal !== undefined ? goal.toString() : "";
     const actualCaptured = isWeekly
       ? actual !== null && actual !== undefined
@@ -1060,7 +1062,10 @@ export const CurrentPeriodFocus: React.FC<CurrentPeriodFocusProps> = ({
         updatedItem.monthlyGoalCaptured = [
           ...(item.monthlyGoalCaptured || Array(12).fill(false)),
         ];
-        updatedItem.monthlyGoalCaptured[currentIdx] = newGoalVal !== null;
+        updatedItem.monthlyGoalCaptured[currentIdx] = newGoalVal !== null && (
+          goalEdited.current || item.monthlyGoalCaptured?.[currentIdx] === true ||
+          (item.monthlyGoalCaptured?.[currentIdx] === undefined && Number.isFinite(newGoalVal) && newGoalVal !== 0)
+        );
         updatedItem.monthlyProgress = newProgress;
         updatedItem.monthlyProgressCaptured = [
           ...(item.monthlyProgressCaptured || Array(12).fill(false)),
@@ -1354,6 +1359,7 @@ export const CurrentPeriodFocus: React.FC<CurrentPeriodFocusProps> = ({
                     onBlur={() => setIsGoalFocused(false)}
                     onChange={(e) => {
                       const val = e.target.value;
+                      goalEdited.current = true;
                       setLocalGoal(val);
                     }}
                     id="goal-input"
@@ -1798,7 +1804,7 @@ export const CurrentPeriodFocus: React.FC<CurrentPeriodFocusProps> = ({
           }
           canEdit={canEdit}
           onClose={() => setIsActivityManagerOpen(false)}
-          onSave={(updatedList) => {
+          onSave={async (updatedList) => {
             const updatedItem = { ...item };
             updatedItem.activityConfig = { ...updatedItem.activityConfig };
             updatedItem.activityConfig[currentIdx] = updatedList;
@@ -1833,8 +1839,7 @@ export const CurrentPeriodFocus: React.FC<CurrentPeriodFocusProps> = ({
               updatedItem.monthlyProgress[currentIdx] = totalC;
             }
 
-            onUpdateItem(updatedItem);
-            setIsActivityManagerOpen(false);
+            await onUpdateItem(updatedItem);
           }}
         />
       )}

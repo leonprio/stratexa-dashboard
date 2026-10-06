@@ -62,16 +62,13 @@ service cloud.firestore {
         get(/databases/$(database)/documents/tbl_userMemberships/$(membershipId(targetClientId))).data.status == 'active';
     }
 
+    // ALL is display/migration metadata, never a legacy tenant grant.
     function matchesLegacyTenant(storedClientId, targetClientId) {
-      return storedClientId is string && (
+      return storedClientId is string && targetClientId.lower() != 'all' && (
         storedClientId == targetClientId ||
         storedClientId.lower() == targetClientId.lower() ||
         storedClientId.matches('(.*,|^)\\s*' + targetClientId + '\\s*(,.*|$)') ||
-        storedClientId.lower().matches('(.*,|^)\\s*' + targetClientId.lower() + '\\s*(,.*|$)') ||
-        storedClientId == 'all' ||
-        storedClientId.lower() == 'all' ||
-        storedClientId.matches('(.*,|^)\\s*all\\s*(,.*|$)') ||
-        storedClientId.lower().matches('(.*,|^)\\s*all\\s*(,.*|$)')
+        storedClientId.lower().matches('(.*,|^)\\s*' + targetClientId.lower() + '\\s*(,.*|$)')
       );
     }
 
@@ -82,11 +79,7 @@ service cloud.firestore {
         isSafeClientId(targetClientId) &&
         exists(/databases/$(database)/documents/tbl_users/$(request.auth.uid)) &&
         !hasCanonicalMembership(targetClientId) &&
-        (!isPlatformAdmin() || (
-          getUserProfile().get('globalRole', '') in ['Admin', 'admin'] &&
-          request.auth.token.keys().hasAll(['email']) &&
-          request.auth.token.email == 'leonprior@gmail.com'
-        )) &&
+        !isPlatformAdmin() &&
         matchesLegacyTenant(getUserProfile().get('clientId', ''), targetClientId);
     }
 

@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { ActivityManager } from './ActivityManager';
 import { Activity } from '../types';
@@ -87,6 +87,51 @@ describe('ActivityManager Component v9.2.2', () => {
             expect.objectContaining({ label: 'Actividad 1' }),
             expect.objectContaining({ label: 'Actividad 2' })
         ]));
+    });
+
+    it('mantiene abierto el checklist, bloquea un segundo guardado y cierra después de resolver', async () => {
+        let resolveSave!: () => void;
+        mockOnSave.mockReturnValueOnce(new Promise<void>(resolve => { resolveSave = resolve; }));
+        render(<ActivityManager title="Test" initialActivities={mockActivities} onSave={mockOnSave} onClose={mockOnClose} />);
+
+        fireEvent.click(screen.getByRole('button', { name: 'CONFIRMAR LISTA' }));
+        expect(screen.getByRole('status')).toHaveTextContent('Guardando checklist');
+        expect(screen.getByRole('button', { name: 'GUARDANDO...' })).toBeDisabled();
+        expect(mockOnClose).not.toHaveBeenCalled();
+
+        fireEvent.click(screen.getByRole('button', { name: 'GUARDANDO...' }));
+        fireEvent.click(screen.getByTitle('Cerrar'));
+        fireEvent.click(screen.getByRole('button', { name: 'DESCARTAR CAMBIOS' }));
+        expect(mockOnSave).toHaveBeenCalledTimes(1);
+        expect(mockOnClose).not.toHaveBeenCalled();
+
+        resolveSave();
+        await waitFor(() => expect(mockOnClose).toHaveBeenCalledTimes(1));
+    });
+
+    it('ante un rechazo conserva la lista abierta, muestra el error y permite reintentar', async () => {
+        mockOnSave.mockRejectedValueOnce(new Error('offline')).mockResolvedValueOnce(undefined);
+        render(<ActivityManager title="Test" initialActivities={mockActivities} onSave={mockOnSave} onClose={mockOnClose} />);
+        fireEvent.change(screen.getAllByDisplayValue('0')[0], { target: { value: '2' } });
+        fireEvent.click(screen.getByRole('button', { name: 'CONFIRMAR LISTA' }));
+
+        expect(await screen.findByRole('alert')).toHaveTextContent('Los cambios siguen disponibles');
+        expect(screen.getByText('Actividad 1')).toBeInTheDocument();
+        expect(screen.getByDisplayValue('2')).toBeInTheDocument();
+        expect(mockOnClose).not.toHaveBeenCalled();
+
+        fireEvent.click(screen.getByRole('button', { name: 'CONFIRMAR LISTA' }));
+        await waitFor(() => expect(mockOnClose).toHaveBeenCalledTimes(1));
+        expect(mockOnSave).toHaveBeenCalledTimes(2);
+    });
+
+    it('permite confirmar una lista vacía y cierra tras completar el callback', async () => {
+        render(<ActivityManager title="Test" initialActivities={[]} onSave={mockOnSave} onClose={mockOnClose} />);
+
+        fireEvent.click(screen.getByRole('button', { name: 'CONFIRMAR LISTA' }));
+
+        await waitFor(() => expect(mockOnSave).toHaveBeenCalledWith([]));
+        await waitFor(() => expect(mockOnClose).toHaveBeenCalledTimes(1));
     });
 
     it('debe llamar a onClose al presionar el botón de cerrar', () => {

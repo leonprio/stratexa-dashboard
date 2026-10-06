@@ -2,6 +2,7 @@
 import { firebaseService } from './firebaseService';
 import { readTableroScope } from './tableroReadScope';
 import type { ActionPlan, ActionPlanActivity, ActionPlanResultReview, User } from '../types';
+import { setDoc } from 'firebase/firestore';
 
 jest.mock('../firebase', () => ({ db: {} }));
 jest.mock('./tableroReadScope', () => ({ readTableroScope: jest.fn() }));
@@ -92,6 +93,35 @@ const successorPlan = (overrides: Partial<ActionPlan> = {}): ActionPlan => plan(
 });
 
 const setProfile = (profile: User) => (readTableroScope as jest.Mock).mockResolvedValue({ profile, tenants: ['A'], platform: false });
+
+describe('firebaseService.createActionPlan creation regression', () => {
+  afterEach(() => jest.restoreAllMocks());
+
+  it('writes the new plan once with a generated identity, timestamps and unchanged period', async () => {
+    jest.spyOn(firebaseService, 'getDashboards').mockResolvedValue([{ id: 'D1', clientId: 'A', items: [{ id: 'K1' }] }] as any);
+    (setDoc as jest.Mock).mockImplementation(async (ref: { path: string }, value: ActionPlan) => {
+      mockDocuments.set(ref.path, value);
+    });
+    const created = await firebaseService.createActionPlan(plan({ id: '', createdAt: '', updatedAt: '' }));
+    expect(created.id).toBeTruthy();
+    expect(setDoc).toHaveBeenCalledTimes(1);
+    expect(mockDocuments.get(`tbl_actionPlans/${created.id}`)).toEqual(created);
+    expect(created).toMatchObject({ clientId: 'A', dashboardId: 'D1', indicatorId: 'K1', originYear: 2026, originPeriodType: 'monthly', originPeriodIndex: 8 });
+    expect(Number.isNaN(Date.parse(created.createdAt))).toBe(false);
+    expect(Number.isNaN(Date.parse(created.updatedAt))).toBe(false);
+  });
+
+  it.each([{ clientId: 'B' }, { dashboardId: 'D2' }])('rejects creation outside assigned scope: %j', async overrides => {
+    await expect(firebaseService.createActionPlan(plan(overrides))).rejects.toThrow(/plan_editor/);
+    expect(setDoc).not.toHaveBeenCalled();
+  });
+
+  it('rejects an indicator absent from the physical dashboard before writing', async () => {
+    jest.spyOn(firebaseService, 'getDashboards').mockResolvedValue([{ id: 'D1', clientId: 'A', items: [{ id: 'OTHER' }] }] as any);
+    await expect(firebaseService.createActionPlan(plan())).rejects.toThrow(/indicador.*existir/);
+    expect(setDoc).not.toHaveBeenCalled();
+  });
+});
 
 beforeEach(() => {
   mockDocuments.clear();

@@ -7,6 +7,7 @@ module.exports = {
         '^.+\\.(css|sass|scss)$': 'identity-obj-proxy',
     },
     setupFilesAfterEnv: ['<rootDir>/jest.setup.cjs'],
+    testPathIgnorePatterns: ['<rootDir>/node_modules/', '<rootDir>/tmp/'],
     transform: {
         '^.+\\.tsx?$': ['ts-jest', { useESM: true }],
     },

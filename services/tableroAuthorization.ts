@@ -174,3 +174,18 @@ export function canConfigureStrategy(profile: User, clientId: string): boolean {
 }
 
 export { validRoles };
+
+/** Shared hydration of protected records for UI and service reads. */
+export function hydratePersistedMemberships(profile: User, records: Record<string, any>[], userId: string): void {
+  const memberships = records.filter(m => m.userId === userId);
+  const replaced = new Set(memberships.map(m => normalizeClient(m.clientId)));
+  // Protected records override legacy authority, including suspended memberships.
+  const legacy = resolveEffectiveMemberships({ ...profile, memberships: undefined }).memberships.filter(m => !replaced.has(m.clientId));
+  if (memberships.length) profile.memberships = [...legacy, ...memberships.map(m => ({
+    clientId: m.clientId, role: m.role, status: m.status,
+    hierarchyScopes: m.hierarchyScopeKeys || [],
+    dashboardScopes: Object.fromEntries((m.allowedDashboardIds || []).map((id: string) => [id, (m.capabilities || []).includes('editor') && (m.editableDashboardIds || []).includes(id) ? 'editor' : 'viewer'])),
+    editableDashboardIds: (m.editableDashboardIds || []).filter((id: string) => (m.allowedDashboardIds || []).includes(id)),
+    capabilities: (m.capabilities || []).filter((cap: string) => cap !== 'strategy_reader' || m.scopeType === 'tenant'),
+  }))];
+}
