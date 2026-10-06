@@ -191,7 +191,7 @@ service cloud.firestore {
     function canEditActionPlan(data) {
       let dashboardId = string(data.dashboardId);
       let board = get(/databases/$(database)/documents/tbl_dashboards/$(dashboardId)).data;
-      return board.clientId == data.clientId && (isTenantAdmin(data.clientId) ||
+      return board.clientId == data.clientId && (canEditDashboard(board, dashboardId) ||
         (activeCanonicalMembership(data.clientId) &&
           'plan_editor' in get(/databases/$(database)/documents/tbl_userMemberships/$(membershipId(data.clientId))).data.capabilities &&
           canonicalEditableDashboardScope(board, dashboardId)));

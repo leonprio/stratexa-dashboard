@@ -551,8 +551,8 @@ describe('Firestore Security Rules — Strategy Module (v9.5.0 Foundation)', () 
     await assertSucceeds(getDocs(query(collection(db,'tbl_dashboards'),where('clientId','==','A'),where(documentId(),'in',['a','view']))));
     await assertSucceeds(updateDoc(doc(db,'tbl_dashboards','a','items','kpi'),{monthlyProgress:[11]}));
     await assertFails(updateDoc(doc(db,'tbl_dashboards','view','items','kpi'),{monthlyProgress:[11]}));
-    await assertFails(updateDoc(doc(db,'tbl_actionPlans','a'),{status:'in_progress'}));
-    await assertFails(setDoc(doc(db,'tbl_actionPlans','new-editor-plan'),{clientId:'A',dashboardId:'a',indicatorId:'kpi',status:'planned'}));
+    await assertSucceeds(updateDoc(doc(db,'tbl_actionPlans','a'),{status:'in_progress'}));
+    await assertSucceeds(setDoc(doc(db,'tbl_actionPlans','new-editor-plan'),{clientId:'A',dashboardId:'a',indicatorId:'kpi',status:'planned'}));
     await assertFails(updateDoc(doc(db,'tbl_actionPlans','view'),{status:'in_progress'}));
     await assertFails(setDoc(doc(db,'tbl_actionPlans','cross-reference'),{clientId:'A',dashboardId:'b',status:'planned'}));
     const admin = testEnv.authenticatedContext('admin_a').firestore();
@@ -689,8 +689,11 @@ describe('Firestore Security Rules — Strategy Module (v9.5.0 Foundation)', () 
     await assertFails(getDocs(collection(testEnv.authenticatedContext('other_email', { email: 'other@example.test' }).firestore(), 'tbl_managedClients')));
     await assertSucceeds(getDocs(collection(testEnv.authenticatedContext('bridge_email', { email: 'leon@leonprior.com' }).firestore(), 'tbl_managedClients')));
   });
-  it('P1 plans require resource scope and a separate plan_editor capability', async () => {
+  it('P1 read-only plans require an explicit scoped plan_editor grant', async () => {
     await seedTablero();
+    await testEnv.withSecurityRulesDisabled(async context => {
+      await setDoc(doc(context.firestore(),'tbl_userMemberships','member_a__A'),{...canonicalMembership('member_a','A'),allowedDashboardIds:['a'],editableDashboardIds:[],capabilities:['viewer']});
+    });
     const db=testEnv.authenticatedContext('member_a').firestore();
     await assertFails(getDoc(doc(db,'tbl_actionPlans','hidden')));
     await assertFails(getDocs(query(collection(db,'tbl_actionPlans'),where('clientId','==','A'))));
@@ -702,6 +705,29 @@ describe('Firestore Security Rules — Strategy Module (v9.5.0 Foundation)', () 
     await assertSucceeds(updateDoc(doc(db,'tbl_actionPlans','a'),{status:'completed'}));
     await assertFails(updateDoc(doc(db,'tbl_actionPlans','hidden'),{status:'completed'}));
     await assertFails(updateDoc(doc(db,'tbl_actionPlans','b'),{status:'completed'}));
+  });
+  it.each(['editor', 'viewer', 'other tenant', 'other dashboard', 'suspended'])('ActionPlan dashboard authority: %s', async scenario => {
+    await seedTablero();
+    await testEnv.withSecurityRulesDisabled(async context => {
+      await setDoc(doc(context.firestore(), 'tbl_userMemberships', 'member_a__A'), {
+        ...canonicalMembership('member_a', 'A', 'standard_user', scenario === 'suspended' ? 'suspended' : 'active'),
+        allowedDashboardIds: ['a'], editableDashboardIds: scenario === 'other dashboard' ? ['view'] : ['a'],
+        capabilities: scenario === 'viewer' ? ['viewer'] : ['editor'],
+      });
+    });
+    const db = testEnv.authenticatedContext('member_a').firestore();
+    const dashboardId = scenario === 'other tenant' ? 'b' : 'a';
+    const planRef = doc(db, 'tbl_actionPlans', 'editor-contract-new');
+    const creation = setDoc(planRef, { clientId: scenario === 'other tenant' ? 'B' : 'A', dashboardId, indicatorId: 'kpi', status: 'planned' });
+    if (scenario === 'editor') {
+      await assertSucceeds(creation);
+      await assertSucceeds(updateDoc(planRef, { status: 'in_progress' }));
+      await assertSucceeds(deleteDoc(planRef));
+    } else {
+      await assertFails(creation);
+      await assertFails(updateDoc(doc(db, 'tbl_actionPlans', dashboardId), { status: 'in_progress' }));
+      await assertFails(deleteDoc(doc(db, 'tbl_actionPlans', dashboardId)));
+    }
   });
   it('P1 membership alone cannot read strategy; explicit strategy_reader can', async () => {
     const db=testEnv.authenticatedContext('user_ips').firestore();

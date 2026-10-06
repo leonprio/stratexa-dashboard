@@ -45,8 +45,20 @@ const cases: Array<[string, Partial<DashboardItem>, boolean, string?]> = [
   [
     "explicit zero progress",
     { monthlyProgressCaptured: [true] },
-    true,
-    "Enero",
+    false,
+  ],
+  [
+    "captured technical 0/0",
+    {
+      monthlyGoals: [0],
+      monthlyProgress: [0],
+      monthlyGoalCaptured: [true],
+      monthlyProgressCaptured: [true],
+      monthlyNotes: [""],
+      activityConfig: { 0: [] },
+      continuityCommitments: {},
+    },
+    false,
   ],
   ["positive goal", { monthlyGoals: [10] }, true, "Enero"],
   ["positive progress", { monthlyProgress: [5] }, true, "Enero"],

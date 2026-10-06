@@ -117,19 +117,17 @@ export const getKpiTrackingObligation = (input: KpiTrackingObligationInput): Tra
   return 'CAPTURE_COMPLETE';
 };
 
-/** A legacy goal-zero marker alone cannot prove human capture. Associated facts
- * are resolved by the caller from the complete period, never from object existence. */
+/** Zero-valued fields and their capture markers alone do not make a period
+ * substantive. Associated facts are resolved from the complete period. */
 export const isTrackingPeriodSemanticallyEmpty = (input: {
   goal?: number | null;
   progress?: number | null;
-  progressCaptured?: boolean;
   hasAssociatedFacts: boolean;
 }): boolean => {
   const substantive = (value: number | null | undefined) =>
     typeof value === 'number' && Number.isFinite(value) && value !== 0;
-  const capturedZeroProgress = input.progressCaptured === true && input.progress === 0;
   return !input.hasAssociatedFacts && !substantive(input.goal) &&
-    !substantive(input.progress) && !capturedZeroProgress;
+    !substantive(input.progress);
 };
 
 /** True only for captured historical information; legacy zero is intentionally ambiguous. */
@@ -158,8 +156,9 @@ export const hasTrackingFactsBeforePeriod = (
     // Missing context cannot establish that notes/checklists/commitments are empty.
     // Preserve conservative numeric-only callers; the start UI supplies the full item.
     const hasFacts = context
-      ? !isTrackingPeriodSemanticallyEmpty({ goal: goals[index], progress: progress[index],
-          progressCaptured: progressCaptured?.[index], hasAssociatedFacts: !!detail })
+      ? !isTrackingPeriodSemanticallyEmpty({
+          goal: goals[index], progress: progress[index], hasAssociatedFacts: !!detail,
+        })
       : isExplicitOrLegacyValue(goals[index], goalCaptured?.[index]) || isExplicitOrLegacyValue(progress[index], progressCaptured?.[index]);
     if (hasFacts) {
       return { hasFacts: true, firstPeriod: period, goal: goals[index], progress: progress[index], ...(detail ? { detail } : {}) };

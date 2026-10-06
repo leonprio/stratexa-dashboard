@@ -168,6 +168,7 @@ export const RelatedActionPlans: React.FC<Props> = ({
   );
   const [hasLoaded, setHasLoaded] = useState(false);
   const [draft, setDraft] = useState<ActionPlan | null>(null);
+  const creatingPlanRef = useRef(false);
   const [planMode, setPlanMode] = useState<"view" | "edit">("view");
   const [deleteConfirmation, setDeleteConfirmation] = useState(false);
   const [planSettingsOpen, setPlanSettingsOpen] = useState(false);
@@ -203,7 +204,7 @@ export const RelatedActionPlans: React.FC<Props> = ({
     void load();
   }, [indicatorId, clientId]);
   useEffect(() => {
-    if (!initialPlanId || draft || state === "loading") return;
+    if (!initialPlanId || draft || creatingPlanRef.current || state === "loading") return;
     const requested = plans.find(
       (plan) => String(plan.id) === String(initialPlanId),
     );
@@ -233,6 +234,7 @@ export const RelatedActionPlans: React.FC<Props> = ({
     ["overdue", "upcoming"].includes(classifyActionPlanExecution(plan)),
   ).length;
   const begin = (plan?: ActionPlan) => {
+    creatingPlanRef.current = !plan;
     setPlanMode("edit");
     setPlanSettingsOpen(!plan);
     setExpandedActivityId(null);
@@ -280,11 +282,12 @@ export const RelatedActionPlans: React.FC<Props> = ({
     setDeleteActivityConfirmation(activityId);
   };
   useEffect(() => {
-    if (onToggle && !collapsed && state === "saved" && plans.length === 1 && !draft) {
+    if (onToggle && !collapsed && state === "saved" && plans.length === 1 && !draft && !creatingPlanRef.current) {
       openPlan(plans[0]);
     }
   }, [onToggle, collapsed, state, plans, draft]);
   const closePlan = () => {
+    creatingPlanRef.current = false;
     setDraft(null);
     setPlanMode("view");
     setPlanSettingsOpen(false);
@@ -345,6 +348,7 @@ export const RelatedActionPlans: React.FC<Props> = ({
     try {
       if (draft.id) await firebaseService.updateActionPlan(draft.id, changes);
       else await firebaseService.createActionPlan(changes);
+      creatingPlanRef.current = false;
       setDraft(null);
       setNewActivityId(null);
       setActivityNameError("");
@@ -374,19 +378,21 @@ export const RelatedActionPlans: React.FC<Props> = ({
         {state === "saved" && plans.length > 0 && onToggle && <button type="button" aria-expanded="false" onClick={onToggle} className="min-h-[40px] rounded-lg border border-cyan-500/30 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-cyan-200 hover:bg-cyan-500/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-300">VER PLANES ({plans.length})</button>}
         {state === "loading" && <span className="text-xs text-slate-500">Cargando planes…</span>}
         {state === "error" && <span className="text-xs text-red-400">No se pudieron cargar los planes.</span>}
-        {canEdit && state === "saved" && <button type="button" onClick={() => { onToggle?.(); begin(); }} className="min-h-[40px] rounded-xl bg-cyan-600 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-white">+ Nuevo plan</button>}
+        {canEdit && <button type="button" disabled={state === "saving"} onClick={() => { onToggle?.(); begin(); }} className="min-h-[40px] rounded-xl bg-cyan-600 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-white">+ Nuevo plan</button>}
       </div> : <>
-      {state === "saved" && <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+      {(state === "saved" || canEdit) && <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
         <div>
           <h4 className="text-sm font-black uppercase tracking-widest text-cyan-300">
             Planes relacionados
           </h4>
-      <p className="mt-1 text-xs text-slate-400">Transversales al indicador · {plans.length} {plans.length === 1 ? "plan relacionado" : "planes relacionados"}{plansRequiringAttention > 0 ? ` · ${plansRequiringAttention} requieren atención` : ""}</p>
+      {state === "saved" && <p className="mt-1 text-xs text-slate-400">Transversales al indicador · {plans.length} {plans.length === 1 ? "plan relacionado" : "planes relacionados"}{plansRequiringAttention > 0 ? ` · ${plansRequiringAttention} requieren atención` : ""}</p>}
         </div>
         <div className="flex flex-wrap items-center gap-2">
         {onToggle && <button type="button" aria-expanded="true" onClick={onToggle} className="min-h-[40px] rounded-lg border border-cyan-500/30 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-cyan-200 hover:bg-cyan-500/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-300">VOLVER AL INDICADOR</button>}
         {canEdit && (
           <button
+            type="button"
+            disabled={state === "saving"}
             onClick={() => begin()}
             className="rounded-xl bg-cyan-600 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-white"
           >

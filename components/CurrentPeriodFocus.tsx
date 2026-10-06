@@ -3,6 +3,7 @@ import { DashboardItem, ComplianceThresholds, TrackingStartPeriod, User } from "
 import { TrackingStartPeriodControls, formatTrackingStartPeriod } from './TrackingStartPeriodControls';
 import { getEffectiveTrackingStartPeriod, hasTrackingFactsBeforePeriod } from '../utils/trackingObligation';
 import { RelatedActionPlans } from "./RelatedActionPlans";
+import type { ActionPlanSource } from '../utils/actionPlanSources';
 import {
   calculateCompliance,
   findLastIndexWithData,
@@ -36,6 +37,7 @@ interface CurrentPeriodFocusProps {
   onUpdateItem: (updatedItem: DashboardItem) => Promise<void> | void;
   canEdit: boolean;
   canEditPlans?: boolean;
+  actionPlanSources?: ActionPlanSource[];
   currentUser?: User;
   onClose: () => void;
   allDashboardItems?: DashboardItem[];
@@ -453,6 +455,7 @@ export const CurrentPeriodFocus: React.FC<CurrentPeriodFocusProps> = ({
   onUpdateItem,
   canEdit,
   canEditPlans = false,
+  actionPlanSources,
   currentUser,
   onClose,
   allDashboardItems = [],
@@ -519,10 +522,6 @@ export const CurrentPeriodFocus: React.FC<CurrentPeriodFocusProps> = ({
       scrollToView(plansSectionRef);
     }
   }, [item.id, initialActionPlanId]);
-  const openPlans = () => {
-    setPlansFocused(true);
-    scrollToView(plansSectionRef);
-  };
   const returnToIndicator = () => {
     setPlansFocused(false);
     scrollToView(indicatorSectionRef);
@@ -1766,24 +1765,30 @@ export const CurrentPeriodFocus: React.FC<CurrentPeriodFocusProps> = ({
           </aside>}
           {dashboardId !== undefined && (
             <div ref={plansSectionRef} className="scroll-mt-28">
+              {actionPlanSources?.length === 0 && <section className="mt-6 rounded-xl border border-slate-700 p-4">
+                <h4 className="text-sm font-black uppercase text-cyan-300">Planes relacionados</h4>
+                <p className="mt-2 text-sm text-slate-400">No hay un origen canónico accesible para gestionar planes de este indicador.</p>
+              </section>}
+              {(actionPlanSources ?? [{ clientId, dashboardId, indicatorId: item.id, canEdit: canEditPlans }]).map(source => <div key={JSON.stringify([source.clientId, source.dashboardId, source.indicatorId])}>
+              {'label' in source && source.label && <p className="mt-6 text-sm font-bold text-slate-300">Origen del plan: {source.label}</p>}
               <RelatedActionPlans
-                key={`${clientId || ""}:${dashboardId}:${item.id}`}
-                indicatorId={item.id}
-                dashboardId={dashboardId}
-                clientId={clientId}
+                key={`${source.clientId || ""}:${source.dashboardId}:${source.indicatorId}`}
+                indicatorId={source.indicatorId}
+                dashboardId={source.dashboardId}
+                clientId={source.clientId}
                 year={year || new Date().getFullYear()}
                 periodType={isWeekly ? "weekly" : "monthly"}
                 periodIndex={currentIdx}
-                canEdit={canEditPlans}
+                canEdit={source.canEdit}
                 currentUser={currentUser}
                 initialPlanId={initialActionPlanId}
                 initialActivityId={initialActionPlanActivityId}
                 initialOpenResultReview={initialOpenResultReview}
                 onCancelEdit={onActionPlanExit}
                 onSaved={onActionPlanExit}
-                collapsed={!plansFocused}
-                onToggle={() => plansFocused ? returnToIndicator() : openPlans()}
-              />
+                collapsed={false}
+                onToggle={plansFocused ? returnToIndicator : undefined}
+              /></div>)}
             </div>
           )}
         </>

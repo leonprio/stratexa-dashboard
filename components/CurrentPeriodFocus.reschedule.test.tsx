@@ -82,21 +82,13 @@ describe('operational reschedule S13 -> S36', () => {
     jest.useRealTimers();
   });
 
-  test('KPI opens in indicator zone and toggles to and from the related plans zone', () => {
+  test('KPI opens with the indicator and related plans visible together', () => {
     const source = { ...item(), monthlyProgress: Array(12).fill(7) };
     render(<CurrentPeriodFocus item={source} globalThresholds={{ onTrack: 90, atRisk: 80 }} year={2026} dashboardId={2} clientId="LEON" onUpdateItem={jest.fn()} canEdit onClose={jest.fn()} />);
     expect(screen.getByText(/Tendencia Histórica/)).toBeVisible();
-    expect(screen.getByRole('button', { name: 'Ver planes' })).toHaveAttribute('aria-expanded', 'false');
-    fireEvent.click(screen.getByRole('button', { name: 'Ver planes' }));
-    expect(screen.getByText(/Tendencia Histórica/)).not.toBeVisible();
     expect(screen.getByText('Plan ejecutivo de prueba')).toBeVisible();
-    expect(screen.getByText('Indicador seleccionado')).toBeVisible();
+    expect(screen.queryByText('Indicador seleccionado')).not.toBeInTheDocument();
     fireEvent.change(screen.getByLabelText('Borrador de prueba'), { target: { value: 'cambio local' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Volver al indicador' }));
-    expect(screen.getByText(/Tendencia Histórica/)).toBeVisible();
-    expect(screen.getByText('Plan ejecutivo de prueba')).not.toBeVisible();
-    expect(screen.getByLabelText('Borrador de prueba')).toHaveValue('cambio local');
-    fireEvent.click(screen.getByRole('button', { name: 'Ver planes' }));
     expect(screen.getByLabelText('Borrador de prueba')).toHaveValue('cambio local');
   });
 
@@ -106,5 +98,8 @@ describe('operational reschedule S13 -> S36', () => {
     expect(screen.getByText('Plan ejecutivo de prueba plan-1')).toBeVisible();
     expect(screen.getByText(/Tendencia Histórica/)).not.toBeVisible();
     expect(screen.getByRole('button', { name: 'Volver al indicador' })).toBeVisible();
+    fireEvent.click(screen.getByRole('button', { name: 'Volver al indicador' }));
+    expect(screen.getByText(/Tendencia Histórica/)).toBeVisible();
+    expect(screen.getByText('Plan ejecutivo de prueba plan-1')).toBeVisible();
   });
 });

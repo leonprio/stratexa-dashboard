@@ -101,12 +101,12 @@ test("ActionPlan service denies viewer, inaccessible tenant and blind platform a
   expect(updateDoc).not.toHaveBeenCalled();
   expect(deleteDoc).not.toHaveBeenCalled();
 });
-test("ActionPlan service permits an explicit plan_editor scoped to the editable board", async () => {
+test.each(['plan_editor', 'editor'])("ActionPlan service permits %s scoped to the editable board", async capability => {
   (readTableroScope as jest.Mock).mockResolvedValue({
     platform: false, tenants: ["A"], profile: {
       id: "u", email: "u@example.test", memberships: [{
-        clientId: "A", role: "standard_user", status: "active", dashboardScopes: { D: "viewer" },
-        editableDashboardIds: ["D"], capabilities: ["plan_editor"],
+        clientId: "A", role: "standard_user", status: "active", dashboardScopes: { D: capability === 'editor' ? 'editor' : 'viewer' },
+        editableDashboardIds: ["D"], capabilities: [capability],
       }],
     },
   });
@@ -122,6 +122,35 @@ test("ActionPlan service permits an explicit plan_editor scoped to the editable 
   expect(updateDoc).toHaveBeenCalledTimes(1);
   expect(deleteDoc).toHaveBeenCalledTimes(1);
 });
+test.each(['viewer', 'other tenant', 'other dashboard'])("dashboard editor contract rejects %s before plan writes", async scenario => {
+  (readTableroScope as jest.Mock).mockResolvedValue({
+    platform: false, tenants: ['A'], profile: { id: 'u', email: 'u@example.test', memberships: [{
+      clientId: scenario === 'other tenant' ? 'B' : 'A', role: 'standard_user', status: 'active',
+      dashboardScopes: { D: scenario === 'viewer' ? 'viewer' : 'editor' },
+      editableDashboardIds: scenario === 'other dashboard' ? ['OTHER'] : ['D'], capabilities: ['editor'],
+    }] },
+  });
+  await expect(firebaseService.createActionPlan(actionPlan)).rejects.toThrow(/Edición del tablero/);
+  (getDoc as jest.Mock).mockResolvedValue({ exists: () => true, data: () => actionPlan });
+  await expect(firebaseService.updateActionPlan('P1', { title: 'Denied' })).rejects.toThrow(/Edición del tablero/);
+  await expect(firebaseService.deleteActionPlan('A', 'P1')).rejects.toThrow(/Edición del tablero/);
+  expect(setDoc).not.toHaveBeenCalled();
+  expect(updateDoc).not.toHaveBeenCalled();
+  expect(deleteDoc).not.toHaveBeenCalled();
+});
+
+test('ActionPlan editing resolves the persisted original dashboard scope without trusting plan data', async () => {
+  (readTableroScope as jest.Mock).mockResolvedValue({ platform: false, tenants: ['A'], profile: {
+    id: 'u', email: 'u@example.test', memberships: [{ clientId: 'A', role: 'standard_user', status: 'active',
+      dashboardScopes: { ORIGINAL: 'editor' }, editableDashboardIds: ['ORIGINAL'], capabilities: ['editor'] }],
+  } });
+  (getDoc as jest.Mock).mockResolvedValue({ exists: () => true, data: () => ({ clientId: 'A', originalId: 'ORIGINAL' }) });
+  await expect(firebaseService.assertActionPlanEditScope('A', 'D')).resolves.toBeUndefined();
+  expect(getDoc).toHaveBeenCalledWith({ path: 'tbl_dashboards/D' });
+  (getDoc as jest.Mock).mockResolvedValue({ exists: () => true, data: () => ({ clientId: 'B', originalId: 'ORIGINAL' }) });
+  await expect(firebaseService.assertActionPlanEditScope('A', 'D')).rejects.toThrow(/Edición del tablero/);
+});
+
 test("ActionPlan creation rejects an absent or unlinked indicator before writing", async () => {
   (readTableroScope as jest.Mock).mockResolvedValue({
     platform: false, tenants: ["A"], profile: {

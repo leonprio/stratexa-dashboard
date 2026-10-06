@@ -410,17 +410,9 @@ export default function App() {
       if (origRole === DashboardRole.Viewer) return DashboardRole.Viewer;
     }
 
-    // 3. Fallback para Directores (Permisos por jerarquía)
-    if (isDirector) {
-      const dGroupNorm = normalizeGroupName(selectedDashboard.group || "");
-      const myTitleNorm = normalizeGroupName(userProfile.directorTitle || "");
-      const isInSubGroups = userProfile.subGroups?.some(
-        (sg) => normalizeGroupName(sg) === dGroupNorm,
-      );
-
-      if (dGroupNorm === myTitleNorm || isInSubGroups) {
-        return DashboardRole.Editor;
-      }
+    // Legacy hierarchy edit authority is shared with services and ActionPlan.
+    if (canAccessDashboard(userProfile, selectedDashboard, 'editor')) {
+      return DashboardRole.Editor;
     }
 
     console.warn(`[AUTH] Sin permisos para Dashboard: ${dashIdStr}`);

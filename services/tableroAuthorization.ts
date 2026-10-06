@@ -132,18 +132,21 @@ export function canAdminTenant(profile: User, clientId: string): boolean {
   return getMembershipForClient(profile, clientId)?.role === 'tenant_admin';
 }
 
-/** Mirrors Firestore canEditActionPlan: tenant admins or explicit plan_editor capability plus editable board scope. */
+/** Dashboard edit authority also manages plans; plan_editor remains an explicit scoped grant. */
 export function canEditActionPlan(profile: User, dashboard: Pick<Dashboard, 'id' | 'clientId'> & { originalId?: string | number }): boolean {
   const clientId = normalizeClient(dashboard.clientId);
   const membership = getMembershipForClient(profile, clientId);
   if (!membership) return false;
   if (membership.role === 'tenant_admin') return true;
+  if (canAccessDashboard(profile, dashboard, 'editor') &&
+      (membership.source !== 'canonical' || (membership.capabilities.includes('editor') &&
+        !!(membership.dashboardScopes[String(dashboard.id)] || membership.dashboardScopes[String(dashboard.originalId ?? '')])))) return true;
   if (membership.source !== 'canonical' || !membership.capabilities.includes('plan_editor')) return false;
   const editableIds = membership.editableDashboardIds;
   return editableIds.includes(String(dashboard.id)) || (!!dashboard.originalId && editableIds.includes(String(dashboard.originalId)));
 }
 
-export function canAccessDashboard(profile: User, dashboard: Pick<Dashboard, 'id' | 'clientId' | 'group' | 'superGroup'>, capability: 'viewer' | 'editor' = 'viewer'): boolean {
+export function canAccessDashboard(profile: User, dashboard: Pick<Dashboard, 'id' | 'clientId' | 'group' | 'superGroup' | 'isAggregate'>, capability: 'viewer' | 'editor' = 'viewer'): boolean {
   const membership = getMembershipForClient(profile, dashboard.clientId || '');
   if (!membership) return false;
   if (membership.role === 'tenant_admin') return true;
@@ -152,6 +155,15 @@ export function canAccessDashboard(profile: User, dashboard: Pick<Dashboard, 'id
   const direct = membership.dashboardScopes[dashboardId] || (originalId ? membership.dashboardScopes[originalId] : undefined);
   if (direct === 'viewer') return capability === 'viewer';
   if (direct === 'editor') return capability === 'viewer' || membership.editableDashboardIds.includes(dashboardId) || (originalId && membership.editableDashboardIds.includes(originalId));
+  // Match Rules directorScope only for a physical resource with legacy authority.
+  // Explicit dashboard roles and applicable canonical memberships take precedence.
+  const group = String(dashboard.group || '');
+  const superGroup = String(dashboard.superGroup || '');
+  const legacyDirectorScope = membership.source === 'legacy' && membership.role === 'director' &&
+    !dashboard.isAggregate && dashboardId !== '-1' && !dashboardId.startsWith('agg-') && group !== '' &&
+    (group === String(profile.directorTitle || '') || (profile.subGroups || []).includes(group) ||
+      (superGroup !== '' && (profile.superGroups || []).includes(superGroup)));
+  if (legacyDirectorScope) return true;
   if (capability === 'editor') return membership.capabilities.includes('editor') && membership.editableDashboardIds.includes(dashboardId);
   return membership.role === 'director' && membership.hierarchyScopes.includes(String(dashboard.group || dashboard.superGroup || '').trim());
 }

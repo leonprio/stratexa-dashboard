@@ -2,7 +2,7 @@
 import { firebaseService } from './firebaseService';
 import { readTableroScope } from './tableroReadScope';
 import type { ActionPlan, ActionPlanActivity, ActionPlanResultReview, User } from '../types';
-import { setDoc } from 'firebase/firestore';
+import { getDocs, query, setDoc, where } from 'firebase/firestore';
 
 jest.mock('../firebase', () => ({ db: {} }));
 jest.mock('./tableroReadScope', () => ({ readTableroScope: jest.fn() }));
@@ -121,6 +121,21 @@ describe('firebaseService.createActionPlan creation regression', () => {
     await expect(firebaseService.createActionPlan(plan())).rejects.toThrow(/indicador.*existir/);
     expect(setDoc).not.toHaveBeenCalled();
   });
+});
+
+test('getActionPlansForIndicator finds existing string IDs for a numeric KPI and dashboard', async () => {
+  const stored = plan({ id: 'legacy-string-ids', dashboardId: '10', indicatorId: '2' });
+  jest.spyOn(firebaseService, 'getDashboards').mockResolvedValue([{ id: 10, clientId: 'A', items: [{ id: 2 }] }] as any);
+  (where as jest.Mock).mockImplementation((field: string, op: string, value: unknown) => ({ field, op, value }));
+  (query as jest.Mock).mockImplementation((...constraints: any[]) => constraints);
+  (getDocs as jest.Mock).mockImplementation(async (constraints: any[]) => {
+    const matches = constraints.slice(1).every(({ field, value }) =>
+      typeof value === typeof (stored as any)[field] && value === (stored as any)[field],
+    );
+    return { docs: matches ? [{ id: stored.id, data: () => stored }] : [] };
+  });
+
+  await expect(firebaseService.getActionPlansForIndicator(2, 'A')).resolves.toEqual([stored]);
 });
 
 beforeEach(() => {

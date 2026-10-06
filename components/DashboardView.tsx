@@ -39,6 +39,7 @@ import {
 import { orderDashboardItemsForStrategicPresentation } from "../strategicDisplayOrder";
 import { findDashboardItemById } from "../dashboardItemNavigation";
 import { canConfigureTracking, canEditActionPlan } from '../services/tableroAuthorization';
+import { resolveActionPlanSources } from '../utils/actionPlanSources';
 import type { ControlNavigationTarget } from '../utils/controlNavigation';
 
 interface DashboardViewProps {
@@ -666,6 +667,7 @@ export const DashboardView: React.FC<DashboardViewProps> = React.memo(
               onUpdateItem={onUpdateItem}
               canEdit={(userRole === DashboardRole.Editor && !isAggregate) || isGlobalAdmin}
               canEditPlans={!isAggregate && canEditActionPlan(currentUser, dashboard)}
+              actionPlanSources={isAggregate ? resolveActionPlanSources(currentUser, dashboard, selectedItem, allDashboards) : undefined}
               currentUser={currentUser}
               onClose={handleCloseFocus}
               allDashboardItems={safeItems}

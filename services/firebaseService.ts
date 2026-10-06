@@ -128,6 +128,15 @@ const normalizeDashboardId = (value: unknown, fallback: number | string): number
     return String(value);
 };
 
+const equivalentNumericIdentityValues = (value: number | string): Array<number | string> => {
+    const text = String(value).trim();
+    if (typeof value === 'number') return [value, String(value)];
+    const numeric = Number(text);
+    return text && Number.isSafeInteger(numeric) && String(numeric) === text
+        ? [value, numeric]
+        : [value];
+};
+
 // Firestore: dashboards/{dashboardId}/items (subcolección)
 const itemsCollectionRef = (dashboardId: number | string) =>
     collection(db, DASHBOARDS_COLLECTION, String(dashboardId), "items");
@@ -135,8 +144,15 @@ const itemsCollectionRef = (dashboardId: number | string) =>
 const getActionPlanEditProfile = async (clientId: string | undefined, dashboardId: number | string): Promise<User> => {
     const scope = await readTableroScope();
     const tenant = String(clientId || '').trim().toUpperCase();
-    if (!tenant || !scope.profile || !canEditActionPlanForUser(scope.profile, { id: dashboardId, clientId: tenant })) {
-        throw new Error('Permiso plan_editor y alcance editable requeridos.');
+    let permitted = !!tenant && !!scope.profile && canEditActionPlanForUser(scope.profile, { id: dashboardId, clientId: tenant });
+    if (!permitted && tenant && scope.profile && resolveEffectiveMemberships(scope.profile).memberships.some(m => m.clientId === tenant && m.status === 'active')) {
+        // Resolve inherited dashboard scopes from the protected resource, never from plan input.
+        const boardSnap = await getDoc(doc(db, DASHBOARDS_COLLECTION, String(dashboardId)));
+        const board = boardSnap.exists() ? boardSnap.data() : undefined;
+        permitted = !!board && board.clientId === tenant && canEditActionPlanForUser(scope.profile, { ...board, id: dashboardId, clientId: tenant });
+    }
+    if (!permitted || !scope.profile) {
+        throw new Error('Edición del tablero o permiso plan_editor con alcance editable requeridos.');
     }
     return scope.profile;
 };
@@ -292,9 +308,15 @@ export const firebaseService = {
         if (!clientId) throw new Error('Cliente requerido para planes.');
         const tenant = clientId.trim().toUpperCase();
         const boards = await firebaseService.getDashboards(tenant);
-        const snapshots = await Promise.all(boards.map(board => getDocs(query(collection(db, ACTION_PLANS_COLLECTION),
-            where('clientId', '==', tenant), where('dashboardId', '==', board.id), where('indicatorId', '==', indicatorId)))));
-        const plans = [...new Map(snapshots.flatMap(s => s.docs.map(d => [d.id, { ...d.data(), id: d.id } as ActionPlan] as const))).values()]
+        const snapshots = await Promise.all(boards.flatMap(board =>
+            equivalentNumericIdentityValues(board.id).flatMap(boardId =>
+                equivalentNumericIdentityValues(indicatorId).map(itemId => getDocs(query(collection(db, ACTION_PLANS_COLLECTION),
+                    where('clientId', '==', tenant), where('dashboardId', '==', boardId), where('indicatorId', '==', itemId)))))));
+        const plans = [...new Map(snapshots.flatMap(s => s.docs.map(d => [d.id, { ...d.data(), id: d.id } as ActionPlan] as const)))
+            .values()]
+            .filter(plan => String(plan.clientId || '').trim().toUpperCase() === tenant &&
+                boards.some(board => String(board.id) === String(plan.dashboardId)) &&
+                String(plan.indicatorId) === String(indicatorId))
             .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
         return plans;
     },

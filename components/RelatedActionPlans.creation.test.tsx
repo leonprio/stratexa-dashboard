@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { RelatedActionPlans } from "./RelatedActionPlans";
 import { CurrentPeriodFocus } from "./CurrentPeriodFocus";
 import { firebaseService } from "../services/firebaseService";
@@ -18,6 +18,43 @@ function FocusHarness({ plansCollapsed }: { plansCollapsed: boolean }) {
 }
 
 beforeEach(() => jest.resetAllMocks());
+
+test.each([true, false].flatMap(collapsed => ["pending", "error"].map(loadState => ({ collapsed, loadState }))))(
+  "authorized first-plan CTA stays visible with collapsed=$collapsed and read=$loadState",
+  async ({ collapsed, loadState }) => {
+    (firebaseService.getActionPlansForIndicator as jest.Mock).mockImplementation(() =>
+      loadState === "pending" ? new Promise(() => {}) : Promise.reject(new Error("read unavailable")),
+    );
+    render(<FocusHarness plansCollapsed={collapsed} />);
+    if (loadState === "error") await screen.findByText(/No se pudieron cargar/);
+    const create = screen.getByRole("button", { name: /Nuevo plan/ });
+    expect(create).toBeVisible();
+    fireEvent.click(create);
+    expect(screen.getByLabelText("Nombre del plan")).toBeVisible();
+    expect(firebaseService.createActionPlan).not.toHaveBeenCalled();
+  },
+);
+
+test.each([true, false])("read errors never grant creation permission, collapsed=%s", async collapsed => {
+  (firebaseService.getActionPlansForIndicator as jest.Mock).mockRejectedValue(new Error("read unavailable"));
+  render(<RelatedActionPlans {...props} canEdit={false} collapsed={collapsed} />);
+  await screen.findByText(/No se pudieron cargar/);
+  expect(screen.queryByRole("button", { name: /Nuevo plan/ })).not.toBeInTheDocument();
+});
+
+test("a late existing-plan response preserves the new-plan form requested during loading", async () => {
+  let finishRead!: (plans: ActionPlan[]) => void;
+  (firebaseService.getActionPlansForIndicator as jest.Mock).mockReturnValue(
+    new Promise<ActionPlan[]>(resolve => { finishRead = resolve; }),
+  );
+  render(<FocusHarness plansCollapsed={false} />);
+  fireEvent.click(screen.getByRole("button", { name: /Nuevo plan/ }));
+  fireEvent.change(screen.getByLabelText("Nombre del plan"), { target: { value: "Borrador nuevo" } });
+  await act(async () => { finishRead([existing]); });
+  expect(screen.getByLabelText("Nombre del plan")).toHaveValue("Borrador nuevo");
+  expect(screen.getAllByText("Plan anterior")).toHaveLength(1);
+  expect(firebaseService.createActionPlan).not.toHaveBeenCalled();
+});
 
 test.each([true, false].flatMap(collapsed => [0, 1].map(count => ({ collapsed, count }))))(
   "creation CTA opens and saves with collapsed=$collapsed and existing plans=$count",
@@ -69,4 +106,26 @@ test.each(["monthly", "weekly"] as const)("KPI focus opens first plan with the s
   fireEvent.change(screen.getByLabelText("Nombre del plan"), { target: { value: "Plan de corte" } });
   fireEvent.click(screen.getByRole("button", { name: "Guardar plan" }));
   await waitFor(() => expect(firebaseService.createActionPlan).toHaveBeenCalledWith(expect.objectContaining({ clientId: "LEON", dashboardId: 10, indicatorId: 2, originYear: 2026, originPeriodType: frequency, originPeriodIndex: frequency === "monthly" ? 8 : 38 })));
+});
+
+test("opening a KPI shows its existing ActionPlan when persisted IDs use string forms", async () => {
+  (firebaseService.getActionPlansForIndicator as jest.Mock).mockResolvedValue([
+    { ...existing, dashboardId: "10", indicatorId: "2" },
+  ]);
+  const item: DashboardItem = {
+    id: 2, indicator: "Retención de clientes", weight: 1, frequency: "monthly",
+    type: "accumulative", indicatorType: "simple", unit: "%", goalType: "maximize",
+    monthlyGoals: Array(12).fill(null), monthlyProgress: Array(12).fill(null),
+  };
+  render(<CurrentPeriodFocus
+    item={item} globalThresholds={{ onTrack: 90, atRisk: 80 }} year={2026}
+    dashboardId={10} clientId="LEON" canEdit={false} canEditPlans={false}
+    onUpdateItem={jest.fn()} onClose={jest.fn()}
+    controlTarget={{ clientId: "LEON", dashboardId: 10, itemId: 2, operation: "REGISTRAR_AVANCE", origin: "control", period: { frequency: "monthly", year: 2026, monthIndex: 8 } }}
+  />);
+
+  expect(await screen.findByText("Plan anterior")).toBeVisible();
+  expect(screen.getByText(/1 plan relacionado/)).toBeVisible();
+  expect(screen.queryByRole("button", { name: /Nuevo plan/ })).not.toBeInTheDocument();
+  expect(firebaseService.getActionPlansForIndicator).toHaveBeenCalledWith(2, "LEON");
 });

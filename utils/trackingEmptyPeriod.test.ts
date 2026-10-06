@@ -55,11 +55,17 @@ test.each(["goal", "progress"])(
     });
   },
 );
-test("zero progress explicitly captured remains protected", () => {
-  expect(facts({ ...base, monthlyProgressCaptured: [true] })).toMatchObject({
-    hasFacts: true,
-    firstPeriod: { monthIndex: 0 },
-  });
+test("technical 0/0 with capture markers and no substantive facts is empty", () => {
+  expect(facts({
+    ...base,
+    monthlyGoals: [0],
+    monthlyProgress: [0],
+    monthlyGoalCaptured: [true],
+    monthlyProgressCaptured: [true],
+    monthlyNotes: [""],
+    activityConfig: { 0: [] },
+    continuityCommitments: {},
+  })).toEqual({ hasFacts: false });
 });
 test("null progress is absence even with stale marker", () => {
   expect(
