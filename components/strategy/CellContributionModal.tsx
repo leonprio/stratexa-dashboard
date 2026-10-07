@@ -1,3 +1,4 @@
+import { canAdminTenant } from '../../services/tableroAuthorization';
 import React, { useState, useMemo, useEffect } from "react";
 import {
   X,
@@ -69,7 +70,7 @@ export const CellContributionModal: React.FC<CellContributionModalProps> = ({
   initialEditingOCId = null,
   initialFormOpen = false,
 }) => {
-  const isAdmin = currentUser?.globalRole === GlobalUserRole.Admin;
+  const isAdmin = Boolean(currentUser && canAdminTenant(currentUser, selectedClientId));
 
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);

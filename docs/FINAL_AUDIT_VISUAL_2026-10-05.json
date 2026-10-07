@@ -1,0 +1,57 @@
+{
+  "url": "http://127.0.0.1:5173",
+  "browser": "Codex in-app browser",
+  "status": "PARTIAL",
+  "firebaseWrites": 0,
+  "observations": [
+    {
+      "route": "/",
+      "status": "LOGIN_RENDERED",
+      "authSubmitted": false
+    },
+    {
+      "route": "/__capture-harness",
+      "status": "PASS_SYNTHETIC",
+      "complete": "7 of 7 required, 100%",
+      "explicitZero": "2 of 2 required, 100%, zero valid captured"
+    },
+    {
+      "route": "/__continuity-engine-harness",
+      "status": "PASS_SYNTHETIC",
+      "actions": [
+        "CLOSE_UNMET",
+        "REOPEN",
+        "RESCHEDULE",
+        "RECORD_PROGRESS",
+        "COMPLETE"
+      ],
+      "end": {
+        "status": "COMPLETADO",
+        "progress": 20,
+        "target": 20,
+        "pending": 0
+      },
+      "history": "6 entries preserved in observed sequence"
+    },
+    {
+      "route": "/__pending-alerts-harness",
+      "status": "PASS_SYNTHETIC",
+      "actionable": 5
+    }
+  ],
+  "notExecuted": [
+    "authenticated login",
+    "client selection",
+    "strategy",
+    "exact KPI product navigation",
+    "product Meta/Avance persistence",
+    "effective start save",
+    "ActionPlan creation/save",
+    "related plans product",
+    "checklist product",
+    "CONTROL product",
+    "PDF/DOCX browser downloads",
+    "resolution history in product KPI"
+  ],
+  "limitation": "No isolated authenticated backend available; application targets prior-01. Harnesses use in-memory state and are not end-to-end product certification."
+}

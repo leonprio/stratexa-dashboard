@@ -1,7 +1,7 @@
 import { auth, db } from '../firebase';
 import { collection, query, getDocs, doc, getDoc, where, documentId, QueryConstraint } from 'firebase/firestore';
 import type { User } from '../types';
-import { getAuthorizedClientIds, getMembershipForClient, resolveEffectiveMemberships } from './tableroAuthorization';
+import { getAuthorizedClientIds, getMembershipForClient, hydratePersistedMemberships } from './tableroAuthorization';
 
 const platformEmails = new Set(['leon@leonprior.com', 'leonprior@gmail.com']);
 export interface TableroReadScope { platform: boolean; profile: User | null; tenants: string[] }
@@ -17,17 +17,7 @@ export async function readTableroScope(): Promise<TableroReadScope> {
   if (!snap.exists() && !platform) throw new Error('Perfil Tablero requerido.');
   const profile = { ...(snap.exists() ? snap.data() : {}), id: actor.uid, email: actor.email || '', ...(platform ? { globalRole: 'platform_admin' } : {}) } as User;
   const canonical = await getDocs(query(collection(db, 'tbl_userMemberships'), where('userId', '==', actor.uid)));
-  const memberships = canonical.docs.map(d => d.data()).filter(m => m.userId === actor.uid);
-  const replaced = new Set(memberships.map(m => m.clientId));
-  // Protected records override legacy authority, including suspended memberships.
-  const legacy = resolveEffectiveMemberships({ ...profile, memberships: undefined }).memberships.filter(m => !replaced.has(m.clientId));
-  if (memberships.length) profile.memberships = [...legacy, ...memberships.map(m => ({
-    clientId: m.clientId, role: m.role, status: m.status,
-    hierarchyScopes: m.hierarchyScopeKeys || [],
-    dashboardScopes: Object.fromEntries((m.allowedDashboardIds || []).map((id: string) => [id, (m.capabilities || []).includes('editor') && (m.editableDashboardIds || []).includes(id) ? 'editor' : 'viewer'])),
-    editableDashboardIds: (m.editableDashboardIds || []).filter((id: string) => (m.allowedDashboardIds || []).includes(id)),
-    capabilities: (m.capabilities || []).filter((cap: string) => cap !== 'strategy_reader' || m.scopeType === 'tenant'),
-  }))];
+  hydratePersistedMemberships(profile, canonical.docs.map(d => d.data()), actor.uid);
   const tenants = getAuthorizedClientIds(profile);
   return { platform, profile, tenants };
 }

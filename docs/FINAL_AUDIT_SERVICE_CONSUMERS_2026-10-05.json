@@ -1,0 +1,523 @@
+[
+  {
+    "service": "firebaseService",
+    "method": "assertActionPlanEditScope",
+    "file": "services/firebaseService.ts",
+    "consumers": []
+  },
+  {
+    "service": "firebaseService",
+    "method": "createActionPlan",
+    "file": "services/firebaseService.ts",
+    "consumers": [
+      "components/RelatedActionPlans.tsx"
+    ]
+  },
+  {
+    "service": "firebaseService",
+    "method": "updateActionPlan",
+    "file": "services/firebaseService.ts",
+    "consumers": [
+      "components/RelatedActionPlans.tsx",
+      "components/operational/TransversalActionPlansControl.tsx"
+    ]
+  },
+  {
+    "service": "firebaseService",
+    "method": "recordActionPlanResultReview",
+    "file": "services/firebaseService.ts",
+    "consumers": [
+      "components/ActionPlanResultReviewPanel.tsx"
+    ]
+  },
+  {
+    "service": "firebaseService",
+    "method": "deleteActionPlan",
+    "file": "services/firebaseService.ts",
+    "consumers": [
+      "components/RelatedActionPlans.tsx"
+    ]
+  },
+  {
+    "service": "firebaseService",
+    "method": "getActionPlansForIndicator",
+    "file": "services/firebaseService.ts",
+    "consumers": [
+      "components/RelatedActionPlans.tsx",
+      "components/operational/TransversalActionPlansControl.tsx"
+    ]
+  },
+  {
+    "service": "firebaseService",
+    "method": "getActiveActionPlansForDashboard",
+    "file": "services/firebaseService.ts",
+    "consumers": [
+      "components/ReportCenter.tsx",
+      "components/operational/OperationalControlCenter.tsx"
+    ]
+  },
+  {
+    "service": "firebaseService",
+    "method": "auth",
+    "file": "services/firebaseService.ts",
+    "consumers": []
+  },
+  {
+    "service": "firebaseService",
+    "method": "getUsers",
+    "file": "services/firebaseService.ts",
+    "consumers": [
+      ".backups/v5.2.2-CONTROL/App.tsx",
+      "App.tsx"
+    ]
+  },
+  {
+    "service": "firebaseService",
+    "method": "getUser",
+    "file": "services/firebaseService.ts",
+    "consumers": [
+      "components/UserManager.tsx"
+    ]
+  },
+  {
+    "service": "firebaseService",
+    "method": "createAuthUser",
+    "file": "services/firebaseService.ts",
+    "consumers": [
+      "components/UserManager.tsx"
+    ]
+  },
+  {
+    "service": "firebaseService",
+    "method": "deleteAuthUserDirectly",
+    "file": "services/firebaseService.ts",
+    "consumers": [
+      "components/UserManager.tsx"
+    ]
+  },
+  {
+    "service": "firebaseService",
+    "method": "resetDashboardDataOnly",
+    "file": "services/firebaseService.ts",
+    "consumers": [
+      ".backups/v5.2.2-CONTROL/App.tsx",
+      "components/ClientSettings.tsx"
+    ]
+  },
+  {
+    "service": "firebaseService",
+    "method": "resetDashboardGoalsOnly",
+    "file": "services/firebaseService.ts",
+    "consumers": [
+      "components/ClientSettings.tsx"
+    ]
+  },
+  {
+    "service": "firebaseService",
+    "method": "saveUser",
+    "file": "services/firebaseService.ts",
+    "consumers": [
+      "components/UserManager.tsx"
+    ]
+  },
+  {
+    "service": "firebaseService",
+    "method": "updateDoc",
+    "file": "services/firebaseService.ts",
+    "consumers": [
+      ".backups/v5.2.2-CONTROL/App.tsx"
+    ]
+  },
+  {
+    "service": "firebaseService",
+    "method": "updateUser",
+    "file": "services/firebaseService.ts",
+    "consumers": [
+      "components/UserManager.tsx"
+    ]
+  },
+  {
+    "service": "firebaseService",
+    "method": "deleteUserFromFirestore",
+    "file": "services/firebaseService.ts",
+    "consumers": [
+      "components/UserManager.tsx"
+    ]
+  },
+  {
+    "service": "firebaseService",
+    "method": "sendPasswordResetEmail",
+    "file": "services/firebaseService.ts",
+    "consumers": [
+      "components/UserManager.tsx"
+    ]
+  },
+  {
+    "service": "firebaseService",
+    "method": "getSystemSettings",
+    "file": "services/firebaseService.ts",
+    "consumers": [
+      ".backups/v5.2.2-CONTROL/App.tsx",
+      "App.tsx"
+    ]
+  },
+  {
+    "service": "firebaseService",
+    "method": "saveSystemSettings",
+    "file": "services/firebaseService.ts",
+    "consumers": [
+      ".backups/v5.2.2-CONTROL/App.tsx",
+      "App.tsx"
+    ]
+  },
+  {
+    "service": "firebaseService",
+    "method": "getDashboards",
+    "file": "services/firebaseService.ts",
+    "consumers": [
+      ".backups/v5.2.2-CONTROL/App.tsx",
+      ".backups/v5.2.2-CONTROL/firebaseService.ts",
+      "App.tsx"
+    ]
+  },
+  {
+    "service": "firebaseService",
+    "method": "updateDashboardMetadata",
+    "file": "services/firebaseService.ts",
+    "consumers": [
+      ".backups/v5.2.2-CONTROL/App.tsx",
+      "App.tsx"
+    ]
+  },
+  {
+    "service": "firebaseService",
+    "method": "saveDashboard",
+    "file": "services/firebaseService.ts",
+    "consumers": [
+      ".backups/v5.2.2-CONTROL/App.tsx",
+      "App.tsx",
+      "components/AdvancedDataImporter.tsx"
+    ]
+  },
+  {
+    "service": "firebaseService",
+    "method": "updateDashboardItems",
+    "file": "services/firebaseService.ts",
+    "consumers": [
+      ".backups/v5.2.2-CONTROL/App.tsx",
+      ".backups/v5.2.2-CONTROL/firebaseService.ts",
+      "App.tsx",
+      "components/AdvancedDataImporter.tsx",
+      "components/ClientSettings.tsx",
+      "components/ControlledImporter.tsx"
+    ]
+  },
+  {
+    "service": "firebaseService",
+    "method": "getDashboardItems",
+    "file": "services/firebaseService.ts",
+    "consumers": [
+      ".backups/v5.2.2-CONTROL/App.tsx",
+      "App.tsx",
+      "components/AdvancedDataImporter.tsx"
+    ]
+  },
+  {
+    "service": "firebaseService",
+    "method": "deleteDashboard",
+    "file": "services/firebaseService.ts",
+    "consumers": [
+      ".backups/v5.2.2-CONTROL/App.tsx",
+      "App.tsx"
+    ]
+  },
+  {
+    "service": "firebaseService",
+    "method": "getAllClients",
+    "file": "services/firebaseService.ts",
+    "consumers": [
+      ".backups/v5.2.2-CONTROL/App.tsx"
+    ]
+  },
+  {
+    "service": "firebaseService",
+    "method": "getAllManagedClients",
+    "file": "services/firebaseService.ts",
+    "consumers": [
+      "App.tsx"
+    ]
+  },
+  {
+    "service": "firebaseService",
+    "method": "ensureClientExists",
+    "file": "services/firebaseService.ts",
+    "consumers": [
+      ".backups/v5.2.2-CONTROL/App.tsx",
+      "App.tsx"
+    ]
+  },
+  {
+    "service": "firebaseService",
+    "method": "createIPSStructure",
+    "file": "services/firebaseService.ts",
+    "consumers": [
+      ".backups/v5.2.2-CONTROL/App.tsx",
+      ".backups/v5.2.2-CONTROL/firebaseService.ts"
+    ]
+  },
+  {
+    "service": "firebaseService",
+    "method": "createMultipleEmptyDashboards",
+    "file": "services/firebaseService.ts",
+    "consumers": [
+      ".backups/v5.2.2-CONTROL/App.tsx"
+    ]
+  },
+  {
+    "service": "firebaseService",
+    "method": "generateYearForClient",
+    "file": "services/firebaseService.ts",
+    "consumers": [
+      ".backups/v5.2.2-CONTROL/App.tsx"
+    ]
+  },
+  {
+    "service": "firebaseService",
+    "method": "deleteClientYearData",
+    "file": "services/firebaseService.ts",
+    "consumers": [
+      ".backups/v5.2.2-CONTROL/App.tsx",
+      "components/ClientSettings.tsx"
+    ]
+  },
+  {
+    "service": "firebaseService",
+    "method": "deleteIPSStructureFromClient",
+    "file": "services/firebaseService.ts",
+    "consumers": []
+  },
+  {
+    "service": "firebaseService",
+    "method": "importCSVForYear",
+    "file": "services/firebaseService.ts",
+    "consumers": []
+  },
+  {
+    "service": "firebaseService",
+    "method": "resetDashboardNamesOnly",
+    "file": "services/firebaseService.ts",
+    "consumers": [
+      ".backups/v5.2.2-CONTROL/App.tsx"
+    ]
+  },
+  {
+    "service": "firebaseService",
+    "method": "resetDashboardsWithIndicators",
+    "file": "services/firebaseService.ts",
+    "consumers": []
+  },
+  {
+    "service": "firebaseService",
+    "method": "renameClient",
+    "file": "services/firebaseService.ts",
+    "consumers": [
+      ".backups/v5.2.2-CONTROL/App.tsx",
+      "App.tsx"
+    ]
+  },
+  {
+    "service": "firebaseService",
+    "method": "updateDashboardsOrder",
+    "file": "services/firebaseService.ts",
+    "consumers": [
+      ".backups/v5.2.2-CONTROL/App.tsx",
+      "App.tsx"
+    ]
+  },
+  {
+    "service": "firebaseService",
+    "method": "deleteClientGlobally",
+    "file": "services/firebaseService.ts",
+    "consumers": [
+      ".backups/v5.2.2-CONTROL/App.tsx"
+    ]
+  },
+  {
+    "service": "firebaseService",
+    "method": "sanitizeAllDashboards",
+    "file": "services/firebaseService.ts",
+    "consumers": []
+  },
+  {
+    "service": "firebaseService",
+    "method": "subscribeToDashboardItems",
+    "file": "services/firebaseService.ts",
+    "consumers": [
+      "App.tsx"
+    ]
+  },
+  {
+    "service": "strategyService",
+    "method": "getPerspectives",
+    "file": "services/strategyService.ts",
+    "consumers": [
+      "App.tsx"
+    ]
+  },
+  {
+    "service": "strategyService",
+    "method": "savePerspective",
+    "file": "services/strategyService.ts",
+    "consumers": []
+  },
+  {
+    "service": "strategyService",
+    "method": "saveAllPerspectives",
+    "file": "services/strategyService.ts",
+    "consumers": [
+      "components/strategy/StrategyConfigModal.tsx"
+    ]
+  },
+  {
+    "service": "strategyService",
+    "method": "getStrategicObjectives",
+    "file": "services/strategyService.ts",
+    "consumers": [
+      "App.tsx"
+    ]
+  },
+  {
+    "service": "strategyService",
+    "method": "saveStrategicObjective",
+    "file": "services/strategyService.ts",
+    "consumers": [
+      "components/strategy/OEDetailModal.tsx",
+      "components/strategy/StrategyConfigModal.tsx"
+    ]
+  },
+  {
+    "service": "strategyService",
+    "method": "deleteStrategicObjective",
+    "file": "services/strategyService.ts",
+    "consumers": [
+      "components/strategy/OEDetailModal.tsx",
+      "components/strategy/StrategyConfigModal.tsx"
+    ]
+  },
+  {
+    "service": "strategyService",
+    "method": "repairLatestStrategicObjectiveGap",
+    "file": "services/strategyService.ts",
+    "consumers": []
+  },
+  {
+    "service": "strategyService",
+    "method": "repairLegacyStrategicObjectiveCodes",
+    "file": "services/strategyService.ts",
+    "consumers": [
+      "components/strategy/StrategyConfigModal.tsx"
+    ]
+  },
+  {
+    "service": "strategyService",
+    "method": "getAreaConfigs",
+    "file": "services/strategyService.ts",
+    "consumers": [
+      "App.tsx"
+    ]
+  },
+  {
+    "service": "strategyService",
+    "method": "saveAreaConfig",
+    "file": "services/strategyService.ts",
+    "consumers": [
+      "components/strategy/CellContributionModal.tsx",
+      "components/strategy/StrategyConfigModal.tsx"
+    ]
+  },
+  {
+    "service": "strategyService",
+    "method": "getContributionObjectives",
+    "file": "services/strategyService.ts",
+    "consumers": [
+      "App.tsx"
+    ]
+  },
+  {
+    "service": "strategyService",
+    "method": "saveContributionObjective",
+    "file": "services/strategyService.ts",
+    "consumers": [
+      "components/strategy/CellContributionModal.tsx",
+      "components/strategy/StrategyConfigModal.tsx"
+    ]
+  },
+  {
+    "service": "strategyService",
+    "method": "deleteContributionObjective",
+    "file": "services/strategyService.ts",
+    "consumers": [
+      "components/strategy/CellContributionModal.tsx",
+      "components/strategy/StrategyConfigModal.tsx"
+    ]
+  },
+  {
+    "service": "strategyService",
+    "method": "getAssignments",
+    "file": "services/strategyService.ts",
+    "consumers": [
+      "App.tsx",
+      "components/strategy/CellContributionModal.tsx",
+      "components/strategy/StrategyConfigModal.tsx"
+    ]
+  },
+  {
+    "service": "strategyService",
+    "method": "saveAssignmentsForOC",
+    "file": "services/strategyService.ts",
+    "consumers": [
+      "components/strategy/CellContributionModal.tsx",
+      "components/strategy/StrategyConfigModal.tsx"
+    ]
+  },
+  {
+    "service": "strategyService",
+    "method": "saveDirectAssignmentsForOE",
+    "file": "services/strategyService.ts",
+    "consumers": [
+      "components/strategy/OEDetailModal.tsx"
+    ]
+  },
+  {
+    "service": "strategyService",
+    "method": "removeContributionIndicatorAssignment",
+    "file": "services/strategyService.ts",
+    "consumers": [
+      "components/strategy/OEDetailModal.tsx"
+    ]
+  },
+  {
+    "service": "strategyService",
+    "method": "getStrategicObjectiveRelationships",
+    "file": "services/strategyService.ts",
+    "consumers": [
+      "App.tsx"
+    ]
+  },
+  {
+    "service": "strategyService",
+    "method": "saveStrategicObjectiveRelationship",
+    "file": "services/strategyService.ts",
+    "consumers": [
+      "App.tsx"
+    ]
+  },
+  {
+    "service": "strategyService",
+    "method": "deleteStrategicObjectiveRelationship",
+    "file": "services/strategyService.ts",
+    "consumers": [
+      "App.tsx"
+    ]
+  }
+]

@@ -27,9 +27,11 @@ export const ControlReportExport: React.FC<Props> = ({ clientId, clientName, das
   if (generation.current.scopeKey !== scopeKey) generation.current = { scopeKey, generatedAt: new Date().toISOString() };
   currentScopeKey.current = scopeKey;
   useEffect(() => () => { currentScopeKey.current = ''; }, []);
-  const available = clientId.trim() !== '' && clientName.trim() !== '' && dashboards.length > 0 && dashboards.every(board =>
-    String(board.clientId || '').trim().toUpperCase() === clientId.trim().toUpperCase() &&
-    board.items.length > 0 && board.items.every(item => (item.frequency || board.periodicity || 'monthly') === period.frequency));
+  const sameTenant = dashboards.every(board =>
+    String(board.clientId || '').trim().toUpperCase() === clientId.trim().toUpperCase() && board.items.length > 0);
+  const hasPeriodKpi = dashboards.some(board =>
+    board.items.some(item => (item.frequency || board.periodicity || 'monthly') === period.frequency));
+  const available = clientId.trim() !== '' && clientName.trim() !== '' && dashboards.length > 0 && sameTenant && hasPeriodKpi;
   const run = async (format: ControlExecutiveReportFormat) => {
     if (!available || busyRef.current) { setMessage('No se puede verificar el alcance autorizado para exportar el informe.'); return; }
     busyRef.current = true;

@@ -86,6 +86,42 @@ describe('CurrentPeriodFocus Runtime & Derived Indicators Render Test (v9.4.13)'
     expect(screen.getByText('Actividad ficticia')).toBeInTheDocument();
   });
 
+  test('checklist waits for successful item persistence before closing', async () => {
+    let resolveSave!: () => void;
+    const onUpdateItem = jest.fn(() => new Promise<void>(resolve => { resolveSave = resolve; }));
+    const item = {
+      ...mockItems[0],
+      isActivityMode: true,
+      activityConfig: { 8: [{ id: 'activity-a', label: 'Elemento pendiente', targetCount: 4, completedCount: 1 }] },
+    };
+    render(<CurrentPeriodFocus item={item} allDashboardItems={[item]} globalThresholds={{ onTrack: 90, atRisk: 80 }} year={2026} canEdit onUpdateItem={onUpdateItem} onClose={jest.fn()} controlTarget={{ clientId: 'LAB-A', dashboardId: 101, itemId: 2, period: { frequency: 'monthly', year: 2026, monthIndex: 8 }, operation: 'GESTIONAR', origin: 'control' }} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'CONFIRMAR LISTA' }));
+    expect(onUpdateItem).toHaveBeenCalledTimes(1);
+    expect(screen.getByText('Guardando checklist…')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'GUARDANDO...' })).toBeDisabled();
+
+    resolveSave();
+    await waitFor(() => expect(screen.queryByRole('button', { name: /CONFIRMAR LISTA|GUARDANDO/ })).not.toBeInTheDocument());
+  });
+
+  test('checklist mantiene los cambios visibles y muestra el error si falla la persistencia', async () => {
+    const onUpdateItem = jest.fn().mockRejectedValue(new Error('write failed'));
+    const item = {
+      ...mockItems[0],
+      isActivityMode: true,
+      activityConfig: { 8: [{ id: 'activity-a', label: 'Elemento conservado', targetCount: 4, completedCount: 1 }] },
+    };
+    render(<CurrentPeriodFocus item={item} allDashboardItems={[item]} globalThresholds={{ onTrack: 90, atRisk: 80 }} year={2026} canEdit onUpdateItem={onUpdateItem} onClose={jest.fn()} controlTarget={{ clientId: 'LAB-A', dashboardId: 101, itemId: 2, period: { frequency: 'monthly', year: 2026, monthIndex: 8 }, operation: 'GESTIONAR', origin: 'control' }} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'CONFIRMAR LISTA' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Los cambios siguen disponibles');
+    expect(screen.getByText('Elemento conservado')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'CONFIRMAR LISTA' })).toBeEnabled();
+    expect(onUpdateItem).toHaveBeenCalledTimes(1);
+  });
+
   test('volver a heredar emits an explicit override deletion only after persistence succeeds', async () => {
     const onUpdateItem = jest.fn().mockResolvedValue(undefined);
     const item = { ...mockItems[0], trackingStartPeriod: { frequency: 'monthly' as const, year: 2026, monthIndex: 8 } };

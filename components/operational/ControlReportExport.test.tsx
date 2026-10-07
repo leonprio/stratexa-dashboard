@@ -35,3 +35,31 @@ it('blocks mixed clients and reports asynchronous plan errors without downloadin
   await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('No fue posible generar'));
   expect(exportControlExecutiveReport).not.toHaveBeenCalled();
 });
+
+
+test.each([
+  ['monthly', period, 'pdf', 'Descargar PDF'],
+  ['monthly', period, 'docx', 'Descargar Word'],
+  ['weekly', { frequency: 'weekly' as const, year: 2026, weekNumber: 39 }, 'pdf', 'Descargar PDF'],
+  ['weekly', { frequency: 'weekly' as const, year: 2026, weekNumber: 39 }, 'docx', 'Descargar Word'],
+] as const)('enables %s mixed-board %s export and passes its period and format', async (_frequency, selectedPeriod, format, menuItem) => {
+  const mixedBoard = { ...board, items: [...board.items, { id: 'weekly-kpi', indicator: 'Escuelas activas', frequency: 'weekly' }] } as Dashboard;
+  (exportControlExecutiveReport as jest.Mock).mockResolvedValue({});
+  const loadActionPlans = jest.fn().mockResolvedValue([]);
+  render(<ControlReportExport clientId="LAB-A" clientName="Cliente A" dashboards={[mixedBoard]} period={selectedPeriod} filters={{}} filterLabels={[]} loadActionPlans={loadActionPlans} />);
+  fireEvent.click(screen.getByRole('button', { name: 'Exportar informe' }));
+  fireEvent.click(screen.getByRole('menuitem', { name: menuItem }));
+  await waitFor(() => expect(exportControlExecutiveReport).toHaveBeenCalledTimes(1));
+  expect((exportControlExecutiveReport as jest.Mock).mock.calls[0][0]).toMatchObject({ format, source: { scope: { period: selectedPeriod, operationalPeriod: selectedPeriod }, dashboards: [mixedBoard] } });
+  expect(loadActionPlans).toHaveBeenCalledWith([mixedBoard]);
+});
+
+test.each([
+  ['only other frequency', [{ ...board, items: [{ ...board.items[0], frequency: 'weekly' }] }], period, 'LAB-A'],
+  ['no dashboards', [], period, 'LAB-A'],
+  ['empty KPI list', [{ ...board, items: [] }], period, 'LAB-A'],
+  ['empty client', [board], period, ''],
+] as const)('keeps %s non-exportable', (_label, dashboards, selectedPeriod, clientId) => {
+  render(<ControlReportExport clientId={clientId} clientName="Cliente A" dashboards={dashboards as unknown as Dashboard[]} period={selectedPeriod} filters={{}} filterLabels={[]} loadActionPlans={jest.fn()} />);
+  expect(screen.getByRole('button', { name: 'Exportar informe' })).toBeDisabled();
+});

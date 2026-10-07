@@ -5,7 +5,7 @@ import { DashboardRole } from '../types';
 
 // Mock simpler components to focus on DashboardView logic
 jest.mock('./Dashboard', () => ({
-    Dashboard: () => React.createElement('div', { 'data-testid': 'dashboard-component' }, 'Mock Dashboard')
+    Dashboard: ({ selectedItemId }: { selectedItemId?: number | string | null }) => React.createElement('div', { 'data-testid': 'dashboard-component', 'data-selected-item-id': selectedItemId == null ? '' : String(selectedItemId) }, 'Mock Dashboard')
 }));
 
 jest.mock('./ReportCenter', () => ({
@@ -43,6 +43,56 @@ const mockUser = {
 } as any;
 
 describe('DashboardView Component', () => {
+    test('selecciona exactamente el item solicitado y no confunde KPIs del mismo tablero', async () => {
+        render(
+            <DashboardView
+                dashboard={{ ...mockDashboard, items: [{ id: 'KPI-A' }, { id: 'KPI-B' }] } as any}
+                onUpdateItem={jest.fn()}
+                userRole={DashboardRole.Viewer}
+                isGlobalAdmin={false}
+                currentUser={mockUser}
+                requestedItemId="KPI-B"
+                requestedNavigationSource="contribution"
+            />
+        );
+
+        expect(await screen.findByTestId('dashboard-component')).toHaveAttribute('data-selected-item-id', 'KPI-B');
+    });
+
+    test('un item inexistente muestra el error sin seleccionar otro KPI y consume la solicitud', async () => {
+        const onNavigationConsumed = jest.fn();
+        render(
+            <DashboardView
+                dashboard={{ ...mockDashboard, items: [{ id: 'KPI-A' }, { id: 'KPI-B' }] } as any}
+                onUpdateItem={jest.fn()}
+                userRole={DashboardRole.Viewer}
+                isGlobalAdmin={false}
+                currentUser={mockUser}
+                requestedItemId="MISSING"
+                onNavigationConsumed={onNavigationConsumed}
+            />
+        );
+
+        expect(await screen.findByText('No fue posible abrir el indicador seleccionado.')).toBeInTheDocument();
+        expect(screen.getByTestId('dashboard-component')).toHaveAttribute('data-selected-item-id', '');
+        expect(onNavigationConsumed).toHaveBeenCalled();
+    });
+
+    test('sin itemId conserva la vista de tablero sin selección dirigida', () => {
+        render(
+            <DashboardView
+                dashboard={{ ...mockDashboard, items: [{ id: 'KPI-A' }] } as any}
+                onUpdateItem={jest.fn()}
+                userRole={DashboardRole.Viewer}
+                isGlobalAdmin={false}
+                currentUser={mockUser}
+                requestedItemId={null}
+            />
+        );
+
+        expect(screen.getByTestId('dashboard-component')).toHaveAttribute('data-selected-item-id', '');
+    });
+
     test('conserva filtros de CONTROL al visitar el tablero y regresar', () => {
         render(<DashboardView dashboard={mockDashboard} onUpdateItem={jest.fn()} userRole={DashboardRole.Viewer} isGlobalAdmin={false} currentUser={mockUser} />);
         fireEvent.click(screen.getByLabelText(/Ver Control Operativo/i));

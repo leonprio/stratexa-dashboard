@@ -100,7 +100,7 @@ describe('canonical Tablero authorization compatibility', () => {
     expect(canAccessDashboard(member, { id: 2, clientId: 'B' })).toBe(false);
   });
 
-  it('authorizes action-plan editing only for tenant admins or explicit plan_editor editable scope', () => {
+  it('authorizes action-plan editing for dashboard editors, tenant admins or explicit plan_editor editable scope', () => {
     const dashboard = { id: 'D1', clientId: 'A' };
     const viewer = legacy({ memberships: [{ clientId: 'A', role: 'standard_user', status: 'active', dashboardScopes: { D1: 'viewer' }, capabilities: [] }] });
     const editorWithoutPlanCapability = legacy({ memberships: [{ clientId: 'A', role: 'standard_user', status: 'active', dashboardScopes: { D1: 'editor' }, editableDashboardIds: ['D1'], capabilities: ['editor'] }] });
@@ -109,7 +109,8 @@ describe('canonical Tablero authorization compatibility', () => {
     const platformWithExplicitMembership = { ...platformAdmin, memberships: planEditor.memberships };
 
     expect(canEditActionPlan(viewer, dashboard)).toBe(false);
-    expect(canEditActionPlan(editorWithoutPlanCapability, dashboard)).toBe(false);
+    expect(canEditActionPlan(editorWithoutPlanCapability, dashboard)).toBe(true);
+    expect(canEditActionPlan({ ...editorWithoutPlanCapability, memberships: [{ ...editorWithoutPlanCapability.memberships![0], dashboardScopes: {} }] }, dashboard)).toBe(false);
     expect(canEditActionPlan(planEditor, dashboard)).toBe(true);
     expect(canEditActionPlan(planEditor, { ...dashboard, id: 'D2' })).toBe(false);
     expect(canEditActionPlan(platformAdmin, dashboard)).toBe(false);
@@ -222,5 +223,72 @@ describe('canonical Tablero authorization compatibility', () => {
       expect(canAccessDashboard(legacyMember, { id: '1768429631798', clientId: 'IPS' })).toBe(true);
       expect(canAccessDashboard(legacyMember, { id: 'other_board', clientId: 'IPS' })).toBe(false);
     });
+  });
+});
+
+// S01: wildcard display metadata must never become a tenant membership.
+test.each(['ALL', 'all', 'A, ALL', 'A, all'])('S01 legacy %s excludes wildcard authority', clientId => {
+  const profile = legacy({ clientId, globalRole: GlobalUserRole.Admin });
+  expect(getAuthorizedClientIds(profile)).toEqual(clientId.startsWith('A,') ? ['A'] : []);
+  expect(canAdminTenant(profile, 'B')).toBe(false);
+  expect(canAccessDashboard(profile, { id: 'b', clientId: 'B' })).toBe(false);
+  expect(canEditActionPlan(profile, { id: 'b', clientId: 'B' })).toBe(false);
+});
+
+test('S01 canonical viewer and admin override ALL conservatively, including suspension', () => {
+  const viewer = legacy({ clientId: 'ALL', memberships: [{ clientId: 'A', role: 'standard_user', status: 'active', dashboardScopes: { a: 'viewer' }, capabilities: ['viewer'] }] });
+  expect(canAccessDashboard(viewer, { id: 'a', clientId: 'A' })).toBe(true);
+  expect(canAccessDashboard(viewer, { id: 'a', clientId: 'A' }, 'editor')).toBe(false);
+  expect(canEditActionPlan(viewer, { id: 'a', clientId: 'A' })).toBe(false);
+  const admin = legacy({ clientId: 'A,ALL', globalRole: GlobalUserRole.Admin, memberships: [{ clientId: 'A', role: 'tenant_admin', status: 'active' }] });
+  expect(canAdminTenant(admin, 'A')).toBe(true);
+  expect(canAdminTenant(admin, 'B')).toBe(false);
+  expect(canEditActionPlan(admin, { id: 'b', clientId: 'B' })).toBe(false);
+  admin.memberships![0].status = 'suspended';
+  expect(getAuthorizedClientIds(admin)).toEqual([]);
+  expect(canAdminTenant(admin, 'A')).toBe(false);
+});
+
+test('S01 platform email with explicit legacy tenants still needs canonical business grants', () => {
+  const profile = legacy({ email: 'leonprior@gmail.com', clientId: 'A,all', globalRole: GlobalUserRole.Admin });
+  expect(isPlatformAdmin(profile)).toBe(true);
+  expect(getAuthorizedClientIds(profile)).toEqual([]);
+  expect(canAccessStrategy(profile, 'A')).toBe(false);
+  expect(canEditActionPlan(profile, { id: 'a', clientId: 'A' })).toBe(false);
+});
+
+describe('legacy Director shared dashboard and ActionPlan authority', () => {
+  const board = { id: 'physical', clientId: 'A', group: 'OPERACIONES', superGroup: 'DIRECCION' };
+  const director = (overrides: Partial<User> = {}) => legacy({ globalRole: GlobalUserRole.Director, directorTitle: 'OPERACIONES', ...overrides });
+  it.each([
+    ['title', {}],
+    ['subgroup', { directorTitle: 'OTHER', subGroups: ['OPERACIONES'] }],
+    ['supergroup', { directorTitle: 'OTHER', superGroups: ['DIRECCION'] }],
+  ])('admits the Rules-compatible %s hierarchy on the physical resource', (_label, overrides) => {
+    const profile = director(overrides);
+    expect(canAccessDashboard(profile, board, 'editor')).toBe(true);
+    expect(canEditActionPlan(profile, board)).toBe(true);
+  });
+  it.each([
+    ['different hierarchy', { directorTitle: 'OTHER' }],
+    ['different tenant', { clientId: 'B' }],
+    ['ALL', { clientId: 'ALL' }],
+    ['all', { clientId: 'all' }],
+    ['explicit legacy viewer', { dashboardAccess: { physical: DashboardRole.Viewer } }],
+    ['canonical viewer', { memberships: [{ clientId: 'A', role: 'standard_user', status: 'active', dashboardScopes: { physical: 'viewer' } }] }],
+    ['canonical hierarchy without editor', { memberships: [{ clientId: 'A', role: 'director', status: 'active', hierarchyScopes: ['OPERACIONES'] }] }],
+    ['suspended', { memberships: [{ clientId: 'A', role: 'director', status: 'suspended' }] }],
+    ['inactive', { memberships: [{ clientId: 'A', role: 'director', status: 'inactive' }] }],
+    ['platform without business membership', { email: 'leon@leonprior.com' }],
+    ['no business profile', { globalRole: undefined, clientId: undefined }],
+  ] as [string, Partial<User>][])('denies %s without legacy escalation', (_label, overrides) => {
+    const profile = director(overrides);
+    expect(canAccessDashboard(profile, board, 'editor')).toBe(false);
+    expect(canEditActionPlan(profile, board)).toBe(false);
+  });
+  it('does not grant hierarchy edit authority to a synthetic aggregate', () => {
+    const aggregate = { ...board, id: 'agg-GENERAL-2026', isAggregate: true };
+    expect(canAccessDashboard(director(), aggregate, 'editor')).toBe(false);
+    expect(canEditActionPlan(director(), aggregate)).toBe(false);
   });
 });

@@ -10,6 +10,8 @@ import {
   ContributionIndicatorAssignment,
 } from "../../strategyTypes";
 import { Dashboard, User, GlobalUserRole } from "../../types";
+import { calculateAggregateDashboard } from "../../utils/aggregationUtils";
+import { canAccessDashboard } from "../../services/tableroAuthorization";
 import { strategyService } from "../../services/strategyService";
 
 // Mock strategyService
@@ -70,14 +72,17 @@ const mockDashboards: Dashboard[] = [
     clientId: "CLIENT_1",
     area: "COMERCIAL",
     year: 2026,
+    subtitle: "",
+    thresholds: { onTrack: 95, atRisk: 85 },
     items: [
       {
         id: "item_101",
         indicator: "Ventas Totales",
         unit: "MXN",
-        type: "Acumulado",
-        jan_target: 100,
-        jan_real: 105,
+        type: "accumulative",
+        frequency: "monthly",
+        weight: 100,
+        goalType: "maximize",
         monthlyGoals: Array(12).fill(100),
         monthlyProgress: Array(12).fill(105),
       },
@@ -85,9 +90,10 @@ const mockDashboards: Dashboard[] = [
         id: "item_102",
         indicator: "Nuevos Clientes",
         unit: "Cant",
-        type: "Acumulado",
-        jan_target: 10,
-        jan_real: 8,
+        type: "accumulative",
+        frequency: "monthly",
+        weight: 100,
+        goalType: "maximize",
         monthlyGoals: Array(12).fill(10),
         monthlyProgress: Array(12).fill(8),
       },
@@ -99,14 +105,17 @@ const mockDashboards: Dashboard[] = [
     clientId: "CLIENT_1",
     area: "OPERACIONES",
     year: 2026,
+    subtitle: "",
+    thresholds: { onTrack: 95, atRisk: 85 },
     items: [
       {
         id: "item_201",
         indicator: "Eficiencia de Planta",
         unit: "%",
-        type: "Mensual",
-        jan_target: 95,
-        jan_real: 96,
+        type: "average",
+        frequency: "monthly",
+        weight: 100,
+        goalType: "maximize",
         monthlyGoals: Array(12).fill(95),
         monthlyProgress: Array(12).fill(96),
       },
@@ -161,12 +170,25 @@ const mockViewerUser: User = {
   id: "u_viewer",
   email: "viewer@empresa.com",
   name: "Viewer User",
-  globalRole: GlobalUserRole.Viewer,
+  globalRole: GlobalUserRole.Member,
   clientId: "CLIENT_1",
+  dashboardAccess: {},
+  memberships: [{ clientId: "CLIENT_1", role: "standard_user", status: "active", dashboardScopes: { dash_1: "viewer", dash_2: "viewer" }, editableDashboardIds: [], capabilities: ["viewer", "strategy_reader"] }],
 };
 
 describe("ContributionMatrixView - UX and Cell Objective Management", () => {
   const onRefreshDataMock = jest.fn();
+
+  it("uses monthly frequency independently from sum and average calculation modes", () => {
+    const commercial = mockDashboards[0];
+    const operations = mockDashboards[1];
+    const summed = calculateAggregateDashboard([commercial, { ...commercial, id: "commercial-copy" }]);
+    const averaged = calculateAggregateDashboard([operations, { ...operations, id: "operations-copy" }]);
+    expect(summed.items.find(item => item.id === -100)?.monthlyGoals[0]).toBe(200);
+    expect(summed.items.find(item => item.id === -100)?.monthlyProgress[0]).toBe(210);
+    expect(averaged.items[0].monthlyGoals[0]).toBe(95);
+    expect(averaged.items[0].monthlyProgress[0]).toBe(96);
+  });
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -412,6 +434,8 @@ describe("ContributionMatrixView - UX and Cell Objective Management", () => {
   });
 
   it("CASE 7: Non-admin (Viewer) sees read-only cell content and cannot create/edit OCs", async () => {
+    expect(canAccessDashboard(mockViewerUser, mockDashboards[0], "viewer")).toBe(true);
+    expect(canAccessDashboard(mockViewerUser, mockDashboards[0], "editor")).toBe(false);
     render(
       <ContributionMatrixView
         perspectives={mockPerspectives}
@@ -717,12 +741,17 @@ describe("ContributionMatrixView - UX and Cell Objective Management", () => {
       clientId: "CLIENT_1",
       area: area,
       year: 2026,
+      subtitle: "",
+      thresholds: { onTrack: 95, atRisk: 85 },
       items: [
         {
           id: `item_${i}_1`,
           indicator: `KPI ${area} 1`,
           unit: "%",
-          type: "Mensual",
+          type: "average" as const,
+          frequency: "monthly" as const,
+          weight: 100,
+          goalType: "maximize" as const,
           monthlyGoals: Array(12).fill(100),
           monthlyProgress: Array(12).fill(95),
         },

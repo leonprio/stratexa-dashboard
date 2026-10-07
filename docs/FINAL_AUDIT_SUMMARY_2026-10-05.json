@@ -1,0 +1,568 @@
+{
+  "preservation": {
+    "files": 472,
+    "changed": []
+  },
+  "focused": {
+    "suites": 13,
+    "tests": 132,
+    "success": true
+  },
+  "maintained": {
+    "suites": 110,
+    "tests": 919,
+    "success": true
+  },
+  "maintainedSuiteIndex": [
+    {
+      "file": "components/DataEditor.test.tsx",
+      "tests": 8,
+      "status": "passed"
+    },
+    {
+      "file": "components/CurrentPeriodFocus.effectiveStart.test.tsx",
+      "tests": 23,
+      "status": "passed"
+    },
+    {
+      "file": "components/strategy/ContributionMatrixUX.test.tsx",
+      "tests": 16,
+      "status": "passed"
+    },
+    {
+      "file": "components/RelatedActionPlans.delete.test.tsx",
+      "tests": 18,
+      "status": "passed"
+    },
+    {
+      "file": "components/CurrentPeriodFocus.test.tsx",
+      "tests": 9,
+      "status": "passed"
+    },
+    {
+      "file": "utils/controlExecutiveReportRenderers.test.ts",
+      "tests": 14,
+      "status": "passed"
+    },
+    {
+      "file": "lab/control-v9613/main.test.tsx",
+      "tests": 7,
+      "status": "passed"
+    },
+    {
+      "file": "components/ActivityManager.test.tsx",
+      "tests": 12,
+      "status": "passed"
+    },
+    {
+      "file": "components/continuity/ContinuityPanel.test.tsx",
+      "tests": 15,
+      "status": "passed"
+    },
+    {
+      "file": "components/indicatorScrollUx.test.tsx",
+      "tests": 6,
+      "status": "passed"
+    },
+    {
+      "file": "components/RelatedActionPlans.creation.test.tsx",
+      "tests": 8,
+      "status": "passed"
+    },
+    {
+      "file": "App.canonicalAccess.test.tsx",
+      "tests": 9,
+      "status": "passed"
+    },
+    {
+      "file": "App.authRuntime.test.tsx",
+      "tests": 10,
+      "status": "passed"
+    },
+    {
+      "file": "clientSelectionStrategy.test.tsx",
+      "tests": 6,
+      "status": "passed"
+    },
+    {
+      "file": "components/strategy/DashboardAreaIdentity.test.tsx",
+      "tests": 14,
+      "status": "passed"
+    },
+    {
+      "file": "components/CurrentPeriodFocus.reschedule.test.tsx",
+      "tests": 9,
+      "status": "passed"
+    },
+    {
+      "file": "components/operational/TransversalActionPlansControl.test.tsx",
+      "tests": 18,
+      "status": "passed"
+    },
+    {
+      "file": "components/strategy/StrategyConfigModal.test.tsx",
+      "tests": 2,
+      "status": "passed"
+    },
+    {
+      "file": "App.strategyNavigation.test.tsx",
+      "tests": 2,
+      "status": "passed"
+    },
+    {
+      "file": "components/ActionPlanResultReviewPanel.test.tsx",
+      "tests": 8,
+      "status": "passed"
+    },
+    {
+      "file": "components/DashboardView.test.tsx",
+      "tests": 9,
+      "status": "passed"
+    },
+    {
+      "file": "components/AggregateBuilder.test.tsx",
+      "tests": 13,
+      "status": "passed"
+    },
+    {
+      "file": "components/continuity/ContinuityWorkspace.test.tsx",
+      "tests": 8,
+      "status": "passed"
+    },
+    {
+      "file": "components/ObjectivesView.test.tsx",
+      "tests": 7,
+      "status": "passed"
+    },
+    {
+      "file": "strategyMap.test.ts",
+      "tests": 28,
+      "status": "passed"
+    },
+    {
+      "file": "components/strategy/CanonicalStrategyAccess.test.tsx",
+      "tests": 7,
+      "status": "passed"
+    },
+    {
+      "file": "components/operational/ControlReportExport.test.tsx",
+      "tests": 10,
+      "status": "passed"
+    },
+    {
+      "file": "lab/LabApp.test.tsx",
+      "tests": 3,
+      "status": "passed"
+    },
+    {
+      "file": "components/operational/OperationalControlCenter.test.tsx",
+      "tests": 7,
+      "status": "passed"
+    },
+    {
+      "file": "components/strategy/ContributionExecutiveCell.test.tsx",
+      "tests": 3,
+      "status": "passed"
+    },
+    {
+      "file": "components/operational/OperationalAlertsCenter.ux.test.tsx",
+      "tests": 5,
+      "status": "passed"
+    },
+    {
+      "file": "components/modalPortal.v9420.test.tsx",
+      "tests": 10,
+      "status": "passed"
+    },
+    {
+      "file": "utils/compliance.test.ts",
+      "tests": 15,
+      "status": "passed"
+    },
+    {
+      "file": "utils/continuityCertification.test.ts",
+      "tests": 11,
+      "status": "passed"
+    },
+    {
+      "file": "services/releaseSecurity.test.ts",
+      "tests": 8,
+      "status": "passed"
+    },
+    {
+      "file": "services/actionPlanResultReviewPersistence.test.ts",
+      "tests": 22,
+      "status": "passed"
+    },
+    {
+      "file": "components/strategy/OEDetailModal.distributedOwnership.test.tsx",
+      "tests": 1,
+      "status": "passed"
+    },
+    {
+      "file": "components/IndicatorManager.test.tsx",
+      "tests": 2,
+      "status": "passed"
+    },
+    {
+      "file": "components/strategy/StrategyMapView.selector.integration.test.tsx",
+      "tests": 1,
+      "status": "passed"
+    },
+    {
+      "file": "utils/somosConsistency.test.ts",
+      "tests": 10,
+      "status": "passed"
+    },
+    {
+      "file": "components/strategy/OEDetailModal.availability.test.tsx",
+      "tests": 2,
+      "status": "passed"
+    },
+    {
+      "file": "utils/continuityAdapter.test.ts",
+      "tests": 26,
+      "status": "passed"
+    },
+    {
+      "file": "components/operational/PendingAlertsCenter.test.tsx",
+      "tests": 1,
+      "status": "passed"
+    },
+    {
+      "file": "utils/universalNavigation.test.tsx",
+      "tests": 5,
+      "status": "passed"
+    },
+    {
+      "file": "testUtils/inMemoryKpiBackend.test.ts",
+      "tests": 5,
+      "status": "passed"
+    },
+    {
+      "file": "utils/resolveItemValues.compound.test.ts",
+      "tests": 12,
+      "status": "passed"
+    },
+    {
+      "file": "utils/checklistBulkImport.test.ts",
+      "tests": 16,
+      "status": "passed"
+    },
+    {
+      "file": "utils/continuityEngine.test.ts",
+      "tests": 16,
+      "status": "passed"
+    },
+    {
+      "file": "components/LineChart.test.tsx",
+      "tests": 2,
+      "status": "passed"
+    },
+    {
+      "file": "components/DashboardTabs.test.tsx",
+      "tests": 3,
+      "status": "passed"
+    },
+    {
+      "file": "components/ActionPlan.test.tsx",
+      "tests": 2,
+      "status": "passed"
+    },
+    {
+      "file": "utils/reportSynthesis.test.ts",
+      "tests": 4,
+      "status": "passed"
+    },
+    {
+      "file": "utils/controlTraceability.test.ts",
+      "tests": 3,
+      "status": "passed"
+    },
+    {
+      "file": "services/tableroReadScope.test.ts",
+      "tests": 12,
+      "status": "passed"
+    },
+    {
+      "file": "components/pendingKpiActivities.test.ts",
+      "tests": 2,
+      "status": "passed"
+    },
+    {
+      "file": "contributionConfiguration.test.ts",
+      "tests": 13,
+      "status": "passed"
+    },
+    {
+      "file": "utils/periodSemantics.test.ts",
+      "tests": 8,
+      "status": "passed"
+    },
+    {
+      "file": "services/tableroAuthorization.test.ts",
+      "tests": 18,
+      "status": "passed"
+    },
+    {
+      "file": "strategyCounterRollback.test.ts",
+      "tests": 20,
+      "status": "passed"
+    },
+    {
+      "file": "actionPlanImpact.test.ts",
+      "tests": 3,
+      "status": "passed"
+    },
+    {
+      "file": "components/trackingStartSemantics.test.ts",
+      "tests": 3,
+      "status": "passed"
+    },
+    {
+      "file": "utils/activityResolutionMerge.test.ts",
+      "tests": 8,
+      "status": "passed"
+    },
+    {
+      "file": "utils/aggregationLineage.test.ts",
+      "tests": 7,
+      "status": "passed"
+    },
+    {
+      "file": "utils/controlExecutiveReport.test.ts",
+      "tests": 8,
+      "status": "passed"
+    },
+    {
+      "file": "utils/controlExecutiveReportExport.test.ts",
+      "tests": 5,
+      "status": "passed"
+    },
+    {
+      "file": "utils/trackingEmptyPeriod.test.ts",
+      "tests": 10,
+      "status": "passed"
+    },
+    {
+      "file": "utils/resolutionHistory.test.ts",
+      "tests": 7,
+      "status": "passed"
+    },
+    {
+      "file": "objectivesReading.test.ts",
+      "tests": 8,
+      "status": "passed"
+    },
+    {
+      "file": "utils/executiveReport.test.ts",
+      "tests": 10,
+      "status": "passed"
+    },
+    {
+      "file": "strategyKpiOwnership.test.ts",
+      "tests": 8,
+      "status": "passed"
+    },
+    {
+      "file": "components/reportSemantics.test.ts",
+      "tests": 1,
+      "status": "passed"
+    },
+    {
+      "file": "utils/arithmeticExpression.test.ts",
+      "tests": 18,
+      "status": "passed"
+    },
+    {
+      "file": "utils/formatters.test.ts",
+      "tests": 48,
+      "status": "passed"
+    },
+    {
+      "file": "utils/userIdentityIntegrity.test.ts",
+      "tests": 6,
+      "status": "passed"
+    },
+    {
+      "file": "utils/weeklyUtils.test.ts",
+      "tests": 7,
+      "status": "passed"
+    },
+    {
+      "file": "functions/administrativeEndpoints.test.ts",
+      "tests": 3,
+      "status": "passed"
+    },
+    {
+      "file": "utils/dateUtils.test.ts",
+      "tests": 3,
+      "status": "passed"
+    },
+    {
+      "file": "utils/smartCapture.test.ts",
+      "tests": 6,
+      "status": "passed"
+    },
+    {
+      "file": "strategy.test.ts",
+      "tests": 18,
+      "status": "passed"
+    },
+    {
+      "file": "utils/operationalControl.test.ts",
+      "tests": 5,
+      "status": "passed"
+    },
+    {
+      "file": "utils/clientReconciliation.test.ts",
+      "tests": 10,
+      "status": "passed"
+    },
+    {
+      "file": "utils/actionPlanControlContinuity.test.ts",
+      "tests": 8,
+      "status": "passed"
+    },
+    {
+      "file": "strategyConfigurationRegression.test.ts",
+      "tests": 3,
+      "status": "passed"
+    },
+    {
+      "file": "objectivesReading.status.test.ts",
+      "tests": 2,
+      "status": "passed"
+    },
+    {
+      "file": "utils/dashboardLogic.test.ts",
+      "tests": 5,
+      "status": "passed"
+    },
+    {
+      "file": "utils/actionPlanResultReview.test.ts",
+      "tests": 19,
+      "status": "passed"
+    },
+    {
+      "file": "components/uncertifiedFeaturesVisibility.test.ts",
+      "tests": 1,
+      "status": "passed"
+    },
+    {
+      "file": "objectivesReading.executive.test.ts",
+      "tests": 5,
+      "status": "passed"
+    },
+    {
+      "file": "utils/pendingAlerts.test.ts",
+      "tests": 9,
+      "status": "passed"
+    },
+    {
+      "file": "utils/formula_audit.test.ts",
+      "tests": 3,
+      "status": "passed"
+    },
+    {
+      "file": "utils/operationalAlerts.test.ts",
+      "tests": 8,
+      "status": "passed"
+    },
+    {
+      "file": "utils/mainViewReadiness.test.ts",
+      "tests": 4,
+      "status": "passed"
+    },
+    {
+      "file": "clientIdentity.test.ts",
+      "tests": 9,
+      "status": "passed"
+    },
+    {
+      "file": "utils/operationalHistory.test.ts",
+      "tests": 5,
+      "status": "passed"
+    },
+    {
+      "file": "utils/operationalArea.test.ts",
+      "tests": 7,
+      "status": "passed"
+    },
+    {
+      "file": "utils/actionPlanLogic.test.ts",
+      "tests": 5,
+      "status": "passed"
+    },
+    {
+      "file": "scripts/seedCementosSigma2026.test.ts",
+      "tests": 2,
+      "status": "passed"
+    },
+    {
+      "file": "services/tableroMembershipPersistence.test.ts",
+      "tests": 6,
+      "status": "passed"
+    },
+    {
+      "file": "utils/scrollUtils.test.ts",
+      "tests": 3,
+      "status": "passed"
+    },
+    {
+      "file": "utils/controlNavigation.test.ts",
+      "tests": 4,
+      "status": "passed"
+    },
+    {
+      "file": "functions/tenantAdministration.test.ts",
+      "tests": 8,
+      "status": "passed"
+    },
+    {
+      "file": "utils/trackingObligation.test.ts",
+      "tests": 10,
+      "status": "passed"
+    },
+    {
+      "file": "utils/aggregationUtils.test.ts",
+      "tests": 4,
+      "status": "passed"
+    },
+    {
+      "file": "strategicDisplayOrder.test.ts",
+      "tests": 2,
+      "status": "passed"
+    },
+    {
+      "file": "utils/operationalSeveritySemantics.test.ts",
+      "tests": 5,
+      "status": "passed"
+    },
+    {
+      "file": "utils/controlDashboardReconciliation.test.ts",
+      "tests": 3,
+      "status": "passed"
+    },
+    {
+      "file": "contributionParity.test.ts",
+      "tests": 7,
+      "status": "passed"
+    },
+    {
+      "file": "utils/universalSuperAdmin.test.ts",
+      "tests": 1,
+      "status": "passed"
+    },
+    {
+      "file": "utils/obligationStatus.test.ts",
+      "tests": 3,
+      "status": "passed"
+    },
+    {
+      "file": "components/DashboardView.navigation.test.ts",
+      "tests": 2,
+      "status": "passed"
+    }
+  ]
+}

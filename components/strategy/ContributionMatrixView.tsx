@@ -1,3 +1,4 @@
+import { canAdminTenant } from '../../services/tableroAuthorization';
 import React, { useState, useMemo } from "react";
 import {
   Settings,
@@ -79,7 +80,7 @@ export const ContributionMatrixView: React.FC<ContributionMatrixViewProps> = ({
   onNavigateToDashboard,
   onExit,
 }) => {
-  const isAdmin = currentUser?.globalRole === GlobalUserRole.Admin;
+  const isAdmin = Boolean(currentUser && canAdminTenant(currentUser, selectedClientId));
 
   const [subView, setSubView] = useState<"matrix" | "map">("map");
   const [selectedOCForDetail, setSelectedOCForDetail] =

@@ -7,7 +7,7 @@ jest.mock('../../services/strategyService',()=>({strategyService:{getAssignments
 const direct = {id:'direct',clientId:'CLIENT',dashboardId:100,itemId:1,strategicObjectiveId:'oe'};
 function mount() {
   const refresh=jest.fn().mockResolvedValue(undefined);
-  render(<StrategyConfigModal perspectives={[]} objectives={[{id:'oe',code:'OE01',title:'OE'}] as any} areaConfigs={[]} contributionObjectives={[{id:'oc',clientId:'CLIENT',displayCode:'OC01',areaName:'OPERACIONES',primaryStrategicObjectiveId:'oe',title:'OC'}] as any} assignments={[direct]} dashboards={[{id:100,clientId:'CLIENT',year:2026,area:'OPERACIONES',title:'Operativo',items:[{id:1,indicator:'Exactitud de Inventario'}]}] as any} selectedClientId="CLIENT" currentUser={{globalRole:GlobalUserRole.Admin} as any} onClose={()=>{}} onRefreshData={refresh} initialSection="contributionObjectives" />);
+  render(<StrategyConfigModal perspectives={[]} objectives={[{id:'oe',code:'OE01',title:'OE'}] as any} areaConfigs={[]} contributionObjectives={[{id:'oc',clientId:'CLIENT',displayCode:'OC01',areaName:'OPERACIONES',primaryStrategicObjectiveId:'oe',title:'OC'}] as any} assignments={[direct]} dashboards={[{id:100,clientId:'CLIENT',year:2026,area:'OPERACIONES',title:'Operativo',items:[{id:1,indicator:'Exactitud de Inventario'}]}] as any} selectedClientId="CLIENT" currentUser={{globalRole:GlobalUserRole.Admin, clientId: 'CLIENT'} as any} onClose={()=>{}} onRefreshData={refresh} initialSection="contributionObjectives" />);
   return refresh;
 }
 beforeEach(()=>{jest.resetAllMocks();(strategyService.getAssignments as jest.Mock).mockResolvedValue([direct]);(strategyService.saveAssignmentsForOC as jest.Mock).mockResolvedValue(true);});

@@ -1,0 +1,766 @@
+{
+  "filesScanned": 75,
+  "scope": "TSX product source excluding tests/tmp/baseline, JSX named mounts; manual alias/callback review required",
+  "exports": [
+    {
+      "name": "App",
+      "file": ".backups/v5.2.2-CONTROL/App.tsx",
+      "mounts": [
+        {
+          "file": "index.tsx",
+          "line": 25
+        }
+      ]
+    },
+    {
+      "name": "DashboardTabs",
+      "file": ".backups/v5.2.2-CONTROL/DashboardTabs.tsx",
+      "mounts": [
+        {
+          "file": ".backups/v5.2.2-CONTROL/App.tsx",
+          "line": 2066
+        }
+      ]
+    },
+    {
+      "name": "DashboardView",
+      "file": ".backups/v5.2.2-CONTROL/DashboardView.tsx",
+      "mounts": [
+        {
+          "file": ".backups/v5.2.2-CONTROL/App.tsx",
+          "line": 2089
+        },
+        {
+          "file": "App.tsx",
+          "line": 3333
+        }
+      ]
+    },
+    {
+      "name": "LineChart",
+      "file": ".backups/v5.2.2-CONTROL/LineChart.tsx",
+      "mounts": [
+        {
+          "file": "components/CurrentPeriodFocus.tsx",
+          "line": 1733
+        },
+        {
+          "file": "components/DashboardRow.tsx",
+          "line": 386
+        },
+        {
+          "file": "components/ReportCenter.tsx",
+          "line": 65
+        }
+      ]
+    },
+    {
+      "name": "SummaryDetails",
+      "file": ".backups/v5.2.2-CONTROL/SummaryDetails.tsx",
+      "mounts": [
+        {
+          "file": "components/DashboardRow.tsx",
+          "line": 396
+        }
+      ]
+    },
+    {
+      "name": "App",
+      "file": "App.tsx",
+      "mounts": [
+        {
+          "file": "index.tsx",
+          "line": 25
+        }
+      ]
+    },
+    {
+      "name": "ActionPlan",
+      "file": "components/ActionPlan.tsx",
+      "mounts": [
+        {
+          "file": "components/CurrentPeriodFocus.tsx",
+          "line": 1749
+        },
+        {
+          "file": "components/DashboardRow.tsx",
+          "line": 409
+        }
+      ]
+    },
+    {
+      "name": "ActionPlanResultReviewPanel",
+      "file": "components/ActionPlanResultReviewPanel.tsx",
+      "mounts": [
+        {
+          "file": "components/RelatedActionPlans.tsx",
+          "line": 475
+        }
+      ]
+    },
+    {
+      "name": "AddDashboardModal",
+      "file": "components/AddDashboardModal.tsx",
+      "mounts": []
+    },
+    {
+      "name": "AdvancedDataImporter",
+      "file": "components/AdvancedDataImporter.tsx",
+      "mounts": [
+        {
+          "file": ".backups/v5.2.2-CONTROL/App.tsx",
+          "line": 1978
+        }
+      ]
+    },
+    {
+      "name": "AggregateBuilder",
+      "file": "components/AggregateBuilder.tsx",
+      "mounts": [
+        {
+          "file": "components/IndicatorManager.tsx",
+          "line": 326
+        }
+      ]
+    },
+    {
+      "name": "AggregationStrategySelector",
+      "file": "components/AggregationStrategySelector.tsx",
+      "mounts": []
+    },
+    {
+      "name": "BulkIndicatorDelete",
+      "file": "components/BulkIndicatorDelete.tsx",
+      "mounts": []
+    },
+    {
+      "name": "ClientSettings",
+      "file": "components/ClientSettings.tsx",
+      "mounts": [
+        {
+          "file": "App.tsx",
+          "line": 3034
+        }
+      ]
+    },
+    {
+      "name": "ConfirmationModal",
+      "file": "components/ConfirmationModal.tsx",
+      "mounts": []
+    },
+    {
+      "name": "ContinuityEngineHarness",
+      "file": "components/ContinuityEngineHarness.tsx",
+      "mounts": [
+        {
+          "file": "index.tsx",
+          "line": 21
+        }
+      ]
+    },
+    {
+      "name": "ControlledImporter",
+      "file": "components/ControlledImporter.tsx",
+      "mounts": [
+        {
+          "file": "App.tsx",
+          "line": 3112
+        }
+      ]
+    },
+    {
+      "name": "CreateDashboardModal",
+      "file": "components/CreateDashboardModal.tsx",
+      "mounts": [
+        {
+          "file": "App.tsx",
+          "line": 3455
+        }
+      ]
+    },
+    {
+      "name": "RescheduledCommitmentsSection",
+      "file": "components/CurrentPeriodFocus.tsx",
+      "mounts": [
+        {
+          "file": "components/CurrentPeriodFocus.tsx",
+          "line": 1428
+        }
+      ]
+    },
+    {
+      "name": "CurrentPeriodFocus",
+      "file": "components/CurrentPeriodFocus.tsx",
+      "mounts": [
+        {
+          "file": ".backups/v5.2.2-CONTROL/DashboardView.tsx",
+          "line": 287
+        },
+        {
+          "file": "components/DashboardView.tsx",
+          "line": 661
+        }
+      ]
+    },
+    {
+      "name": "Dashboard",
+      "file": "components/Dashboard.tsx",
+      "mounts": [
+        {
+          "file": ".backups/v5.2.2-CONTROL/DashboardView.tsx",
+          "line": 322
+        },
+        {
+          "file": "components/DashboardView.tsx",
+          "line": 744
+        }
+      ]
+    },
+    {
+      "name": "DashboardMetadataModal",
+      "file": "components/DashboardMetadataModal.tsx",
+      "mounts": [
+        {
+          "file": ".backups/v5.2.2-CONTROL/DashboardView.tsx",
+          "line": 361
+        },
+        {
+          "file": "components/DashboardView.tsx",
+          "line": 827
+        }
+      ]
+    },
+    {
+      "name": "DashboardRow",
+      "file": "components/DashboardRow.tsx",
+      "mounts": [
+        {
+          "file": "components/Dashboard.tsx",
+          "line": 72
+        }
+      ]
+    },
+    {
+      "name": "DashboardView",
+      "file": "components/DashboardView.tsx",
+      "mounts": [
+        {
+          "file": ".backups/v5.2.2-CONTROL/App.tsx",
+          "line": 2089
+        },
+        {
+          "file": "App.tsx",
+          "line": 3333
+        }
+      ]
+    },
+    {
+      "name": "DataEditor",
+      "file": "components/DataEditor.tsx",
+      "mounts": [
+        {
+          "file": "components/CurrentPeriodFocus.tsx",
+          "line": 1314
+        },
+        {
+          "file": "components/DashboardRow.tsx",
+          "line": 346
+        }
+      ]
+    },
+    {
+      "name": "FormulaBuilder",
+      "file": "components/FormulaBuilder.tsx",
+      "mounts": [
+        {
+          "file": "components/IndicatorManager.tsx",
+          "line": 353
+        }
+      ]
+    },
+    {
+      "name": "GaugeChart",
+      "file": "components/GaugeChart.tsx",
+      "mounts": []
+    },
+    {
+      "name": "GroupRenameModal",
+      "file": "components/GroupRenameModal.tsx",
+      "mounts": []
+    },
+    {
+      "name": "HelpCenter",
+      "file": "components/HelpCenter.tsx",
+      "mounts": [
+        {
+          "file": ".backups/v5.2.2-CONTROL/App.tsx",
+          "line": 1995
+        },
+        {
+          "file": "App.tsx",
+          "line": 3128
+        }
+      ]
+    },
+    {
+      "name": "HierarchySidebar",
+      "file": "components/HierarchySidebar.tsx",
+      "mounts": [
+        {
+          "file": "App.tsx",
+          "line": 3250
+        }
+      ]
+    },
+    {
+      "name": "IndicatorManager",
+      "file": "components/IndicatorManager.tsx",
+      "mounts": [
+        {
+          "file": ".backups/v5.2.2-CONTROL/App.tsx",
+          "line": 1936
+        },
+        {
+          "file": "App.tsx",
+          "line": 3050
+        }
+      ]
+    },
+    {
+      "name": "KpiActivityManager",
+      "file": "components/KpiActivityManager.tsx",
+      "mounts": []
+    },
+    {
+      "name": "LineChart",
+      "file": "components/LineChart.tsx",
+      "mounts": [
+        {
+          "file": "components/CurrentPeriodFocus.tsx",
+          "line": 1733
+        },
+        {
+          "file": "components/DashboardRow.tsx",
+          "line": 386
+        },
+        {
+          "file": "components/ReportCenter.tsx",
+          "line": 65
+        }
+      ]
+    },
+    {
+      "name": "LoginScreen",
+      "file": "components/LoginScreen.tsx",
+      "mounts": [
+        {
+          "file": ".backups/v5.2.2-CONTROL/App.tsx",
+          "line": 1196
+        },
+        {
+          "file": "App.tsx",
+          "line": 2570
+        }
+      ]
+    },
+    {
+      "name": "MasterTrafficLight",
+      "file": "components/MasterTrafficLight.tsx",
+      "mounts": [
+        {
+          "file": ".backups/v5.2.2-CONTROL/App.tsx",
+          "line": 2004
+        },
+        {
+          "file": "App.tsx",
+          "line": 3135
+        }
+      ]
+    },
+    {
+      "name": "ObjectivesView",
+      "file": "components/ObjectivesView.tsx",
+      "mounts": [
+        {
+          "file": "components/DashboardView.tsx",
+          "line": 763
+        }
+      ]
+    },
+    {
+      "name": "PendingAlertsHarness",
+      "file": "components/PendingAlertsHarness.tsx",
+      "mounts": [
+        {
+          "file": "index.tsx",
+          "line": 17
+        }
+      ]
+    },
+    {
+      "name": "PowerPointExportModal",
+      "file": "components/PowerPointExportModal.tsx",
+      "mounts": [
+        {
+          "file": ".backups/v5.2.2-CONTROL/DashboardView.tsx",
+          "line": 377
+        },
+        {
+          "file": "components/DashboardView.tsx",
+          "line": 870
+        }
+      ]
+    },
+    {
+      "name": "ProgressBar",
+      "file": "components/ProgressBar.tsx",
+      "mounts": [
+        {
+          "file": "components/DashboardRow.tsx",
+          "line": 296
+        }
+      ]
+    },
+    {
+      "name": "RelatedActionPlans",
+      "file": "components/RelatedActionPlans.tsx",
+      "mounts": [
+        {
+          "file": "components/CurrentPeriodFocus.tsx",
+          "line": 1769
+        }
+      ]
+    },
+    {
+      "name": "ReportCenter",
+      "file": "components/ReportCenter.tsx",
+      "mounts": [
+        {
+          "file": ".backups/v5.2.2-CONTROL/DashboardView.tsx",
+          "line": 337
+        },
+        {
+          "file": "components/DashboardView.tsx",
+          "line": 783
+        }
+      ]
+    },
+    {
+      "name": "SmartCaptureHarness",
+      "file": "components/SmartCaptureHarness.tsx",
+      "mounts": [
+        {
+          "file": "index.tsx",
+          "line": 19
+        }
+      ]
+    },
+    {
+      "name": "SummaryDetails",
+      "file": "components/SummaryDetails.tsx",
+      "mounts": [
+        {
+          "file": "components/DashboardRow.tsx",
+          "line": 396
+        }
+      ]
+    },
+    {
+      "name": "ThresholdEditor",
+      "file": "components/ThresholdEditor.tsx",
+      "mounts": [
+        {
+          "file": ".backups/v5.2.2-CONTROL/App.tsx",
+          "line": 1467
+        },
+        {
+          "file": "App.tsx",
+          "line": 2986
+        }
+      ]
+    },
+    {
+      "name": "TrackingStartPeriodControls",
+      "file": "components/TrackingStartPeriodControls.tsx",
+      "mounts": [
+        {
+          "file": "components/ClientSettings.tsx",
+          "line": 283
+        },
+        {
+          "file": "components/CurrentPeriodFocus.tsx",
+          "line": 1290
+        },
+        {
+          "file": "components/DashboardMetadataModal.tsx",
+          "line": 219
+        },
+        {
+          "file": "components/IndicatorManager.tsx",
+          "line": 383
+        }
+      ]
+    },
+    {
+      "name": "UserManager",
+      "file": "components/UserManager.tsx",
+      "mounts": [
+        {
+          "file": ".backups/v5.2.2-CONTROL/App.tsx",
+          "line": 1385
+        },
+        {
+          "file": "App.tsx",
+          "line": 2849
+        }
+      ]
+    },
+    {
+      "name": "WeightControlCenter",
+      "file": "components/WeightControlCenter.tsx",
+      "mounts": [
+        {
+          "file": ".backups/v5.2.2-CONTROL/App.tsx",
+          "line": 1963
+        },
+        {
+          "file": "App.tsx",
+          "line": 3097
+        }
+      ]
+    },
+    {
+      "name": "WeightManager",
+      "file": "components/WeightManager.tsx",
+      "mounts": [
+        {
+          "file": ".backups/v5.2.2-CONTROL/App.tsx",
+          "line": 1950
+        },
+        {
+          "file": "App.tsx",
+          "line": 3083
+        }
+      ]
+    },
+    {
+      "name": "ContinuityPanel",
+      "file": "components/continuity/ContinuityPanel.tsx",
+      "mounts": [
+        {
+          "file": "components/continuity/ContinuityWorkspace.tsx",
+          "line": 174
+        }
+      ]
+    },
+    {
+      "name": "ContinuityWorkspace",
+      "file": "components/continuity/ContinuityWorkspace.tsx",
+      "mounts": [
+        {
+          "file": "components/CurrentPeriodFocus.tsx",
+          "line": 1299
+        },
+        {
+          "file": "components/DataEditor.tsx",
+          "line": 721
+        },
+        {
+          "file": "lab/main.tsx",
+          "line": 312
+        }
+      ]
+    },
+    {
+      "name": "ControlReportExport",
+      "file": "components/operational/ControlReportExport.tsx",
+      "mounts": [
+        {
+          "file": "components/operational/OperationalControlCenter.tsx",
+          "line": 63
+        },
+        {
+          "file": "lab/control-reports/main.tsx",
+          "line": 54
+        }
+      ]
+    },
+    {
+      "name": "OperationalAlertsCenter",
+      "file": "components/operational/OperationalAlertsCenter.tsx",
+      "mounts": [
+        {
+          "file": "components/operational/OperationalControlCenter.tsx",
+          "line": 66
+        },
+        {
+          "file": "lab/control-v9613/main.tsx",
+          "line": 185
+        }
+      ]
+    },
+    {
+      "name": "OperationalAlertsTable",
+      "file": "components/operational/OperationalAlertsTable.tsx",
+      "mounts": []
+    },
+    {
+      "name": "OperationalControlCenter",
+      "file": "components/operational/OperationalControlCenter.tsx",
+      "mounts": [
+        {
+          "file": "components/DashboardView.tsx",
+          "line": 801
+        }
+      ]
+    },
+    {
+      "name": "OperationalHeatmap",
+      "file": "components/operational/OperationalHeatmap.tsx",
+      "mounts": []
+    },
+    {
+      "name": "OperationalHistoryCenter",
+      "file": "components/operational/OperationalHistoryCenter.tsx",
+      "mounts": [
+        {
+          "file": "components/operational/OperationalControlCenter.tsx",
+          "line": 68
+        }
+      ]
+    },
+    {
+      "name": "OperationalRanking",
+      "file": "components/operational/OperationalRanking.tsx",
+      "mounts": []
+    },
+    {
+      "name": "PendingAlertsCenter",
+      "file": "components/operational/PendingAlertsCenter.tsx",
+      "mounts": [
+        {
+          "file": "components/operational/OperationalControlCenter.tsx",
+          "line": 65
+        },
+        {
+          "file": "lab/control-v9613/main.tsx",
+          "line": 184
+        }
+      ]
+    },
+    {
+      "name": "TransversalActionPlansControl",
+      "file": "components/operational/TransversalActionPlansControl.tsx",
+      "mounts": [
+        {
+          "file": "components/operational/OperationalControlCenter.tsx",
+          "line": 67
+        }
+      ]
+    },
+    {
+      "name": "CellContributionModal",
+      "file": "components/strategy/CellContributionModal.tsx",
+      "mounts": [
+        {
+          "file": "components/strategy/ContributionMatrixView.tsx",
+          "line": 644
+        }
+      ]
+    },
+    {
+      "name": "ContributionDetailModal",
+      "file": "components/strategy/ContributionDetailModal.tsx",
+      "mounts": [
+        {
+          "file": "components/strategy/ContributionMatrixView.tsx",
+          "line": 676
+        }
+      ]
+    },
+    {
+      "name": "ContributionExecutiveCell",
+      "file": "components/strategy/ContributionExecutiveCell.tsx",
+      "mounts": [
+        {
+          "file": "components/ObjectivesView.tsx",
+          "line": 310
+        }
+      ]
+    },
+    {
+      "name": "ContributionMatrixView",
+      "file": "components/strategy/ContributionMatrixView.tsx",
+      "mounts": [
+        {
+          "file": "App.tsx",
+          "line": 3149
+        }
+      ]
+    },
+    {
+      "name": "RelationshipEditorModal",
+      "file": "components/strategy/RelationshipEditorModal.tsx",
+      "mounts": [
+        {
+          "file": "components/strategy/StrategyMapView.tsx",
+          "line": 391
+        }
+      ]
+    },
+    {
+      "name": "StrategicObjectiveNode",
+      "file": "components/strategy/StrategicObjectiveNode.tsx",
+      "mounts": [
+        {
+          "file": "components/strategy/StrategyMapView.tsx",
+          "line": 332
+        }
+      ]
+    },
+    {
+      "name": "StrategyConfigModal",
+      "file": "components/strategy/StrategyConfigModal.tsx",
+      "mounts": [
+        {
+          "file": "components/strategy/ContributionMatrixView.tsx",
+          "line": 701
+        },
+        {
+          "file": "components/strategy/OEDetailModal.tsx",
+          "line": 451
+        }
+      ]
+    },
+    {
+      "name": "StrategyMapView",
+      "file": "components/strategy/StrategyMapView.tsx",
+      "mounts": [
+        {
+          "file": "components/strategy/ContributionMatrixView.tsx",
+          "line": 312
+        }
+      ]
+    },
+    {
+      "name": "ControlReportsLab",
+      "file": "lab/control-reports/main.tsx",
+      "mounts": [
+        {
+          "file": "lab/control-reports/main.tsx",
+          "line": 63
+        }
+      ]
+    },
+    {
+      "name": "ControlVisualLab",
+      "file": "lab/control-v9613/main.tsx",
+      "mounts": [
+        {
+          "file": "lab/control-v9613/main.tsx",
+          "line": 195
+        }
+      ]
+    }
+  ]
+}

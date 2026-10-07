@@ -62,16 +62,13 @@ service cloud.firestore {
         get(/databases/$(database)/documents/tbl_userMemberships/$(membershipId(targetClientId))).data.status == 'active';
     }
 
+    // ALL is display/migration metadata, never a legacy tenant grant.
     function matchesLegacyTenant(storedClientId, targetClientId) {
-      return storedClientId is string && (
+      return storedClientId is string && targetClientId.lower() != 'all' && (
         storedClientId == targetClientId ||
         storedClientId.lower() == targetClientId.lower() ||
         storedClientId.matches('(.*,|^)\\s*' + targetClientId + '\\s*(,.*|$)') ||
-        storedClientId.lower().matches('(.*,|^)\\s*' + targetClientId.lower() + '\\s*(,.*|$)') ||
-        storedClientId == 'all' ||
-        storedClientId.lower() == 'all' ||
-        storedClientId.matches('(.*,|^)\\s*all\\s*(,.*|$)') ||
-        storedClientId.lower().matches('(.*,|^)\\s*all\\s*(,.*|$)')
+        storedClientId.lower().matches('(.*,|^)\\s*' + targetClientId.lower() + '\\s*(,.*|$)')
       );
     }
 
@@ -82,11 +79,7 @@ service cloud.firestore {
         isSafeClientId(targetClientId) &&
         exists(/databases/$(database)/documents/tbl_users/$(request.auth.uid)) &&
         !hasCanonicalMembership(targetClientId) &&
-        (!isPlatformAdmin() || (
-          getUserProfile().get('globalRole', '') in ['Admin', 'admin'] &&
-          request.auth.token.keys().hasAll(['email']) &&
-          request.auth.token.email == 'leonprior@gmail.com'
-        )) &&
+        !isPlatformAdmin() &&
         matchesLegacyTenant(getUserProfile().get('clientId', ''), targetClientId);
     }
 
@@ -195,13 +188,48 @@ service cloud.firestore {
       let board = get(/databases/$(database)/documents/tbl_dashboards/$(dashboardId)).data;
       return board.clientId == data.clientId && canReadDashboard(board, dashboardId);
     }
+    // Equivalent to canEditDashboard OR scoped plan_editor for a canonical
+    // member, using one membership snapshot instead of repeated helper chains.
+    function canEditCanonicalActionPlan(membership, board, dashboardId) {
+      let originalId = string(board.get('originalId', ''));
+      return membership.userId == request.auth.uid &&
+        membership.clientId == board.clientId && membership.status == 'active' &&
+        (membership.role == 'tenant_admin' ||
+          ((dashboardId in membership.get('editableDashboardIds', []) ||
+            originalId in membership.get('editableDashboardIds', [])) &&
+            ('plan_editor' in membership.capabilities ||
+              ('editor' in membership.capabilities &&
+                (dashboardId in membership.allowedDashboardIds || originalId in membership.allowedDashboardIds)))));
+    }
+    // Caller has established authentication, safe tenant, no canonical record,
+    // an existing profile and absence of platform authority. Match the legacy
+    // dashboard contract once using this profile snapshot.
+    function legacyActionPlanDashboardScope(user, board, dashboardId) {
+      let access = user.get('dashboardAccess', {});
+      let role = access.get(dashboardId, access.get(string(board.get('originalId', '')), ''));
+      let group = board.get('group', '');
+      let superGroup = board.get('superGroup', '');
+      return role == 'Editor' ||
+        (role == '' && user.get('globalRole', '') in ['Director', 'director'] && group != '' &&
+          (group == user.get('directorTitle', '') || group in user.get('subGroups', []) ||
+            (superGroup != '' && superGroup in user.get('superGroups', []))));
+    }
+    function canEditLegacyActionPlan(user, board, dashboardId) {
+      return matchesLegacyTenant(user.get('clientId', ''), board.clientId) &&
+        (user.get('globalRole', '') in ['Admin', 'admin'] ||
+          legacyActionPlanDashboardScope(user, board, dashboardId));
+    }
     function canEditActionPlan(data) {
       let dashboardId = string(data.dashboardId);
       let board = get(/databases/$(database)/documents/tbl_dashboards/$(dashboardId)).data;
-      return board.clientId == data.clientId && (isTenantAdmin(data.clientId) ||
-        (activeCanonicalMembership(data.clientId) &&
-          'plan_editor' in get(/databases/$(database)/documents/tbl_userMemberships/$(membershipId(data.clientId))).data.capabilities &&
-          canonicalEditableDashboardScope(board, dashboardId)));
+      return board.clientId == data.clientId && isAuthenticated() && isSafeClientId(data.clientId) &&
+        (exists(/databases/$(database)/documents/tbl_userMemberships/$(membershipId(data.clientId)))
+          ? canEditCanonicalActionPlan(
+              get(/databases/$(database)/documents/tbl_userMemberships/$(membershipId(data.clientId))).data,
+              board, dashboardId)
+          : (exists(/databases/$(database)/documents/tbl_users/$(request.auth.uid)) &&
+              !isPlatformAdmin() && canEditLegacyActionPlan(
+                get(/databases/$(database)/documents/tbl_users/$(request.auth.uid)).data, board, dashboardId)));
     }
     function validActionPlanIndicator(data) {
       let dashboardId = string(data.dashboardId);

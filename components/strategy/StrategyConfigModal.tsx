@@ -1,3 +1,4 @@
+import { canAdminTenant } from '../../services/tableroAuthorization';
 import React, { useState, useMemo } from 'react';
 import { X, Plus, Trash2, Edit2, ShieldAlert, Check, RefreshCw, Layers, Link as LinkIcon, Compass, Sliders } from 'lucide-react';
 import {
@@ -48,7 +49,7 @@ export const StrategyConfigModal: React.FC<StrategyConfigModalProps> = ({
   initialObjectiveId,
   initialSection = 'objectives',
 }) => {
-  const isAdmin = currentUser?.globalRole === GlobalUserRole.Admin;
+  const isAdmin = Boolean(currentUser && canAdminTenant(currentUser, selectedClientId));
   const [activeSection, setActiveSection] = useState<ConfigSection>(initialSection);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);

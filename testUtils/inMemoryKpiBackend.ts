@@ -109,7 +109,7 @@ export const makeTestItem = (): DashboardItem => ({
   weeklyProgress: [],
   observations: Array(12).fill(""),
   isActivityMode: true,
-  activityConfig: { activities: [{ id: "a1", name: "Actividad inicial" }] },
+  activityConfig: { 0: [{ id: "a1", label: "Actividad inicial", targetCount: 1, completedCount: 0 }] },
   type: "average",
   goalType: "maximize",
 } as DashboardItem);

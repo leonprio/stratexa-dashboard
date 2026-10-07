@@ -1,0 +1,742 @@
+[
+  {
+    "file": "components/ActivityManager.test.tsx",
+    "line": 6,
+    "column": 10,
+    "code": 2305,
+    "message": "Module '\"../types\"' has no exported member 'Activity'.",
+    "scope": "test",
+    "category": "TEST_ONLY",
+    "gate": "NON_BLOCKING_BASELINE_DEBT"
+  },
+  {
+    "file": "components/AggregateBuilder.test.tsx",
+    "line": 7,
+    "column": 9,
+    "code": 2739,
+    "message": "Type '{ id: number; indicator: string; unit: string; indicatorType: \"compound\"; type: \"accumulative\"; componentIds: number[]; monthlyProgress: any[]; monthlyGoals: any[]; }' is missing the following properties from type 'DashboardItem': weight, goalType",
+    "scope": "test",
+    "category": "FIXTURE_ONLY",
+    "gate": "NON_BLOCKING_BASELINE_DEBT"
+  },
+  {
+    "file": "components/AggregateBuilder.test.tsx",
+    "line": 20,
+    "column": 5,
+    "code": 2739,
+    "message": "Type '{ id: number; indicator: string; unit: string; indicatorType: \"simple\"; monthlyProgress: number[]; monthlyGoals: number[]; }' is missing the following properties from type 'DashboardItem': weight, type, goalType",
+    "scope": "test",
+    "category": "FIXTURE_ONLY",
+    "gate": "NON_BLOCKING_BASELINE_DEBT"
+  },
+  {
+    "file": "components/AggregateBuilder.test.tsx",
+    "line": 28,
+    "column": 5,
+    "code": 2739,
+    "message": "Type '{ id: number; indicator: string; unit: string; indicatorType: \"simple\"; monthlyProgress: number[]; monthlyGoals: number[]; }' is missing the following properties from type 'DashboardItem': weight, type, goalType",
+    "scope": "test",
+    "category": "FIXTURE_ONLY",
+    "gate": "NON_BLOCKING_BASELINE_DEBT"
+  },
+  {
+    "file": "components/AggregateBuilder.test.tsx",
+    "line": 36,
+    "column": 5,
+    "code": 2739,
+    "message": "Type '{ id: number; indicator: string; unit: string; indicatorType: \"simple\"; monthlyProgress: number[]; monthlyGoals: number[]; }' is missing the following properties from type 'DashboardItem': weight, type, goalType",
+    "scope": "test",
+    "category": "FIXTURE_ONLY",
+    "gate": "NON_BLOCKING_BASELINE_DEBT"
+  },
+  {
+    "file": "components/AggregateBuilder.test.tsx",
+    "line": 44,
+    "column": 5,
+    "code": 2739,
+    "message": "Type '{ id: number; indicator: string; unit: string; indicatorType: \"simple\"; monthlyProgress: number[]; monthlyGoals: number[]; }' is missing the following properties from type 'DashboardItem': weight, type, goalType",
+    "scope": "test",
+    "category": "FIXTURE_ONLY",
+    "gate": "NON_BLOCKING_BASELINE_DEBT"
+  },
+  {
+    "file": "components/AggregateBuilder.test.tsx",
+    "line": 52,
+    "column": 5,
+    "code": 2739,
+    "message": "Type '{ id: number; indicator: string; unit: string; indicatorType: \"simple\"; monthlyProgress: number[]; monthlyGoals: number[]; }' is missing the following properties from type 'DashboardItem': weight, type, goalType",
+    "scope": "test",
+    "category": "FIXTURE_ONLY",
+    "gate": "NON_BLOCKING_BASELINE_DEBT"
+  },
+  {
+    "file": "components/AggregateBuilder.test.tsx",
+    "line": 170,
+    "column": 11,
+    "code": 2739,
+    "message": "Type '{ id: number; indicator: string; unit: string; indicatorType: \"compound\"; type: \"accumulative\"; componentIds: number[]; monthlyProgress: any[]; monthlyGoals: any[]; }' is missing the following properties from type 'DashboardItem': weight, goalType",
+    "scope": "test",
+    "category": "FIXTURE_ONLY",
+    "gate": "NON_BLOCKING_BASELINE_DEBT"
+  },
+  {
+    "file": "components/CurrentPeriodFocus.test.tsx",
+    "line": 12,
+    "column": 5,
+    "code": 2741,
+    "message": "Property 'weight' is missing in type '{ id: number; indicator: string; indicatorType: \"simple\"; type: \"accumulative\"; frequency: \"monthly\"; monthlyProgress: number[]; monthlyGoals: number[]; unit: string; goalType: \"maximize\"; }' but required in type 'DashboardItem'.",
+    "scope": "test",
+    "category": "FIXTURE_ONLY",
+    "gate": "NON_BLOCKING_BASELINE_DEBT"
+  },
+  {
+    "file": "components/CurrentPeriodFocus.test.tsx",
+    "line": 23,
+    "column": 5,
+    "code": 2741,
+    "message": "Property 'weight' is missing in type '{ id: number; indicator: string; indicatorType: \"simple\"; type: \"accumulative\"; frequency: \"monthly\"; monthlyProgress: number[]; monthlyGoals: number[]; unit: string; goalType: \"maximize\"; }' but required in type 'DashboardItem'.",
+    "scope": "test",
+    "category": "FIXTURE_ONLY",
+    "gate": "NON_BLOCKING_BASELINE_DEBT"
+  },
+  {
+    "file": "components/CurrentPeriodFocus.test.tsx",
+    "line": 34,
+    "column": 5,
+    "code": 2741,
+    "message": "Property 'weight' is missing in type '{ id: number; indicator: string; indicatorType: \"formula\"; formula: string; goalMode: \"DERIVED_FROM_SOURCES\"; formulaOutputMode: \"RESULT_IS_COMPLIANCE\"; type: \"average\"; frequency: \"monthly\"; monthlyProgress: number[]; monthlyGoals: number[]; unit: string; goalType: \"maximize\"; }' but required in type 'DashboardItem'.",
+    "scope": "test",
+    "category": "FIXTURE_ONLY",
+    "gate": "NON_BLOCKING_BASELINE_DEBT"
+  },
+  {
+    "file": "components/CurrentPeriodFocus.tsx",
+    "line": 312,
+    "column": 9,
+    "code": 2322,
+    "message": "Type '{ id: string; sourceActivityId: string; label: string; periodIndex: number; periodLabel: string; commitmentLabel: string; rescheduleHistory: RescheduleRecord[]; status: \"ATRASADA\" | ... 1 more ... | \"COMPROMISO ACTUAL\"; }[]' is not assignable to type 'PendingKpiActivity[]'.\r\n  Type '{ id: string; sourceActivityId: string; label: string; periodIndex: number; periodLabel: string; commitmentLabel: string; rescheduleHistory: RescheduleRecord[]; status: \"ATRASADA\" | ... 1 more ... | \"COMPROMISO ACTUAL\"; }' is not assignable to type 'PendingKpiActivity'.\r\n    Types of property 'rescheduleHistory' are incompatible.\r\n      Type 'RescheduleRecord[]' is not assignable to type '{ fromYear: number; fromPeriodType: \"monthly\" | \"weekly\"; fromPeriodIndex: number; toYear: number; toPeriodType: \"monthly\" | \"weekly\"; toPeriodIndex: number; changedAt: string; }[]'.\r\n        Type 'RescheduleRecord' is missing the following properties from type '{ fromYear: number; fromPeriodType: \"monthly\" | \"weekly\"; fromPeriodIndex: number; toYear: number; toPeriodType: \"monthly\" | \"weekly\"; toPeriodIndex: number; changedAt: string; }': fromPeriodType, fromPeriodIndex, toPeriodType, toPeriodIndex, changedAt",
+    "scope": "production",
+    "category": "MEDIUM_TYPE_INCONSISTENCY",
+    "gate": "NON_BLOCKING_BASELINE_DEBT"
+  },
+  {
+    "file": "components/CurrentPeriodFocus.tsx",
+    "line": 1626,
+    "column": 61,
+    "code": 2345,
+    "message": "Argument of type '{ id: string; sourceActivityId: string; label: string; periodIndex: number; periodLabel: string; commitmentLabel: string; status: \"DESCARTADO\"; }' is not assignable to parameter of type 'SetStateAction<PendingKpiActivity>'.\r\n  Type '{ id: string; sourceActivityId: string; label: string; periodIndex: number; periodLabel: string; commitmentLabel: string; status: \"DESCARTADO\"; }' is not assignable to type 'PendingKpiActivity'.\r\n    Types of property 'status' are incompatible.\r\n      Type '\"DESCARTADO\"' is not assignable to type '\"PENDIENTE\" | \"ATENCIÓN\" | \"ATRASADA\" | \"REPROGRAMADA\" | \"COMPROMISO ACTUAL\"'.",
+    "scope": "production",
+    "category": "MEDIUM_TYPE_INCONSISTENCY",
+    "gate": "NON_BLOCKING_BASELINE_DEBT"
+  },
+  {
+    "file": "components/strategy/ContributionMatrixUX.test.tsx",
+    "line": 33,
+    "column": 3,
+    "code": 2741,
+    "message": "Property 'order' is missing in type '{ id: string; code: string; title: string; description: string; perspectiveId: string; clientId: string; }' but required in type 'StrategicObjective'.",
+    "scope": "test",
+    "category": "FIXTURE_ONLY",
+    "gate": "NON_BLOCKING_BASELINE_DEBT"
+  },
+  {
+    "file": "components/strategy/ContributionMatrixUX.test.tsx",
+    "line": 41,
+    "column": 3,
+    "code": 2741,
+    "message": "Property 'order' is missing in type '{ id: string; code: string; title: string; description: string; perspectiveId: string; clientId: string; }' but required in type 'StrategicObjective'.",
+    "scope": "test",
+    "category": "FIXTURE_ONLY",
+    "gate": "NON_BLOCKING_BASELINE_DEBT"
+  },
+  {
+    "file": "components/strategy/ContributionMatrixUX.test.tsx",
+    "line": 78,
+    "column": 9,
+    "code": 2322,
+    "message": "Type '\"Acumulado\"' is not assignable to type '\"accumulative\" | \"average\" | \"stock\"'.",
+    "scope": "test",
+    "category": "FIXTURE_ONLY",
+    "gate": "MUST_FIX_BEFORE_FINAL_AUDIT"
+  },
+  {
+    "file": "components/strategy/ContributionMatrixUX.test.tsx",
+    "line": 88,
+    "column": 9,
+    "code": 2322,
+    "message": "Type '\"Acumulado\"' is not assignable to type '\"accumulative\" | \"average\" | \"stock\"'.",
+    "scope": "test",
+    "category": "FIXTURE_ONLY",
+    "gate": "MUST_FIX_BEFORE_FINAL_AUDIT"
+  },
+  {
+    "file": "components/strategy/ContributionMatrixUX.test.tsx",
+    "line": 107,
+    "column": 9,
+    "code": 2322,
+    "message": "Type '\"Mensual\"' is not assignable to type '\"accumulative\" | \"average\" | \"stock\"'.",
+    "scope": "test",
+    "category": "FIXTURE_ONLY",
+    "gate": "MUST_FIX_BEFORE_FINAL_AUDIT"
+  },
+  {
+    "file": "components/strategy/ContributionMatrixUX.test.tsx",
+    "line": 118,
+    "column": 3,
+    "code": 2741,
+    "message": "Property 'areaCode' is missing in type '{ id: string; displayCode: string; sequenceNumber: number; title: string; description: string; areaName: string; areaConfigId: string; primaryStrategicObjectiveId: string; clientId: string; }' but required in type 'ContributionObjective'.",
+    "scope": "test",
+    "category": "FIXTURE_ONLY",
+    "gate": "NON_BLOCKING_BASELINE_DEBT"
+  },
+  {
+    "file": "components/strategy/ContributionMatrixUX.test.tsx",
+    "line": 129,
+    "column": 3,
+    "code": 2741,
+    "message": "Property 'areaCode' is missing in type '{ id: string; displayCode: string; sequenceNumber: number; title: string; description: string; areaName: string; areaConfigId: string; primaryStrategicObjectiveId: string; clientId: string; }' but required in type 'ContributionObjective'.",
+    "scope": "test",
+    "category": "FIXTURE_ONLY",
+    "gate": "NON_BLOCKING_BASELINE_DEBT"
+  },
+  {
+    "file": "components/strategy/ContributionMatrixUX.test.tsx",
+    "line": 152,
+    "column": 7,
+    "code": 2741,
+    "message": "Property 'dashboardAccess' is missing in type '{ id: string; email: string; name: string; globalRole: GlobalUserRole.Admin; clientId: string; }' but required in type 'User'.",
+    "scope": "test",
+    "category": "FIXTURE_ONLY",
+    "gate": "NON_BLOCKING_BASELINE_DEBT"
+  },
+  {
+    "file": "components/strategy/ContributionMatrixUX.test.tsx",
+    "line": 160,
+    "column": 7,
+    "code": 2741,
+    "message": "Property 'dashboardAccess' is missing in type '{ id: string; email: string; name: string; globalRole: any; clientId: string; }' but required in type 'User'.",
+    "scope": "test",
+    "category": "FIXTURE_ONLY",
+    "gate": "NON_BLOCKING_BASELINE_DEBT"
+  },
+  {
+    "file": "components/strategy/ContributionMatrixUX.test.tsx",
+    "line": 164,
+    "column": 30,
+    "code": 2339,
+    "message": "Property 'Viewer' does not exist on type 'typeof GlobalUserRole'.",
+    "scope": "test",
+    "category": "FIXTURE_ONLY",
+    "gate": "MUST_FIX_BEFORE_FINAL_AUDIT"
+  },
+  {
+    "file": "components/strategy/ContributionMatrixUX.test.tsx",
+    "line": 687,
+    "column": 11,
+    "code": 2322,
+    "message": "Type '{ id: string; code: string; title: string; description: string; perspectiveId: string; clientId: string; }[]' is not assignable to type 'StrategicObjective[]'.\r\n  Property 'order' is missing in type '{ id: string; code: string; title: string; description: string; perspectiveId: string; clientId: string; }' but required in type 'StrategicObjective'.",
+    "scope": "test",
+    "category": "FIXTURE_ONLY",
+    "gate": "NON_BLOCKING_BASELINE_DEBT"
+  },
+  {
+    "file": "components/strategy/ContributionMatrixUX.test.tsx",
+    "line": 714,
+    "column": 11,
+    "code": 2322,
+    "message": "Type '{ id: string; title: string; clientId: string; area: string; year: number; items: { id: string; indicator: string; unit: string; type: \"Mensual\"; monthlyGoals: any[]; monthlyProgress: any[]; }[]; }[]' is not assignable to type 'Dashboard[]'.\r\n  Type '{ id: string; title: string; clientId: string; area: string; year: number; items: { id: string; indicator: string; unit: string; type: \"Mensual\"; monthlyGoals: any[]; monthlyProgress: any[]; }[]; }' is missing the following properties from type 'Dashboard': subtitle, thresholds",
+    "scope": "test",
+    "category": "FIXTURE_ONLY",
+    "gate": "MUST_FIX_BEFORE_FINAL_AUDIT"
+  },
+  {
+    "file": "components/strategy/ContributionMatrixUX.test.tsx",
+    "line": 733,
+    "column": 7,
+    "code": 2741,
+    "message": "Property 'areaCode' is missing in type '{ id: string; displayCode: string; sequenceNumber: number; title: string; description: string; areaName: string; areaConfigId: string; primaryStrategicObjectiveId: string; clientId: string; }' but required in type 'ContributionObjective'.",
+    "scope": "test",
+    "category": "FIXTURE_ONLY",
+    "gate": "NON_BLOCKING_BASELINE_DEBT"
+  },
+  {
+    "file": "components/strategy/ContributionMatrixUX.test.tsx",
+    "line": 744,
+    "column": 7,
+    "code": 2741,
+    "message": "Property 'areaCode' is missing in type '{ id: string; displayCode: string; sequenceNumber: number; title: string; description: string; areaName: string; areaConfigId: string; primaryStrategicObjectiveId: string; clientId: string; }' but required in type 'ContributionObjective'.",
+    "scope": "test",
+    "category": "FIXTURE_ONLY",
+    "gate": "NON_BLOCKING_BASELINE_DEBT"
+  },
+  {
+    "file": "components/strategy/ContributionMatrixUX.test.tsx",
+    "line": 755,
+    "column": 7,
+    "code": 2741,
+    "message": "Property 'areaCode' is missing in type '{ id: string; displayCode: string; sequenceNumber: number; title: string; description: string; areaName: string; areaConfigId: string; primaryStrategicObjectiveId: string; clientId: string; }' but required in type 'ContributionObjective'.",
+    "scope": "test",
+    "category": "FIXTURE_ONLY",
+    "gate": "NON_BLOCKING_BASELINE_DEBT"
+  },
+  {
+    "file": "components/TrackingStartPeriodControls.tsx",
+    "line": 14,
+    "column": 83,
+    "code": 2339,
+    "message": "Property 'monthIndex' does not exist on type 'TrackingStartPeriod'.\r\n  Property 'monthIndex' does not exist on type '{ frequency: \"weekly\"; year: number; weekNumber: number; }'.",
+    "scope": "production",
+    "category": "BASELINE_DEBT_SAFE",
+    "gate": "NON_BLOCKING_BASELINE_DEBT"
+  },
+  {
+    "file": "components/TrackingStartPeriodControls.tsx",
+    "line": 14,
+    "column": 102,
+    "code": 2339,
+    "message": "Property 'weekNumber' does not exist on type 'TrackingStartPeriod'.\r\n  Property 'weekNumber' does not exist on type '{ frequency: \"monthly\"; year: number; monthIndex: number; }'.",
+    "scope": "production",
+    "category": "BASELINE_DEBT_SAFE",
+    "gate": "NON_BLOCKING_BASELINE_DEBT"
+  },
+  {
+    "file": "contributionParity.test.ts",
+    "line": 199,
+    "column": 7,
+    "code": 2345,
+    "message": "Argument of type '{ strategicObjectiveId: string; contributionObjectiveId: string; dashboardId: string; itemId: string; }[]' is not assignable to parameter of type 'ContributionIndicatorAssignment[]'.\r\n  Type '{ strategicObjectiveId: string; contributionObjectiveId: string; dashboardId: string; itemId: string; }' is missing the following properties from type 'ContributionIndicatorAssignment': id, clientId",
+    "scope": "test",
+    "category": "FIXTURE_ONLY",
+    "gate": "NON_BLOCKING_BASELINE_DEBT"
+  },
+  {
+    "file": "contributionParity.test.ts",
+    "line": 207,
+    "column": 67,
+    "code": 2345,
+    "message": "Argument of type '{ strategicObjectiveId: string; contributionObjectiveId: string; dashboardId: string; itemId: string; }[]' is not assignable to parameter of type 'ContributionIndicatorAssignment[]'.\r\n  Type '{ strategicObjectiveId: string; contributionObjectiveId: string; dashboardId: string; itemId: string; }' is missing the following properties from type 'ContributionIndicatorAssignment': id, clientId",
+    "scope": "test",
+    "category": "FIXTURE_ONLY",
+    "gate": "NON_BLOCKING_BASELINE_DEBT"
+  },
+  {
+    "file": "firestore.rules.test.ts",
+    "line": 1098,
+    "column": 35,
+    "code": 2345,
+    "message": "Argument of type 'DocumentReference<DocumentData, DocumentData>' is not assignable to parameter of type 'DocumentReference<unknown>'.\r\n  Type 'DocumentReference<DocumentData, DocumentData>' is missing the following properties from type 'DocumentReference<unknown>': collection, isEqual, set, update, and 3 more.",
+    "scope": "test",
+    "category": "TEST_ONLY",
+    "gate": "NON_BLOCKING_BASELINE_DEBT"
+  },
+  {
+    "file": "firestore.rules.test.ts",
+    "line": 1099,
+    "column": 52,
+    "code": 2339,
+    "message": "Property 'lastIssuedSequence' does not exist on type 'unknown'.",
+    "scope": "test",
+    "category": "TEST_ONLY",
+    "gate": "NON_BLOCKING_BASELINE_DEBT"
+  },
+  {
+    "file": "firestore.rules.test.ts",
+    "line": 1101,
+    "column": 16,
+    "code": 2345,
+    "message": "Argument of type 'DocumentReference<DocumentData, DocumentData>' is not assignable to parameter of type 'DocumentReference<{ id: string; clientId: string; scope: string; lastIssuedSequence: any; }>'.\r\n  Type 'DocumentReference<DocumentData, DocumentData>' is missing the following properties from type 'DocumentReference<{ id: string; clientId: string; scope: string; lastIssuedSequence: any; }>': collection, isEqual, set, update, and 3 more.",
+    "scope": "test",
+    "category": "TEST_ONLY",
+    "gate": "NON_BLOCKING_BASELINE_DEBT"
+  },
+  {
+    "file": "firestore.rules.test.ts",
+    "line": 1107,
+    "column": 16,
+    "code": 2345,
+    "message": "Argument of type 'DocumentReference<DocumentData, DocumentData>' is not assignable to parameter of type 'DocumentReference<{ id: string; clientId: string; areaName: string; sequenceNumber: any; displayCode: string; title: string; primaryStrategicObjectiveId: string; }>'.\r\n  Type 'DocumentReference<DocumentData, DocumentData>' is missing the following properties from type 'DocumentReference<{ id: string; clientId: string; areaName: string; sequenceNumber: any; displayCode: string; title: string; primaryStrategicObjectiveId: string; }>': collection, isEqual, set, update, and 3 more.",
+    "scope": "test",
+    "category": "TEST_ONLY",
+    "gate": "NON_BLOCKING_BASELINE_DEBT"
+  },
+  {
+    "file": "firestore.rules.test.ts",
+    "line": 1178,
+    "column": 35,
+    "code": 2345,
+    "message": "Argument of type 'DocumentReference<DocumentData, DocumentData>' is not assignable to parameter of type 'DocumentReference<unknown>'.\r\n  Type 'DocumentReference<DocumentData, DocumentData>' is missing the following properties from type 'DocumentReference<unknown>': collection, isEqual, set, update, and 3 more.",
+    "scope": "test",
+    "category": "TEST_ONLY",
+    "gate": "NON_BLOCKING_BASELINE_DEBT"
+  },
+  {
+    "file": "firestore.rules.test.ts",
+    "line": 1180,
+    "column": 16,
+    "code": 2345,
+    "message": "Argument of type 'DocumentReference<DocumentData, DocumentData>' is not assignable to parameter of type 'DocumentReference<unknown>'.\r\n  Type 'DocumentReference<DocumentData, DocumentData>' is missing the following properties from type 'DocumentReference<unknown>': collection, isEqual, set, update, and 3 more.",
+    "scope": "test",
+    "category": "TEST_ONLY",
+    "gate": "NON_BLOCKING_BASELINE_DEBT"
+  },
+  {
+    "file": "firestore.rules.test.ts",
+    "line": 1181,
+    "column": 11,
+    "code": 2698,
+    "message": "Spread types may only be created from object types.",
+    "scope": "test",
+    "category": "TEST_ONLY",
+    "gate": "NON_BLOCKING_BASELINE_DEBT"
+  },
+  {
+    "file": "firestore.rules.test.ts",
+    "line": 1184,
+    "column": 19,
+    "code": 2345,
+    "message": "Argument of type 'DocumentReference<DocumentData, DocumentData>' is not assignable to parameter of type 'DocumentReference<any>'.\r\n  Type 'DocumentReference<DocumentData, DocumentData>' is missing the following properties from type 'DocumentReference<any>': collection, isEqual, set, update, and 3 more.",
+    "scope": "test",
+    "category": "TEST_ONLY",
+    "gate": "NON_BLOCKING_BASELINE_DEBT"
+  },
+  {
+    "file": "firestore.rules.test.ts",
+    "line": 1518,
+    "column": 35,
+    "code": 2345,
+    "message": "Argument of type 'DocumentReference<DocumentData, DocumentData>' is not assignable to parameter of type 'DocumentReference<unknown>'.\r\n  Type 'DocumentReference<DocumentData, DocumentData>' is missing the following properties from type 'DocumentReference<unknown>': collection, isEqual, set, update, and 3 more.",
+    "scope": "test",
+    "category": "TEST_ONLY",
+    "gate": "NON_BLOCKING_BASELINE_DEBT"
+  },
+  {
+    "file": "firestore.rules.test.ts",
+    "line": 1519,
+    "column": 52,
+    "code": 2339,
+    "message": "Property 'lastIssuedSequence' does not exist on type 'unknown'.",
+    "scope": "test",
+    "category": "TEST_ONLY",
+    "gate": "NON_BLOCKING_BASELINE_DEBT"
+  },
+  {
+    "file": "firestore.rules.test.ts",
+    "line": 1521,
+    "column": 16,
+    "code": 2345,
+    "message": "Argument of type 'DocumentReference<DocumentData, DocumentData>' is not assignable to parameter of type 'DocumentReference<{ id: string; clientId: string; scope: string; lastIssuedSequence: any; }>'.\r\n  Type 'DocumentReference<DocumentData, DocumentData>' is missing the following properties from type 'DocumentReference<{ id: string; clientId: string; scope: string; lastIssuedSequence: any; }>': collection, isEqual, set, update, and 3 more.",
+    "scope": "test",
+    "category": "TEST_ONLY",
+    "gate": "NON_BLOCKING_BASELINE_DEBT"
+  },
+  {
+    "file": "firestore.rules.test.ts",
+    "line": 1527,
+    "column": 16,
+    "code": 2345,
+    "message": "Argument of type 'DocumentReference<DocumentData, DocumentData>' is not assignable to parameter of type 'DocumentReference<{ id: string; clientId: string; areaName: string; sequenceNumber: any; displayCode: string; title: string; primaryStrategicObjectiveId: string; }>'.\r\n  Type 'DocumentReference<DocumentData, DocumentData>' is missing the following properties from type 'DocumentReference<{ id: string; clientId: string; areaName: string; sequenceNumber: any; displayCode: string; title: string; primaryStrategicObjectiveId: string; }>': collection, isEqual, set, update, and 3 more.",
+    "scope": "test",
+    "category": "TEST_ONLY",
+    "gate": "NON_BLOCKING_BASELINE_DEBT"
+  },
+  {
+    "file": "index.tsx",
+    "line": 16,
+    "column": 17,
+    "code": 2339,
+    "message": "Property 'env' does not exist on type 'ImportMeta'.",
+    "scope": "production",
+    "category": "BASELINE_DEBT_SAFE",
+    "gate": "NON_BLOCKING_BASELINE_DEBT"
+  },
+  {
+    "file": "index.tsx",
+    "line": 18,
+    "column": 24,
+    "code": 2339,
+    "message": "Property 'env' does not exist on type 'ImportMeta'.",
+    "scope": "production",
+    "category": "BASELINE_DEBT_SAFE",
+    "gate": "NON_BLOCKING_BASELINE_DEBT"
+  },
+  {
+    "file": "index.tsx",
+    "line": 20,
+    "column": 24,
+    "code": 2339,
+    "message": "Property 'env' does not exist on type 'ImportMeta'.",
+    "scope": "production",
+    "category": "BASELINE_DEBT_SAFE",
+    "gate": "NON_BLOCKING_BASELINE_DEBT"
+  },
+  {
+    "file": "services/tableroReadScope.ts",
+    "line": 18,
+    "column": 19,
+    "code": 2352,
+    "message": "Conversion of type '{ globalRole?: \"platform_admin\"; id: string; email: string; }' to type 'User' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.\r\n  Type '{ globalRole?: \"platform_admin\"; id: string; email: string; }' is missing the following properties from type 'User': name, dashboardAccess",
+    "scope": "production",
+    "category": "BASELINE_DEBT_SAFE",
+    "gate": "NON_BLOCKING_BASELINE_DEBT"
+  },
+  {
+    "file": "testUtils/inMemoryKpiBackend.test.ts",
+    "line": 34,
+    "column": 87,
+    "code": 2339,
+    "message": "Property 'activities' does not exist on type '{ [periodIdx: number]: { id: string; label: string; targetCount: number; completedCount: number; resolution?: { resolutionStatus: \"discarded\" | \"completed_later\" | \"rescheduled\" | \"reopened\"; resolvedAt?: string; ... 10 more ...; rescheduleHistory?: { ...; }[]; }; }[]; }'.",
+    "scope": "test",
+    "category": "FIXTURE_ONLY",
+    "gate": "MUST_FIX_BEFORE_FINAL_AUDIT"
+  },
+  {
+    "file": "testUtils/inMemoryKpiBackend.ts",
+    "line": 30,
+    "column": 5,
+    "code": 2322,
+    "message": "Type '[string, TestDashboard][]' is not assignable to type 'TestDashboard[]'.\r\n  Type '[string, TestDashboard]' is not assignable to type 'TestDashboard'.",
+    "scope": "helper",
+    "category": "FIXTURE_ONLY",
+    "gate": "NON_BLOCKING_BASELINE_DEBT"
+  },
+  {
+    "file": "utils/aggregationUtils.ts",
+    "line": 193,
+    "column": 9,
+    "code": 2322,
+    "message": "Type '{ boardId: string | number; itemId: string | number; }[]' is not assignable to type 'AggregationSource[]'.\r\n  Property 'dashboardId' is missing in type '{ boardId: string | number; itemId: string | number; }' but required in type 'AggregationSource'.",
+    "scope": "production",
+    "category": "MEDIUM_TYPE_INCONSISTENCY",
+    "gate": "NON_BLOCKING_BASELINE_DEBT"
+  },
+  {
+    "file": "utils/checklistBulkImport.ts",
+    "line": 155,
+    "column": 55,
+    "code": 2339,
+    "message": "Property 'targetCount' does not exist on type 'ChecklistElement | { label: string; }'.\r\n  Property 'targetCount' does not exist on type '{ label: string; }'.",
+    "scope": "production",
+    "category": "BASELINE_DEBT_SAFE",
+    "gate": "NON_BLOCKING_BASELINE_DEBT"
+  },
+  {
+    "file": "utils/checklistBulkImport.ts",
+    "line": 157,
+    "column": 69,
+    "code": 2339,
+    "message": "Property 'id' does not exist on type 'ChecklistElement | { label: string; }'.\r\n  Property 'id' does not exist on type '{ label: string; }'.",
+    "scope": "production",
+    "category": "BASELINE_DEBT_SAFE",
+    "gate": "NON_BLOCKING_BASELINE_DEBT"
+  },
+  {
+    "file": "utils/compliance.ts",
+    "line": 684,
+    "column": 14,
+    "code": 2339,
+    "message": "Property 'isAggregate' does not exist on type 'DashboardItem'.",
+    "scope": "production",
+    "category": "BASELINE_DEBT_SAFE",
+    "gate": "NON_BLOCKING_BASELINE_DEBT"
+  },
+  {
+    "file": "utils/compliance.ts",
+    "line": 722,
+    "column": 14,
+    "code": 2339,
+    "message": "Property 'isAggregate' does not exist on type 'DashboardItem'.",
+    "scope": "production",
+    "category": "BASELINE_DEBT_SAFE",
+    "gate": "NON_BLOCKING_BASELINE_DEBT"
+  },
+  {
+    "file": "utils/continuityAdapter.ts",
+    "line": 430,
+    "column": 22,
+    "code": 2339,
+    "message": "Property 'id' does not exist on type 'unknown'.",
+    "scope": "production",
+    "category": "BASELINE_DEBT_SAFE",
+    "gate": "NON_BLOCKING_BASELINE_DEBT"
+  },
+  {
+    "file": "utils/continuityAdapter.ts",
+    "line": 431,
+    "column": 48,
+    "code": 2339,
+    "message": "Property 'id' does not exist on type 'unknown'.",
+    "scope": "production",
+    "category": "BASELINE_DEBT_SAFE",
+    "gate": "NON_BLOCKING_BASELINE_DEBT"
+  },
+  {
+    "file": "utils/continuityAdapter.ts",
+    "line": 435,
+    "column": 38,
+    "code": 2339,
+    "message": "Property 'id' does not exist on type 'unknown'.",
+    "scope": "production",
+    "category": "BASELINE_DEBT_SAFE",
+    "gate": "NON_BLOCKING_BASELINE_DEBT"
+  },
+  {
+    "file": "utils/continuityAdapter.ts",
+    "line": 446,
+    "column": 43,
+    "code": 2339,
+    "message": "Property 'targetCount' does not exist on type 'unknown'.",
+    "scope": "production",
+    "category": "BASELINE_DEBT_SAFE",
+    "gate": "NON_BLOCKING_BASELINE_DEBT"
+  },
+  {
+    "file": "utils/continuityAdapter.ts",
+    "line": 446,
+    "column": 78,
+    "code": 2339,
+    "message": "Property 'targetCount' does not exist on type 'unknown'.",
+    "scope": "production",
+    "category": "BASELINE_DEBT_SAFE",
+    "gate": "NON_BLOCKING_BASELINE_DEBT"
+  },
+  {
+    "file": "utils/controlExecutiveReportDocx.ts",
+    "line": 71,
+    "column": 104,
+    "code": 2353,
+    "message": "Object literal may only specify known properties, and 'widowControl' does not exist in type 'IParagraphStylePropertiesOptions'.",
+    "scope": "production",
+    "category": "BASELINE_DEBT_SAFE",
+    "gate": "NON_BLOCKING_BASELINE_DEBT"
+  },
+  {
+    "file": "utils/enterpriseRecoveryUtils.ts",
+    "line": 123,
+    "column": 9,
+    "code": 2741,
+    "message": "Property 'diagonal' is missing in type '{ top: { style: \"thin\"; color: { argb: string; }; }; left: { style: \"thin\"; color: { argb: string; }; }; bottom: { style: \"thin\"; color: { argb: string; }; }; right: { style: \"thin\"; color: { argb: string; }; }; }' but required in type 'Borders'.",
+    "scope": "production",
+    "category": "BASELINE_DEBT_SAFE",
+    "gate": "NON_BLOCKING_BASELINE_DEBT"
+  },
+  {
+    "file": "utils/ExecutiveOperationalExport.ts",
+    "line": 104,
+    "column": 9,
+    "code": 2741,
+    "message": "Property 'diagonal' is missing in type '{ top: { style: \"thin\"; color: { argb: string; }; }; left: { style: \"thin\"; color: { argb: string; }; }; bottom: { style: \"thin\"; color: { argb: string; }; }; right: { style: \"thin\"; color: { argb: string; }; }; }' but required in type 'Borders'.",
+    "scope": "production",
+    "category": "BASELINE_DEBT_SAFE",
+    "gate": "NON_BLOCKING_BASELINE_DEBT"
+  },
+  {
+    "file": "utils/ExecutiveOperationalExport.ts",
+    "line": 111,
+    "column": 9,
+    "code": 2741,
+    "message": "Property 'diagonal' is missing in type '{ top: { style: \"thin\"; color: { argb: string; }; }; left: { style: \"thin\"; color: { argb: string; }; }; bottom: { style: \"double\"; color: { argb: string; }; }; right: { style: \"thin\"; color: { argb: string; }; }; }' but required in type 'Borders'.",
+    "scope": "production",
+    "category": "BASELINE_DEBT_SAFE",
+    "gate": "NON_BLOCKING_BASELINE_DEBT"
+  },
+  {
+    "file": "utils/ExecutiveOperationalExport.ts",
+    "line": 612,
+    "column": 13,
+    "code": 2367,
+    "message": "This comparison appears to be unintentional because the types 'string' and 'number' have no overlap.",
+    "scope": "production",
+    "category": "BASELINE_DEBT_SAFE",
+    "gate": "NON_BLOCKING_BASELINE_DEBT"
+  },
+  {
+    "file": "utils/ExecutiveOperationalExport.ts",
+    "line": 612,
+    "column": 31,
+    "code": 2367,
+    "message": "This comparison appears to be unintentional because the types 'string' and 'number' have no overlap.",
+    "scope": "production",
+    "category": "BASELINE_DEBT_SAFE",
+    "gate": "NON_BLOCKING_BASELINE_DEBT"
+  },
+  {
+    "file": "utils/formula_audit.test.ts",
+    "line": 7,
+    "column": 5,
+    "code": 2741,
+    "message": "Property 'weight' is missing in type '{ id: number; indicator: string; indicatorType: \"simple\"; type: \"accumulative\"; frequency: \"monthly\"; monthlyProgress: number[]; monthlyGoals: number[]; unit: string; goalType: \"maximize\"; }' but required in type 'DashboardItem'.",
+    "scope": "test",
+    "category": "FIXTURE_ONLY",
+    "gate": "NON_BLOCKING_BASELINE_DEBT"
+  },
+  {
+    "file": "utils/formula_audit.test.ts",
+    "line": 18,
+    "column": 5,
+    "code": 2741,
+    "message": "Property 'weight' is missing in type '{ id: number; indicator: string; indicatorType: \"simple\"; type: \"accumulative\"; frequency: \"monthly\"; monthlyProgress: number[]; monthlyGoals: number[]; unit: string; goalType: \"maximize\"; }' but required in type 'DashboardItem'.",
+    "scope": "test",
+    "category": "FIXTURE_ONLY",
+    "gate": "NON_BLOCKING_BASELINE_DEBT"
+  },
+  {
+    "file": "utils/formula_audit.test.ts",
+    "line": 29,
+    "column": 5,
+    "code": 2741,
+    "message": "Property 'weight' is missing in type '{ id: number; indicator: string; indicatorType: \"formula\"; formula: string; goalMode: \"DERIVED_FROM_SOURCES\"; formulaOutputMode: \"RESULT_IS_COMPLIANCE\"; type: \"average\"; frequency: \"monthly\"; monthlyProgress: number[]; monthlyGoals: number[]; unit: string; goalType: \"maximize\"; }' but required in type 'DashboardItem'.",
+    "scope": "test",
+    "category": "FIXTURE_ONLY",
+    "gate": "NON_BLOCKING_BASELINE_DEBT"
+  },
+  {
+    "file": "utils/operationalAlerts.test.ts",
+    "line": 125,
+    "column": 7,
+    "code": 2739,
+    "message": "Type '{ id: number; title: string; group: string; area: string; year: number; items: DashboardItem[]; }' is missing the following properties from type 'Dashboard': subtitle, thresholds",
+    "scope": "test",
+    "category": "FIXTURE_ONLY",
+    "gate": "NON_BLOCKING_BASELINE_DEBT"
+  },
+  {
+    "file": "utils/operationalAlerts.test.ts",
+    "line": 153,
+    "column": 7,
+    "code": 2739,
+    "message": "Type '{ id: number; title: string; isAggregate: true; group: string; area: string; items: undefined[]; }' is missing the following properties from type 'Dashboard': subtitle, thresholds",
+    "scope": "test",
+    "category": "FIXTURE_ONLY",
+    "gate": "NON_BLOCKING_BASELINE_DEBT"
+  },
+  {
+    "file": "utils/operationalHistory.test.ts",
+    "line": 107,
+    "column": 7,
+    "code": 2741,
+    "message": "Property 'subtitle' is missing in type '{ id: number; title: string; group: string; area: string; year: number; thresholds: { onTrack: number; atRisk: number; }; items: DashboardItem[]; }' but required in type 'Dashboard'.",
+    "scope": "test",
+    "category": "FIXTURE_ONLY",
+    "gate": "NON_BLOCKING_BASELINE_DEBT"
+  },
+  {
+    "file": "utils/operationalHistory.test.ts",
+    "line": 124,
+    "column": 7,
+    "code": 2741,
+    "message": "Property 'subtitle' is missing in type '{ id: number; title: string; isAggregate: true; group: string; area: string; thresholds: { onTrack: number; atRisk: number; }; items: undefined[]; }' but required in type 'Dashboard'.",
+    "scope": "test",
+    "category": "FIXTURE_ONLY",
+    "gate": "NON_BLOCKING_BASELINE_DEBT"
+  },
+  {
+    "file": "utils/universalNavigation.test.tsx",
+    "line": 178,
+    "column": 34,
+    "code": 2339,
+    "message": "Property 'Viewer' does not exist on type 'typeof GlobalUserRole'.",
+    "scope": "test",
+    "category": "FIXTURE_ONLY",
+    "gate": "MUST_FIX_BEFORE_FINAL_AUDIT"
+  }
+]

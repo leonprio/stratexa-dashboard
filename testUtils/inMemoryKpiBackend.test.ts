@@ -31,7 +31,7 @@ describe("isolated KPI CRUD and capture contract", () => {
     backend.updateKpi(editor(), TEST_DASHBOARD, updated);
     const read = backend.reconstruct().readKpi(TEST_DASHBOARD, item.id)!;
     expect(read.monthlyProgress[1]).toBe(0); expect(read.monthlyProgress[2]).toBeNull();
-    expect(read.monthlyNotes[0]).toBe("TEST OBSERVACIÓN"); expect(read.activityConfig.activities).toHaveLength(1);
+    expect(read.monthlyNotes[0]).toBe("TEST OBSERVACIÓN"); expect(read.activityConfig?.[0]).toEqual([{ id: "a1", label: "Actividad inicial", targetCount: 1, completedCount: 0 }]);
     expect(findLastIndexWithData([10, 0, null, null], [], [true, true, false, false])).toBe(1);
     expect(findLastIndexWithData([10, 20, null, null], [])).toBe(1);
   });

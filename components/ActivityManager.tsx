@@ -22,7 +22,7 @@ export interface ActivityManagerProps {
   /** Lista inicial de actividades a gestionar */
   initialActivities: Activity[];
   /** Callback ejecutado al confirmar los cambios locales */
-  onSave: (activities: Activity[]) => void;
+  onSave: (activities: Activity[]) => void | Promise<void>;
   /** Callback ejecutado al cerrar el modal (botón X) */
   onClose: () => void;
   /** Título principal del modal (generalmente el nombre del indicador) */
@@ -34,7 +34,11 @@ export interface ActivityManagerProps {
   /** Determina si el usuario tiene permisos de edición. Si es false, se muestra solo lectura */
   canEdit?: boolean;
   /** Función opcional para clonar la configuración actual a todos los periodos del año */
-  onCopyToAll?: (sourceActivities: Activity[]) => void;
+  onCopyToAll?: (sourceActivities: Activity[]) => void | Promise<void>;
+  /** Blocks checklist interaction while an annual copy is being persisted. */
+  isCopying?: boolean;
+  /** Error from the annual copy; source activities stay available for retry. */
+  copyError?: string;
   /** Define la naturaleza de la meta: 'maximize' (más es mejor) o 'minimize' (menos es mejor) */
   goalType?: 'maximize' | 'minimize';
 }
@@ -58,6 +62,8 @@ const ActivityManager = React.memo((props: ActivityManagerProps) => {
     periodLabel,
     canEdit = true,
     onCopyToAll,
+    isCopying = false,
+    copyError = '',
     goalType = 'maximize'
   } = props;
   // 🛡️ ESTADO AISLADO v9.1.0-PRO-FINAL-SHIELDED - INMUNE A PROP-DRILLING
@@ -79,7 +85,38 @@ const ActivityManager = React.memo((props: ActivityManagerProps) => {
   const [page, setPage] = useState(0);
   const [managingList, setManagingList] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState('');
+  const saveInFlightRef = useRef(false);
+  const isBusy = isSaving || isCopying;
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleSave = () => {
+    if (saveInFlightRef.current || !canEdit) return;
+    saveInFlightRef.current = true;
+    setIsSaving(true);
+    setSaveError('');
+    const completeSave = () => {
+      saveInFlightRef.current = false;
+      setIsSaving(false);
+      onClose();
+    };
+    const failSave = () => {
+      saveInFlightRef.current = false;
+      setIsSaving(false);
+      setSaveError('No se pudo guardar la lista. Los cambios siguen disponibles; puedes reintentar.');
+    };
+    try {
+      const result = onSave(activities);
+      if (result && typeof result.then === 'function') {
+        void result.then(completeSave, failSave);
+      } else {
+        completeSave();
+      }
+    } catch {
+      failSave();
+    }
+  };
 
   // LOG DE AUDITORÍA v8.6.0
   useEffect(() => {
@@ -240,6 +277,7 @@ const ActivityManager = React.memo((props: ActivityManagerProps) => {
             
             <button 
               onClick={onClose}
+              disabled={isBusy}
               className="w-10 h-10 flex-shrink-0 flex items-center justify-center bg-rose-500/10 hover:bg-rose-500 text-rose-500 hover:text-white rounded-xl transition-all border border-rose-500/20 active:scale-90"
               title="Cerrar"
             >
@@ -485,8 +523,9 @@ const ActivityManager = React.memo((props: ActivityManagerProps) => {
 
         {/* FOOTER */}
         <div className="p-6 bg-slate-900 border-t border-slate-800 flex items-center justify-between">
-          <button 
+          <button
             onClick={onClose}
+            disabled={isBusy}
             className="text-slate-400 hover:text-white font-bold uppercase tracking-widest text-xs transition-colors"
           >
             DESCARTAR CAMBIOS
@@ -496,23 +535,25 @@ const ActivityManager = React.memo((props: ActivityManagerProps) => {
              {onCopyToAll && (
                <button 
                   onClick={() => onCopyToAll(activities)}
-                  disabled={!canEdit || activities.length === 0}
+                  disabled={!canEdit || isBusy || activities.length === 0}
                   className="bg-indigo-600/20 hover:bg-indigo-600/40 text-indigo-300 border border-indigo-500/30 px-6 py-3 rounded-2xl font-black transition-all flex items-center gap-3 text-xs active:scale-95 disabled:opacity-30 disabled:pointer-events-none"
                   title="Copia esta lista de elementos a todos los meses/semanas del año"
                >
                   COPIAR A TODO EL AÑO
                </button>
              )}
-             <button 
-                onClick={() => onSave(activities)}
-                disabled={!canEdit}
+             <button
+                onClick={handleSave}
+                disabled={!canEdit || isBusy}
                 className="bg-emerald-600 hover:bg-emerald-500 text-white px-8 py-3 rounded-2xl font-black transition-all flex items-center gap-3 active:scale-95 disabled:grayscale disabled:pointer-events-none"
              >
                 <CheckCircle2 className="w-5 h-5" />
-                {canEdit ? 'CONFIRMAR LISTA' : 'VISTA DE LECTURA'}
+                {isSaving ? 'GUARDANDO...' : isCopying ? 'COPIANDO...' : canEdit ? 'CONFIRMAR LISTA' : 'VISTA DE LECTURA'}
              </button>
           </div>
         </div>
+        {(saveError || copyError) && <p role="alert" className="border-t border-rose-500/20 bg-rose-950/30 px-6 py-3 text-xs font-bold text-rose-200">{saveError || copyError}</p>}
+        {isBusy && <div role="status" aria-live="polite" className="absolute inset-0 z-[60] flex items-center justify-center bg-slate-950/45 text-sm font-black text-cyan-100 backdrop-blur-[1px]">{isCopying ? 'Copiando actividades…' : 'Guardando checklist…'}</div>}
 
         {/* VERSIONING */}
         <div className="text-center pb-2 bg-slate-900 border-t border-slate-800/10">

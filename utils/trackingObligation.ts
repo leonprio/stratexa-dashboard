@@ -117,6 +117,19 @@ export const getKpiTrackingObligation = (input: KpiTrackingObligationInput): Tra
   return 'CAPTURE_COMPLETE';
 };
 
+/** Zero-valued fields and their capture markers alone do not make a period
+ * substantive. Associated facts are resolved from the complete period. */
+export const isTrackingPeriodSemanticallyEmpty = (input: {
+  goal?: number | null;
+  progress?: number | null;
+  hasAssociatedFacts: boolean;
+}): boolean => {
+  const substantive = (value: number | null | undefined) =>
+    typeof value === 'number' && Number.isFinite(value) && value !== 0;
+  return !input.hasAssociatedFacts && !substantive(input.goal) &&
+    !substantive(input.progress);
+};
+
 /** True only for captured historical information; legacy zero is intentionally ambiguous. */
 export const hasTrackingFactsBeforePeriod = (
   frequency: TrackingFrequency,
@@ -126,13 +139,29 @@ export const hasTrackingFactsBeforePeriod = (
   progress: Array<number | null | undefined>,
   goalCaptured?: Array<boolean | undefined>,
   progressCaptured?: Array<boolean | undefined>,
-): { hasFacts: boolean; firstPeriod?: TrackingPeriod; goal?: number | null; progress?: number | null } => {
+  context?: Pick<DashboardItem, 'monthlyNotes' | 'weeklyNotes' | 'activityConfig' | 'continuityCommitments'>,
+): { hasFacts: boolean; firstPeriod?: TrackingPeriod; goal?: number | null; progress?: number | null; detail?: string } => {
   const size = frequency === 'monthly' ? 12 : 53;
   for (let index = 0; index < size; index++) {
     const period: TrackingPeriod = frequency === 'monthly' ? { frequency, year, monthIndex: index } : { frequency, year, weekNumber: index + 1 };
     if (compareTrackingPeriods(period, candidate) >= 0) break;
-    if (isExplicitOrLegacyValue(goals[index], goalCaptured?.[index]) || isExplicitOrLegacyValue(progress[index], progressCaptured?.[index])) {
-      return { hasFacts: true, firstPeriod: period, goal: goals[index], progress: progress[index] };
+    const note = (frequency === 'monthly' ? context?.monthlyNotes : context?.weeklyNotes)?.[index]?.trim();
+    const activity = (context?.activityConfig?.[index] || []).some(a => !!a.label?.trim() ||
+      (Number.isFinite(a.targetCount) && a.targetCount !== 0) ||
+      (Number.isFinite(a.completedCount) && a.completedCount !== 0) || !!a.resolution?.resolutionStatus);
+    const commitment = Object.values(context?.continuityCommitments || {}).some(c =>
+      (c.frequency || 'monthly') === frequency && c.originYear === year && c.originPeriod === index &&
+      (c.sourceType === 'SIMPLE_KPI' || c.sourceType === 'ACTIVITY_KPI'));
+    const detail = note ? 'Nota registrada' : activity ? 'Actividad registrada' : commitment ? 'Compromiso de continuidad registrado' : undefined;
+    // Missing context cannot establish that notes/checklists/commitments are empty.
+    // Preserve conservative numeric-only callers; the start UI supplies the full item.
+    const hasFacts = context
+      ? !isTrackingPeriodSemanticallyEmpty({
+          goal: goals[index], progress: progress[index], hasAssociatedFacts: !!detail,
+        })
+      : isExplicitOrLegacyValue(goals[index], goalCaptured?.[index]) || isExplicitOrLegacyValue(progress[index], progressCaptured?.[index]);
+    if (hasFacts) {
+      return { hasFacts: true, firstPeriod: period, goal: goals[index], progress: progress[index], ...(detail ? { detail } : {}) };
     }
   }
   return { hasFacts: false };
