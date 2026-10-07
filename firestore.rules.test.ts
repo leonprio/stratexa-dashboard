@@ -684,6 +684,53 @@ describe('Firestore Security Rules — Strategy Module (v9.5.0 Foundation)', () 
       }] }));
     });
 
+  it.each([
+    ['Admin', true], ['direct Editor', true], ['original Editor', true],
+    ['Viewer', false], ['Director title', true], ['Director subgroup', true],
+    ['Director supergroup', true], ['other hierarchy', false], ['other tenant', false],
+    ['ALL', false], ['all', false], ['platform admin', false], ['canonical viewer', false],
+    ['suspended', false], ['inactive', false], ['explicit non-editor', false],
+    ['Viewer overrides original Editor', false], ['no profile', false],
+  ] as [string, boolean][])('legacy dashboard/ActionPlan equivalence: %s', async (scenario, permitted) => {
+    await seedTablero();
+    await testEnv.withSecurityRulesDisabled(async context => {
+      const db = context.firestore();
+      await deleteDoc(doc(db, 'tbl_userMemberships', 'member_a__A'));
+      const user = { clientId: 'A', globalRole: 'Director', directorTitle: 'OPERACIONES',
+        subGroups: [] as string[], superGroups: [] as string[], dashboardAccess: {} as Record<string, string> };
+      if (scenario === 'Admin') user.globalRole = 'Admin';
+      if (scenario === 'direct Editor') { user.globalRole = 'Member'; user.dashboardAccess = { a: 'Editor' }; }
+      if (scenario === 'original Editor' || scenario === 'Viewer overrides original Editor') {
+        await updateDoc(doc(db, 'tbl_dashboards', 'a'), { originalId: 'origin' });
+        user.dashboardAccess = scenario === 'original Editor' ? { origin: 'Editor' } : { a: 'Viewer', origin: 'Editor' };
+      }
+      if (scenario === 'Viewer') user.dashboardAccess = { a: 'Viewer' };
+      if (scenario === 'explicit non-editor') user.dashboardAccess = { a: 'Unknown' };
+      if (scenario === 'Director subgroup') { user.directorTitle = 'OTHER'; user.subGroups = ['OPERACIONES']; }
+      if (scenario === 'Director supergroup') {
+        user.directorTitle = 'OTHER'; user.superGroups = ['DIRECTION'];
+        await updateDoc(doc(db, 'tbl_dashboards', 'a'), { superGroup: 'DIRECTION' });
+      }
+      if (scenario === 'other hierarchy') user.directorTitle = 'OTHER';
+      if (scenario === 'other tenant') user.clientId = 'B';
+      if (scenario === 'ALL' || scenario === 'all') user.clientId = scenario;
+      await updateDoc(doc(db, 'tbl_users', 'member_a'), user);
+      if (scenario === 'platform admin') await setDoc(doc(db, 'tbl_platformAdmins', 'member_a'), { uid: 'member_a', status: 'active' });
+      if (['canonical viewer', 'suspended', 'inactive'].includes(scenario)) {
+        await setDoc(doc(db, 'tbl_userMemberships', 'member_a__A'), {
+          ...canonicalMembership('member_a', 'A', 'standard_user', scenario === 'canonical viewer' ? 'active' : scenario),
+          allowedDashboardIds: ['a'], editableDashboardIds: [], capabilities: ['viewer'],
+        });
+      }
+      if (scenario === 'no profile') await deleteDoc(doc(db, 'tbl_users', 'member_a'));
+    });
+    const db = testEnv.authenticatedContext('member_a').firestore();
+    const dashboardWrite = updateDoc(doc(db, 'tbl_dashboards', 'a', 'items', 'kpi'), { monthlyProgress: [13] });
+    if (permitted) await assertSucceeds(dashboardWrite); else await assertFails(dashboardWrite);
+    const planWrite = updateDoc(doc(db, 'tbl_actionPlans', 'a'), { status: 'in_progress' });
+    if (permitted) await assertSucceeds(planWrite); else await assertFails(planWrite);
+  });
+
   it('P0 preserves originalId scoped queries', async () => {
     await seedTablero();
     await testEnv.withSecurityRulesDisabled(async context => {

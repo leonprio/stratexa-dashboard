@@ -201,6 +201,24 @@ service cloud.firestore {
               ('editor' in membership.capabilities &&
                 (dashboardId in membership.allowedDashboardIds || originalId in membership.allowedDashboardIds)))));
     }
+    // Caller has established authentication, safe tenant, no canonical record,
+    // an existing profile and absence of platform authority. Match the legacy
+    // dashboard contract once using this profile snapshot.
+    function legacyActionPlanDashboardScope(user, board, dashboardId) {
+      let access = user.get('dashboardAccess', {});
+      let role = access.get(dashboardId, access.get(string(board.get('originalId', '')), ''));
+      let group = board.get('group', '');
+      let superGroup = board.get('superGroup', '');
+      return role == 'Editor' ||
+        (role == '' && user.get('globalRole', '') in ['Director', 'director'] && group != '' &&
+          (group == user.get('directorTitle', '') || group in user.get('subGroups', []) ||
+            (superGroup != '' && superGroup in user.get('superGroups', []))));
+    }
+    function canEditLegacyActionPlan(user, board, dashboardId) {
+      return matchesLegacyTenant(user.get('clientId', ''), board.clientId) &&
+        (user.get('globalRole', '') in ['Admin', 'admin'] ||
+          legacyActionPlanDashboardScope(user, board, dashboardId));
+    }
     function canEditActionPlan(data) {
       let dashboardId = string(data.dashboardId);
       let board = get(/databases/$(database)/documents/tbl_dashboards/$(dashboardId)).data;
@@ -209,7 +227,9 @@ service cloud.firestore {
           ? canEditCanonicalActionPlan(
               get(/databases/$(database)/documents/tbl_userMemberships/$(membershipId(data.clientId))).data,
               board, dashboardId)
-          : canEditDashboard(board, dashboardId));
+          : (exists(/databases/$(database)/documents/tbl_users/$(request.auth.uid)) &&
+              !isPlatformAdmin() && canEditLegacyActionPlan(
+                get(/databases/$(database)/documents/tbl_users/$(request.auth.uid)).data, board, dashboardId)));
     }
     function validActionPlanIndicator(data) {
       let dashboardId = string(data.dashboardId);
