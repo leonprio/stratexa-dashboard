@@ -8,7 +8,6 @@ import {
   calculateCompliance,
   findLastIndexWithData,
   resolveItemValues,
-  isMonthlyPeriodOverdue,
 } from "../utils/compliance";
 import { getWeekNumber, getYearWeekMapping } from "../utils/weeklyUtils";
 import { ProgressBar } from "./ProgressBar";
@@ -54,44 +53,15 @@ interface CurrentPeriodFocusProps {
   controlTarget?: ControlNavigationTarget;
 }
 
-export interface PendingKpiActivity {
-  id: string;
-  sourceActivityId: string;
-  label: string;
-  periodIndex: number;
-  periodLabel: string;
-  commitmentLabel?: string;
-  rescheduleHistory?: {
-    fromYear: number;
-    fromPeriodType: "monthly" | "weekly";
-    fromPeriodIndex: number;
-    toYear: number;
-    toPeriodType: "monthly" | "weekly";
-    toPeriodIndex: number;
-    changedAt: string;
-  }[];
-  status:
-    | "PENDIENTE"
-    | "ATENCIÓN"
-    | "ATRASADA"
-    | "REPROGRAMADA"
-    | "COMPROMISO ACTUAL";
-}
+import { compareCalendarPeriods, derivePendingKpiActivities, type PendingKpiActivity } from '../utils/operationalWork';
+export type { PendingKpiActivity };
 export interface RescheduledKpiCommitment extends PendingKpiActivity {
   scheduledPeriodIndex: number;
   scheduledPeriodLabel: string;
 }
 
-export const compareCalendarPeriods = (
-  leftYear: number,
-  leftPeriodIndex: number,
-  rightYear: number,
-  rightPeriodIndex: number,
-): -1 | 0 | 1 => {
-  if (leftYear !== rightYear) return leftYear < rightYear ? -1 : 1;
-  if (leftPeriodIndex === rightPeriodIndex) return 0;
-  return leftPeriodIndex < rightPeriodIndex ? -1 : 1;
-};
+// compareCalendarPeriods is re-exported from utils/operationalWork.ts.
+export { compareCalendarPeriods };
 
 export const deriveRescheduledKpiCommitments = (
   activityConfig: DashboardItem["activityConfig"],
@@ -277,161 +247,8 @@ export const applyOperationalReschedule = (
   return config;
 };
 
-export const derivePendingKpiActivities = (
-  activityConfig: DashboardItem["activityConfig"],
-  currentIndex: number,
-  isWeekly: boolean,
-  year: number,
-  item?: DashboardItem,
-): PendingKpiActivity[] => {
-  if (!activityConfig && !item?.continuityCommitments) return [];
-  const labels = isWeekly
-    ? (index: number) => `S${index + 1}`
-    : (index: number) =>
-        [
-          "Ene",
-          "Feb",
-          "Mar",
-          "Abr",
-          "May",
-          "Jun",
-          "Jul",
-          "Ago",
-          "Sep",
-          "Oct",
-          "Nov",
-          "Dic",
-        ][index] || `P${index + 1}`;
-
-  const canonicalCommitments = item ? getOperationalContinuityCommitments(item) : [];
-  const mappedActivityIds = new Set<string>();
-  canonicalCommitments.forEach((c) => {
-    if (c.sourceActivityId) {
-      mappedActivityIds.add(c.sourceActivityId);
-    }
-  });
-
-  const canonicalPending: PendingKpiActivity[] = canonicalCommitments
-    .filter((c) => c.status === "active")
-    .map((c) => {
-      const scheduled = c.scheduledPeriod;
-      const scheduledYear = c.scheduledYear || year;
-      const origin = `${labels(c.originPeriod)} · ${c.originYear}`;
-      const commitment = `${labels(scheduled)} · ${scheduledYear}`;
-      const isOverdue = compareCalendarPeriods(scheduledYear, scheduled, year, currentIndex) < 0;
-      const isCurrent = compareCalendarPeriods(scheduledYear, scheduled, year, currentIndex) === 0;
-
-      let label = c.sourceActivityId;
-      if (activityConfig) {
-        for (const raw of Object.values(activityConfig)) {
-          const found = raw.find((a) => a.id === c.sourceActivityId);
-          if (found?.label) {
-            label = found.label;
-            break;
-          }
-        }
-      }
-      if (!label || label === c.sourceActivityId) {
-        label = c.resolutionHistory?.[0]?.reason || item?.indicator || "Compromiso de continuidad";
-      }
-
-      return {
-        id: c.id,
-        sourceActivityId: c.sourceActivityId || c.id,
-        label,
-        periodIndex: c.originPeriod,
-        periodLabel: `ORIGEN ${origin} → COMPROMISO ${commitment}`,
-        commitmentLabel: commitment,
-        rescheduleHistory: c.rescheduleHistory,
-        status: isOverdue
-          ? ("ATRASADA" as const)
-          : isCurrent
-            ? ("COMPROMISO ACTUAL" as const)
-            : ("REPROGRAMADA" as const),
-      };
-    });
-
-  const legacyPending = Object.entries(activityConfig || {}).flatMap(([period, raw]) => {
-    const periodIndex = Number(period);
-    const originOverdue = isWeekly
-      ? year < new Date().getFullYear() ||
-        (year === new Date().getFullYear() && periodIndex < currentIndex)
-      : isMonthlyPeriodOverdue(year, periodIndex);
-    if (!Number.isFinite(periodIndex) || !Array.isArray(raw)) return [];
-
-    return raw
-      .filter((activity) => {
-        if (mappedActivityIds.has(activity.id)) return false;
-        return (
-          Number(activity.completedCount) < Number(activity.targetCount) &&
-          !["completed_later", "discarded"].includes(
-            activity.resolution?.resolutionStatus || "",
-          ) &&
-          !(
-            activity.resolution?.resolutionStatus === "rescheduled" &&
-            activity.resolution.scheduledResolutionPeriodIndex !== undefined &&
-            compareCalendarPeriods(
-              activity.resolution.scheduledResolutionYear || year,
-              activity.resolution.scheduledResolutionPeriodIndex,
-              year,
-              currentIndex,
-            ) > 0 &&
-            currentIndex === activity.resolution.scheduledResolutionPeriodIndex
-          )
-        );
-      })
-      .map((activity) => {
-        const scheduled =
-          activity.resolution?.resolutionStatus === "rescheduled"
-            ? activity.resolution.scheduledResolutionPeriodIndex
-            : undefined;
-        const scheduledYear =
-          activity.resolution?.scheduledResolutionYear || year;
-        const origin = `${labels(periodIndex)} · ${year}`;
-        const commitment =
-          scheduled === undefined
-            ? undefined
-            : `${labels(scheduled)} · ${scheduledYear}`;
-        if (scheduled === undefined && !originOverdue) return null;
-        return {
-          id: `${periodIndex}:${activity.id}`,
-          sourceActivityId: activity.id,
-          label: activity.label,
-          periodIndex,
-          periodLabel: commitment
-            ? `ORIGEN ${origin} → COMPROMISO ${commitment}`
-            : origin,
-          commitmentLabel: commitment,
-          rescheduleHistory: activity.resolution?.rescheduleHistory,
-          status:
-            scheduled === undefined
-              ? periodIndex < currentIndex
-                ? ("ATRASADA" as const)
-                : Number(activity.completedCount) > 0
-                  ? ("ATENCIÓN" as const)
-                  : ("PENDIENTE" as const)
-              : compareCalendarPeriods(scheduledYear, scheduled, year, currentIndex) < 0
-                ? ("ATRASADA" as const)
-                : compareCalendarPeriods(scheduledYear, scheduled, year, currentIndex) === 0
-                  ? ("COMPROMISO ACTUAL" as const)
-                  : ("REPROGRAMADA" as const),
-        };
-      })
-      .filter(Boolean) as PendingKpiActivity[];
-  });
-
-  const allPending = [...canonicalPending, ...legacyPending];
-
-  return Array.from(
-    allPending
-      .reduce(
-        (unique, activity) =>
-          unique.set(activity.id, unique.get(activity.id) || activity),
-        new Map<string, PendingKpiActivity>(),
-      )
-      .values(),
-  );
-};
+// Moved verbatim to utils/operationalWork.ts (single source shared with CONTROL).
+export { derivePendingKpiActivities };
 
 export const getFirstMeaningfulTrackingIndex = (
   item: DashboardItem,
@@ -639,11 +456,11 @@ export const CurrentPeriodFocus: React.FC<CurrentPeriodFocusProps> = ({
   useEffect(() => {
     if (!controlTarget || controlActionOpened.current) return;
     controlActionOpened.current = true;
-    if (item.isActivityMode) {
+    if (controlTarget.operation === 'CONFIGURAR' && item.isActivityMode) {
       setIsActivityManagerOpen(true);
-    } else if (canEdit && controlTarget.operation === 'CONFIGURAR') {
+    } else if (canEdit && !item.isActivityMode && controlTarget.operation === 'CONFIGURAR') {
       goalInputRef.current?.focus();
-    } else if (canEdit && controlTarget.operation === 'REGISTRAR_AVANCE') {
+    } else if (canEdit && !item.isActivityMode && controlTarget.operation === 'REGISTRAR_AVANCE') {
       actualInputRef.current?.focus();
     }
   }, [canEdit, controlTarget, currentIdx, item.activityConfig, item.isActivityMode]);
@@ -1281,6 +1098,28 @@ export const CurrentPeriodFocus: React.FC<CurrentPeriodFocusProps> = ({
         </div>
         </>}
       </div>
+      {activityMode && !plansFocused && !isFullEditMode && (
+        <div role="tablist" aria-label="Vista del KPI" className="mb-5 flex gap-2 rounded-2xl border border-slate-700/60 bg-slate-950/70 p-1.5">
+          <button
+            type="button"
+            role="tab"
+            aria-selected={!isActivityManagerOpen}
+            onClick={() => setIsActivityManagerOpen(false)}
+            className={`min-h-[44px] flex-1 rounded-xl px-4 py-2 text-[11px] font-black uppercase tracking-wider transition-all ${!isActivityManagerOpen ? "bg-cyan-600/30 text-cyan-100 border border-cyan-500/50" : "text-slate-400 hover:text-white hover:bg-white/5"}`}
+          >
+            RESUMEN
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={isActivityManagerOpen}
+            onClick={() => setIsActivityManagerOpen(true)}
+            className={`min-h-[44px] flex-1 rounded-xl px-4 py-2 text-[11px] font-black uppercase tracking-wider transition-all ${isActivityManagerOpen ? "bg-indigo-600/30 text-indigo-100 border border-indigo-500/50" : "text-slate-400 hover:text-white hover:bg-white/5"}`}
+          >
+            ACTIVIDADES
+          </button>
+        </div>
+      )}
       <section hidden={plansFocused} className="mb-6 rounded-2xl border border-cyan-500/25 bg-cyan-950/15 p-4">
         <h3 className="text-xs font-black uppercase tracking-widest text-cyan-200">Seguimiento</h3>
         <p className="mt-1 text-sm font-bold text-white">Inicio efectivo: {formatTrackingStartPeriod(effectiveTracking.period)}</p>
@@ -1503,7 +1342,7 @@ export const CurrentPeriodFocus: React.FC<CurrentPeriodFocusProps> = ({
                             Elementos de este periodo
                           </span>
                           <span className="text-base font-bold text-white">
-                            Gestión Detallada
+                            ACTIVIDADES
                           </span>
                         </div>
                         <span className="text-xl">📝</span>

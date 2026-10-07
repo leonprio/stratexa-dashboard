@@ -2,6 +2,9 @@ import type { Dashboard, DashboardItem, SystemSettings } from '../types';
 import { getEffectiveTrackingStartPeriod, getKpiTrackingObligation, type TrackingPeriod, type TrackingObligation } from './trackingObligation';
 import { getObligationStatus, type ObligationStatus } from './obligationStatus';
 import { readControlPeriodValues } from './controlValues';
+import { getActiveOperationalWork } from './operationalWork';
+
+const INHERITED_WORK_MESSAGE = 'Existen acciones o compromisos activos de periodos anteriores; registra su avance o resuélvelos.';
 
 export type PendingType = 'MISSING_GOAL' | 'MISSING_PROGRESS' | 'TRACKING_START_UNDEFINED' | 'RESULT_CRITICAL' | 'RESULT_AT_RISK';
 export type PendingCategory = 'CONFIGURACIÓN' | 'CAPTURA' | 'RESULTADO';
@@ -30,10 +33,10 @@ export const buildPendingItems = (dashboards: Dashboard[], period: TrackingPerio
     if (item.indicatorType === 'compound' || item.indicatorType === 'formula') return;
     const i = period.frequency === 'monthly' ? period.monthIndex : period.weekNumber - 1;
     const activities = item.isActivityMode ? (item.activityConfig?.[i] || []) : [];
-    const activeContinuity = Object.values(item.continuityCommitments || {}).some(commitment =>
-      commitment.status === 'active' && commitment.scheduledYear === period.year && commitment.scheduledPeriod === i &&
-      (!commitment.frequency || commitment.frequency === period.frequency),
-    );
+    // Same source as the KPI "ACCIONES POR ATENDER" tab, evaluated against the business period.
+    const operationalWork = getActiveOperationalWork(item, period);
+    const activeContinuity = operationalWork.currentCommitments.length > 0;
+    const hasInheritedActiveWork = operationalWork.attention.length > 0;
     const activityGoal = activities.reduce((sum, activity) => sum + Math.max(0, Number(activity.targetCount) || 0), 0);
     const activityProgress = activities.reduce((sum, activity) => sum + Math.max(0, Number(activity.completedCount) || 0), 0);
     const goal = item.isActivityMode && activities.length > 0
@@ -59,6 +62,12 @@ export const buildPendingItems = (dashboards: Dashboard[], period: TrackingPerio
       ? item.goalType === 'minimize' ? (progressValue <= goalValue ? 100 : (goalValue / progressValue) * 100) : (progressValue / goalValue) * 100
       : undefined;
     const canonical = { indicatorId: item.id, indicatorName: item.indicator, dashboardId: d.id, dashboardTitle: d.title, clientId: d.clientId, area: d.area, responsible: item.responsible, period, goal: goalValue, progress: progressValue, pending: pendingValue, compliance: complianceValue };
+    if (type === 'MISSING_GOAL' && hasInheritedActiveWork) {
+      // Active inherited actions are operational structure: capture/resolve them, do not re-configure.
+      const x = detail.MISSING_PROGRESS;
+      result.push({ id: `${d.id}:${item.id}:MISSING_PROGRESS`, type: 'MISSING_PROGRESS', ...x, message: INHERITED_WORK_MESSAGE, ...canonical, source: 'trackingObligation', obligationStatus });
+      return;
+    }
     if (type && !(activeContinuity && type === 'MISSING_GOAL')) { const x = detail[type]; result.push({ id: `${d.id}:${item.id}:${type}`, type, ...x, ...canonical, source: 'trackingObligation', obligationStatus }); return; }
     if (obligation !== 'CAPTURE_COMPLETE' || typeof goal !== 'number' || typeof progress !== 'number' || goal === 0) return;
     const score = item.goalType === 'minimize' ? (progress <= goal ? 100 : (goal / progress) * 100) : (progress / goal) * 100;

@@ -36,3 +36,20 @@ test('new activity in current period creates a capture obligation',()=>{
   const [pending] = buildPendingItems([source],{...p,monthIndex:8},{...p,monthIndex:8},[10]);
   expect(pending.type).toBe('MISSING_PROGRESS');
 });
+
+test('configuration classification matrix respects period requirements and valid activity setup',()=>{
+  const normalMissingGoal = d(20,null,null,p);
+  const normalWithGoal = d(21,10,null,p);
+  const activityMissingSetup:any = d(22,null,null,p);
+  activityMissingSetup.items[0].isActivityMode = true;
+  const activityConfigured:any = d(23,null,null,p);
+  activityConfigured.items[0].isActivityMode = true;
+  activityConfigured.items[0].activityConfig = { 7: [{ id:'aug', label:'Agosto', targetCount:10, completedCount:10 }] };
+  const notYetRequired = d(24,null,null,{ frequency:'monthly', year:2026, monthIndex:8 });
+  const critical = d(25,100,40,p);
+  const healthy = d(26,100,100,p);
+
+  expect(buildPendingItems([normalMissingGoal,normalWithGoal,activityMissingSetup,activityConfigured,notYetRequired,critical,healthy],p,p,[20,21,22,23,24,25,26])
+    .map(({indicatorId,type})=>[indicatorId,type]))
+    .toEqual([[20,'MISSING_GOAL'],[22,'MISSING_GOAL'],[21,'MISSING_PROGRESS'],[25,'RESULT_CRITICAL']]);
+});

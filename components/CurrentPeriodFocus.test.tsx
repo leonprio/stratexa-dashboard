@@ -79,11 +79,57 @@ describe('CurrentPeriodFocus Runtime & Derived Indicators Render Test (v9.4.13)'
     expect(document.activeElement).toHaveAttribute('id', 'goal-input');
   });
 
-  test('GESTIONAR opens the existing checklist manager for the selected month', () => {
-    const item = { ...mockItems[0], isActivityMode: true, activityConfig: { 8: [{ id: 'synthetic-a', label: 'Actividad ficticia', targetCount: 10, completedCount: 3 }] } };
-    render(<CurrentPeriodFocus item={item} allDashboardItems={[item]} globalThresholds={{ onTrack: 90, atRisk: 80 }} year={2026} canEdit onUpdateItem={jest.fn()} onClose={jest.fn()} controlTarget={{ clientId: 'LAB-A', dashboardId: 101, itemId: 2, period: { frequency: 'monthly', year: 2026, monthIndex: 8 }, operation: 'GESTIONAR', origin: 'control' }} />);
+  const activityItem = () => ({
+    ...mockItems[0],
+    isActivityMode: true,
+    activityConfig: { 8: [{ id: 'synthetic-a', label: 'Actividad ficticia', targetCount: 10, completedCount: 3 }] },
+  });
+  const controlTarget = (operation: 'CONFIGURAR' | 'REGISTRAR_AVANCE' | 'GESTIONAR') => ({
+    clientId: 'LAB-A', dashboardId: 101, itemId: 2,
+    period: { frequency: 'monthly' as const, year: 2026, monthIndex: 8 },
+    operation, origin: 'control' as const,
+  });
+
+  test('CONTROL CONFIGURAR opens the checklist manager for an activity KPI', () => {
+    const item = activityItem();
+    render(<CurrentPeriodFocus item={item} allDashboardItems={[item]} globalThresholds={{ onTrack: 90, atRisk: 80 }} year={2026} canEdit onUpdateItem={jest.fn()} onClose={jest.fn()} controlTarget={controlTarget('CONFIGURAR')} />);
     expect(screen.getByText('CONFIRMAR LISTA')).toBeInTheDocument();
     expect(screen.getByText('Actividad ficticia')).toBeInTheDocument();
+  });
+
+  test('CONTROL REGISTRAR_AVANCE opens the KPI period with the activity manager closed', () => {
+    const item = activityItem();
+    render(<CurrentPeriodFocus item={item} allDashboardItems={[item]} globalThresholds={{ onTrack: 90, atRisk: 80 }} year={2026} canEdit onUpdateItem={jest.fn()} onClose={jest.fn()} controlTarget={controlTarget('REGISTRAR_AVANCE')} />);
+    expect(screen.getByRole('status')).toHaveTextContent('REGISTRAR AVANCE');
+    expect(screen.queryByText('CONFIRMAR LISTA')).not.toBeInTheDocument();
+  });
+
+  test('CONTROL GESTIONAR opens the KPI summary with the activity manager closed', () => {
+    const item = activityItem();
+    render(<CurrentPeriodFocus item={item} allDashboardItems={[item]} globalThresholds={{ onTrack: 90, atRisk: 80 }} year={2026} canEdit onUpdateItem={jest.fn()} onClose={jest.fn()} controlTarget={controlTarget('GESTIONAR')} />);
+    expect(screen.getAllByText('Compromisos acordados').length).toBeGreaterThan(0);
+    expect(screen.queryByText('CONFIRMAR LISTA')).not.toBeInTheDocument();
+  });
+
+  test('normal activity KPI selection opens its summary with the activity manager closed', () => {
+    const item = activityItem();
+    render(<CurrentPeriodFocus item={item} allDashboardItems={[item]} globalThresholds={{ onTrack: 90, atRisk: 80 }} year={2026} canEdit onUpdateItem={jest.fn()} onClose={jest.fn()} />);
+    expect(screen.getByText('Compromisos acordados')).toBeInTheDocument();
+    expect(screen.queryByText('CONFIRMAR LISTA')).not.toBeInTheDocument();
+  });
+
+  test('summary and activities are explicit views, and closing activities returns to summary', () => {
+    const item = activityItem();
+    render(<CurrentPeriodFocus item={item} allDashboardItems={[item]} globalThresholds={{ onTrack: 90, atRisk: 80 }} year={2026} canEdit onUpdateItem={jest.fn()} onClose={jest.fn()} />);
+    const summaryTab = screen.getByRole('tab', { name: 'RESUMEN' });
+    const activitiesTab = screen.getByRole('tab', { name: 'ACTIVIDADES' });
+    expect(summaryTab).toHaveAttribute('aria-selected', 'true');
+    fireEvent.click(activitiesTab);
+    expect(screen.getByText('CONFIRMAR LISTA')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'DESCARTAR CAMBIOS' }));
+    expect(screen.queryByText('CONFIRMAR LISTA')).not.toBeInTheDocument();
+    expect(summaryTab).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByRole('button', { name: /VISTA ANUAL/ })).toBeInTheDocument();
   });
 
   test('checklist waits for successful item persistence before closing', async () => {
@@ -96,6 +142,7 @@ describe('CurrentPeriodFocus Runtime & Derived Indicators Render Test (v9.4.13)'
     };
     render(<CurrentPeriodFocus item={item} allDashboardItems={[item]} globalThresholds={{ onTrack: 90, atRisk: 80 }} year={2026} canEdit onUpdateItem={onUpdateItem} onClose={jest.fn()} controlTarget={{ clientId: 'LAB-A', dashboardId: 101, itemId: 2, period: { frequency: 'monthly', year: 2026, monthIndex: 8 }, operation: 'GESTIONAR', origin: 'control' }} />);
 
+    fireEvent.click(screen.getByRole('tab', { name: 'ACTIVIDADES' }));
     fireEvent.click(screen.getByRole('button', { name: 'CONFIRMAR LISTA' }));
     expect(onUpdateItem).toHaveBeenCalledTimes(1);
     expect(screen.getByText('Guardando checklist…')).toBeInTheDocument();
@@ -114,6 +161,7 @@ describe('CurrentPeriodFocus Runtime & Derived Indicators Render Test (v9.4.13)'
     };
     render(<CurrentPeriodFocus item={item} allDashboardItems={[item]} globalThresholds={{ onTrack: 90, atRisk: 80 }} year={2026} canEdit onUpdateItem={onUpdateItem} onClose={jest.fn()} controlTarget={{ clientId: 'LAB-A', dashboardId: 101, itemId: 2, period: { frequency: 'monthly', year: 2026, monthIndex: 8 }, operation: 'GESTIONAR', origin: 'control' }} />);
 
+    fireEvent.click(screen.getByRole('tab', { name: 'ACTIVIDADES' }));
     fireEvent.click(screen.getByRole('button', { name: 'CONFIRMAR LISTA' }));
 
     expect(await screen.findByRole('alert')).toHaveTextContent('Los cambios siguen disponibles');
