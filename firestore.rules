@@ -188,13 +188,28 @@ service cloud.firestore {
       let board = get(/databases/$(database)/documents/tbl_dashboards/$(dashboardId)).data;
       return board.clientId == data.clientId && canReadDashboard(board, dashboardId);
     }
+    // Equivalent to canEditDashboard OR scoped plan_editor for a canonical
+    // member, using one membership snapshot instead of repeated helper chains.
+    function canEditCanonicalActionPlan(membership, board, dashboardId) {
+      let originalId = string(board.get('originalId', ''));
+      return membership.userId == request.auth.uid &&
+        membership.clientId == board.clientId && membership.status == 'active' &&
+        (membership.role == 'tenant_admin' ||
+          ((dashboardId in membership.get('editableDashboardIds', []) ||
+            originalId in membership.get('editableDashboardIds', [])) &&
+            ('plan_editor' in membership.capabilities ||
+              ('editor' in membership.capabilities &&
+                (dashboardId in membership.allowedDashboardIds || originalId in membership.allowedDashboardIds)))));
+    }
     function canEditActionPlan(data) {
       let dashboardId = string(data.dashboardId);
       let board = get(/databases/$(database)/documents/tbl_dashboards/$(dashboardId)).data;
-      return board.clientId == data.clientId && (canEditDashboard(board, dashboardId) ||
-        (activeCanonicalMembership(data.clientId) &&
-          'plan_editor' in get(/databases/$(database)/documents/tbl_userMemberships/$(membershipId(data.clientId))).data.capabilities &&
-          canonicalEditableDashboardScope(board, dashboardId)));
+      return board.clientId == data.clientId && isAuthenticated() && isSafeClientId(data.clientId) &&
+        (exists(/databases/$(database)/documents/tbl_userMemberships/$(membershipId(data.clientId)))
+          ? canEditCanonicalActionPlan(
+              get(/databases/$(database)/documents/tbl_userMemberships/$(membershipId(data.clientId))).data,
+              board, dashboardId)
+          : canEditDashboard(board, dashboardId));
     }
     function validActionPlanIndicator(data) {
       let dashboardId = string(data.dashboardId);

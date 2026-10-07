@@ -621,6 +621,69 @@ describe('Firestore Security Rules — Strategy Module (v9.5.0 Foundation)', () 
     await assertSucceeds(updateDoc(planRef, { status: 'completed' }));
   });
 
+  // The remote #22 RED case above remains unchanged as the budget regression.
+  it.each(['plan_editor', 'editor', 'tenant_admin', 'legacy Director'])(
+    'budget-equivalent ActionPlan review updates allow %s authority', async authority => {
+      await seedTablero();
+      await testEnv.withSecurityRulesDisabled(async context => {
+        const db = context.firestore();
+        if (authority === 'legacy Director') {
+          await deleteDoc(doc(db, 'tbl_userMemberships', 'member_a__A'));
+          await updateDoc(doc(db, 'tbl_users', 'member_a'), {
+            globalRole: 'Director', directorTitle: 'OPERACIONES', dashboardAccess: {},
+          });
+        } else {
+          await setDoc(doc(db, 'tbl_userMemberships', 'member_a__A'), {
+            ...canonicalMembership('member_a', 'A', authority === 'tenant_admin' ? 'tenant_admin' : 'standard_user'),
+            allowedDashboardIds: ['a'], editableDashboardIds: ['a'],
+            capabilities: authority === 'tenant_admin' ? [] : [authority],
+          });
+        }
+      });
+      const db = testEnv.authenticatedContext('member_a').firestore();
+      const ref = doc(db, 'tbl_actionPlans', 'a');
+      const review = { id: 'budget-review', reviewedAt: '2026-10-06', reviewedByUserId: 'member_a',
+        reviewedByLabel: 'Reviewer', observedResult: 'Observed', effect: 'FAVORABLE', decision: 'CONTINUE' };
+      await assertSucceeds(updateDoc(ref, { resultReviews: [review] }));
+      await assertSucceeds(updateDoc(ref, { status: 'in_progress' }));
+      await assertSucceeds(updateDoc(ref, { resultReviews: [review, { ...review, id: 'next-review' }] }));
+      await assertFails(updateDoc(ref, { resultReviews: [review] }));
+      await assertFails(updateDoc(ref, { resultReviews: [{ ...review, observedResult: 'forged' }, { ...review, id: 'next-review' }] }));
+    });
+
+  it.each(['suspended', 'inactive', 'viewer', 'no editable scope', 'editor outside allowed scope',
+    'other tenant', 'legacy other hierarchy', 'legacy ALL', 'legacy all'])(
+    'budget-equivalent ActionPlan review updates deny %s', async scenario => {
+      await seedTablero();
+      await testEnv.withSecurityRulesDisabled(async context => {
+        const db = context.firestore();
+        const membership = { ...canonicalMembership('member_a', 'A'), allowedDashboardIds: ['a'],
+          editableDashboardIds: ['a'], capabilities: ['plan_editor'] };
+        if (scenario === 'suspended' || scenario === 'inactive') membership.status = scenario;
+        if (scenario === 'viewer') { membership.capabilities = ['viewer']; membership.editableDashboardIds = []; }
+        if (scenario === 'no editable scope') membership.editableDashboardIds = ['view'];
+        if (scenario === 'editor outside allowed scope') { membership.capabilities = ['editor']; membership.allowedDashboardIds = ['view']; }
+        if (scenario === 'other tenant') membership.clientId = 'B';
+        await setDoc(doc(db, 'tbl_userMemberships', 'member_a__A'), membership);
+        // Legacy editor-looking data must not override a canonical denial.
+        await updateDoc(doc(db, 'tbl_users', 'member_a'), {
+          globalRole: 'Director', directorTitle: 'OPERACIONES', dashboardAccess: { a: 'Editor' },
+        });
+        if (scenario.startsWith('legacy')) {
+          await deleteDoc(doc(db, 'tbl_userMemberships', 'member_a__A'));
+          await updateDoc(doc(db, 'tbl_users', 'member_a'), {
+            directorTitle: 'OTHER', dashboardAccess: {},
+            clientId: scenario === 'legacy ALL' ? 'ALL' : scenario === 'legacy all' ? 'all' : 'A',
+          });
+        }
+      });
+      const db = testEnv.authenticatedContext('member_a').firestore();
+      await assertFails(updateDoc(doc(db, 'tbl_actionPlans', 'a'), { resultReviews: [{
+        id: 'denied-review', reviewedAt: '2026-10-06', reviewedByUserId: 'member_a',
+        reviewedByLabel: 'Reviewer', observedResult: 'Observed', effect: 'FAVORABLE', decision: 'CLOSE',
+      }] }));
+    });
+
   it('P0 preserves originalId scoped queries', async () => {
     await seedTablero();
     await testEnv.withSecurityRulesDisabled(async context => {
