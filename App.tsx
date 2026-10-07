@@ -1768,6 +1768,14 @@ export default function App() {
     setSelectedClientId(nextClientId);
   }, [selectedClientId]);
 
+  // A manual sidebar choice replaces any in-flight deep link. Programmatic
+  // CONTROL/Strategy/ActionPlan navigation keeps its target until DashboardView consumes it.
+  const handleManualDashboardSelect = useCallback((dashboardId: number | string) => {
+    setPendingKpiNavigation(null);
+    setPendingActionPlanTarget(null);
+    setSelectedDashboardId(dashboardId);
+  }, []);
+
   const handleUpdateItem = async (updatedItem: DashboardItem) => {
     if (!selectedDashboard || selectedDashboard.id === -1) return;
 
@@ -3242,7 +3250,7 @@ Esto corregirá cualquier inconsistencia en colores (ej. Amarillo vs Rojo).`)
           <HierarchySidebar
             dashboards={dashboards}
             selectedDashboardId={selectedDashboardId}
-            onSelectDashboard={setSelectedDashboardId}
+            onSelectDashboard={handleManualDashboardSelect}
             settings={settings}
             isGlobalAdmin={isGlobalAdmin}
             isDirector={isDirector}
