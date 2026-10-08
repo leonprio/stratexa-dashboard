@@ -1,12 +1,12 @@
 import React, { useState } from "react";
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { RelatedActionPlans } from "./RelatedActionPlans";
 import { CurrentPeriodFocus } from "./CurrentPeriodFocus";
 import { firebaseService } from "../services/firebaseService";
 import type { ActionPlan, DashboardItem } from "../types";
 
 jest.mock("../services/firebaseService", () => ({ firebaseService: {
-  getActionPlansForIndicator: jest.fn(), createActionPlan: jest.fn(), updateActionPlan: jest.fn(),
+  getActionPlansForIndicator: jest.fn(), getUsers: jest.fn(), createActionPlan: jest.fn(), updateActionPlan: jest.fn(),
 } }));
 
 const props = { indicatorId: 2, dashboardId: 10, clientId: "LEON", year: 2026, periodType: "monthly" as const, periodIndex: 8, canEdit: true };
@@ -18,6 +18,26 @@ function FocusHarness({ plansCollapsed }: { plansCollapsed: boolean }) {
 }
 
 beforeEach(() => jest.resetAllMocks());
+
+test("internal plan assignment offers only dashboard-authorized users and persists label plus canonical id", async () => {
+  (firebaseService.getActionPlansForIndicator as jest.Mock).mockResolvedValue([existing]);
+  (firebaseService.getUsers as jest.Mock).mockResolvedValue([
+    { id: "uid-editor", name: "Editora", email: "e@test", globalRole: "Member", clientId: "LEON", dashboardAccess: { "10": "Editor" } },
+    { id: "uid-viewer", name: "Sólo lectura", email: "v@test", globalRole: "Member", clientId: "LEON", dashboardAccess: { "10": "Viewer" } },
+    { id: "uid-outsider", name: "Fuera de alcance", email: "o@test", globalRole: "Member", clientId: "LEON", dashboardAccess: {} },
+  ]);
+  (firebaseService.updateActionPlan as jest.Mock).mockResolvedValue(true);
+  render(<RelatedActionPlans {...props} currentUser={{ id: "uid-admin", name: "Admin", email: "a@test", globalRole: "Admin", clientId: "LEON", dashboardAccess: {} } as any} />);
+  fireEvent.click(await screen.findByRole("button", { name: /Editar plan/ }));
+  fireEvent.click(screen.getByRole("button", { name: "Editar plan" }));
+  const assignment = screen.getByRole("combobox", { name: "Asignar plan a usuario" });
+  expect(within(assignment).getByRole("option", { name: "Editora" })).toBeInTheDocument();
+  expect(within(assignment).queryByRole("option", { name: "Fuera de alcance" })).not.toBeInTheDocument();
+  expect(within(assignment).queryByRole("option", { name: "Sólo lectura" })).not.toBeInTheDocument();
+  fireEvent.change(assignment, { target: { value: "uid-editor" } });
+  fireEvent.click(screen.getByRole("button", { name: "Guardar plan" }));
+  await waitFor(() => expect(firebaseService.updateActionPlan).toHaveBeenCalledWith("existing", expect.objectContaining({ responsible: "Editora", responsibleUserId: "uid-editor" })));
+});
 
 test.each([true, false].flatMap(collapsed => ["pending", "error"].map(loadState => ({ collapsed, loadState }))))(
   "authorized first-plan CTA stays visible with collapsed=$collapsed and read=$loadState",

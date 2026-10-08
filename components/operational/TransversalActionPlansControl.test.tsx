@@ -1,6 +1,6 @@
 import React from 'react';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
-import { classifyDue, dedupePlans, filterPlans, getOverdueActivities, hasOverdueActivity, TransversalActionPlansControl } from './TransversalActionPlansControl';
+import { belongsToMyControl, classifyDue, dedupePlans, filterMyControlPlans, filterPlans, getOverdueActivities, hasOverdueActivity, TransversalActionPlansControl } from './TransversalActionPlansControl';
 import { ActionPlan, Dashboard } from '../../types';
 import { firebaseService } from '../../services/firebaseService';
 import { currentControlPeriod } from '../../utils/controlNavigation';
@@ -32,6 +32,38 @@ describe('transversal action plans control logic', () => {
     expect(filterPlans(items, 'Responsable', 'Ana')).toHaveLength(1);
     expect(filterPlans(items, 'Estado', 'En ejecución')).toHaveLength(1);
     expect(filterPlans(items, 'Todos', 'Todos')).toHaveLength(2);
+  });
+  it('filters personal control by canonical user id only and includes pending assigned activities', () => {
+    const items = [plan({ responsible: 'Ana', responsibleUserId: 'uid-a' }), plan({ id: '2', responsible: 'Ana', responsibleUserId: 'uid-b' }), plan({ id: '3', responsible: 'Ana' }), plan({ id: '4', activities: [{ id: 'a', title: 'Tarea', responsible: 'Ana', responsibleUserId: 'uid-a', progress: 0, createdAt: '', updatedAt: '' }] }), plan({ id: '5', responsible: 'Externo', activities: [{ id: 'b', title: 'Externa', responsible: 'Ana', progress: 0, createdAt: '', updatedAt: '' }] })];
+    expect(filterMyControlPlans(items, 'uid-a', now).map(candidate => candidate.id)).toEqual(['1', '4']);
+    expect(belongsToMyControl({ responsible: 'Ana' }, 'uid-a')).toBe(false);
+    expect(belongsToMyControl({ responsible: 'Ana', responsibleUserId: 'uid-b' }, 'uid-a')).toBe(false);
+    expect(filterPlans(items, 'Todos', 'Todos')).toHaveLength(5);
+  });
+  it('includes canonically assigned successor plans and activities, but excludes assignments to another user', () => {
+    const successorPlan = plan({ id: 'next-plan', responsibleUserId: 'uid-a' });
+    const sourcePlan = plan({ id: 'source-plan', responsibleUserId: 'uid-b', resultReviews: [{ id: 'review-p', reviewedAt: '2026-01-01', reviewedByLabel: 'x', observedResult: 'x', effect: 'PARTIAL', decision: 'CONTINUE', nextCommitmentPlanId: 'next-plan' }] });
+    const sourceActivity = plan({ id: 'source-activity', responsibleUserId: 'uid-b', activities: [{ id: 'next-activity', title: 'Continuar', responsibleUserId: 'uid-a', progress: 0, createdAt: '', updatedAt: '' }], resultReviews: [{ id: 'review-a', reviewedAt: '2026-01-01', reviewedByLabel: 'x', observedResult: 'x', effect: 'PARTIAL', decision: 'CONTINUE', nextCommitmentActivityId: 'next-activity' }] });
+    const otherUser = plan({ id: 'other', responsibleUserId: 'uid-b' });
+    expect(filterMyControlPlans([sourcePlan, successorPlan, sourceActivity, otherUser], 'uid-a', now).map(candidate => candidate.id)).toEqual(['next-plan', 'source-activity']);
+  });
+  it('deduplicates personal items and keeps legacy/external responsibilities out of the personal scope', () => {
+    const planWithAssignedActivity = plan({ id: 'same', responsibleUserId: 'uid-a', activities: [{ id: 'a', title: 'A', responsibleUserId: 'uid-a', progress: 0, createdAt: '', updatedAt: '' }] });
+    const legacy = plan({ id: 'legacy', responsible: 'Ana' });
+    const external = plan({ id: 'external', responsible: 'Ana' });
+    expect(filterMyControlPlans([planWithAssignedActivity, { ...planWithAssignedActivity, indicator: 'duplicated source' }, legacy, external], 'uid-a', now).map(candidate => candidate.id)).toEqual(['same']);
+    expect(filterMyControlPlans([legacy, external], 'uid-a', now)).toEqual([]);
+  });
+  it('enforces client and dashboard identity in the personal predicate', () => {
+    const inScope = plan({ id: 'in', clientId: 'ACME', dashboardId: 10, responsibleUserId: 'uid-a' });
+    const otherClient = plan({ id: 'client', clientId: 'OTHER', dashboardId: 10, responsibleUserId: 'uid-a' });
+    const otherDashboard = plan({ id: 'dashboard', clientId: 'ACME', dashboardId: 11, responsibleUserId: 'uid-a' });
+    expect(filterMyControlPlans([inScope, otherClient, otherDashboard], 'uid-a', now, { clientId: 'acme', dashboardIds: [10] }).map(candidate => candidate.id)).toEqual(['in']);
+  });
+  it('exposes the personal scope inside the existing control and leaves it disabled without an authenticated user', () => {
+    render(<TransversalActionPlansControl dashboards={[controlDashboard()]} currentDashboard={controlDashboard()} managementYear={2026} />);
+    expect(screen.getByRole('button', { name: 'Mi Control' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Todos' })).toHaveAttribute('aria-pressed', 'true');
   });
   it('detects overdue activities without requiring a plan target date', () => {
     const overdue = { id: 'a1', title: 'Actividad vencida', progress: 20, targetDate: '2026-08-20', createdAt: '', updatedAt: '' };
@@ -99,6 +131,36 @@ describe('TransversalActionPlansControl review continuity', () => {
     render(<TransversalActionPlansControl dashboards={[controlDashboard()]} currentDashboard={controlDashboard()} managementYear={2026} onNavigateToKpi={onNavigateToKpi} />);
     fireEvent.click(await screen.findByRole('button', { name: 'VER KPI' }));
     expect(onNavigateToKpi).toHaveBeenCalledWith(10, 7);
+  });
+  test('Mi Control opens an assigned activity with its physical plan and activity identities', async () => {
+    const assigned = controlPlan({ id: 'activity-parent', status: 'in_progress', activities: [{ id: 'activity-owned', title: 'Actividad propia', responsible: 'Ana', responsibleUserId: 'uid-a', progress: 10, targetDate: '2026-08-01', createdAt: '', updatedAt: '' }] });
+    jest.spyOn(firebaseService, 'getActionPlansForIndicator').mockResolvedValue([assigned]);
+    const onNavigateToPlan = jest.fn();
+    render(<TransversalActionPlansControl dashboards={[controlDashboard()]} currentDashboard={controlDashboard()} currentUser={{ id: 'uid-a', name: 'Ana' } as any} managementYear={2026} onNavigateToPlan={onNavigateToPlan} />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Mi Control' }));
+    fireEvent.click(screen.getByRole('button', { name: 'GESTIONAR PLAN' }));
+    expect(onNavigateToPlan).toHaveBeenCalledWith(expect.objectContaining({ clientId: 'ACME', dashboardId: 10, itemId: 7, actionPlanId: 'activity-parent', activityId: 'activity-owned' }));
+  });
+  test('Mi Control routes a canonically assigned pending review directly to review', async () => {
+    const assigned = controlPlan({ responsibleUserId: 'uid-a' });
+    jest.spyOn(firebaseService, 'getActionPlansForIndicator').mockResolvedValue([assigned]);
+    const onNavigateToPlan = jest.fn();
+    render(<TransversalActionPlansControl dashboards={[controlDashboard()]} currentDashboard={controlDashboard()} currentUser={{ id: 'uid-a', name: 'Ana' } as any} managementYear={2026} onNavigateToPlan={onNavigateToPlan} />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Mi Control' }));
+    fireEvent.click(screen.getByRole('button', { name: 'REVISAR RESULTADO' }));
+    expect(onNavigateToPlan).toHaveBeenCalledWith(expect.objectContaining({ clientId: 'ACME', dashboardId: 10, itemId: 7, actionPlanId: assigned.id, openResultReview: true }));
+  });
+  test('Mi Control deduplicates an assigned next plan and navigates to the successor plan identity', async () => {
+    const root = controlPlan({ id: 'review-root', responsibleUserId: 'uid-b', resultReviews: [{ id: 'rr', reviewedAt: '2026-01-01', reviewedByLabel: 'Ana', observedResult: 'Ajustar', effect: 'PARTIAL', decision: 'ADJUST', nextCommitmentPlanId: 'successor-own' }] });
+    const successor = controlPlan({ id: 'successor-own', title: 'Sucesor personal', status: 'in_progress', responsibleUserId: 'uid-a' });
+    jest.spyOn(firebaseService, 'getActionPlansForIndicator').mockResolvedValue([root, successor]);
+    const onNavigateToPlan = jest.fn();
+    render(<TransversalActionPlansControl dashboards={[controlDashboard()]} currentDashboard={controlDashboard()} currentUser={{ id: 'uid-a', name: 'Ana' } as any} managementYear={2026} onNavigateToPlan={onNavigateToPlan} />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Mi Control' }));
+    expect(screen.getAllByText('Sucesor personal')).toHaveLength(1);
+    expect(screen.queryByText('Plan con efecto pendiente')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'GESTIONAR PLAN' }));
+    expect(onNavigateToPlan).toHaveBeenCalledWith(expect.objectContaining({ actionPlanId: 'successor-own', clientId: 'ACME', dashboardId: 10, itemId: 7 }));
   });
 
   test('same-title plans keep separate plan ids when navigating from their own cards', async () => {

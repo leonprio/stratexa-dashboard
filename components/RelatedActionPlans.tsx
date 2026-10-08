@@ -9,6 +9,7 @@ import {
 } from "../types";
 import { ActionPlanResultReviewPanel } from "./ActionPlanResultReviewPanel";
 import { firebaseService } from "../services/firebaseService";
+import { canAccessDashboard, canEditActionPlan, resolveEffectiveMemberships } from "../services/tableroAuthorization";
 import {
   calculateActionPlanProgress,
   classifyActionPlanActivity,
@@ -163,6 +164,7 @@ export const RelatedActionPlans: React.FC<Props> = ({
   onToggle,
 }) => {
   const [plans, setPlans] = useState<ActionPlan[]>([]);
+  const [assignableUsers, setAssignableUsers] = useState<User[]>([]);
   const [state, setState] = useState<"loading" | "saving" | "saved" | "error">(
     "loading",
   );
@@ -203,6 +205,16 @@ export const RelatedActionPlans: React.FC<Props> = ({
   useEffect(() => {
     void load();
   }, [indicatorId, clientId]);
+  useEffect(() => {
+    let active = true;
+    if (!canEdit || !currentUser?.id) { setAssignableUsers([]); return () => { active = false; }; }
+    void Promise.resolve().then(() => firebaseService.getUsers()).then(users => {
+      if (!active) return;
+      const dashboard = { id: dashboardId, clientId };
+      setAssignableUsers(users.filter(user => user.id && resolveEffectiveMemberships(user).memberships.some(membership => membership.clientId.toUpperCase() === String(clientId || '').trim().toUpperCase() && membership.status === 'active') && canAccessDashboard(user, dashboard, 'viewer') && canEditActionPlan(user, dashboard)));
+    }).catch(() => { if (active) setAssignableUsers([]); });
+    return () => { active = false; };
+  }, [canEdit, currentUser, dashboardId, clientId]);
   useEffect(() => {
     if (!initialPlanId || draft || creatingPlanRef.current || state === "loading") return;
     const requested = plans.find(
@@ -297,6 +309,10 @@ export const RelatedActionPlans: React.FC<Props> = ({
   };
   const update = (key: keyof ActionPlan, value: string) =>
     setDraft((d) => (d ? { ...d, [key]: value } : d));
+  const setPlanResponsibleUser = (userId: string) => {
+    const internal = assignableUsers.find(user => user.id === userId);
+    setDraft((d) => d ? { ...d, responsibleUserId: internal?.id, ...(internal ? { responsible: internal.name } : { responsibleUserId: undefined }) } : d);
+  };
   const updateActivity = (
     id: string,
     key: keyof ActionPlanActivity,
@@ -482,6 +498,7 @@ export const RelatedActionPlans: React.FC<Props> = ({
               plan={draft}
               canEdit={canEdit}
               currentUser={currentUser}
+              assignableUsers={assignableUsers}
               initialOpen={initialOpenResultReview}
               year={year}
               periodType={periodType === "weekly" ? "weekly" : "monthly"}
@@ -513,9 +530,12 @@ export const RelatedActionPlans: React.FC<Props> = ({
             <Field label="Responsable general">
               <input
                 value={draft.responsible || ""}
-                onChange={(e) => update("responsible", e.target.value)}
+                onChange={(e) => { update("responsible", e.target.value); setDraft((d) => d ? { ...d, responsibleUserId: undefined } : d); }}
                 className={control}
               />
+            <label className="mt-2 block text-[10px] font-black uppercase text-slate-400">Asignación interna (opcional)
+              <select aria-label="Asignar plan a usuario" value={draft.responsibleUserId || ""} onChange={(event) => { const user = assignableUsers.find(candidate => candidate.id === event.target.value); setDraft(d => d ? { ...d, responsibleUserId: user?.id, ...(user ? { responsible: user.name } : {}) } : d); }} className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100"><option value="">Responsable externo o sin asignación</option>{assignableUsers.map(user => <option key={user.id} value={user.id}>{user.name}</option>)}</select>
+            </label>
             </Field>
             <Field label="Fecha compromiso del plan">
               <input
@@ -565,12 +585,11 @@ export const RelatedActionPlans: React.FC<Props> = ({
                     <Field label="Responsable">
                       <input
                         value={a.responsible || ""}
-                        onChange={(e) =>
-                          updateActivity(a.id, "responsible", e.target.value)
-                        }
+                        onChange={(e) => { updateActivity(a.id, "responsible", e.target.value); setDraft((d) => d ? { ...d, activities: (d.activities || []).map((activity) => activity.id === a.id ? { ...activity, responsibleUserId: undefined } : activity) } : d); }}
                         className={control}
                       />
                     </Field>
+                    <Field label="Asignación interna (opcional)"><select aria-label={`Asignar actividad ${a.title} a usuario`} value={a.responsibleUserId || ""} disabled={a.progress >= 100} onChange={(event) => setDraft((d) => d ? { ...d, activities: (d.activities || []).map((activity) => { if (activity.id !== a.id) return activity; const user = assignableUsers.find(candidate => candidate.id === event.target.value); return { ...activity, responsibleUserId: user?.id, ...(user ? { responsible: user.name } : {}) }; }) } : d)} className={control}><option value="">Responsable externo o sin asignación</option>{assignableUsers.map(user => <option key={user.id} value={user.id}>{user.name}</option>)}</select></Field>
                     <Field label="Fecha compromiso">
                       <input
                         type="date"

@@ -201,6 +201,7 @@ export interface ActionPlanActivity {
   id: string;
   title: string;
   responsible?: string;
+  responsibleUserId?: string;
   targetDate?: string;
   progress: number;
   result?: string;
@@ -222,6 +223,7 @@ export interface ActionPlan {
   originPeriodIndex?: number;
   status: ActionPlanStatus;
   responsible?: string;
+  responsibleUserId?: string;
   startDate: string;
   targetDate?: string;
   progress: number;

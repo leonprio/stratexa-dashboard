@@ -6,7 +6,7 @@ import { firebaseService } from '../services/firebaseService';
 import { calculateAggregateDashboard } from '../utils/aggregationUtils';
 
 jest.mock('../services/firebaseService', () => ({ firebaseService: {
-  getActionPlansForIndicator: jest.fn(), createActionPlan: jest.fn(), updateActionPlan: jest.fn(),
+  getActionPlansForIndicator: jest.fn(), getUsers: jest.fn(), createActionPlan: jest.fn(), updateActionPlan: jest.fn(),
 } }));
 jest.mock('../utils/ExecutiveOperationalExport', () => ({ exportToExecutiveExcelJS: jest.fn() }));
 
@@ -29,6 +29,7 @@ const profile = (canManage: boolean): User => ({
 
 beforeEach(() => {
   jest.resetAllMocks();
+  (firebaseService.getUsers as jest.Mock).mockResolvedValue([]);
   Element.prototype.scrollIntoView = jest.fn();
 });
 

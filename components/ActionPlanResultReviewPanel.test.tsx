@@ -1,6 +1,6 @@
 import React from "react";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { ActionPlanResultReviewPanel } from "./ActionPlanResultReviewPanel";
+import { ActionPlanResultReviewPanel, safeEvidenceUrl } from "./ActionPlanResultReviewPanel";
 import { firebaseService } from "../services/firebaseService";
 import type { ActionPlan, User } from "../types";
 
@@ -19,6 +19,35 @@ const resultReview = (id: string, reviewedAt: string, observedResult = id) => ({
 describe("ActionPlanResultReviewPanel", () => {
   beforeEach(() => jest.clearAllMocks());
 
+  test("only treats HTTPS evidence references as external links", () => {
+    expect(safeEvidenceUrl("https://example.test/evidence")).toBe("https://example.test/evidence");
+    expect(safeEvidenceUrl("javascript:alert(1)")).toBeUndefined();
+    expect(safeEvidenceUrl("nota de evidencia")).toBeUndefined();
+  });
+  test("renders legacy evidence text and never creates an executable link for unsafe schemes", () => {
+    const legacy = { ...resultReview("legacy", "2026-01-01T00:00:00.000Z"), evidenceRef: "javascript:alert(1)" };
+    const { rerender } = render(<ActionPlanResultReviewPanel {...baseProps} plan={{ ...plan, resultReviews: [legacy] }} />);
+    expect(screen.getByText(/javascript:alert/)).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Abrir evidencia" })).not.toBeInTheDocument();
+    rerender(<ActionPlanResultReviewPanel {...baseProps} plan={{ ...plan, resultReviews: [{ ...legacy, evidenceRef: "https://example.test/evidence" }] }} />);
+    expect(screen.getByRole("link", { name: "Abrir evidencia" })).toHaveAttribute("href", "https://example.test/evidence");
+  });
+  test("an external successor responsible keeps text and never infers a user id from a matching label", async () => {
+    (firebaseService.recordActionPlanResultReview as jest.Mock).mockResolvedValue(plan);
+    render(<ActionPlanResultReviewPanel {...baseProps} assignableUsers={[{ id: "user-luis", name: "Luis", email: "luis@example.test", globalRole: "Member", clientId: "ACME", dashboardAccess: { "34": "Viewer" } } as User]} />);
+    fireEvent.click(screen.getByRole("button", { name: "Revisar resultado" }));
+    fireEvent.change(screen.getByLabelText(/Resultado observado/), { target: { value: "Continúa" } });
+    fireEvent.change(screen.getByLabelText("Decisión"), { target: { value: "CONTINUE" } });
+    fireEvent.click(screen.getByText("Opciones adicionales"));
+    fireEvent.change(screen.getByLabelText("Responsable externo (opcional)"), { target: { value: "Luis" } });
+    fireEvent.change(screen.getByLabelText("Título de la actividad"), { target: { value: "Nueva actividad" } });
+    fireEvent.click(screen.getByRole("button", { name: "Guardar revisión" }));
+    await waitFor(() => expect(firebaseService.recordActionPlanResultReview).toHaveBeenCalled());
+    const externalActivity = (firebaseService.recordActionPlanResultReview as jest.Mock).mock.calls.at(-1)?.[2]?.activity;
+    expect(externalActivity).toEqual(expect.objectContaining({ responsible: "Luis" }));
+    expect(externalActivity).not.toHaveProperty("responsibleUserId");
+  });
+
   test("muestra el CTA solo a personas autorizadas y señala ejecución completada con efecto pendiente", () => {
     const { rerender } = render(<ActionPlanResultReviewPanel {...baseProps} />);
     expect(screen.getByRole("button", { name: "Revisar resultado" })).toBeInTheDocument();
@@ -29,7 +58,7 @@ describe("ActionPlanResultReviewPanel", () => {
   });
 
   test("el formulario requiere resultado observado y presenta opciones en español", () => {
-    render(<ActionPlanResultReviewPanel {...baseProps} />);
+    render(<ActionPlanResultReviewPanel {...baseProps} assignableUsers={[{ id: "user-luis", name: "Luis", email: "luis@example.test", globalRole: "Member", clientId: "ACME", dashboardAccess: { "34": "Viewer" } } as User]} />);
     fireEvent.click(screen.getByRole("button", { name: "Revisar resultado" }));
     expect(screen.getByLabelText(/Resultado observado/)).toBeRequired();
     expect(screen.getByRole("option", { name: "Favorable" })).toBeInTheDocument();
@@ -91,16 +120,16 @@ describe("ActionPlanResultReviewPanel", () => {
 
   test("permite crear actividad sucesora desde CONTINUE con progreso inicial cero", async () => {
     (firebaseService.recordActionPlanResultReview as jest.Mock).mockResolvedValue(plan);
-    render(<ActionPlanResultReviewPanel {...baseProps} />);
+    render(<ActionPlanResultReviewPanel {...baseProps} assignableUsers={[{ id: "user-luis", name: "Luis", email: "luis@example.test", globalRole: "Member", clientId: "ACME", dashboardAccess: { "34": "Viewer" } } as User]} />);
     fireEvent.click(screen.getByRole("button", { name: "Revisar resultado" }));
     fireEvent.change(screen.getByLabelText(/Resultado observado/), { target: { value: "Continúa la brecha" } });
     fireEvent.change(screen.getByLabelText("Decisión"), { target: { value: "CONTINUE" } });
     fireEvent.click(screen.getByText("Opciones adicionales"));
     fireEvent.change(screen.getByLabelText("Título de la actividad"), { target: { value: "Verificar resultado" } });
-    fireEvent.change(screen.getByLabelText("Responsable (opcional)"), { target: { value: "Luis" } });
+    fireEvent.change(screen.getByLabelText("Asignar usuario interno (opcional)"), { target: { value: "user-luis" } });
     fireEvent.click(screen.getByRole("button", { name: "Guardar revisión" }));
     await waitFor(() => expect(firebaseService.recordActionPlanResultReview).toHaveBeenCalled());
-    expect((firebaseService.recordActionPlanResultReview as jest.Mock).mock.calls[0][2]).toEqual(expect.objectContaining({ type: "activity", activity: expect.objectContaining({ title: "Verificar resultado", responsible: "Luis", progress: 0 }) }));
+    expect((firebaseService.recordActionPlanResultReview as jest.Mock).mock.calls[0][2]).toEqual(expect.objectContaining({ type: "activity", activity: expect.objectContaining({ title: "Verificar resultado", responsible: "Luis", responsibleUserId: "user-luis", progress: 0 }) }));
   });
 
   test("permite crear plan sucesor desde ADJUST y conserva cliente, tablero e indicador", async () => {
@@ -124,6 +153,6 @@ describe("ActionPlanResultReviewPanel", () => {
     fireEvent.click(screen.getByText("Opciones adicionales"));
     expect(screen.queryByText("Siguiente compromiso (opcional)")).not.toBeInTheDocument();
     expect(screen.getByLabelText("Próxima revisión (opcional)")).not.toBeRequired();
-    expect(screen.getByLabelText("Referencia de evidencia (opcional)")).not.toBeRequired();
+    expect(screen.getByLabelText(/Referencia de evidencia \(opcional\)/)).not.toBeRequired();
   });
 });

@@ -16,11 +16,15 @@ const decisionLabels: Record<ActionPlanResultDecision, string> = {
 };
 const control = "mt-1 w-full rounded-lg border border-slate-700 bg-slate-950/80 px-3 py-2 text-sm text-slate-100 outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-500/30 placeholder:text-slate-500";
 const today = () => new Date().toISOString().slice(0, 10);
+export const safeEvidenceUrl = (value: string): string | undefined => {
+  try { const url = new URL(value); return url.protocol === "https:" ? url.href : undefined; } catch { return undefined; }
+};
 
 interface Props {
   plan: ActionPlan;
   canEdit: boolean;
   currentUser?: User;
+  assignableUsers?: User[];
   year: number;
   periodType: "monthly" | "weekly";
   periodIndex: number;
@@ -28,7 +32,7 @@ interface Props {
   onSaved: (plan: ActionPlan) => void;
 }
 
-export const ActionPlanResultReviewPanel: React.FC<Props> = ({ plan, canEdit, currentUser, year, periodType, periodIndex, initialOpen = false, onSaved }) => {
+export const ActionPlanResultReviewPanel: React.FC<Props> = ({ plan, canEdit, currentUser, assignableUsers = [], year, periodType, periodIndex, initialOpen = false, onSaved }) => {
   const [open, setOpen] = useState(initialOpen);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -42,6 +46,7 @@ export const ActionPlanResultReviewPanel: React.FC<Props> = ({ plan, canEdit, cu
   const [commitmentType, setCommitmentType] = useState<"activity" | "plan">("activity");
   const [commitmentTitle, setCommitmentTitle] = useState("");
   const [commitmentResponsible, setCommitmentResponsible] = useState("");
+  const [commitmentResponsibleUserId, setCommitmentResponsibleUserId] = useState("");
   const [commitmentDate, setCommitmentDate] = useState("");
   const firstFieldRef = useRef<HTMLTextAreaElement>(null);
   const triggerButtonRef = useRef<HTMLButtonElement>(null);
@@ -77,7 +82,7 @@ export const ActionPlanResultReviewPanel: React.FC<Props> = ({ plan, canEdit, cu
       effect,
       decision,
       ...(note.trim() ? { note: note.trim() } : {}),
-      ...(evidenceRef.trim() ? { evidenceRef: evidenceRef.trim() } : {}),
+      ...(evidenceRef.trim() ? { evidenceRef: safeEvidenceUrl(evidenceRef.trim()) || evidenceRef.trim() } : {}),
       ...(nextReviewDate ? { nextReviewDate } : {}),
       reviewYear: year,
       reviewPeriodType: periodType,
@@ -89,7 +94,7 @@ export const ActionPlanResultReviewPanel: React.FC<Props> = ({ plan, canEdit, cu
       const activity: ActionPlanActivity = {
         id: crypto.randomUUID(),
         title: commitmentTitle.trim(),
-        ...(commitmentResponsible.trim() ? { responsible: commitmentResponsible.trim() } : {}),
+        ...(commitmentResponsibleUserId ? { responsible: assignableUsers.find(user => user.id === commitmentResponsibleUserId)?.name || "", responsibleUserId: commitmentResponsibleUserId } : commitmentResponsible.trim() ? { responsible: commitmentResponsible.trim() } : {}),
         ...(commitmentDate ? { targetDate: commitmentDate } : {}),
         progress: 0,
         impact: "NOT_EVALUATED",
@@ -111,6 +116,7 @@ export const ActionPlanResultReviewPanel: React.FC<Props> = ({ plan, canEdit, cu
         originPeriodType: periodType,
         originPeriodIndex: periodIndex,
         status: "planned",
+        ...(commitmentResponsibleUserId ? { responsible: assignableUsers.find(user => user.id === commitmentResponsibleUserId)?.name || "", responsibleUserId: commitmentResponsibleUserId } : commitmentResponsible.trim() ? { responsible: commitmentResponsible.trim() } : {}),
         startDate: today(),
         ...(commitmentDate ? { targetDate: commitmentDate } : {}),
         progress: 0,
@@ -165,7 +171,7 @@ export const ActionPlanResultReviewPanel: React.FC<Props> = ({ plan, canEdit, cu
         <summary className="cursor-pointer text-xs font-semibold text-cyan-200">Opciones adicionales</summary>
         <div className="mt-3 grid gap-3 sm:grid-cols-2">
           <label className="block text-xs font-semibold text-slate-200" htmlFor="review-next-date">Próxima revisión (opcional)<input id="review-next-date" type="date" value={nextReviewDate} onChange={(event) => setNextReviewDate(event.target.value)} className={control} /></label>
-          <label className="block text-xs font-semibold text-slate-200" htmlFor="review-evidence">Referencia de evidencia (opcional)<input id="review-evidence" type="text" maxLength={500} placeholder="URL o descripción" value={evidenceRef} onChange={(event) => setEvidenceRef(event.target.value)} className={control} /></label>
+          <label className="block text-xs font-semibold text-slate-200" htmlFor="review-evidence">Referencia de evidencia (opcional)<input id="review-evidence" type="text" maxLength={500} placeholder="URL HTTPS o descripción" value={evidenceRef} onChange={(event) => setEvidenceRef(event.target.value)} className={control} /><span className="mt-1 block text-[10px] text-slate-500">Sólo referencias HTTPS se podrán abrir como enlace.</span></label>
         </div>
         {canAddCommitment && <fieldset className="mt-4 rounded-lg border border-white/10 p-3">
           <legend className="px-1 text-xs font-semibold text-slate-200">Siguiente compromiso (opcional)</legend>
@@ -176,7 +182,8 @@ export const ActionPlanResultReviewPanel: React.FC<Props> = ({ plan, canEdit, cu
           <label className="mt-3 block text-xs font-semibold text-slate-200" htmlFor="commitment-title">{commitmentType === "activity" ? "Título de la actividad" : "Nombre del nuevo plan"}
             <input id="commitment-title" maxLength={200} value={commitmentTitle} onChange={(event) => setCommitmentTitle(event.target.value)} className={control} />
           </label>
-          {commitmentType === "activity" && <label className="mt-3 block text-xs font-semibold text-slate-200" htmlFor="commitment-responsible">Responsable (opcional)<input id="commitment-responsible" value={commitmentResponsible} onChange={(event) => setCommitmentResponsible(event.target.value)} className={control} /></label>}
+          <label className="mt-3 block text-xs font-semibold text-slate-200" htmlFor="commitment-responsible">Responsable externo (opcional)<input id="commitment-responsible" value={commitmentResponsible} onChange={(event) => { setCommitmentResponsible(event.target.value); setCommitmentResponsibleUserId(""); }} className={control} /></label>
+          <label className="mt-3 block text-xs font-semibold text-slate-200" htmlFor="commitment-responsible-user">Asignar usuario interno (opcional)<select id="commitment-responsible-user" value={commitmentResponsibleUserId} onChange={(event) => { setCommitmentResponsibleUserId(event.target.value); setCommitmentResponsible(""); }} className={control}><option value="">Sin asignación interna</option>{assignableUsers.map(user => <option key={user.id} value={user.id}>{user.name}</option>)}</select></label>
           <label className="mt-3 block text-xs font-semibold text-slate-200" htmlFor="commitment-date">Fecha compromiso (opcional)<input id="commitment-date" type="date" value={commitmentDate} onChange={(event) => setCommitmentDate(event.target.value)} className={control} /></label>
           {commitmentType === "plan" && <p className="mt-2 text-[11px] text-slate-400">El nuevo plan conservará automáticamente el cliente, tablero e indicador.</p>}
         </fieldset>}
@@ -194,7 +201,7 @@ export const ActionPlanResultReviewPanel: React.FC<Props> = ({ plan, canEdit, cu
         <p className="mt-2 text-sm text-slate-100">{review.observedResult}</p>
         <p className="mt-1 text-xs text-slate-300">Efecto: {effectLabels[review.effect]} · Decisión: {decisionLabels[review.decision]}</p>
         {review.note && <p className="mt-1 text-xs text-slate-400">Nota: {review.note}</p>}
-        {review.evidenceRef && <p className="mt-1 break-all text-xs text-slate-400">Evidencia: {review.evidenceRef}</p>}
+        {review.evidenceRef && <p className="mt-1 break-all text-xs text-slate-400">Evidencia: {safeEvidenceUrl(review.evidenceRef) ? <a href={safeEvidenceUrl(review.evidenceRef)} target="_blank" rel="noopener noreferrer" className="text-cyan-300 underline">Abrir evidencia</a> : review.evidenceRef}</p>}
         {review.nextReviewDate && <p className="mt-1 text-xs text-slate-400">Próxima revisión: {review.nextReviewDate}</p>}
         {review.nextCommitmentActivityId && <p className="mt-1 text-xs text-slate-400">Actividad sucesora: {review.nextCommitmentActivityId}</p>}
         {review.nextCommitmentPlanId && <p className="mt-1 text-xs text-slate-400">Plan sucesor: {review.nextCommitmentPlanId}</p>}
