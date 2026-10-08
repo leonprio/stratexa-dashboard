@@ -26,7 +26,8 @@ export const getOverdueActivities = (plan: Pick<ActionPlan, 'activities'>, now =
 export const hasOverdueActivity = (plan: Pick<ActionPlan, 'activities'>, now = new Date()) => getOverdueActivities(plan, now).length > 0;
 export const dedupePlans = (items: Enriched[]) => Array.from(new Map(items.map(item => [getActionPlanIdentityKey(item), item])).values());
 export const filterPlans = (items: Enriched[], filter: string, value: string) => items.filter(p => filter === 'Todos' || value === 'Todos' || (filter === 'Área' ? p.area === value : filter === 'Responsable' ? (p.responsible || 'Sin responsable') === value : statusLabels[p.status] === value));
-export const belongsToMyControl = (element: { responsible?: string; responsibleUserId?: string }, currentUserId?: string): boolean => !!currentUserId && element.responsibleUserId === currentUserId;
+/** Ownership is canonical only: labels and email text are display data, never identity. */
+export const belongsToMyControl = (element: { responsible?: string; responsibleUserId?: string }, currentUserId?: string): boolean => Boolean(currentUserId) && element.responsibleUserId === currentUserId;
 export const filterMyControlPlans = (plans: Enriched[], currentUserId: string | undefined, now = new Date(), scope?: { clientId?: string; dashboardIds?: Array<string | number> }, attentionOnly = false): Enriched[] => {
   if (!currentUserId) return [];
   const scoped = plans.filter(plan => (!scope?.clientId || String(plan.clientId || '').trim().toUpperCase() === scope.clientId.trim().toUpperCase()) && (!scope?.dashboardIds || scope.dashboardIds.some(id => String(id) === String(plan.dashboardId))));

@@ -40,6 +40,19 @@ describe('transversal action plans control logic', () => {
     expect(belongsToMyControl({ responsible: 'Ana', responsibleUserId: 'uid-b' }, 'uid-a')).toBe(false);
     expect(filterPlans(items, 'Todos', 'Todos')).toHaveLength(5);
   });
+  it('never grants ownership from matching name/email text or case normalization', () => {
+    const currentUser = { id: 'uid-canonical', name: 'Ana Pérez', email: 'ana@example.test' };
+    const textualOnly = [
+      plan({ id: 'same-name', responsible: currentUser.name }),
+      plan({ id: 'same-email', responsible: currentUser.email }),
+      plan({ id: 'lower-name', responsible: currentUser.name.toLowerCase() }),
+      plan({ id: 'upper-email', responsible: currentUser.email.toUpperCase() }),
+      plan({ id: 'different-uid-same-label', responsible: currentUser.name, responsibleUserId: 'uid-other' }),
+    ];
+    expect(filterMyControlPlans(textualOnly, currentUser.id, now)).toEqual([]);
+    expect(textualOnly.every(element => !belongsToMyControl(element, currentUser.id))).toBe(true);
+    expect(belongsToMyControl({ responsible: 'alguien más', responsibleUserId: currentUser.id }, currentUser.id)).toBe(true);
+  });
   it('includes canonically assigned successor plans and activities, but excludes assignments to another user', () => {
     const successorPlan = plan({ id: 'next-plan', responsibleUserId: 'uid-a' });
     const sourcePlan = plan({ id: 'source-plan', responsibleUserId: 'uid-b', resultReviews: [{ id: 'review-p', reviewedAt: '2026-01-01', reviewedByLabel: 'x', observedResult: 'x', effect: 'PARTIAL', decision: 'CONTINUE', nextCommitmentPlanId: 'next-plan' }] });
