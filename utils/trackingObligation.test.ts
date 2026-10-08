@@ -6,6 +6,7 @@ import {
   suggestTrackingStartFromGoalHistory,
   hasTrackingFactsBeforePeriod,
   selectKpiTrackingCaptureForPeriod,
+  getEarliestPendingConfigurationPeriod,
 } from './trackingObligation';
 
 const monthly = (year: number, monthIndex: number) => ({ frequency: 'monthly' as const, year, monthIndex });
@@ -85,5 +86,74 @@ describe('tracking obligation', () => {
     expect(hasTrackingFactsBeforePeriod('monthly', 2026, monthly(2026, 9), [null, null, null, null, null, null, null, 20], [null, null, null, null, null, null, null, 5], [], [])).toMatchObject({ hasFacts: true, firstPeriod: monthly(2026, 7) });
     expect(hasTrackingFactsBeforePeriod('monthly', 2026, monthly(2026, 9), [null, null, null, null, null, null, null, 0], [null, null, null, null, null, null, null, 0], [], [])).toMatchObject({ hasFacts: false });
     expect(hasTrackingFactsBeforePeriod('monthly', 2026, monthly(2026, 9), [null, null, null, null, null, null, null, 0], [], [false, false, false, false, false, false, false, true])).toMatchObject({ hasFacts: true });
+  });
+
+  describe('getEarliestPendingConfigurationPeriod', () => {
+    const makeItem = (overrides: Record<string, unknown> = {}) => ({
+      id: 1,
+      indicator: 'KPI',
+      weight: 1,
+      unit: 'u',
+      type: 'accumulative',
+      goalType: 'maximize',
+      frequency: 'monthly',
+      monthlyGoals: Array(12).fill(null),
+      monthlyProgress: Array(12).fill(null),
+      monthlyGoalCaptured: Array(12).fill(false),
+      monthlyProgressCaptured: Array(12).fill(false),
+      ...overrides,
+    } as any);
+
+    test('effectiveStart August, August missing goal, October target -> returns August', () => {
+      const item = makeItem({
+        trackingStartPeriod: monthly(2026, 7), // August
+      });
+      const result = getEarliestPendingConfigurationPeriod(item, monthly(2026, 9)); // October
+      expect(result).toEqual(monthly(2026, 7));
+    });
+
+    test('effectiveStart August, August and September configured, October missing -> returns October', () => {
+      const item = makeItem({
+        trackingStartPeriod: monthly(2026, 7),
+        monthlyGoals: Object.assign(Array(12).fill(null), { 7: 10, 8: 15 }),
+        monthlyGoalCaptured: Object.assign(Array(12).fill(false), { 7: true, 8: true }),
+      });
+      const result = getEarliestPendingConfigurationPeriod(item, monthly(2026, 9));
+      expect(result).toEqual(monthly(2026, 9));
+    });
+
+    test('effectiveStart September by exception, August empty -> returns September (never before exception)', () => {
+      const item = makeItem({
+        trackingStartPeriod: monthly(2026, 8), // September
+      });
+      const result = getEarliestPendingConfigurationPeriod(item, monthly(2026, 9));
+      expect(result).toEqual(monthly(2026, 8));
+    });
+
+    test('explicit zero goal in August is NOT classified as a pending configuration gap', () => {
+      const item = makeItem({
+        trackingStartPeriod: monthly(2026, 7),
+        monthlyGoals: Object.assign(Array(12).fill(null), { 7: 0 }),
+        monthlyGoalCaptured: Object.assign(Array(12).fill(false), { 7: true }),
+      });
+      const result = getEarliestPendingConfigurationPeriod(item, monthly(2026, 9));
+      // August has valid explicit zero goal, September is missing goal -> returns September
+      expect(result).toEqual(monthly(2026, 8));
+    });
+
+    test('activityMode KPI: August without activityConfig but with active inherited operational work suppresses configuration gap', () => {
+      const item = makeItem({
+        isActivityMode: true,
+        trackingStartPeriod: monthly(2026, 7),
+        activityConfig: {
+          6: [{ id: 'jul-act', label: 'Compromiso julio atrasado', targetCount: 3, completedCount: 0 }],
+          8: [{ id: 'sep-act', label: 'Actividad septiembre', targetCount: 5, completedCount: 1 }],
+        },
+      });
+      // August (7) has inherited active work from July, so it does not count as a configuration gap
+      // Target is October (9). September (8) is configured. October (9) has no activityConfig -> returns October
+      const result = getEarliestPendingConfigurationPeriod(item, monthly(2026, 9));
+      expect(result).toEqual(monthly(2026, 9));
+    });
   });
 });

@@ -97,25 +97,179 @@ describe('CurrentPeriodFocus Runtime & Derived Indicators Render Test (v9.4.13)'
     expect(screen.getByText('Actividad ficticia')).toBeInTheDocument();
   });
 
-  test('CONTROL REGISTRAR_AVANCE opens the KPI period with the activity manager closed', () => {
-    const item = activityItem();
-    render(<CurrentPeriodFocus item={item} allDashboardItems={[item]} globalThresholds={{ onTrack: 90, atRisk: 80 }} year={2026} canEdit onUpdateItem={jest.fn()} onClose={jest.fn()} controlTarget={controlTarget('REGISTRAR_AVANCE')} />);
-    expect(screen.getByRole('status')).toHaveTextContent('REGISTRAR AVANCE');
-    expect(screen.queryByText('CONFIRMAR LISTA')).not.toBeInTheDocument();
+  test('RED: CONTROL CONFIGURAR opens the earliest pending configuration period instead of controlTarget period', () => {
+    // Control target is October (monthIndex: 9), effective start is August (monthIndex: 7).
+    // August has no configuration (GOAL_REQUIRED), September and October are also consultable.
+    // CONFIGURAR must open August (monthIndex: 7), not October.
+    const item: DashboardItem = {
+      ...mockItems[0],
+      isActivityMode: true,
+      trackingStartPeriod: { frequency: 'monthly', year: 2026, monthIndex: 7 },
+      activityConfig: {
+        7: [], // August: empty checklist (missing goal/config)
+        8: [{ id: 'sep-act', label: 'Actividad septiembre', targetCount: 5, completedCount: 2 }],
+        9: [{ id: 'oct-act', label: 'Actividad octubre', targetCount: 10, completedCount: 0 }],
+      },
+    };
+    const targetOctober = {
+      clientId: 'LAB-A',
+      dashboardId: 101,
+      itemId: 2,
+      period: { frequency: 'monthly' as const, year: 2026, monthIndex: 9 },
+      operation: 'CONFIGURAR' as const,
+      origin: 'control' as const,
+    };
+    render(
+      <CurrentPeriodFocus
+        item={item}
+        allDashboardItems={[item]}
+        globalThresholds={{ onTrack: 90, atRisk: 80 }}
+        year={2026}
+        canEdit
+        onUpdateItem={jest.fn()}
+        onClose={jest.fn()}
+        controlTarget={targetOctober}
+      />
+    );
+    expect(screen.getByText('CONFIRMAR LISTA')).toBeInTheDocument();
+    expect(screen.getByTestId('activity-manager-period')).toHaveTextContent('PERIODO: Agosto 2026');
   });
 
-  test('CONTROL GESTIONAR opens the KPI summary with the activity manager closed', () => {
-    const item = activityItem();
-    render(<CurrentPeriodFocus item={item} allDashboardItems={[item]} globalThresholds={{ onTrack: 90, atRisk: 80 }} year={2026} canEdit onUpdateItem={jest.fn()} onClose={jest.fn()} controlTarget={controlTarget('GESTIONAR')} />);
-    expect(screen.getAllByText('Compromisos acordados').length).toBeGreaterThan(0);
-    expect(screen.queryByText('CONFIRMAR LISTA')).not.toBeInTheDocument();
+  test('CONTROL CONFIGURAR for simple numeric KPI sets period to earliest pending period and focuses goal input', () => {
+    const item: DashboardItem = {
+      ...mockItems[0],
+      isActivityMode: false,
+      trackingStartPeriod: { frequency: 'monthly', year: 2026, monthIndex: 7 }, // August
+      monthlyGoals: Object.assign(Array(12).fill(null), { 8: 10 }), // September configured
+      monthlyGoalCaptured: Object.assign(Array(12).fill(false), { 8: true }),
+    };
+    const targetOctober = {
+      clientId: 'LAB-A',
+      dashboardId: 101,
+      itemId: 2,
+      period: { frequency: 'monthly' as const, year: 2026, monthIndex: 9 },
+      operation: 'CONFIGURAR' as const,
+      origin: 'control' as const,
+    };
+    render(
+      <CurrentPeriodFocus
+        item={item}
+        allDashboardItems={[item]}
+        globalThresholds={{ onTrack: 90, atRisk: 80 }}
+        year={2026}
+        canEdit
+        onUpdateItem={jest.fn()}
+        onClose={jest.fn()}
+        controlTarget={targetOctober}
+      />
+    );
+    const goalInput = document.getElementById('goal-input') as HTMLInputElement;
+    expect(goalInput).toBeInTheDocument();
+    expect(document.activeElement).toBe(goalInput);
+    // The rendered period header should show Agosto
+    expect(screen.getByText('Periodo Consultado').nextElementSibling).toHaveTextContent('Agosto');
   });
 
-  test('normal activity KPI selection opens its summary with the activity manager closed', () => {
-    const item = activityItem();
-    render(<CurrentPeriodFocus item={item} allDashboardItems={[item]} globalThresholds={{ onTrack: 90, atRisk: 80 }} year={2026} canEdit onUpdateItem={jest.fn()} onClose={jest.fn()} />);
-    expect(screen.getByText('Compromisos acordados')).toBeInTheDocument();
+  test('CONTROL REGISTRAR_AVANCE with active inherited work selects ACCIONES POR ATENDER in RESUMEN', () => {
+    const item = {
+      ...mockItems[0],
+      isActivityMode: true,
+      activityConfig: {
+        7: [{ id: 'inherited-act', label: 'Compromiso atrasado agosto', targetCount: 5, completedCount: 1 }],
+      },
+    };
+    render(
+      <CurrentPeriodFocus
+        item={item}
+        allDashboardItems={[item]}
+        globalThresholds={{ onTrack: 90, atRisk: 80 }}
+        year={2026}
+        canEdit
+        onUpdateItem={jest.fn()}
+        onClose={jest.fn()}
+        controlTarget={controlTarget('REGISTRAR_AVANCE')}
+      />
+    );
+    expect(screen.getByRole('tab', { name: 'RESUMEN' })).toHaveAttribute('aria-selected', 'true');
     expect(screen.queryByText('CONFIRMAR LISTA')).not.toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: /ACCIONES POR ATENDER/i })).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByText('Compromiso atrasado agosto')).toBeInTheDocument();
+  });
+
+  test('CONTROL REGISTRAR_AVANCE without inherited work opens canonical current period capture without selecting ACCIONES POR ATENDER', () => {
+    const item = {
+      ...mockItems[0],
+      isActivityMode: true,
+      activityConfig: {
+        8: [{ id: 'current-act', label: 'Actividad septiembre', targetCount: 10, completedCount: 0 }],
+      },
+    };
+    render(
+      <CurrentPeriodFocus
+        item={item}
+        allDashboardItems={[item]}
+        globalThresholds={{ onTrack: 90, atRisk: 80 }}
+        year={2026}
+        canEdit
+        onUpdateItem={jest.fn()}
+        onClose={jest.fn()}
+        controlTarget={controlTarget('REGISTRAR_AVANCE')}
+      />
+    );
+    expect(screen.getByRole('tab', { name: 'RESUMEN' })).toHaveAttribute('aria-selected', 'true');
+    expect(screen.queryByText('CONFIRMAR LISTA')).not.toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: /Período actual/i })).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByRole('tab', { name: /ACCIONES POR ATENDER/i })).toHaveAttribute('aria-selected', 'false');
+  });
+
+  test('CONTROL GESTIONAR with pending actions opens RESUMEN with ACCIONES POR ATENDER selected', () => {
+    const item = {
+      ...mockItems[0],
+      isActivityMode: true,
+      activityConfig: {
+        7: [{ id: 'pending-act', label: 'Acción a gestionar', targetCount: 3, completedCount: 0 }],
+      },
+    };
+    render(
+      <CurrentPeriodFocus
+        item={item}
+        allDashboardItems={[item]}
+        globalThresholds={{ onTrack: 90, atRisk: 80 }}
+        year={2026}
+        canEdit
+        onUpdateItem={jest.fn()}
+        onClose={jest.fn()}
+        controlTarget={controlTarget('GESTIONAR')}
+      />
+    );
+    expect(screen.getByRole('tab', { name: 'RESUMEN' })).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByRole('tab', { name: /ACCIONES POR ATENDER/i })).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByText('Acción a gestionar')).toBeInTheDocument();
+  });
+
+  test('normal activity KPI selection opens summary without forcing ACCIONES POR ATENDER', () => {
+    const item = {
+      ...mockItems[0],
+      isActivityMode: true,
+      activityConfig: {
+        7: [{ id: 'inherited-act', label: 'Acción previa', targetCount: 5, completedCount: 1 }],
+      },
+    };
+    render(
+      <CurrentPeriodFocus
+        item={item}
+        allDashboardItems={[item]}
+        globalThresholds={{ onTrack: 90, atRisk: 80 }}
+        year={2026}
+        canEdit
+        onUpdateItem={jest.fn()}
+        onClose={jest.fn()}
+      />
+    );
+    expect(screen.getByRole('tab', { name: 'RESUMEN' })).toHaveAttribute('aria-selected', 'true');
+    expect(screen.queryByText('CONFIRMAR LISTA')).not.toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: /Período actual/i })).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByRole('tab', { name: /ACCIONES POR ATENDER/i })).toHaveAttribute('aria-selected', 'false');
   });
 
   test('summary and activities are explicit views, and closing activities returns to summary', () => {
@@ -234,7 +388,7 @@ describe('CurrentPeriodFocus Runtime & Derived Indicators Render Test (v9.4.13)'
     );
 
     // Switch to ACCIONES POR ATENDER tab
-    fireEvent.click(screen.getByRole('button', { name: /ACCIONES POR ATENDER/i }));
+    fireEvent.click(screen.getByRole('tab', { name: /ACCIONES POR ATENDER/i }));
 
     // Verify CERRADOS / DESCARTADOS accordion header is present with count 1
     const accordionBtn = screen.getByRole('button', { name: /CERRADOS \/ DESCARTADOS/i });

@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect, useRef } from "react";
 import { DashboardItem, ComplianceThresholds, TrackingStartPeriod, User } from "../types";
 import { TrackingStartPeriodControls, formatTrackingStartPeriod } from './TrackingStartPeriodControls';
-import { getEffectiveTrackingStartPeriod, hasTrackingFactsBeforePeriod } from '../utils/trackingObligation';
+import { getEarliestPendingConfigurationPeriod, getEffectiveTrackingStartPeriod, hasTrackingFactsBeforePeriod } from '../utils/trackingObligation';
 import { RelatedActionPlans } from "./RelatedActionPlans";
 import type { ActionPlanSource } from '../utils/actionPlanSources';
 import {
@@ -53,7 +53,7 @@ interface CurrentPeriodFocusProps {
   controlTarget?: ControlNavigationTarget;
 }
 
-import { compareCalendarPeriods, derivePendingKpiActivities, type PendingKpiActivity } from '../utils/operationalWork';
+import { compareCalendarPeriods, derivePendingKpiActivities, getActiveOperationalWork, type PendingKpiActivity } from '../utils/operationalWork';
 export type { PendingKpiActivity };
 export interface RescheduledKpiCommitment extends PendingKpiActivity {
   scheduledPeriodIndex: number;
@@ -301,6 +301,7 @@ export const CurrentPeriodFocus: React.FC<CurrentPeriodFocusProps> = ({
   const controlActionOpened = useRef(false);
   const goalInputRef = useRef<HTMLInputElement | null>(null);
   const actualInputRef = useRef<HTMLInputElement | null>(null);
+  const pendingSectionRef = useRef<HTMLDivElement | null>(null);
   const [activityTab, setActivityTab] = useState<"current" | "pending" | "history">(
     "current",
   );
@@ -378,9 +379,26 @@ export const CurrentPeriodFocus: React.FC<CurrentPeriodFocusProps> = ({
   };
   const monthlyProgressCaptured = item.monthlyProgressCaptured || [];
 
-  const [activePeriodIdx, setActivePeriodIdx] = useState<number>(() => controlTarget
-    ? controlTarget.period.frequency === 'monthly' ? controlTarget.period.monthIndex : controlTarget.period.weekNumber - 1
-    : -1);
+  const effectiveControlTargetPeriod = useMemo(() => {
+    if (!controlTarget?.period) return undefined;
+    if (controlTarget.operation === 'CONFIGURAR') {
+      return getEarliestPendingConfigurationPeriod(
+        item,
+        controlTarget.period,
+        dashboardTrackingStartPeriod ? { defaultTrackingStartPeriod: dashboardTrackingStartPeriod } : undefined,
+        clientTrackingStartPeriod ? { defaultTrackingStartPeriod: clientTrackingStartPeriod } : undefined,
+      );
+    }
+    return controlTarget.period;
+  }, [clientTrackingStartPeriod, controlTarget, dashboardTrackingStartPeriod, item]);
+
+  const [activePeriodIdx, setActivePeriodIdx] = useState<number>(() => {
+    const targetPeriod = effectiveControlTargetPeriod || controlTarget?.period;
+    if (targetPeriod) {
+      return targetPeriod.frequency === 'monthly' ? targetPeriod.monthIndex : targetPeriod.weekNumber - 1;
+    }
+    return -1;
+  });
 
   const isWeekly = frequency === "weekly";
   const currentYear = new Date().getFullYear();
@@ -444,26 +462,16 @@ export const CurrentPeriodFocus: React.FC<CurrentPeriodFocusProps> = ({
   ]);
 
   useEffect(() => {
-    if (controlTarget?.period && controlTarget.period.year === year) {
-      const targetIndex = controlTarget.period.frequency === 'weekly' ? controlTarget.period.weekNumber - 1 : controlTarget.period.monthIndex;
+    const targetPeriod = effectiveControlTargetPeriod || controlTarget?.period;
+    if (targetPeriod && targetPeriod.year === year) {
+      const targetIndex = targetPeriod.frequency === 'weekly' ? targetPeriod.weekNumber - 1 : targetPeriod.monthIndex;
       if (Number.isInteger(targetIndex) && targetIndex >= 0) setActivePeriodIdx(targetIndex);
     } else if (activePeriodIdx === -1) {
       setActivePeriodIdx(periodIdx);
     }
-  }, [activePeriodIdx, controlTarget, periodIdx, year]);
+  }, [activePeriodIdx, controlTarget, effectiveControlTargetPeriod, periodIdx, year]);
 
   const currentIdx = activePeriodIdx === -1 ? periodIdx : activePeriodIdx;
-  useEffect(() => {
-    if (!controlTarget || controlActionOpened.current) return;
-    controlActionOpened.current = true;
-    if (controlTarget.operation === 'CONFIGURAR' && item.isActivityMode) {
-      setIsActivityManagerOpen(true);
-    } else if (canEdit && !item.isActivityMode && controlTarget.operation === 'CONFIGURAR') {
-      goalInputRef.current?.focus();
-    } else if (canEdit && !item.isActivityMode && controlTarget.operation === 'REGISTRAR_AVANCE') {
-      actualInputRef.current?.focus();
-    }
-  }, [canEdit, controlTarget, currentIdx, item.activityConfig, item.isActivityMode]);
   const pendingCurrentIdx = isWeekly
     ? currentIdx
     : year && year < currentYear
@@ -500,6 +508,40 @@ export const CurrentPeriodFocus: React.FC<CurrentPeriodFocusProps> = ({
     () => visiblePendingKpiActivities.filter(activity => ["REPROGRAMADA", "COMPROMISO ACTUAL"].includes(activity.status)),
     [visiblePendingKpiActivities],
   );
+
+  useEffect(() => {
+    if (!controlTarget || controlActionOpened.current) return;
+    controlActionOpened.current = true;
+
+    if (controlTarget.operation === 'CONFIGURAR') {
+      if (item.isActivityMode) {
+        setIsActivityManagerOpen(true);
+      } else if (canEdit) {
+        goalInputRef.current?.focus();
+      }
+    } else if (controlTarget.operation === 'REGISTRAR_AVANCE') {
+      const operationalWork = getActiveOperationalWork(item, controlTarget.period);
+      const hasActiveInheritedWork = operationalWork.attention.length > 0;
+
+      if (hasActiveInheritedWork) {
+        setActivityTab("pending");
+        scrollToView(pendingSectionRef);
+      } else {
+        setActivityTab("current");
+        if (canEdit && !item.isActivityMode) {
+          actualInputRef.current?.focus();
+        }
+      }
+    } else if (controlTarget.operation === 'GESTIONAR') {
+      const operationalWork = getActiveOperationalWork(item, controlTarget.period);
+      const hasPendingActions = operationalWork.attention.length > 0;
+
+      if (hasPendingActions) {
+        setActivityTab("pending");
+        scrollToView(pendingSectionRef);
+      }
+    }
+  }, [attentionActivities.length, canEdit, controlTarget, item, visiblePendingKpiActivities.length]);
 
   const discardedCommitments = useMemo(
     () => getDiscardedContinuityCommitments(item),
@@ -1292,9 +1334,11 @@ export const CurrentPeriodFocus: React.FC<CurrentPeriodFocusProps> = ({
                       {pendingFeedback}
                     </p>
                   )}
-                  <div className="flex gap-2 rounded-2xl border border-slate-700/60 bg-slate-950/80 p-1.5 shadow-inner">
+                  <div role="tablist" aria-label="Subsecciones de período" className="flex gap-2 rounded-2xl border border-slate-700/60 bg-slate-950/80 p-1.5 shadow-inner">
                     <button
                       type="button"
+                      role="tab"
+                      aria-selected={activityTab === "current"}
                       onClick={() => setActivityTab("current")}
                       className={`flex-1 min-h-[44px] flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-[11px] font-black uppercase tracking-wider transition-all ${
                         activityTab === "current"
@@ -1307,6 +1351,8 @@ export const CurrentPeriodFocus: React.FC<CurrentPeriodFocusProps> = ({
                     </button>
                     <button
                       type="button"
+                      role="tab"
+                      aria-selected={activityTab === "pending"}
                       onClick={() => setActivityTab("pending")}
                       className={`flex-1 min-h-[44px] flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-[11px] font-black uppercase tracking-wider transition-all ${
                         activityTab === "pending"
@@ -1349,7 +1395,7 @@ export const CurrentPeriodFocus: React.FC<CurrentPeriodFocusProps> = ({
                       </button>
                     ) : null
                   ) : (
-                    <div className="rounded-2xl border border-slate-700/60 bg-slate-950/80 p-4 shadow-lg">
+                    <div ref={pendingSectionRef} className="rounded-2xl border border-slate-700/60 bg-slate-950/80 p-4 shadow-lg">
                       {visiblePendingKpiActivities.length === 0 && discardedActivities.length === 0 ? (
                         <p className="text-center text-[11px] font-bold uppercase tracking-widest text-slate-400 py-3">
                           No hay actividades pendientes

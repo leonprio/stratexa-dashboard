@@ -1,4 +1,5 @@
 import type { Dashboard, DashboardItem, SystemSettings, TrackingStartPeriod } from '../types';
+import { getActiveOperationalWork } from './operationalWork';
 
 export type TrackingFrequency = 'monthly' | 'weekly';
 
@@ -184,4 +185,78 @@ export const selectKpiTrackingCaptureForPeriod = (
     requiredKpisForPeriod,
     capturedKpisForPeriod: requiredKpisForPeriod.filter(({ obligation }) => obligation === 'CAPTURE_COMPLETE'),
   };
+};
+
+/**
+ * Returns the earliest exigible period between the effective tracking start and
+ * the target period that still has an unresolved configuration obligation (GOAL_REQUIRED).
+ * If no earlier configuration gap exists, returns targetPeriod.
+ */
+export const getEarliestPendingConfigurationPeriod = (
+  item: DashboardItem,
+  targetPeriod: TrackingPeriod,
+  dashboard?: Pick<Dashboard, 'defaultTrackingStartPeriod'>,
+  clientSettings?: Pick<SystemSettings, 'defaultTrackingStartPeriod'>,
+): TrackingPeriod => {
+  const effectiveStart = getEffectiveTrackingStartPeriod(item, dashboard, clientSettings).period;
+  if (!effectiveStart) return targetPeriod;
+
+  const frequency = targetPeriod.frequency;
+  if (effectiveStart.frequency !== frequency) return targetPeriod;
+
+  const startIndex = effectiveStart.frequency === 'monthly' ? effectiveStart.monthIndex : effectiveStart.weekNumber - 1;
+  const targetIndex = targetPeriod.frequency === 'monthly' ? targetPeriod.monthIndex : targetPeriod.weekNumber - 1;
+
+  for (let y = effectiveStart.year; y <= targetPeriod.year; y++) {
+    const minIdx = y === effectiveStart.year ? startIndex : 0;
+    const maxIdx = y === targetPeriod.year ? targetIndex : frequency === 'monthly' ? 11 : 52;
+
+    for (let idx = minIdx; idx <= maxIdx; idx++) {
+      const period: TrackingPeriod = frequency === 'monthly'
+        ? { frequency: 'monthly', year: y, monthIndex: idx }
+        : { frequency: 'weekly', year: y, weekNumber: idx + 1 };
+
+      const activities = item.isActivityMode ? (item.activityConfig?.[idx] || []) : [];
+      const activityGoal = activities.reduce((sum, activity) => sum + Math.max(0, Number(activity.targetCount) || 0), 0);
+      const activityProgress = activities.reduce((sum, activity) => sum + Math.max(0, Number(activity.completedCount) || 0), 0);
+
+      const goal = item.isActivityMode && activities.length > 0
+        ? activityGoal
+        : frequency === 'monthly' ? item.monthlyGoals?.[idx] : item.weeklyGoals?.[idx];
+      const progress = item.isActivityMode && activities.length > 0
+        ? activityProgress
+        : frequency === 'monthly' ? item.monthlyProgress?.[idx] : item.weeklyProgress?.[idx];
+
+      const goalCaptured = item.isActivityMode && activities.length > 0
+        ? true
+        : frequency === 'monthly' ? item.monthlyGoalCaptured?.[idx] : undefined;
+      const progressCaptured = item.isActivityMode && activities.length > 0
+        ? activityProgress > 0
+        : frequency === 'monthly' ? item.monthlyProgressCaptured?.[idx] : undefined;
+
+      const obligation = getKpiTrackingObligation({
+        frequency,
+        period,
+        operationalPeriod: targetPeriod,
+        trackingStartPeriod: effectiveStart,
+        goalValue: goal,
+        progressValue: progress,
+        goalCaptured,
+        progressCaptured,
+      });
+
+      if (obligation === 'GOAL_REQUIRED') {
+        const operationalWork = getActiveOperationalWork(item, period);
+        const hasInheritedActiveWork = operationalWork.attention.length > 0;
+        const activeContinuity = operationalWork.currentCommitments.length > 0;
+        if (hasInheritedActiveWork || activeContinuity) {
+          // Active operational work or continuity commitment in period means it's not a configuration gap
+          continue;
+        }
+        return period;
+      }
+    }
+  }
+
+  return targetPeriod;
 };
