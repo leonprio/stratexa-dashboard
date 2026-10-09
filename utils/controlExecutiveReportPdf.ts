@@ -12,7 +12,11 @@ const bodySize = 8.5;
 type MeasuredRow = { cells: string[][]; height: number };
 
 /** A4 composition measured with the actual font before choosing any page break. */
-export const createControlExecutiveReportPdf = (report: ControlExecutiveReport): jsPDF => {
+export const renderSectionsToPdf = (
+  sections: import('./controlExecutiveReportDocumentModel').ControlReportDocumentSection[],
+  clientLabel: string,
+  headerLabel: string = 'CONTROL · Corte Certificado',
+): jsPDF => {
   const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4', compress: false });
   const pageW = pdf.internal.pageSize.getWidth();
   const pageH = pdf.internal.pageSize.getHeight();
@@ -51,7 +55,7 @@ export const createControlExecutiveReportPdf = (report: ControlExecutiveReport):
     pdf.line(margin.left, y, pageW - margin.right, y);
   };
 
-  createControlExecutiveReportDocumentSections(report).forEach((section, index) => {
+  sections.forEach((section, index) => {
     const titleSize = index ? 11 : 18;
     const titleLineHeight = index ? 4.5 : 7;
     font(titleSize, true);
@@ -119,16 +123,23 @@ export const createControlExecutiveReportPdf = (report: ControlExecutiveReport):
     pdf.setPage(page);
     font(8, true);
     pdf.setTextColor(...navy);
-    pdf.text('CONTROL · Informe ejecutivo', margin.left, 10);
+    pdf.text(headerLabel, margin.left, 10);
     pdf.setDrawColor(203, 213, 225);
     pdf.line(margin.left, 13, pageW - margin.right, 13);
     font(8);
     pdf.setTextColor(...slate);
-    pdf.text(wrap(report.cover.client, width - 40)[0], margin.left, pageH - 8);
+    pdf.text(wrap(clientLabel, width - 40)[0], margin.left, pageH - 8);
     pdf.text(`Página ${page} de ${pages}`, pageW - margin.right, pageH - 8, { align: 'right' });
   }
   return pdf;
 };
+
+export const createControlExecutiveReportPdf = (report: ControlExecutiveReport): jsPDF =>
+  renderSectionsToPdf(
+    createControlExecutiveReportDocumentSections(report),
+    report.cover.client,
+    'CONTROL · Informe ejecutivo',
+  );
 
 export const renderControlExecutiveReportPdf = (report: ControlExecutiveReport): Blob =>
   createControlExecutiveReportPdf(report).output('blob');

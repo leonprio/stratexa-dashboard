@@ -47,9 +47,13 @@ const buildTable = (headers: string[], rows: string[][]): Table => {
 };
 
 /** Editable A4 document; Word paginates actual content using keep and row constraints. */
-export const createControlExecutiveReportDocx = (report: ControlExecutiveReport): Document => {
+export const renderSectionsToDocx = (
+  sections: import('./controlExecutiveReportDocumentModel').ControlReportDocumentSection[],
+  clientLabel: string,
+  headerLabel: string = 'CONTROL · Corte Certificado',
+): Document => {
   const children: Array<Paragraph | Table> = [];
-  createControlExecutiveReportDocumentSections(report).forEach((section, index) => {
+  sections.forEach((section, index) => {
     children.push(new Paragraph({
       text: section.title,
       heading: index === 0 ? HeadingLevel.TITLE : HeadingLevel.HEADING_1,
@@ -79,12 +83,12 @@ export const createControlExecutiveReportDocx = (report: ControlExecutiveReport)
         margin: { top: 1134, bottom: 907, left: MARGIN, right: MARGIN, header: 425, footer: 425 },
       } },
       headers: { default: new Header({ children: [new Paragraph({
-        children: [new TextRun({ text: 'CONTROL · Informe ejecutivo', color: NAVY, size: 16, bold: true })],
+        children: [new TextRun({ text: headerLabel, color: NAVY, size: 16, bold: true })],
       })] }) },
       footers: { default: new Footer({ children: [new Paragraph({
         alignment: AlignmentType.CENTER,
         children: [
-          new TextRun({ text: `${report.cover.client} · Página `, color: SLATE, size: 16 }),
+          new TextRun({ text: `${clientLabel} · Página `, color: SLATE, size: 16 }),
           new TextRun({ children: [PageNumber.CURRENT], color: SLATE, size: 16 }),
           new TextRun({ text: ' de ', color: SLATE, size: 16 }),
           new TextRun({ children: [PageNumber.TOTAL_PAGES], color: SLATE, size: 16 }),
@@ -94,6 +98,13 @@ export const createControlExecutiveReportDocx = (report: ControlExecutiveReport)
     }],
   });
 };
+
+export const createControlExecutiveReportDocx = (report: ControlExecutiveReport): Document =>
+  renderSectionsToDocx(
+    createControlExecutiveReportDocumentSections(report),
+    report.cover.client,
+    'CONTROL · Informe ejecutivo',
+  );
 
 export const renderControlExecutiveReportDocx = async (report: ControlExecutiveReport): Promise<Blob> =>
   Packer.toBlob(createControlExecutiveReportDocx(report));

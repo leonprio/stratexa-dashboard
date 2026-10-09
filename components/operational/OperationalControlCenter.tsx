@@ -29,6 +29,8 @@ export const selectControlDashboards = (dashboards: Dashboard[], currentDashboar
   return physicalDashboards.length > 0 ? physicalDashboards : [currentDashboard];
 };
 
+import { ControlCutComparisonSection } from './ControlCutComparisonSection';
+
 export const OperationalControlCenter: React.FC<OperationalControlCenterProps> = ({ dashboards, currentDashboard, globalThresholds, year, activeClientId, currentUser, canEdit = false, clientSettings, onNavigateToKpi, onNavigateToPlan }) => {
   const [historyVisible, setHistoryVisible] = useState(false);
   const [planSummary, setPlanSummary] = useState<ActionPlanControlSummary>({ active: 0, overdue: 0 });
@@ -65,6 +67,7 @@ export const OperationalControlCenter: React.FC<OperationalControlCenterProps> =
     <PendingAlertsCenter dashboards={relevantDashboards} year={year} authorizedDashboardIds={relevantDashboards.map(dashboard => dashboard.id)} clientId={currentDashboard.clientId || activeClientId} clientSettings={clientSettings} onNavigateToKpi={onNavigateToKpi} onFiltersChange={setPendingFilters} />
     <OperationalAlertsCenter dashboards={relevantDashboards} globalThresholds={globalThresholds} year={year} clientId={currentDashboard.clientId || activeClientId} compact onNavigateToKpi={onNavigateToKpi} />
     {relevantDashboards.length > 0 && <section aria-label="Planes de acción" className="rounded-xl border border-white/5 bg-slate-900/30 px-3 py-3"><TransversalActionPlansControl dashboards={relevantDashboards} currentDashboard={currentDashboard} managementYear={year} currentUser={currentUser} canEdit={canEdit} onSummaryChange={setPlanSummary} onNavigateToKpi={navigateFromPlan} onNavigateToPlan={onNavigateToPlan} /></section>}
+    <ControlCutComparisonSection dashboards={relevantDashboards} currentDashboard={currentDashboard} activeClientId={activeClientId} currentUser={currentUser} year={year} />
     <section className="rounded-xl border border-white/5 bg-slate-900/20 px-3 py-2"><div className="flex items-center justify-between gap-3"><h2 className="text-[10px] font-black uppercase tracking-widest text-slate-300">Historial operativo</h2><button type="button" aria-expanded={historyVisible} onClick={() => setHistoryVisible(value => !value)} className="min-h-[36px] rounded-lg border border-white/10 px-3 py-1.5 text-[9px] font-black uppercase tracking-widest text-slate-400 hover:border-indigo-500/40 hover:text-white">{historyVisible ? 'Ocultar' : 'Ver historial'} {historyVisible ? '⌃' : '›'}</button></div>{historyVisible && <div className="mt-3"><OperationalHistoryCenter dashboards={relevantDashboards} globalThresholds={globalThresholds} year={year} /></div>}</section>
   </div>;
 };
