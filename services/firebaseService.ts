@@ -39,6 +39,7 @@ import type {
     ActionPlan,
     ActionPlanActivity,
     ActionPlanResultReview,
+    ControlCut,
 } from "../types";
 
 const COLLECTION_PREFIX = "tbl_"; // BLINDAJE ACTIVO: Todas las colecciones inician con 'tbl_'
@@ -48,6 +49,7 @@ const SYSTEM_SETTINGS_COLLECTION = `${COLLECTION_PREFIX}systemSettings`;
 const SYSTEM_SETTINGS_DOC_ID = "main";
 const CLIENTS_COLLECTION = `${COLLECTION_PREFIX}managedClients`;
 const ACTION_PLANS_COLLECTION = `${COLLECTION_PREFIX}actionPlans`;
+const CONTROL_CUTS_COLLECTION = `${COLLECTION_PREFIX}controlCuts`;
 
 type ResultReviewCommitment =
     | { type: 'activity'; activity: ActionPlanActivity }
@@ -60,7 +62,7 @@ const isValidResultReview = (review: ActionPlanResultReview): boolean => {
     const allowedFields = [
         'id', 'reviewedAt', 'reviewedByUserId', 'reviewedByLabel', 'observedResult', 'effect', 'decision',
         'note', 'evidenceRef', 'nextReviewDate', 'nextCommitmentPlanId', 'nextCommitmentActivityId',
-        'reviewYear', 'reviewPeriodType', 'reviewPeriodIndex',
+        'reviewYear', 'reviewPeriodType', 'reviewPeriodIndex', 'cutId',
     ];
     const reviewData = review as ActionPlanResultReview & Record<string, unknown>;
     return !!review && typeof review === 'object' &&
@@ -1297,5 +1299,52 @@ export const firebaseService = {
                 .sort((a, b) => (Number(a.id) || 0) - (Number(b.id) || 0));
             callback(items);
         });
+    },
+
+    // 📸 CORTE CANÓNICO HISTÓRICO INMUTABLE (v9.9 BLOQUE 1)
+    createControlCut: async (cut: ControlCut): Promise<{ success: boolean; cut: ControlCut; created: boolean }> => {
+        if (!cut || !cut.cutId || !cut.clientId || !cut.dashboardId) {
+            throw new Error('El corte de control no es válido: cutId, clientId y dashboardId son requeridos.');
+        }
+        const cutRef = doc(db, CONTROL_CUTS_COLLECTION, cut.cutId);
+        return await runTransaction(db, async (transaction) => {
+            const existing = await transaction.get(cutRef);
+            if (existing.exists()) {
+                // Idempotencia: devuelve el corte existente idéntico sin duplicar ni reescribir
+                return { success: true, cut: existing.data() as ControlCut, created: false };
+            }
+            transaction.set(cutRef, cut);
+            return { success: true, cut, created: true };
+        });
+    },
+
+    getControlCut: async (cutId: string): Promise<ControlCut | null> => {
+        if (!cutId || !cutId.trim()) return null;
+        const cutRef = doc(db, CONTROL_CUTS_COLLECTION, cutId.trim());
+        const snap = await getDoc(cutRef);
+        return snap.exists() ? (snap.data() as ControlCut) : null;
+    },
+
+    listControlCuts: async (
+        clientId: string,
+        dashboardId?: string | number,
+        year?: number,
+        periodicity?: 'monthly' | 'weekly',
+    ): Promise<ControlCut[]> => {
+        const tenant = String(clientId || '').trim().toUpperCase();
+        if (!tenant) return [];
+        const constraints = [where('clientId', '==', tenant)];
+        if (dashboardId !== undefined && dashboardId !== null) {
+            constraints.push(where('dashboardId', '==', dashboardId));
+        }
+        if (year !== undefined && year !== null) {
+            constraints.push(where('year', '==', Number(year)));
+        }
+        if (periodicity) {
+            constraints.push(where('periodicity', '==', periodicity));
+        }
+        const q = query(collection(db, CONTROL_CUTS_COLLECTION), ...constraints);
+        const snap = await getDocs(q);
+        return snap.docs.map(d => d.data() as ControlCut);
     },
 };

@@ -196,6 +196,7 @@ export interface ActionPlanResultReview {
   reviewYear?: number;
   reviewPeriodType?: ActionPlanOriginPeriodType;
   reviewPeriodIndex?: number;
+  cutId?: string;
 }
 export interface ActionPlanActivity {
   id: string;
@@ -312,3 +313,5 @@ export interface TenantMembership {
 }
 
 export type OperationalMetrics = any;
+
+export * from './types/controlCut';

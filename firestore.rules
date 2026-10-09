@@ -243,7 +243,7 @@ service cloud.firestore {
           'id', 'reviewedAt', 'reviewedByUserId', 'reviewedByLabel', 'observedResult',
           'effect', 'decision', 'note', 'evidenceRef', 'nextReviewDate',
           'nextCommitmentPlanId', 'nextCommitmentActivityId', 'reviewYear',
-          'reviewPeriodType', 'reviewPeriodIndex'
+          'reviewPeriodType', 'reviewPeriodIndex', 'cutId'
         ]) &&
         review.keys().hasAll(['id', 'reviewedAt', 'reviewedByLabel', 'observedResult', 'effect', 'decision']) &&
         review.id is string && review.id.size() > 0 &&
@@ -261,7 +261,8 @@ service cloud.firestore {
         !('nextCommitmentPlanId' in review && 'nextCommitmentActivityId' in review) &&
         (!('reviewYear' in review) || review.reviewYear is int) &&
         (!('reviewPeriodType' in review) || review.reviewPeriodType in ['monthly', 'weekly', 'manual']) &&
-        (!('reviewPeriodIndex' in review) || review.reviewPeriodIndex is int);
+        (!('reviewPeriodIndex' in review) || review.reviewPeriodIndex is int) &&
+        (!('cutId' in review) || (review.cutId is string && review.cutId.size() > 0));
     }
     function preservesActionPlanResultReviewHistory() {
       let oldReviews = resource.data.get('resultReviews', []);
@@ -431,6 +432,16 @@ service cloud.firestore {
         request.resource.data.get('indicatorId', '') == resource.data.get('indicatorId', '') &&
         preservesActionPlanResultReviewHistory();
       allow delete: if isTableroUser() && canEditActionPlan(resource.data);
+    }
+
+    match /tbl_controlCuts/{cutId} {
+      allow read: if isTableroUser() && canReadActionPlan(resource.data);
+      allow create: if isTableroUser() && isSafeClientId(request.resource.data.clientId) &&
+        canEditActionPlan(request.resource.data) &&
+        request.resource.data.cutId == cutId &&
+        request.resource.data.schemaVersion == 1;
+      allow update: if false;
+      allow delete: if false;
     }
 
     // --- 🎯 REGLAS DE SEGURIDAD SERVIDORA: ESTRATEGIA (v9.5.0 FOUNDATION) ---

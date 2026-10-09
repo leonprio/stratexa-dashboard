@@ -1776,4 +1776,115 @@ describe('Firestore Security Rules — Strategy Module (v9.5.0 Foundation)', () 
       }));
     });
   });
+
+  describe('Control Cuts Permissions (tbl_controlCuts)', () => {
+    const cutId = 'IPS_101_M_2026_3';
+    const validCutData = {
+      cutId,
+      schemaVersion: 1,
+      capturedAt: '2026-04-30T23:59:59Z',
+      capturedByLabel: 'Editor User',
+      clientId: 'IPS',
+      dashboardId: '101',
+      dashboardIds: ['101'],
+      periodicity: 'monthly',
+      year: 2026,
+      periodIndex: 3,
+      scope: {
+        clientId: 'IPS',
+        dashboardId: '101',
+        dashboardIds: ['101'],
+        periodicity: 'monthly',
+        year: 2026,
+        periodIndex: 3,
+      },
+      kpis: [],
+      controlSummary: {
+        pendingConfigurationsCount: 0,
+        pendingCapturesCount: 0,
+        overdueActionsCount: 0,
+        upcomingActionsCount: 0,
+        activeActionsCount: 0,
+        completedActionsCount: 0,
+        pendingReviewsCount: 0,
+        derivedAttentionCount: 0,
+      },
+      actionPlans: [],
+      reviews: [],
+    };
+
+    beforeEach(async () => {
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        const db = context.firestore();
+        // Setup dashboard 101 for tenant IPS
+        await setDoc(doc(db, 'tbl_dashboards', '101'), {
+          clientId: 'IPS',
+          title: 'Operaciones IPS',
+        });
+        // Setup existing cut in database
+        await setDoc(doc(db, 'tbl_controlCuts', cutId), validCutData);
+        // Setup users
+        await setDoc(doc(db, 'tbl_users', 'cut_editor_user'), {
+          uid: 'cut_editor_user',
+          clientId: 'IPS',
+          dashboardAccess: { '101': 'Editor' },
+        });
+        await setDoc(doc(db, 'tbl_users', 'cut_viewer_user'), {
+          uid: 'cut_viewer_user',
+          clientId: 'IPS',
+          dashboardAccess: { '101': 'Viewer' },
+        });
+        await setDoc(doc(db, 'tbl_users', 'other_tenant_user_cuts'), {
+          uid: 'other_tenant_user_cuts',
+          clientId: 'OTHER_TENANT',
+          dashboardAccess: { '101': 'Editor' },
+        });
+      });
+    });
+
+    it('CASE 1: allows read for authorized viewer or editor with dashboard access', async () => {
+      const viewerDb = testEnv.authenticatedContext('cut_viewer_user').firestore();
+      await assertSucceeds(getDoc(doc(viewerDb, 'tbl_controlCuts', cutId)));
+
+      const editorDb = testEnv.authenticatedContext('cut_editor_user').firestore();
+      await assertSucceeds(getDoc(doc(editorDb, 'tbl_controlCuts', cutId)));
+    });
+
+    it('CASE 2: denies read for users from other tenants', async () => {
+      const otherDb = testEnv.authenticatedContext('other_tenant_user_cuts').firestore();
+      await assertFails(getDoc(doc(otherDb, 'tbl_controlCuts', cutId)));
+    });
+
+    it('CASE 3: allows create for authorized editor with schemaVersion 1', async () => {
+      const editorDb = testEnv.authenticatedContext('cut_editor_user').firestore();
+      const newCutId = 'IPS_101_M_2026_4';
+      await assertSucceeds(setDoc(doc(editorDb, 'tbl_controlCuts', newCutId), {
+        ...validCutData,
+        cutId: newCutId,
+        periodIndex: 4,
+      }));
+    });
+
+    it('CASE 4: denies create for viewer with read-only access', async () => {
+      const viewerDb = testEnv.authenticatedContext('cut_viewer_user').firestore();
+      const newCutId = 'IPS_101_M_2026_5';
+      await assertFails(setDoc(doc(viewerDb, 'tbl_controlCuts', newCutId), {
+        ...validCutData,
+        cutId: newCutId,
+        periodIndex: 5,
+      }));
+    });
+
+    it('CASE 5: denies update (INMUTABILIDAD: update is strictly false)', async () => {
+      const editorDb = testEnv.authenticatedContext('cut_editor_user').firestore();
+      await assertFails(updateDoc(doc(editorDb, 'tbl_controlCuts', cutId), {
+        capturedByLabel: 'Modified Label',
+      }));
+    });
+
+    it('CASE 6: denies delete (INMUTABILIDAD: delete is strictly false)', async () => {
+      const editorDb = testEnv.authenticatedContext('cut_editor_user').firestore();
+      await assertFails(deleteDoc(doc(editorDb, 'tbl_controlCuts', cutId)));
+    });
+  });
 });
