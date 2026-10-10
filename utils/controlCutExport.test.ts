@@ -103,8 +103,8 @@ describe('ControlCut Document Export & Reporting Tests (Bloque 3)', () => {
             reviewedAt: '2026-01-30T10:00:00Z',
             reviewedByLabel: 'Auditor Calidad',
             observedResult: 'Avance adecuado en calibración técnica.',
-            effect: 'positive',
-            decision: 'MAINTAIN',
+            effect: 'FAVORABLE',
+            decision: 'CONTINUE',
             nextCommitment: {
               type: 'activity',
               id: 'act-2',
@@ -143,8 +143,8 @@ describe('ControlCut Document Export & Reporting Tests (Bloque 3)', () => {
         reviewedAt: '2026-01-30T10:00:00Z',
         reviewedByLabel: 'Auditor Calidad',
         observedResult: 'Avance adecuado en calibración técnica.',
-        effect: 'positive',
-        decision: 'MAINTAIN',
+        effect: 'FAVORABLE',
+        decision: 'CONTINUE',
         nextCommitment: {
           type: 'activity',
           id: 'act-2',
@@ -245,7 +245,7 @@ describe('ControlCut Document Export & Reporting Tests (Bloque 3)', () => {
             reviewedAt: '2026-02-28T10:00:00Z',
             reviewedByLabel: 'Auditor Calidad',
             observedResult: 'Línea 1 calibrada al 100%.',
-            effect: 'positive',
+            effect: 'FAVORABLE',
             decision: 'CLOSE',
             nextCommitmentPlanId: 'plan-sucesor-2',
           },
@@ -259,7 +259,7 @@ describe('ControlCut Document Export & Reporting Tests (Bloque 3)', () => {
         reviewedAt: '2026-02-28T10:00:00Z',
         reviewedByLabel: 'Auditor Calidad',
         observedResult: 'Línea 1 calibrada al 100%.',
-        effect: 'positive',
+        effect: 'FAVORABLE',
         decision: 'CLOSE',
         nextCommitmentPlanId: 'plan-sucesor-2',
       },
@@ -305,8 +305,8 @@ describe('ControlCut Document Export & Reporting Tests (Bloque 3)', () => {
     // Revisiones, decisiones y siguiente compromiso
     const revTable = sections[4].tables?.[0];
     expect(revTable?.rows).toHaveLength(1);
-    expect(revTable?.rows[0][1]).toBe('positive');
-    expect(revTable?.rows[0][2]).toBe('MAINTAIN');
+    expect(revTable?.rows[0][1]).toBe('FAVORABLE');
+    expect(revTable?.rows[0][2]).toBe('CONTINUE');
     expect(revTable?.rows[0][4]).toContain('Prueba de estrés de máquina');
   });
 
