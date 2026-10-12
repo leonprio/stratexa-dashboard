@@ -31,6 +31,12 @@ import { readTableroScope, requestedTenants, dashboardQueryConstraints } from '.
 import { canEditActionPlan as canEditActionPlanForUser, resolveEffectiveMemberships } from './tableroAuthorization';
 import { calculateActionPlanProgress, reconcileActionPlanStatus } from '../utils/actionPlanLogic';
 
+import {
+    buildMembershipId,
+    validatePersistedMembership,
+    type PersistedTenantMembership,
+} from './tableroMembershipPersistence';
+
 import type {
     User,
     Dashboard as DashboardType,
@@ -45,6 +51,7 @@ import type {
 const COLLECTION_PREFIX = "tbl_"; // BLINDAJE ACTIVO: Todas las colecciones inician con 'tbl_'
 const DASHBOARDS_COLLECTION = `${COLLECTION_PREFIX}dashboards`;
 const USERS_COLLECTION = `${COLLECTION_PREFIX}users`;
+const USER_MEMBERSHIPS_COLLECTION = `${COLLECTION_PREFIX}userMemberships`;
 const SYSTEM_SETTINGS_COLLECTION = `${COLLECTION_PREFIX}systemSettings`;
 const SYSTEM_SETTINGS_DOC_ID = "main";
 const CLIENTS_COLLECTION = `${COLLECTION_PREFIX}managedClients`;
@@ -474,6 +481,121 @@ export const firebaseService = {
     updateUser: async (user: User) => {
         const ref = doc(db, USERS_COLLECTION, user.id);
         await setDoc(ref, { ...user });
+        return true;
+    },
+
+    /**
+     * APP TABLERO — v10 Bloque 1: Vinculación Canónica Segura.
+     * Vincula un usuario existente al cliente sin destruir su identidad ni otros clientes.
+     */
+    linkUserToClient: async (
+        userId: string,
+        clientId: string,
+        options: {
+            role?: 'tenant_admin' | 'director' | 'standard_user';
+            allowedDashboardIds?: string[];
+            editableDashboardIds?: string[];
+            capabilities?: string[];
+            hierarchyScopeKeys?: string[];
+            actorId?: string;
+        } = {}
+    ) => {
+        const cleanUserId = userId.trim();
+        const cleanClientId = clientId.trim().toUpperCase();
+        const membershipId = buildMembershipId(cleanUserId, cleanClientId);
+        const memRef = doc(db, USER_MEMBERSHIPS_COLLECTION, membershipId);
+        const existingMemSnap = await getDoc(memRef);
+
+        const now = new Date().toISOString();
+        const actor = options.actorId || auth.currentUser?.uid || 'system';
+
+        const membershipData: PersistedTenantMembership = {
+            membershipId,
+            userId: cleanUserId,
+            clientId: cleanClientId,
+            role: options.role || 'standard_user',
+            status: 'active',
+            scopeType: 'tenant',
+            allowedDashboardIds: options.allowedDashboardIds || [],
+            hierarchyScopeKeys: options.hierarchyScopeKeys || [],
+            capabilities: (options.capabilities as any) || ['viewer'],
+            createdAt: existingMemSnap.exists() ? (existingMemSnap.data() as any).createdAt || now : now,
+            createdBy: existingMemSnap.exists() ? (existingMemSnap.data() as any).createdBy || actor : actor,
+            updatedAt: now,
+            updatedBy: actor,
+            schemaVersion: 1,
+        };
+
+        const errors = validatePersistedMembership(membershipData);
+        if (errors.length > 0) {
+            throw new Error(`MEMBERSHIP_VALIDATION_FAILED: ${errors.join('; ')}`);
+        }
+
+        // 1. Guardar membresía canónica
+        await setDoc(memRef, membershipData, { merge: true });
+
+        // 2. Compatibilidad legacy: asegurar que clientId en tbl_users contenga cleanClientId sin destruir previos
+        const userRef = doc(db, USERS_COLLECTION, cleanUserId);
+        const userSnap = await getDoc(userRef);
+        if (userSnap.exists()) {
+            const currentProfile = userSnap.data() as User;
+            const existingClients = (currentProfile.clientId || '')
+                .split(',')
+                .map(c => c.trim().toUpperCase())
+                .filter(Boolean);
+
+            if (!existingClients.includes(cleanClientId)) {
+                existingClients.push(cleanClientId);
+                const updatedClientId = existingClients.join(',');
+                await updateDoc(userRef, { clientId: updatedClientId });
+            }
+        }
+
+        return membershipData;
+    },
+
+    /**
+     * APP TABLERO — v10 Bloque 1: Revocación Segura de Membresía.
+     * Revoca exclusivamente el acceso al cliente indicado sin destruir la cuenta de Auth ni el perfil global.
+     */
+    revokeUserMembership: async (userId: string, clientId: string) => {
+        const cleanUserId = userId.trim();
+        const cleanClientId = clientId.trim().toUpperCase();
+        const membershipId = buildMembershipId(cleanUserId, cleanClientId);
+
+        // 1. Desactivar o revocar membresía canónica en tbl_userMemberships
+        const memRef = doc(db, USER_MEMBERSHIPS_COLLECTION, membershipId);
+        const memSnap = await getDoc(memRef);
+        if (memSnap.exists()) {
+            // Se marca inactive con auditoría para sellar el acceso e impedir reactivación por canal legacy
+            await setDoc(memRef, {
+                status: 'inactive',
+                updatedAt: new Date().toISOString(),
+                updatedBy: auth.currentUser?.uid || 'system',
+            }, { merge: true });
+        }
+
+        // 2. Compatibilidad legacy: retirar clientId de tbl_users si existe
+        const userRef = doc(db, USERS_COLLECTION, cleanUserId);
+        const userSnap = await getDoc(userRef);
+        if (userSnap.exists()) {
+            const currentProfile = userSnap.data() as User;
+            const existingClients = (currentProfile.clientId || '')
+                .split(',')
+                .map(c => c.trim().toUpperCase())
+                .filter(Boolean);
+
+            const filteredClients = existingClients.filter(c => c !== cleanClientId);
+            if (filteredClients.length > 0) {
+                // Conserva el perfil y los otros clientes
+                await updateDoc(userRef, { clientId: filteredClients.join(',') });
+            } else {
+                // Si ya no pertenece a ningún cliente legacy, no eliminamos tbl_users
+                // para preservar identidad y trazabilidad de Auth
+                await updateDoc(userRef, { clientId: '' });
+            }
+        }
+
         return true;
     },
 

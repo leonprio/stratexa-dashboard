@@ -193,11 +193,17 @@ export function hydratePersistedMemberships(profile: User, records: Record<strin
   const replaced = new Set(memberships.map(m => normalizeClient(m.clientId)));
   // Protected records override legacy authority, including suspended memberships.
   const legacy = resolveEffectiveMemberships({ ...profile, memberships: undefined }).memberships.filter(m => !replaced.has(m.clientId));
-  if (memberships.length) profile.memberships = [...legacy, ...memberships.map(m => ({
-    clientId: m.clientId, role: m.role, status: m.status,
-    hierarchyScopes: m.hierarchyScopeKeys || [],
-    dashboardScopes: Object.fromEntries((m.allowedDashboardIds || []).map((id: string) => [id, (m.capabilities || []).includes('editor') && (m.editableDashboardIds || []).includes(id) ? 'editor' : 'viewer'])),
-    editableDashboardIds: (m.editableDashboardIds || []).filter((id: string) => (m.allowedDashboardIds || []).includes(id)),
-    capabilities: (m.capabilities || []).filter((cap: string) => cap !== 'strategy_reader' || m.scopeType === 'tenant'),
-  }))];
+  if (memberships.length) {
+    const dedupedMemberships = new Map<string, Record<string, any>>();
+    for (const m of memberships) {
+      dedupedMemberships.set(normalizeClient(m.clientId), m);
+    }
+    profile.memberships = [...legacy, ...Array.from(dedupedMemberships.values()).map(m => ({
+      clientId: m.clientId, role: m.role, status: m.status,
+      hierarchyScopes: m.hierarchyScopeKeys || [],
+      dashboardScopes: Object.fromEntries((m.allowedDashboardIds || []).map((id: string) => [id, (m.capabilities || []).includes('editor') && (m.editableDashboardIds || []).includes(id) ? 'editor' : 'viewer'])),
+      editableDashboardIds: (m.editableDashboardIds || []).filter((id: string) => (m.allowedDashboardIds || []).includes(id)),
+      capabilities: (m.capabilities || []).filter((cap: string) => cap !== 'strategy_reader' || m.scopeType === 'tenant'),
+    }))];
+  }
 }

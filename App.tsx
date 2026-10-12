@@ -2858,9 +2858,11 @@ export default function App() {
             const userClients = (u.clientId || "")
               .split(",")
               .map((c) => c.trim().toUpperCase());
-            // 🛡️ REGLA v2.3.2 (RESTAURADA): Aislamiento Estricto (Soporta Multi-Cliente).
-            // Solo vemos usuarios del cliente que estamos configurando para evitar confusión.
-            return userClients.includes(targetClient);
+            const canonicalClients = (u.memberships || [])
+              .filter((m) => m.status === 'active')
+              .map((m) => m.clientId.trim().toUpperCase());
+            // 🛡️ Aislamiento Estricto: soporta membresías canónicas y fallback multi-cliente legacy
+            return userClients.includes(targetClient) || canonicalClients.includes(targetClient);
           })}
           fullUserList={allUsers}
           dashboards={dashboards
@@ -2887,16 +2889,17 @@ export default function App() {
               .toUpperCase();
 
             setAllUsers((prev) => {
-              // 🛡️ REGLA DE SINCRONIZACIÓN v5.3.7:
-              // Para evitar "usuarios zombies", primero eliminamos a TODOS los usuarios que
-              // pertenecen al cliente actual de la lista global, y luego insertamos la lista actualizada.
-              const others = prev.filter((u) => {
-                const userClients = (u.clientId || "")
-                  .split(",")
-                  .map((c) => c.trim().toUpperCase());
-                return !userClients.includes(targetClient);
-              });
-              return [...others, ...updated];
+              // 🛡️ REGLA DE SINCRONIZACIÓN v10:
+              // Preserva perfiles de usuarios actualizados mapeándolos por ID sin descartar
+              // usuarios que pertenezcan a otros clientes.
+              const updatedMap = new Map(updated.map((u) => [u.id, u]));
+              const merged = prev.map((u) => updatedMap.get(u.id) || u);
+              for (const u of updated) {
+                if (!prev.some((p) => p.id === u.id)) {
+                  merged.push(u);
+                }
+              }
+              return merged;
             });
 
             // 🛡️ FIX (v2.3.4): Si me edité a mí mismo (ej. mis subgrupos), actualizar mi perfil local INMEDIATAMENTE.
@@ -2910,7 +2913,30 @@ export default function App() {
             setActiveAdminSection("none");
           }}
           onUserDeleted={(userId) => {
-            setAllUsers((prev) => prev.filter((u) => u.id !== userId));
+            const targetClient = (
+              selectedClientId ||
+              userProfile?.clientId ||
+              "IPS"
+            )
+              .trim()
+              .toUpperCase();
+            setAllUsers((prev) =>
+              prev.map((u) => {
+                if (u.id !== userId) return u;
+                const remainingClients = (u.clientId || "")
+                  .split(",")
+                  .map((c) => c.trim().toUpperCase())
+                  .filter((c) => Boolean(c) && c !== targetClient);
+                const remainingMemberships = (u.memberships || []).filter(
+                  (m) => m.clientId.trim().toUpperCase() !== targetClient
+                );
+                return {
+                  ...u,
+                  clientId: remainingClients.join(","),
+                  memberships: remainingMemberships,
+                };
+              })
+            );
           }}
           onCancel={() => setActiveAdminSection("none")}
           availableGroups={officialGroups}

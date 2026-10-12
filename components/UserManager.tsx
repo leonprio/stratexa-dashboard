@@ -460,38 +460,75 @@ export const UserManager = React.memo(({ users, dashboards, currentUser, activeC
                 createdUserInstance = result.userInstance;
             }
 
-            // 3. CREATING_PROFILE
+            // 3. CREATING_PROFILE / LINKING_MEMBERSHIP
             stepState = 'CREATING_PROFILE';
-            const userToSave: User = {
-                id: uid,
-                name: newUserName.trim(),
-                email: newUserEmail.trim(),
-                globalRole: newUserRole as GlobalUserRole,
-                canManageKPIs: newCanManageKPIs,
-                canExportPPT: newCanExportPPT,
-                clientId: activeClientId,
-                dashboardAccess: {},
-                directorTitle: (newUserRole === GlobalUserRole.Director ? "DIRECTOR" : ""),
-                subGroups: [],
-                superGroups: []
-            };
 
-            // Validar identidad antes de persistir
-            const identityErr = validateUserIdentity({
-                authUid: uid,
-                documentId: uid,
-                profileId: userToSave.id,
-                email: userToSave.email,
-                globalRole: userToSave.globalRole,
-                clientId: userToSave.clientId
-            }, false);
+            let userToSave: User;
+            if (existingUser) {
+                // APP TABLERO — v10 Bloque 1: Vinculación Canónica Segura.
+                // NO sobrescribir el perfil global ni destruir otros clientes/roles previos.
+                const canonicalRole = newUserRole === GlobalUserRole.Admin ? 'tenant_admin'
+                    : newUserRole === GlobalUserRole.Director ? 'director'
+                    : 'standard_user';
 
-            if (identityErr) {
-                alert(`❌ [${identityErr.code}]: ${identityErr.message}`);
-                throw new Error(identityErr.message);
+                await firebaseService.linkUserToClient(uid, activeClientId, {
+                    role: canonicalRole,
+                    actorId: currentUser.id,
+                });
+
+                const existingClients = (existingUser.clientId || '')
+                    .split(',')
+                    .map(c => c.trim().toUpperCase())
+                    .filter(Boolean);
+                if (!existingClients.includes(activeClientId.trim().toUpperCase())) {
+                    existingClients.push(activeClientId.trim().toUpperCase());
+                }
+
+                userToSave = {
+                    ...existingUser,
+                    clientId: existingClients.join(','),
+                };
+            } else {
+                userToSave = {
+                    id: uid,
+                    name: newUserName.trim(),
+                    email: newUserEmail.trim(),
+                    globalRole: newUserRole as GlobalUserRole,
+                    canManageKPIs: newCanManageKPIs,
+                    canExportPPT: newCanExportPPT,
+                    clientId: activeClientId,
+                    dashboardAccess: {},
+                    directorTitle: (newUserRole === GlobalUserRole.Director ? "DIRECTOR" : ""),
+                    subGroups: [],
+                    superGroups: []
+                };
+
+                // Validar identidad antes de persistir
+                const identityErr = validateUserIdentity({
+                    authUid: uid,
+                    documentId: uid,
+                    profileId: userToSave.id,
+                    email: userToSave.email,
+                    globalRole: userToSave.globalRole,
+                    clientId: userToSave.clientId
+                }, false);
+
+                if (identityErr) {
+                    alert(`❌ [${identityErr.code}]: ${identityErr.message}`);
+                    throw new Error(identityErr.message);
+                }
+
+                await firebaseService.saveUser(userToSave);
+
+                // También registrar su membresía canónica
+                const canonicalRole = newUserRole === GlobalUserRole.Admin ? 'tenant_admin'
+                    : newUserRole === GlobalUserRole.Director ? 'director'
+                    : 'standard_user';
+                await firebaseService.linkUserToClient(uid, activeClientId, {
+                    role: canonicalRole,
+                    actorId: currentUser.id,
+                });
             }
-
-            await firebaseService.saveUser(userToSave);
 
             // 4. VALIDATING_READBACK
             stepState = 'VALIDATING_READBACK';
@@ -618,12 +655,12 @@ export const UserManager = React.memo(({ users, dashboards, currentUser, activeC
                                     onResetPassword={email => firebaseService.sendPasswordResetEmail(email)}
                                     onChangePassword={(id, email) => setPasswordChangeUser({ id, email })}
                                     onDelete={async (id, email) => {
-                                        if (confirm(`¿Desvincular a ${email} de este Tablero?\n\n⚠️ NOTA: Esto eliminará el perfil del Tablero en la base de datos (tbl_users). La credencial de Firebase Authentication continuará existiendo en el servidor Auth y deberá ser eliminada manualmente por un administrador si se desea revocar por completo.`)) {
+                                        if (confirm(`¿Desvincular a ${email} de este cliente (${activeClientId})?\n\nEsta acción revocará la membresía del usuario para este cliente sin eliminar su cuenta ni alterar sus accesos en otros clientes.`)) {
                                             try {
-                                                await firebaseService.deleteUserFromFirestore(id);
+                                                await firebaseService.revokeUserMembership(id, activeClientId);
                                                 setLocalUsers(prev => prev.filter(x => x.id !== id));
                                                 if (onUserDeleted) onUserDeleted(id);
-                                                alert(`✅ Perfil de ${email} desvinculado del Tablero correctamente.`);
+                                                alert(`✅ Membresía de ${email} en ${activeClientId} desvinculada correctamente.`);
                                             } catch (err: any) {
                                                 alert(`❌ Error al desvincular: ${err.message}`);
                                             }
