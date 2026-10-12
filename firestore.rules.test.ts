@@ -1887,4 +1887,186 @@ describe('Firestore Security Rules — Strategy Module (v9.5.0 Foundation)', () 
       await assertFails(deleteDoc(doc(editorDb, 'tbl_controlCuts', cutId)));
     });
   });
+
+  // --- 🛡️ APP TABLERO v10 Bloque 2: Alta Segura de Clientes, Grant Inicial y Creación de Primer Tablero ---
+  describe('V10 Bloque 2 — Universal Platform Admin & Tenant Onboarding Emulator Certification', () => {
+    const newClientId = 'CLIENTE_INEDITO_2026';
+    const canonicalPlatformUid = 'canonical_platform_admin_uid';
+    const regularUserUid = 'regular_user_no_admin_uid';
+
+    beforeEach(async () => {
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        const adminDb = context.firestore();
+        // Platform Admin canónico (respaldado por servidor en tbl_platformAdmins)
+        await setDoc(doc(adminDb, 'tbl_platformAdmins', canonicalPlatformUid), {
+          uid: canonicalPlatformUid,
+          status: 'active',
+          schemaVersion: 1,
+          createdAt: '2026-01-01T00:00:00.000Z',
+          createdBy: 'system',
+          updatedAt: '2026-01-01T00:00:00.000Z',
+          updatedBy: 'system',
+        });
+        await setDoc(doc(adminDb, 'tbl_users', canonicalPlatformUid), {
+          id: canonicalPlatformUid,
+          email: 'platform@internal.domain',
+          globalRole: 'Admin',
+        });
+
+        // Usuario estándar sin privilegios de plataforma
+        await setDoc(doc(adminDb, 'tbl_users', regularUserUid), {
+          id: regularUserUid,
+          email: 'regular@cliente.com',
+          globalRole: 'Member',
+          clientId: 'CLIENT_A',
+        });
+      });
+    });
+
+    it('1. Platform Admin canónico puede crear cliente en tbl_managedClients y otorgar su membresía inicial', async () => {
+      const platformDb = testEnv.authenticatedContext(canonicalPlatformUid).firestore();
+
+      // 1. Alta en catálogo
+      await assertSucceeds(setDoc(doc(platformDb, 'tbl_managedClients', newClientId), {
+        id: newClientId,
+        displayName: 'Cliente Inédito 2026',
+        createdAt: new Date().toISOString(),
+      }));
+
+      // 2. Otorgar grant inicial de tenant_admin para ese nuevo cliente
+      const memId = `${canonicalPlatformUid}__${newClientId}`;
+      await assertSucceeds(setDoc(doc(platformDb, 'tbl_userMemberships', memId), {
+        membershipId: memId,
+        userId: canonicalPlatformUid,
+        clientId: newClientId,
+        role: 'tenant_admin',
+        status: 'active',
+        scopeType: 'tenant',
+        allowedDashboardIds: [],
+        hierarchyScopeKeys: [],
+        capabilities: ['editor', 'viewer', 'metadata_editor', 'plan_editor', 'tracking_configurator', 'strategy_configurator'],
+        schemaVersion: 1,
+        createdBy: canonicalPlatformUid,
+        updatedBy: canonicalPlatformUid,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      }));
+    });
+
+    it('2. Usuario sin autoridad de plataforma es RECHAZADO al intentar dar de alta un cliente', async () => {
+      const regularDb = testEnv.authenticatedContext(regularUserUid).firestore();
+
+      await assertFails(setDoc(doc(regularDb, 'tbl_managedClients', 'HACK_CLIENT'), {
+        id: 'HACK_CLIENT',
+        displayName: 'Hack Client',
+      }));
+
+      // Tampoco puede auto-otorgarse tenant_admin
+      await assertFails(setDoc(doc(regularDb, 'tbl_userMemberships', `${regularUserUid}__HACK_CLIENT`), {
+        membershipId: `${regularUserUid}__HACK_CLIENT`,
+        userId: regularUserUid,
+        clientId: 'HACK_CLIENT',
+        role: 'tenant_admin',
+        status: 'active',
+        scopeType: 'tenant',
+        allowedDashboardIds: [],
+        hierarchyScopeKeys: [],
+        capabilities: ['editor'],
+        schemaVersion: 1,
+        createdBy: regularUserUid,
+        updatedBy: regularUserUid,
+      }));
+    });
+
+    it('3. Con el grant explícito de tenant_admin, se permite la creación real del PRIMER TABLERO', async () => {
+      // Configuramos el cliente y el grant en el emulador
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        const adminDb = context.firestore();
+        await setDoc(doc(adminDb, 'tbl_managedClients', newClientId), {
+          id: newClientId,
+          displayName: 'Cliente Inédito 2026',
+        });
+        const memId = `${canonicalPlatformUid}__${newClientId}`;
+        await setDoc(doc(adminDb, 'tbl_userMemberships', memId), {
+          membershipId: memId,
+          userId: canonicalPlatformUid,
+          clientId: newClientId,
+          role: 'tenant_admin',
+          status: 'active',
+          scopeType: 'tenant',
+          allowedDashboardIds: [],
+          hierarchyScopeKeys: [],
+          capabilities: ['editor', 'viewer'],
+          schemaVersion: 1,
+          createdBy: canonicalPlatformUid,
+          updatedBy: canonicalPlatformUid,
+        });
+      });
+
+      const platformDb = testEnv.authenticatedContext(canonicalPlatformUid).firestore();
+
+      // Creación del primer tablero para ese cliente
+      const firstDashId = `${newClientId}_2026_1`;
+      await assertSucceeds(setDoc(doc(platformDb, 'tbl_dashboards', firstDashId), {
+        id: firstDashId,
+        title: 'Tablero Operaciones',
+        subtitle: 'Nuevo Tablero',
+        year: 2026,
+        clientId: newClientId,
+        group: 'OPERACIONES',
+        area: 'OPERACIONES',
+        items: [],
+      }));
+
+      // Lectura del nuevo tablero confirmada
+      await assertSucceeds(getDoc(doc(platformDb, 'tbl_dashboards', firstDashId)));
+    });
+
+    it('4. Platform Admin SIN membresía en cliente B NO puede crear tableros en cliente B (separación estricta)', async () => {
+      // Cliente B registrado en catálogo, pero sin membresía para canonicalPlatformUid
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        const adminDb = context.firestore();
+        await setDoc(doc(adminDb, 'tbl_managedClients', 'CLIENTE_B_BLIND'), {
+          id: 'CLIENTE_B_BLIND',
+          displayName: 'Cliente B Blind',
+        });
+      });
+
+      const platformDb = testEnv.authenticatedContext(canonicalPlatformUid).firestore();
+
+      // Intentar crear un tablero sin grant explícito en CLIENTE_B_BLIND debe fallar (Firestore Rules exige isTenantAdmin)
+      const deniedDashId = 'CLIENTE_B_BLIND_2026_1';
+      await assertFails(setDoc(doc(platformDb, 'tbl_dashboards', deniedDashId), {
+        id: deniedDashId,
+        title: 'Tablero No Autorizado',
+        year: 2026,
+        clientId: 'CLIENTE_B_BLIND',
+      }));
+    });
+
+    it('5. SuperAdmin histórico leon@leonprior.com puede dar de alta cliente y otorgar membresía inicial', async () => {
+      const historicAdminDb = testEnv.authenticatedContext('historic_leon_uid', { email: 'leon@leonprior.com' }).firestore();
+
+      await assertSucceeds(setDoc(doc(historicAdminDb, 'tbl_managedClients', 'HISTORIC_NEW_CLIENT'), {
+        id: 'HISTORIC_NEW_CLIENT',
+        displayName: 'Historic New Client',
+      }));
+
+      const memId = `historic_leon_uid__HISTORIC_NEW_CLIENT`;
+      await assertSucceeds(setDoc(doc(historicAdminDb, 'tbl_userMemberships', memId), {
+        membershipId: memId,
+        userId: 'historic_leon_uid',
+        clientId: 'HISTORIC_NEW_CLIENT',
+        role: 'tenant_admin',
+        status: 'active',
+        scopeType: 'tenant',
+        allowedDashboardIds: [],
+        hierarchyScopeKeys: [],
+        capabilities: ['editor', 'viewer'],
+        schemaVersion: 1,
+        createdBy: 'historic_leon_uid',
+        updatedBy: 'historic_leon_uid',
+      }));
+    });
+  });
 });

@@ -2066,15 +2066,22 @@ export default function App() {
     }
   };
 
-  const handleAddDashboard = () => {
+  const handleAddDashboard = (targetClientIdOverride?: string | React.MouseEvent) => {
     if (!isGlobalAdmin) return;
 
+    const explicitOverride = typeof targetClientIdOverride === 'string' ? targetClientIdOverride : undefined;
+    const effectiveTargetClient = (explicitOverride || selectedClientId || '').trim().toUpperCase();
+
     // 🛡️ BLOCKER: Obligar a seleccionar un cliente real
-    if (!selectedClientId || selectedClientId === "all") {
+    if (!effectiveTargetClient || effectiveTargetClient === "ALL") {
       alert(
         "⚠️ ACCIÓN REQUERIDA:\n\nPara crear un tablero, primero selecciona un CLIENTE específico en el menú superior (donde dice 'Todos los Clientes').\n\nEsto asegura que el tablero se guarde en la cuenta correcta y no se mezcle con otros.",
       );
       return;
+    }
+
+    if (effectiveTargetClient !== selectedClientId) {
+      selectClientContext(effectiveTargetClient);
     }
 
     setIsCreateDashboardModalOpen(true);
@@ -2466,23 +2473,42 @@ export default function App() {
       const displayName = rawDisplayName.trim();
       const safeTechId = generateSafeClientId(displayName, availableClients);
 
-      if (!availableClients.includes(safeTechId)) {
-        setTempClients((prev) => [...prev, safeTechId]);
-        // 💾 PERSISTIR EN FIRESTORE CON SEPARACIÓN DE ID TÉCNICO Y NOMBRE VISUAL
-        await firebaseService.ensureClientExists(safeTechId, displayName);
-      }
-      setSelectedClientId(safeTechId);
-
-      // 🛡️ NUEVO FLUJO (v3.3.4): Preguntar por el primer tablero inmediatamente
-      setTimeout(() => {
-        if (
-          confirm(
-            `¿Deseas Crear el PRIMER TABLERO para "${displayName}" ahora?\n\n(Ej: Operaciones, Ventas, Sucursal Centro)`,
-          )
-        ) {
-          handleAddDashboard();
+      try {
+        if (!availableClients.includes(safeTechId)) {
+          setTempClients((prev) => [...prev, safeTechId]);
+          // 🛡️ ALTA OPERATIVA SEGURA (v10 Bloque 2):
+          // Persistir en tbl_managedClients y otorgar grant empresarial explícito de tenant_admin al actor
+          const currentActorId = user?.uid || userProfile?.id || '';
+          if (currentActorId) {
+            const onboardingResult = await firebaseService.createClientWithInitialGrant(
+              safeTechId,
+              displayName,
+              currentActorId
+            );
+            if (userProfile && onboardingResult.initialMembership) {
+              hydratePersistedMemberships(userProfile, [onboardingResult.initialMembership], currentActorId);
+              setUserProfile({ ...userProfile });
+            }
+          } else {
+            await firebaseService.ensureClientExists(safeTechId, displayName);
+          }
         }
-      }, 500);
+        selectClientContext(safeTechId);
+
+        // 🛡️ NUEVO FLUJO (v3.3.4): Preguntar por el primer tablero inmediatamente
+        setTimeout(() => {
+          if (
+            confirm(
+              `¿Deseas Crear el PRIMER TABLERO para "${displayName}" ahora?\n\n(Ej: Operaciones, Ventas, Sucursal Centro)`,
+            )
+          ) {
+            handleAddDashboard(safeTechId);
+          }
+        }, 500);
+      } catch (err: any) {
+        console.error("Error al dar de alta el cliente con grant inicial:", err);
+        alert(`Error al crear cliente: ${err?.message || err}`);
+      }
     }
   };
 

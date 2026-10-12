@@ -893,6 +893,97 @@ export const firebaseService = {
         await setDoc(ref, data, { merge: true });
     },
 
+    /**
+     * APP TABLERO — v10 Bloque 2: Alta Operativa Segura de Clientes con Grant Inicial Explícito.
+     * Registra el cliente en el catálogo de clientes gestionados (tbl_managedClients)
+     * y otorga la membresía canónica inicial de 'tenant_admin' al actor para permitir
+     * la creación y operación inmediata de tableros sin conceder privilegios implícitos universales.
+     */
+    createClientWithInitialGrant: async (
+        clientId: string,
+        displayName: string,
+        actorId: string
+    ) => {
+        const cleanClientId = clientId.trim().toUpperCase();
+        if (!cleanClientId || cleanClientId.length > 64 || !/^[a-zA-Z0-9ÁÉÍÓÚÜÑáéíóúüñ_-]+$/.test(cleanClientId)) {
+            throw new Error(`INVALID_CLIENT_ID: El ID de cliente '${clientId}' no cumple con el formato permitido.`);
+        }
+        const cleanDisplayName = (displayName || cleanClientId).trim();
+        const cleanActorId = (actorId || auth.currentUser?.uid || '').trim();
+        if (!cleanActorId) {
+            throw new Error("ACTOR_ID_REQUIRED: Se requiere un actor autenticado para realizar el alta operativa del cliente.");
+        }
+
+        // 1. Preparar referencias y metadatos
+        const membershipId = buildMembershipId(cleanActorId, cleanClientId);
+        const clientRef = doc(db, CLIENTS_COLLECTION, cleanClientId);
+        const memRef = doc(db, USER_MEMBERSHIPS_COLLECTION, membershipId);
+        const userRef = doc(db, USERS_COLLECTION, cleanActorId);
+
+        const clientSnap = await getDoc(clientRef);
+        const memSnap = await getDoc(memRef);
+        const userSnap = await getDoc(userRef);
+        const now = new Date().toISOString();
+
+        const clientData: any = {
+            id: cleanClientId,
+            displayName: cleanDisplayName,
+            updatedAt: now,
+        };
+        if (!clientSnap.exists()) {
+            clientData.createdAt = now;
+            clientData.createdBy = cleanActorId;
+        }
+
+        const membershipData: PersistedTenantMembership = {
+            membershipId,
+            userId: cleanActorId,
+            clientId: cleanClientId,
+            role: 'tenant_admin',
+            status: 'active',
+            scopeType: 'tenant',
+            allowedDashboardIds: [],
+            hierarchyScopeKeys: [],
+            capabilities: ['editor', 'viewer', 'metadata_editor', 'plan_editor', 'tracking_configurator', 'strategy_configurator'],
+            createdAt: memSnap.exists() ? (memSnap.data() as any).createdAt || now : now,
+            createdBy: memSnap.exists() ? (memSnap.data() as any).createdBy || cleanActorId : cleanActorId,
+            updatedAt: now,
+            updatedBy: cleanActorId,
+            schemaVersion: 1,
+        };
+
+        const memErrors = validatePersistedMembership(membershipData);
+        if (memErrors.length > 0) {
+            throw new Error(`MEMBERSHIP_VALIDATION_FAILED: ${memErrors.join('; ')}`);
+        }
+
+        // 2. Ejecutar escritura atómica combinada (tbl_managedClients + tbl_userMemberships + tbl_users legacy)
+        const batch = writeBatch(db);
+        batch.set(clientRef, clientData, { merge: true });
+        batch.set(memRef, membershipData, { merge: true });
+
+        if (userSnap.exists()) {
+            const currentProfile = userSnap.data() as User;
+            const existingClients = (currentProfile.clientId || '')
+                .split(',')
+                .map(c => c.trim().toUpperCase())
+                .filter(Boolean);
+
+            if (!existingClients.includes(cleanClientId)) {
+                existingClients.push(cleanClientId);
+                batch.update(userRef, { clientId: existingClients.join(',') });
+            }
+        }
+
+        await batch.commit();
+
+        return {
+            clientId: cleanClientId,
+            displayName: cleanDisplayName,
+            initialMembership: membershipData,
+        };
+    },
+
     // -----------------------------
     // Specialized Tools
     // -----------------------------
