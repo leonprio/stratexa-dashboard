@@ -315,18 +315,20 @@ service cloud.firestore {
       );
     }
 
+    function strategyCounterClientCandidate(counterId) {
+      return counterId.matches('^cnt_[a-zA-Z0-9ÁÉÍÓÚÜÑáéíóúüñ_-]+_OE$')
+        ? counterId[4:counterId.size() - 3]
+        : (counterId.matches('^cnt_IPS_DIRECCION_OC_.+$') ? 'IPS_DIRECCION'
+        : (isSafeClientId(getUserProfile().get('clientId', '')) ? getUserProfile().clientId : ''));
+    }
+
     function canInitializeStrategyCounter(counterId) {
-      return isAuthenticated() && (
-        (isSafeClientId(getUserProfile().clientId) &&
-         isTenantAdmin(getUserProfile().clientId) &&
-         isStrategyCounterIdForClient(counterId, getUserProfile().clientId)) ||
-        (isStrategyCounterIdForClient(counterId, 'IPS_DIRECCION') && (isTenantAdmin('IPS_DIRECCION') || canReadStrategy('IPS_DIRECCION'))) ||
-        (isStrategyCounterIdForClient(counterId, 'IPS') && (isTenantAdmin('IPS') || canReadStrategy('IPS'))) ||
-        (isStrategyCounterIdForClient(counterId, 'LVP') && (isTenantAdmin('LVP') || canReadStrategy('LVP'))) ||
-        (isStrategyCounterIdForClient(counterId, 'LEÓN') && (isTenantAdmin('LEÓN') || canReadStrategy('LEÓN'))) ||
-        (isStrategyCounterIdForClient(counterId, 'LEON') && (isTenantAdmin('LEON') || canReadStrategy('LEON'))) ||
-        (isStrategyCounterIdForClient(counterId, 'CEMENTOS_SIGMA') && (isTenantAdmin('CEMENTOS_SIGMA') || canReadStrategy('CEMENTOS_SIGMA')))
-      );
+      return isAuthenticated() &&
+        isSafeClientId(strategyCounterClientCandidate(counterId)) &&
+        isStrategyCounterIdForClient(counterId, strategyCounterClientCandidate(counterId)) &&
+        ((activeCanonicalMembership(strategyCounterClientCandidate(counterId)) &&
+          get(/databases/$(database)/documents/tbl_userMemberships/$(membershipId(strategyCounterClientCandidate(counterId)))).data.role == 'tenant_admin') ||
+        (legacyTenantUser(strategyCounterClientCandidate(counterId)) && getUserProfile().get('globalRole', '') in ['Admin', 'admin']));
     }
 
     function isGobernanzaUser() {

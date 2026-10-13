@@ -2069,4 +2069,91 @@ describe('Firestore Security Rules — Strategy Module (v9.5.0 Foundation)', () 
       }));
     });
   });
+
+  describe('V10 Bloque 3 — Eliminación de Dependencias Históricas y Clientes Inéditos', () => {
+    const UNPUBLISHED_CLIENT = 'NUEVO_CLIENTE_INEDITO_V10';
+    const OTHER_CLIENT = 'OTRO_CLIENTE_AISLADO_V10';
+
+    beforeEach(async () => {
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        const db = context.firestore();
+
+        // 1. Usuario con membresía canónica de tenant_admin en cliente inédito,
+        // pero con un perfil de usuario cuyo clientId legacy es diferente o multitenant ("MULTI,CLIENT,all")
+        await setDoc(doc(db, 'tbl_users', 'user_admin_inedito'), {
+          uid: 'user_admin_inedito',
+          email: 'admin_inedito@empresa.com',
+          clientId: 'MULTI,CLIENT,all',
+          globalRole: 'Admin'
+        });
+
+        await setDoc(doc(db, 'tbl_userMemberships', `user_admin_inedito__${UNPUBLISHED_CLIENT}`), {
+          membershipId: `user_admin_inedito__${UNPUBLISHED_CLIENT}`,
+          userId: 'user_admin_inedito',
+          clientId: UNPUBLISHED_CLIENT,
+          role: 'tenant_admin',
+          status: 'active',
+          scopeType: 'tenant',
+          allowedDashboardIds: [],
+          hierarchyScopeKeys: [],
+          capabilities: ['viewer', 'editor', 'strategy_reader'],
+          schemaVersion: 1,
+          createdBy: 'platform',
+          updatedBy: 'platform'
+        });
+
+        // 2. Usuario de OTRO tenant
+        await setDoc(doc(db, 'tbl_users', 'user_otro_tenant'), {
+          uid: 'user_otro_tenant',
+          email: 'otro@otro.com',
+          clientId: OTHER_CLIENT,
+          globalRole: 'Admin'
+        });
+
+        await setDoc(doc(db, 'tbl_userMemberships', `user_otro_tenant__${OTHER_CLIENT}`), {
+          membershipId: `user_otro_tenant__${OTHER_CLIENT}`,
+          userId: 'user_otro_tenant',
+          clientId: OTHER_CLIENT,
+          role: 'tenant_admin',
+          status: 'active',
+          scopeType: 'tenant',
+          allowedDashboardIds: [],
+          hierarchyScopeKeys: [],
+          capabilities: ['viewer', 'editor', 'strategy_reader'],
+          schemaVersion: 1,
+          createdBy: 'platform',
+          updatedBy: 'platform'
+        });
+      });
+    });
+
+    it('1. Cliente inédito no hardcodeado permite get del contador OE aún no creado (canInitializeStrategyCounter)', async () => {
+      const db = testEnv.authenticatedContext('user_admin_inedito').firestore();
+      const counterRef = doc(db, 'tbl_strategyCounters', `cnt_${UNPUBLISHED_CLIENT}_OE`);
+      await assertSucceeds(getDoc(counterRef));
+    });
+
+    it('2. Cliente inédito no hardcodeado permite crear el primer contador estratégico (setDoc) y transaccionar', async () => {
+      const db = testEnv.authenticatedContext('user_admin_inedito').firestore();
+      const counterRef = doc(db, 'tbl_strategyCounters', `cnt_${UNPUBLISHED_CLIENT}_OE`);
+      await assertSucceeds(setDoc(counterRef, {
+        id: `cnt_${UNPUBLISHED_CLIENT}_OE`,
+        clientId: UNPUBLISHED_CLIENT,
+        scope: 'OE',
+        lastIssuedSequence: 1
+      }));
+    });
+
+    it('3. Rechaza que usuario de otro tenant lea o inicialice el contador del cliente inédito (Aislamiento)', async () => {
+      const db = testEnv.authenticatedContext('user_otro_tenant').firestore();
+      const counterRef = doc(db, 'tbl_strategyCounters', `cnt_${UNPUBLISHED_CLIENT}_OE`);
+      await assertFails(getDoc(counterRef));
+      await assertFails(setDoc(counterRef, {
+        id: `cnt_${UNPUBLISHED_CLIENT}_OE`,
+        clientId: UNPUBLISHED_CLIENT,
+        scope: 'OE',
+        lastIssuedSequence: 1
+      }));
+    });
+  });
 });
