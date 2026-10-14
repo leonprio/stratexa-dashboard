@@ -8,7 +8,7 @@ import {
 } from '@firebase/rules-unit-testing';
 import * as fs from 'fs';
 import * as path from 'path';
-import { doc, getDoc, setDoc, updateDoc, deleteDoc, getDocs, collection, query, where, documentId } from 'firebase/firestore';
+import { doc, getDoc, setDoc, updateDoc, deleteDoc, getDocs, collection, query, where, documentId, writeBatch } from 'firebase/firestore';
 
 const PROJECT_ID = 'demo-stratexa-rules';
 
@@ -52,6 +52,64 @@ describe('Firestore Security Rules — Strategy Module (v9.5.0 Foundation)', () 
     if (testEnv) {
       await testEnv.cleanup();
     }
+  });
+
+  describe('V10 critical security reproduction', () => {
+    it('rejects tenant A onboarding itself into B atomically', async () => {
+      await testEnv.withSecurityRulesDisabled(async context => {
+        const db = context.firestore();
+        await setDoc(doc(db, 'tbl_users', 'critical_admin'), { id: 'critical_admin', clientId: 'A', globalRole: 'Admin' });
+        await setDoc(doc(db, 'tbl_userMemberships', 'critical_admin__A'), canonicalMembership('critical_admin', 'A', 'tenant_admin'));
+      });
+      const db = testEnv.authenticatedContext('critical_admin').firestore();
+      const batch = writeBatch(db);
+      batch.set(doc(db, 'tbl_managedClients', 'B'), { id: 'B', createdBy: 'critical_admin' });
+      batch.set(doc(db, 'tbl_userMemberships', 'critical_admin__B'), canonicalMembership('critical_admin', 'B', 'tenant_admin'));
+      batch.update(doc(db, 'tbl_users', 'critical_admin'), { clientId: 'A,B' });
+      await assertFails(batch.commit());
+      await testEnv.withSecurityRulesDisabled(async context => {
+        expect((await getDoc(doc(context.firestore(), 'tbl_managedClients', 'B'))).exists()).toBe(false);
+        expect((await getDoc(doc(context.firestore(), 'tbl_userMemberships', 'critical_admin__B'))).exists()).toBe(false);
+      });
+    });
+
+    it('allows platform onboarding batch and first dashboard creation', async () => {
+      const uid = 'platform_onboard';
+      await testEnv.withSecurityRulesDisabled(async context => {
+        await setDoc(doc(context.firestore(), 'tbl_users', uid), { id: uid, clientId: '' });
+      });
+      const db = testEnv.authenticatedContext(uid, { email: 'leon@leonprior.com' }).firestore();
+      const batch = writeBatch(db);
+      batch.set(doc(db, 'tbl_managedClients', 'NEW_TENANT'), { id: 'NEW_TENANT', displayName: 'New Tenant' });
+      batch.set(doc(db, 'tbl_userMemberships', `${uid}__NEW_TENANT`), canonicalMembership(uid, 'NEW_TENANT', 'tenant_admin'));
+      batch.update(doc(db, 'tbl_users', uid), { clientId: 'NEW_TENANT' });
+      await assertSucceeds(batch.commit());
+      await assertSucceeds(setDoc(doc(db, 'tbl_dashboards', 'new_tenant_board'), {
+        id: 'new_tenant_board', clientId: 'NEW_TENANT', title: 'First board',
+      }));
+    });
+
+    it('allows admin A to revoke a third party and seals legacy access while preserving B', async () => {
+      await testEnv.withSecurityRulesDisabled(async context => {
+        const db = context.firestore();
+        await setDoc(doc(db, 'tbl_users', 'critical_admin'), { id: 'critical_admin', clientId: 'A', globalRole: 'Admin' });
+        await setDoc(doc(db, 'tbl_users', 'critical_member'), { id: 'critical_member', clientId: 'A,B', globalRole: 'Admin' });
+        await setDoc(doc(db, 'tbl_userMemberships', 'critical_admin__A'), canonicalMembership('critical_admin', 'A', 'tenant_admin'));
+        await setDoc(doc(db, 'tbl_userMemberships', 'critical_member__A'), canonicalMembership('critical_member', 'A', 'standard_user'));
+        await setDoc(doc(db, 'tbl_userMemberships', 'critical_member__B'), canonicalMembership('critical_member', 'B', 'tenant_admin'));
+        await setDoc(doc(db, 'tbl_strategicObjectives', 'critical_a'), { clientId: 'A' });
+        await setDoc(doc(db, 'tbl_strategicObjectives', 'critical_b'), { clientId: 'B' });
+      });
+      const admin = testEnv.authenticatedContext('critical_admin').firestore();
+      await assertSucceeds(updateDoc(doc(admin, 'tbl_userMemberships', 'critical_member__A'), { status: 'inactive' }));
+      await assertFails(updateDoc(doc(admin, 'tbl_userMemberships', 'critical_member__B'), { status: 'inactive' }));
+      await assertFails(updateDoc(doc(admin, 'tbl_userMemberships', 'critical_member__A'), { role: 'tenant_admin' }));
+      await assertFails(updateDoc(doc(admin, 'tbl_userMemberships', 'critical_member__A'), { clientId: 'B' }));
+      const member = testEnv.authenticatedContext('critical_member').firestore();
+      await assertFails(getDoc(doc(member, 'tbl_strategicObjectives', 'critical_a')));
+      await assertSucceeds(getDoc(doc(member, 'tbl_strategicObjectives', 'critical_b')));
+      expect((await getDoc(doc(member, 'tbl_users', 'critical_member'))).exists()).toBe(true);
+    });
   });
 
   beforeEach(async () => {

@@ -22,7 +22,7 @@ const mockFirestoreStore = new Map<string, any>();
 
 jest.mock('../firebase', () => ({
   db: {},
-  auth: { currentUser: null },
+  auth: { currentUser: { uid: 'uid_leon_platform' } },
 }));
 
 jest.mock('firebase/firestore', () => ({
@@ -262,9 +262,14 @@ describe('APP TABLERO — v10 Bloque 2: Universal SuperAdmin & Client Onboarding
 
   // 10. Desacoplamiento de IPS: un cliente nuevo arbitrario no asume ni hereda IPS
   it('10. Desacoplamiento de IPS: alta de nuevo cliente funciona con ID independiente sin fallbacks a IPS', async () => {
-    const result = await (firebaseService as any).createClientWithInitialGrant('BETA_CORP', 'Beta Corp', 'user_beta');
+    const result = await (firebaseService as any).createClientWithInitialGrant('BETA_CORP', 'Beta Corp', 'uid_leon_platform');
     expect(result.clientId).toBe('BETA_CORP');
     expect(result.initialMembership.clientId).toBe('BETA_CORP');
     expect(result.initialMembership.clientId).not.toBe('IPS');
+  });
+
+  it('rechaza un actorId distinto de la identidad autenticada', async () => {
+    await expect((firebaseService as any).createClientWithInitialGrant('FORGED', 'Forged', 'another_uid'))
+      .rejects.toThrow('ACTOR_ID_MISMATCH');
   });
 });

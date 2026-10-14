@@ -302,6 +302,17 @@ service cloud.firestore {
         after.createdBy == before.createdBy && after.schemaVersion == before.schemaVersion;
     }
 
+    function tenantAdminMayRevokeMembership(before, after) {
+      return isTenantAdmin(before.clientId) && before.userId != request.auth.uid &&
+        sameMembershipIdentity(before, after) && after.role == before.role &&
+        after.scopeType == before.scopeType &&
+        after.get('allowedDashboardIds', []) == before.get('allowedDashboardIds', []) &&
+        after.get('editableDashboardIds', []) == before.get('editableDashboardIds', []) &&
+        after.hierarchyScopeKeys == before.hierarchyScopeKeys &&
+        after.capabilities == before.capabilities &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'updatedAt', 'updatedBy']);
+    }
+
     function validTenantProfile(data) {
       return data.globalRole in ['Admin', 'Director', 'Member'] &&
         !(data.get('email', '').lower() in ['leon@leonprior.com', 'leonprior@gmail.com']);
@@ -378,7 +389,7 @@ service cloud.firestore {
       allow create: if validMembership(request.resource.data) && membershipIdValue == request.resource.data.membershipId &&
         (isPlatformAdmin() || (isTenantAdmin(request.resource.data.clientId) && request.resource.data.userId != request.auth.uid));
       allow update: if validMembership(request.resource.data) && sameMembershipIdentity(resource.data, request.resource.data) &&
-        (isPlatformAdmin() || (isTenantAdmin(resource.data.clientId) && resource.data.userId != request.auth.uid));
+        (isPlatformAdmin() || tenantAdminMayRevokeMembership(resource.data, request.resource.data));
       allow delete: if isPlatformAdmin() || (isTenantAdmin(resource.data.clientId) && resource.data.userId != request.auth.uid);
     }
     match /tbl_directions/{directionId} {

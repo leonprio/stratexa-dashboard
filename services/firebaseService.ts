@@ -562,39 +562,38 @@ export const firebaseService = {
         const cleanUserId = userId.trim();
         const cleanClientId = clientId.trim().toUpperCase();
         const membershipId = buildMembershipId(cleanUserId, cleanClientId);
+        const actorId = auth.currentUser?.uid;
+        if (!actorId) throw new Error('AUTH_REQUIRED: Se requiere una sesión autenticada para revocar membresías.');
 
-        // 1. Desactivar o revocar membresía canónica en tbl_userMemberships
         const memRef = doc(db, USER_MEMBERSHIPS_COLLECTION, membershipId);
         const memSnap = await getDoc(memRef);
-        if (memSnap.exists()) {
-            // Se marca inactive con auditoría para sellar el acceso e impedir reactivación por canal legacy
-            await setDoc(memRef, {
-                status: 'inactive',
-                updatedAt: new Date().toISOString(),
-                updatedBy: auth.currentUser?.uid || 'system',
-            }, { merge: true });
-        }
+        const now = new Date().toISOString();
+        const existing = memSnap.exists() ? memSnap.data() as PersistedTenantMembership : null;
+        const membershipData: PersistedTenantMembership = {
+            membershipId,
+            userId: cleanUserId,
+            clientId: cleanClientId,
+            role: existing?.role || 'standard_user',
+            status: 'inactive',
+            scopeType: existing?.scopeType || 'tenant',
+            allowedDashboardIds: existing?.allowedDashboardIds || [],
+            hierarchyScopeKeys: existing?.hierarchyScopeKeys || [],
+            capabilities: existing?.capabilities || [],
+            createdAt: existing?.createdAt || now,
+            createdBy: existing?.createdBy || actorId,
+            updatedAt: now,
+            updatedBy: actorId,
+            schemaVersion: 1,
+        };
+        const errors = validatePersistedMembership(membershipData);
+        if (errors.length) throw new Error(`MEMBERSHIP_VALIDATION_FAILED: ${errors.join('; ')}`);
 
-        // 2. Compatibilidad legacy: retirar clientId de tbl_users si existe
-        const userRef = doc(db, USERS_COLLECTION, cleanUserId);
-        const userSnap = await getDoc(userRef);
-        if (userSnap.exists()) {
-            const currentProfile = userSnap.data() as User;
-            const existingClients = (currentProfile.clientId || '')
-                .split(',')
-                .map(c => c.trim().toUpperCase())
-                .filter(Boolean);
-
-            const filteredClients = existingClients.filter(c => c !== cleanClientId);
-            if (filteredClients.length > 0) {
-                // Conserva el perfil y los otros clientes
-                await updateDoc(userRef, { clientId: filteredClients.join(',') });
-            } else {
-                // Si ya no pertenece a ningún cliente legacy, no eliminamos tbl_users
-                // para preservar identidad y trazabilidad de Auth
-                await updateDoc(userRef, { clientId: '' });
-            }
-        }
+        // One atomic write seals both canonical and legacy access: Firestore
+        // Rules treat any inactive canonical record as overriding the profile's
+        // legacy clientId, so the shared identity document stays untouched.
+        const batch = writeBatch(db);
+        batch.set(memRef, membershipData);
+        await batch.commit();
 
         return true;
     },
@@ -912,6 +911,9 @@ export const firebaseService = {
         const cleanActorId = (actorId || auth.currentUser?.uid || '').trim();
         if (!cleanActorId) {
             throw new Error("ACTOR_ID_REQUIRED: Se requiere un actor autenticado para realizar el alta operativa del cliente.");
+        }
+        if (!auth.currentUser?.uid || cleanActorId !== auth.currentUser.uid) {
+            throw new Error("ACTOR_ID_MISMATCH: El actor debe coincidir con la identidad autenticada.");
         }
 
         // 1. Preparar referencias y metadatos
